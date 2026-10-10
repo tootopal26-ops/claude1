@@ -1,0 +1,75 @@
+name: Windows build, test & package
+
+on:
+  push:
+    branches: [ "claude/aetherix-rom-master-app-lk80tc", "main" ]
+  workflow_dispatch: {}
+
+jobs:
+  build-test-package:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: src
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: dotnet --info
+        run: dotnet --info
+
+      - name: Restore
+        run: dotnet restore AetherixRomMaster.sln
+
+      - name: Build (Release, full solution incl. WPF app)
+        run: dotnet build AetherixRomMaster.sln -c Release --no-restore
+
+      - name: Test (Core.Tests)
+        run: dotnet test AetherixRomMaster.Core.Tests/AetherixRomMaster.Core.Tests.csproj -c Release --no-build --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=normal"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: src/AetherixRomMaster.Core.Tests/TestResults/test-results.trx
+          if-no-files-found: warn
+
+      - name: Publish self-contained win-x64 EXE
+        run: >
+          dotnet publish AetherixRomMaster.App/AetherixRomMaster.App.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish/win-x64
+
+      - name: List publish output
+        run: Get-ChildItem -Recurse publish\win-x64 | Select-Object FullName, Length
+
+      - name: Smoke test -- launch the EXE and confirm it stays up (no immediate crash)
+        shell: pwsh
+        run: |
+          $exe = "publish\win-x64\AetherixRomMaster.exe"
+          if (-not (Test-Path $exe)) { throw "Published exe not found at $exe" }
+
+          $proc = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 6
+
+          if ($proc.HasExited) {
+            Write-Host "Process exited early with code $($proc.ExitCode) -- this is a FAILURE (likely a startup exception)."
+            exit 1
+          } else {
+            Write-Host "Process is still running after 6 seconds (PID $($proc.Id)) -- startup looks healthy."
+            Stop-Process -Id $proc.Id -Force
+          }
+
+      - name: Upload published app (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: AetherixRomMaster-win-x64
+          path: src/publish/win-x64/
+          if-no-files-found: error

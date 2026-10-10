@@ -84,7 +84,7 @@ src/
 profiles/
   cancunf.device.json              Device profile (researched facts + citations)
   cancunf.infinity-x.rom.json      ROM profile (verification-gated, see above)
-assets/icon/                       Source SVG + rendered app icon
+assets/icon/                       App icon source (source.png) + rendered sizes/.ico
 docs/
   BUILD.md                         Windows build instructions
   DEPENDENCIES.md                  Platform tools / USB drivers / SDK setup

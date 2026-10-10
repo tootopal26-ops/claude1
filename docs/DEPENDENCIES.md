@@ -61,7 +61,7 @@ ROM file.
 |---|---|---|
 | Application source code | ✅ Yes | This repository |
 | Device/ROM profile JSON | ✅ Yes | Hand-authored from cited research |
-| App icon | ✅ Yes | Hand-authored SVG, `assets/icon/` |
+| App icon | ✅ Yes | Supplied by the user, `assets/icon/` |
 | .NET runtime | ❌ No | Microsoft, official installer |
 | `adb.exe` / `fastboot.exe` | ❌ No | Google, official Platform Tools download |
 | Motorola USB drivers | ❌ No | Motorola, official support site |
