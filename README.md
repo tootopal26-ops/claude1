@@ -7,11 +7,13 @@ A Windows desktop utility that automates installing a verified custom ROM on a
 and nothing else. Magisk is never installed, recommended, or used anywhere in this
 application.
 
-This is a real installer, not a mockup: it drives the official Android Platform Tools
-(`adb`/`fastboot`) through a device-specific state machine, validates every file against
-checksums before touching the device, runs an explicit Pre-Flash Safety Check before
-anything destructive is allowed to start, and refuses to proceed — or claim a hard-brick
-is automatically recoverable — the moment something can't be verified.
+This is a real installer, not a mockup: **clicking "Install Custom ROM" verifies the
+device, bootloader, and ROM/checksum automatically, then asks for exactly one final
+confirmation before anything destructive happens** — Dry Run is an optional preview, not
+a prerequisite. It drives the official Android Platform Tools (`adb`/`fastboot`) through
+a device-specific state machine, validates every file against checksums before touching
+the device, and refuses to proceed — or claim a hard-brick is automatically recoverable —
+the moment something can't be verified.
 
 ## Current status
 
@@ -20,10 +22,10 @@ is automatically recoverable — the moment something can't be verified.
 | Device detection (ADB/Fastboot/Fastbootd, bootloader lock, root, kernel) | ✅ Implemented |
 | ROM package inspection & validation (metadata, device match, checksums) | ✅ Implemented |
 | 21-state installation state machine | ✅ Implemented |
-| Dry-run mode (full plan preview, zero destructive commands) | ✅ Implemented |
+| Dry-run mode (full plan preview, zero destructive commands) | ✅ Implemented — **optional**, never required before Install |
 | Real flashing engine (fastboot update / sideload, gated) | ✅ Implemented |
 | KernelSU compatibility assessment + honest post-flash root verification | ✅ Implemented |
-| Pre-Flash Safety Check (7-point checklist gating real installs) | ✅ Implemented |
+| Pre-Flash Safety Check (7-point checklist, informational -- runs automatically as part of Install itself) | ✅ Implemented |
 | Recovery & Rollback Safety System ("Recovery Mode") | ✅ Implemented |
 | KernelSU-aware root detection (5 honest states, never "rooted"/"not rooted" guessed) | ✅ Implemented |
 | Authoritative Fastboot bootloader verification + profile-load diagnostics | ✅ Implemented |
@@ -35,7 +37,7 @@ is automatically recoverable — the moment something can't be verified.
 | Evidence-based Pre-Flash Safety Check (PASS / BLOCKED / UNABLE TO VERIFY per item) | ✅ Implemented — see "Bootloader detection fix" below |
 | MD5 checksum support + GApps/Vanilla variant detection (by checksum, never filename) | ✅ Implemented |
 | Dark glassmorphism WPF UI | ✅ Implemented |
-| Automated tests (202 tests, see `src/AetherixRomMaster.Core.Tests`) | ✅ Implemented, all passing |
+| Automated tests (214 tests, see `src/AetherixRomMaster.Core.Tests`) | ✅ Implemented, all passing |
 | **WPF app actually compiles & runs on real Windows** | ✅ **Verified on GitHub Actions `windows-latest` — see below, not just claimed** |
 | **cancunf + Infinity-X ROM profile: `VerificationStatus = PendingManualConfirmation`** | ⚠️ **Device owner confirmed build/checksums from the official page; this app's own tooling still couldn't independently fetch it — see below** |
 | **cancunf + Infinity-X KernelSU restoration profile: `VerificationStatus = Unverified`** | ⚠️ **Required image type/partition not yet confirmed — see below** |
@@ -263,11 +265,42 @@ guesses):**
 Every operation supports Dry Run (a toggle, defaulting on) which issues zero real
 process calls — proven by test, not just claimed.
 
+## 🔓 Install no longer requires running Dry Run first (2026-10-10)
+
+**Product change:** clicking **Install Custom ROM** now goes straight into the real
+installation workflow — it no longer requires a prior, separate Dry Run to "unlock" it.
+This isn't a safety reduction: every real check (device identity, bootloader state,
+ROM/Initial-Install validity and checksums) already ran *inside* `InstallStateMachine`'s
+own real-mode states regardless of Dry Run — the only thing gating the Install button was
+an extra, artificial UI-level condition (`PreFlightReport?.CanProceed`) that could only
+ever become true after a separate Dry Run had populated it. That condition is gone;
+`InstallCommand` now shares the exact same precondition as `DryRunCommand` (device/
+profiles loaded, files selected) and lets the state machine's own verification run and
+fail fast on a real problem exactly as it always could.
+
+The two confirmations that used to fire in sequence (a generic backup reminder, then the
+data-wipe warning) are now **one** itemized final confirmation — Device, ROM, "formatting
+erases all user data", "this will modify device partitions", and "keep the USB cable
+connected throughout" — immediately before the first destructive command. The backup
+reminder is still logged, just no longer its own separate dialog.
+
+`DryRunCommand` is unaffected and remains fully optional — a safe preview for anyone who
+wants to see the plan first, never a requirement.
+
+Tests: `InstallStateMachineTests.FullRealWalk_ReachesComplete_FromAnAbsolutelyFreshContext_WithoutAnyPriorDryRun`
+(the direct proof), `DataWipeConfirmation_IsTheSoleFinalConfirmation_BeforeProceeding`,
+`VerifyKernelSuCompatibility_NeverReturnsFailed_RegardlessOfAssessment`,
+`EnterRequiredInstallationMode_Fails_WhenDeviceDisconnectsBeforeReachingFastbootd`. The
+`MainViewModel`/XAML side of this change (the App project) has no automated test coverage
+in this repo, consistent with the rest of this session — it is verified by real Windows
+CI compiling it and by direct code reading, not by a WPF-level test.
+
 ## ✅ Pre-Flash Safety Check
 
-Before **Install Custom ROM** is enabled, `PreFlightSafetyChecker`
-(`src/AetherixRomMaster.Core/Installation/PreFlightSafetyChecker.cs`) runs seven checks,
-all shown in the UI, re-querying the device fresh rather than trusting a stale dry run.
+`PreFlightSafetyChecker` (`src/AetherixRomMaster.Core/Installation/PreFlightSafetyChecker.cs`)
+still runs its seven checks automatically as part of every real install (and is also
+shown, informationally, after a Dry Run), re-querying the device fresh. It is no longer
+what enables the Install button -- the state machine's own real-mode states are.
 Every item reports one of three evidence-based statuses (`PreFlightCheckItem.Status`):
 **Pass**, **Blocked** (a genuine, confirmed problem), or **UnableToVerify** (this app
 simply couldn't obtain evidence either way — never presented as if it were a confirmed
@@ -314,6 +347,30 @@ bootloader item never consulted `InstallContext.BootloaderUserConfirmedUnlocked`
 (only `InstallStateMachine` did), so a manually-confirmed-unlocked device stayed blocked
 at the Install button regardless. Both are now covered by regression tests in
 `DeviceDetectionServiceTests.cs` and `PreFlightSafetyCheckerTests.cs`.
+
+**A second, real false positive (reported live, 2026-10-10):** ADB-connected, Fastboot/
+FastbootD unavailable, device genuinely OEM-unlocked (its own screen showed
+`Flashing_unlocked`) -- still reported **Locked**. Root cause this time was one level
+deeper: `ro.boot.vbmeta.device_state="locked"` was also trusted as proof of Locked.
+Externally-documented real-world reports (e.g. a Pixel 5 where `fastboot flashing
+unlock` genuinely succeeded, yet this exact property stayed `"locked"` until a vbmeta
+image with verification disabled was separately flashed) confirm this property reflects
+whether AVB verification *enforcement* has been disabled -- a later, separate step from
+OEM-unlocking the bootloader itself -- not the bootloader's own flash-lock state. A
+device can be fully OEM-unlocked while still running untouched stock firmware, where
+this property legitimately still reads `"locked"`. Fixed: this property's `"unlocked"`
+reading is still trusted (real-world reports treat it as reliable on a stock ROM), but
+its `"locked"` reading is not. `ro.boot.flash.locked` -- the one property Motorola's own
+documentation ties specifically to the actual flash-lock state -- is now the sole
+ADB-readable signal this app trusts to declare Locked.
+
+**A third bug, in the checksum mismatch message, not the comparison itself:** when a
+local file matched none of several known official checksums, the message defaulted to
+labeling the comparison "SHA-256" even when only MD5 candidates were ever checked (the
+underlying comparison was always correctly MD5-to-MD5 -- only the message was wrong).
+Fixed with a single correct `ChecksumCheckResult.DescribeComputedVsExpected()` used
+everywhere this is reported, plus explicit tests proving MD5-vs-MD5 and SHA-256-vs-
+SHA-256 can each match while a cross-algorithm comparison is never considered a match.
 
 ## ⚠️ Before you flash anything real: the one gap you must close
 

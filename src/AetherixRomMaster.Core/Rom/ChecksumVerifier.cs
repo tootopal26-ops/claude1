@@ -24,6 +24,24 @@ public sealed record ChecksumCheckResult(
     /// to compare against (HasOfficialReference is false) -- that is a missing-evidence
     /// condition, not a confirmed one, and callers must not treat the two the same way.</summary>
     public bool IsGenuineMismatch => !Matched && HasOfficialReference;
+
+    /// <summary>
+    /// Describes computed-vs-expected for a mismatch, naming the one real algorithm that
+    /// was actually compared -- never mixing algorithms and never defaulting to naming an
+    /// algorithm that was never actually checked. This exists because an earlier version of
+    /// this message-building logic defaulted to "SHA-256" whenever ExpectedMd5 was null,
+    /// which produced a genuinely misleading "expected SHA-256" message for a file that was
+    /// only ever checked against MD5 candidates that simply didn't match any of them (see
+    /// the "none matched" branch below, where neither Expected field is set because no
+    /// single candidate value applies). Callers must use this instead of inspecting
+    /// ExpectedMd5/ExpectedSha256 themselves.
+    /// </summary>
+    public string DescribeComputedVsExpected() => this switch
+    {
+        { ExpectedMd5: { } md5 } => $"computed MD5 {ComputedMd5}, expected MD5 {md5}",
+        { ExpectedSha256: { } sha256 } => $"computed SHA-256 {ComputedSha256}, expected SHA-256 {sha256}",
+        _ => $"neither algorithm matched any known official checksum -- locally computed MD5 {ComputedMd5}, SHA-256 {ComputedSha256}",
+    };
 }
 
 /// <summary>

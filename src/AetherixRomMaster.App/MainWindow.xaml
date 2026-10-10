@@ -17,6 +17,8 @@
         <converters:NullToVisibilityConverter x:Key="NullToVis"/>
         <converters:NullToVisibilityConverter x:Key="InverseNullToVis" Invert="True"/>
         <converters:PassFailGlyphConverter x:Key="PassFailGlyphConverter"/>
+        <converters:PreFlightItemGlyphConverter x:Key="PreFlightItemGlyphConverter"/>
+        <converters:PreFlightItemBrushConverter x:Key="PreFlightItemBrushConverter"/>
         <converters:ReadyToFlashTextConverter x:Key="ReadyToFlashTextConverter"/>
         <converters:VerifiedTextConverter x:Key="VerifiedTextConverter"/>
     </Window.Resources>
@@ -363,7 +365,7 @@
                     <StackPanel>
                         <TextBlock Text="Installation" Style="{StaticResource HeadingText}" FontSize="16" Margin="0,0,0,12"/>
                         <StackPanel Orientation="Horizontal">
-                            <Button Content="Dry Run (Preview, Safe)" Style="{StaticResource SecondaryButton}" Command="{Binding DryRunCommand}" Margin="0,0,10,0"/>
+                            <Button Content="Preview / Dry Run (optional)" Style="{StaticResource SecondaryButton}" Command="{Binding DryRunCommand}" Margin="0,0,10,0"/>
                             <Button Content="Install Custom ROM" Style="{StaticResource PrimaryButton}" Command="{Binding InstallCommand}" Margin="0,0,10,0"/>
                             <Button Content="Cancel" Style="{StaticResource DangerButton}" Command="{Binding CancelCommand}"/>
                         </StackPanel>
@@ -377,8 +379,7 @@
                                    Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" Margin="0,12,0,0"
                                    Visibility="{Binding HasFinalSummary, Converter={StaticResource BoolToVis}}"/>
 
-                        <TextBlock Text="Run a dry run first — Install unlocks once the Pre-Flash Safety Check below passes." Style="{StaticResource CaptionText}" Margin="0,10,0,0"
-                                   Visibility="{Binding PreFlightReport, Converter={StaticResource NullToVis}}"/>
+                        <TextBlock Text="Install Custom ROM verifies the device, bootloader, and ROM/checksum itself, then asks for one final confirmation before anything destructive happens. Preview / Dry Run is optional -- useful if you just want to see the plan first, but not required." Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,10,0,0"/>
                     </StackPanel>
                 </Border>
 
@@ -405,9 +406,20 @@
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="{Binding Passed, Converter={StaticResource PassFailGlyphConverter}}"
-                                                   Foreground="{Binding Passed, Converter={StaticResource BoolToStatusBrush}}"
-                                                   FontWeight="Bold" Width="20" Margin="0,0,8,0"/>
+                                        <TextBlock Grid.Column="0" FontWeight="Bold" Width="20" Margin="0,0,8,0">
+                                            <TextBlock.Text>
+                                                <MultiBinding Converter="{StaticResource PreFlightItemGlyphConverter}">
+                                                    <Binding Path="Passed"/>
+                                                    <Binding Path="IsBlocking"/>
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                            <TextBlock.Foreground>
+                                                <MultiBinding Converter="{StaticResource PreFlightItemBrushConverter}">
+                                                    <Binding Path="Passed"/>
+                                                    <Binding Path="IsBlocking"/>
+                                                </MultiBinding>
+                                            </TextBlock.Foreground>
+                                        </TextBlock>
                                         <StackPanel Grid.Column="1">
                                             <TextBlock Text="{Binding Name}" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
                                             <TextBlock Text="(informational — does not block Install)" Style="{StaticResource CaptionText}" FontStyle="Italic"

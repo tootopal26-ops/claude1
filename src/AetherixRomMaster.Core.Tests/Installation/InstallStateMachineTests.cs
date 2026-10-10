@@ -162,8 +162,11 @@ public class InstallStateMachineTests : IDisposable
     }
 
     [Fact]
-    public async Task BackupAndDataWipe_RequireExplicitConfirmation_BeforeProceeding()
+    public async Task DataWipeConfirmation_IsTheSoleFinalConfirmation_BeforeProceeding()
     {
+        // Product requirement: exactly ONE final confirmation before anything destructive
+        // -- CreateBackupGuidance must never stop for its own separate round-trip anymore
+        // (it auto-logs and continues straight through to the data-wipe confirmation).
         var harness = new InstallHarness();
         harness.Detection.Current = InstallHarness.AdbCancunf();
         var (romZip, initialZip) = CreateValidPackages();
@@ -171,17 +174,14 @@ public class InstallStateMachineTests : IDisposable
 
         var firstPass = await DrainAsync(harness.StateMachine.RunAsync(context));
         Assert.Equal(StepOutcome.NeedsConfirmation, firstPass[^1].Outcome);
-        Assert.Equal("backup-ack", firstPass[^1].ConfirmationKey);
-
-        context.BackupAcknowledged = true;
-        var secondPass = await DrainAsync(harness.StateMachine.RunAsync(context));
-        Assert.Equal(StepOutcome.NeedsConfirmation, secondPass[^1].Outcome);
-        Assert.Equal("data-wipe", secondPass[^1].ConfirmationKey);
+        Assert.Equal("data-wipe", firstPass[^1].ConfirmationKey);
+        Assert.DoesNotContain(firstPass, r => r.ConfirmationKey == "backup-ack");
+        Assert.True(context.BackupAcknowledged, "CreateBackupGuidance must auto-acknowledge, not wait for a separate confirmation.");
 
         context.DataWipeConfirmed = true;
         harness.FlashExecutor.FailingOperations.Add("RebootToFastbootd"); // stop here deliberately
-        var thirdPass = await DrainAsync(harness.StateMachine.RunAsync(context));
-        Assert.Equal(InstallState.EnterRequiredInstallationMode, thirdPass[^1].State);
+        var secondPass = await DrainAsync(harness.StateMachine.RunAsync(context));
+        Assert.Equal(InstallState.EnterRequiredInstallationMode, secondPass[^1].State);
     }
 
     [Fact]
@@ -302,14 +302,17 @@ public class InstallStateMachineTests : IDisposable
         harness.Detection.Current = InstallHarness.AdbCancunf();
         var (romZip, initialZip) = CreateValidPackages();
         var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
-        context.BackupAcknowledged = true;
 
         var results = await DrainAsync(harness.StateMachine.RunAsync(context));
 
         var last = results[^1];
         Assert.Equal(StepOutcome.NeedsConfirmation, last.Outcome);
         Assert.Equal("data-wipe", last.ConfirmationKey);
-        foreach (var required in new[] { "WARNING", "Device:", "Codename:", "ROM:", "Android:", "Reason for wipe:", "Expected result:" })
+        foreach (var required in new[]
+        {
+            "Device:", "Codename:", "ROM:", "Android:", "Reason for wipe:", "Expected result:",
+            "erases ALL user data", "Modify device partitions", "Keep the USB cable connected",
+        })
         {
             Assert.Contains(required, last.Message);
         }
@@ -367,6 +370,122 @@ public class InstallStateMachineTests : IDisposable
         Assert.Equal(StepOutcome.Finished, complete.Outcome);
         Assert.Contains("NOT ESTABLISHED", complete.Message);
         Assert.DoesNotContain("ACTIVE (verified)", complete.Message);
+    }
+
+    [Fact]
+    public async Task EnterRequiredInstallationMode_Fails_WhenDeviceDisconnectsBeforeReachingFastbootd()
+    {
+        // "If the device disconnects, STOP immediately." Uses a short cancellation deadline
+        // instead of waiting out the real 30-second internal timeout -- WaitForConnectionModeAsync
+        // links the passed-in token with its own timeout, so the mechanism under test (giving
+        // up and failing once the device never reaches the target mode) is identical either way,
+        // just without a genuinely slow test.
+        var harness = new InstallHarness();
+        harness.Detection.Current = InstallHarness.AdbCancunf();
+        var (romZip, initialZip) = CreateValidPackages();
+        var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
+        context.BackupAcknowledged = true;
+        context.DataWipeConfirmed = true;
+
+        using var cts = new CancellationTokenSource();
+        var results = new List<StepResult>();
+        await foreach (var step in harness.StateMachine.RunAsync(context, cts.Token))
+        {
+            results.Add(step);
+            if (step.State == InstallState.RequestDataWipeConfirmation && step.Outcome == StepOutcome.Continue)
+            {
+                // Device disconnects right as the app is about to reboot it into fastbootd.
+                harness.Detection.Current = DeviceInfo.Disconnected;
+                cts.CancelAfter(TimeSpan.FromMilliseconds(50));
+            }
+        }
+
+        Assert.Equal(StepOutcome.Failed, results[^1].Outcome);
+        Assert.Equal(InstallState.EnterRequiredInstallationMode, results[^1].State);
+        Assert.Equal("fastboot-detection-failure", results[^1].RecoveryGuidanceKey);
+    }
+
+    [Fact]
+    public async Task VerifyKernelSuCompatibility_NeverReturnsFailed_RegardlessOfAssessment()
+    {
+        // Root/KernelSU is a post-install feature, never a ROM-installation prerequisite --
+        // confirmed here at the state-machine level (PreFlightSafetyCheckerTests covers the
+        // separate, UI-facing Pre-Flight gate; this is the state the real install walk itself
+        // passes through, and it must never stop the walk no matter what it finds).
+        var harness = new InstallHarness();
+        // No "su -c id"/ksud/manager markers at all, and an old kernel string that won't
+        // parse as GKI -- the worst-case "Unsupported" assessment this checker can produce.
+        harness.Detection.Current = InstallHarness.AdbCancunf(fingerprint: "motorola/cancunf/cancunf:15/OLD/0001:user/release-keys");
+        var (romZip, initialZip) = CreateValidPackages();
+        var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
+
+        // Manual loop that stops the instant the state under test is observed -- draining
+        // further would walk into EnterRequiredInstallationMode's real 30-second wait for a
+        // fastbootd transition this test never provides (a real hang caught before it shipped,
+        // not a hypothetical one; see InstallStateMachineTests' own earlier history of this
+        // exact mistake).
+        StepResult? kernelSuStep = null;
+        await foreach (var step in harness.StateMachine.RunAsync(context))
+        {
+            if (step.State == InstallState.VerifyKernelSuCompatibility)
+            {
+                kernelSuStep = step;
+                break;
+            }
+        }
+
+        Assert.NotNull(kernelSuStep);
+        Assert.Equal(StepOutcome.Continue, kernelSuStep!.Outcome);
+    }
+
+    [Fact]
+    public async Task FullRealWalk_ReachesComplete_FromAnAbsolutelyFreshContext_WithoutAnyPriorDryRun()
+    {
+        // Direct proof of the product requirement: Install must not require having run
+        // Dry Run first. This context has never had RomValidation/InitialInstallValidation
+        // pre-populated and never has BackupAcknowledged/DataWipeConfirmed pre-set -- it is
+        // driven exactly the way MainViewModel.DriveToCompletionAsync drives a real click of
+        // "Install Custom ROM": run, and on NeedsConfirmation, confirm and resume.
+        var harness = new InstallHarness();
+        harness.Detection.Current = InstallHarness.AdbCancunf();
+        var (romZip, initialZip) = CreateValidPackages();
+        var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
+
+        var results = new List<StepResult>();
+        StepResult? last = null;
+        while (true)
+        {
+            await foreach (var step in harness.StateMachine.RunAsync(context))
+            {
+                results.Add(step);
+                last = step;
+                if (step.State == InstallState.DetectDevice && step.Outcome == StepOutcome.Continue)
+                {
+                    harness.Detection.Current = InstallHarness.FastbootUserspaceCancunf();
+                }
+                else if (step.State == InstallState.EnterRequiredInstallationMode && step.Outcome == StepOutcome.Continue)
+                {
+                    harness.Detection.Current = InstallHarness.AdbSideloadCancunf();
+                }
+                else if (step.State == InstallState.InstallRom && step.Outcome == StepOutcome.Continue)
+                {
+                    harness.Detection.Current = InstallHarness.AdbCancunf(fingerprint: "motorola/cancunf/cancunf:16/NEW/0001:user/release-keys");
+                }
+            }
+
+            if (last!.Outcome != StepOutcome.NeedsConfirmation) break;
+
+            Assert.Equal("data-wipe", last.ConfirmationKey); // the sole final confirmation
+            context.DataWipeConfirmed = true;
+        }
+
+        Assert.DoesNotContain(results, r => r.Outcome == StepOutcome.Failed);
+        Assert.Equal(StepOutcome.Finished, last!.Outcome);
+        Assert.Equal(InstallState.Complete, last.State);
+        // Every real safety check still ran, automatically, with no prior dry run:
+        Assert.Contains(results, r => r.State == InstallState.VerifyBootloader && r.Outcome == StepOutcome.Continue);
+        Assert.Contains(results, r => r.State == InstallState.VerifyChecksums && r.Outcome == StepOutcome.Continue);
+        Assert.True(context.BackupAcknowledged); // auto-acknowledged, never a separate dialog
     }
 
     public void Dispose()

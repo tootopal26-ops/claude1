@@ -195,30 +195,39 @@ public sealed class DeviceDetectionService : IDeviceDetectionService
     /// taken from a user toggle.
     /// </summary>
     /// <summary>
-    /// Priority order matters here, and it's informed by a real false positive: a cancunf
-    /// device with a genuinely unlocked bootloader was reported as Locked because
-    /// ro.boot.verifiedbootstate=green was trusted as "locked". That property reflects
+    /// Priority order matters here, and it's informed by TWO real false positives found on
+    /// real cancunf hardware whose Fastboot screen plainly showed "Flashing_unlocked":
+    ///
+    /// (1) ro.boot.verifiedbootstate=green was trusted as "locked". That property reflects
     /// whether the *currently booted image* passed AVB signature verification against the
     /// OEM key -- a stock, unmodified system partition reports green regardless of whether
-    /// OEM unlocking itself is enabled. It is not the same question as "is the bootloader
-    /// unlock-capable/unlocked", and conflating them produces exactly this false positive.
+    /// OEM unlocking itself is enabled. Its "green" value is never treated as proof of
+    /// Locked anymore; only its unambiguous "orange"/"yellow" (Unlocked) case is used.
     ///
-    /// ro.boot.vbmeta.device_state is the standard AVB 2.0 property for the actual device
-    /// lock state (values are literally "unlocked"/"locked", no interpretation needed) and
-    /// is checked first. ro.boot.flash.locked (Motorola-specific, 0/1) is second. If neither
-    /// is readable, verifiedbootstate is used only for its unambiguous "orange"/"yellow"
-    /// case (which in practice only occurs once a device really is unlocked or custom-signed)
-    /// -- its "green" value is deliberately never treated as proof of Locked anymore.
-    /// When nothing resolves it, this returns Unknown rather than guessing: see
-    /// DeviceDetectionServiceTests for the regression test covering this exact scenario.
+    /// (2) ro.boot.vbmeta.device_state="locked" was ALSO trusted as proof of Locked, and
+    /// this is the same mistake one level deeper: externally documented real-world reports
+    /// (e.g. a Pixel 5 where `fastboot flashing unlock` genuinely succeeded, yet this
+    /// property stayed "locked" until a vbmeta image with verification disabled was
+    /// separately flashed) confirm this property reflects whether AVB verification
+    /// enforcement has been disabled -- a LATER, separate step from OEM-unlocking the
+    /// bootloader -- not the bootloader's own flash-lock state. A device can be genuinely,
+    /// completely OEM-unlocked while still running untouched stock firmware, in which case
+    /// this property legitimately still reads "locked". Its "unlocked" reading IS trusted
+    /// (real-world reports treat it as reliable/not spoofed on a stock ROM specifically),
+    /// but "locked" from this property alone is never treated as proof of Locked anymore.
+    ///
+    /// ro.boot.flash.locked (androidboot.flash.locked, 0/1) is the one property Motorola's
+    /// own documentation ties specifically and unambiguously to the bootloader's actual
+    /// flash-lock state -- it is the only ADB-readable signal this app trusts to declare
+    /// Locked. When nothing resolves it, this returns Unknown rather than guessing: see
+    /// DeviceDetectionServiceTests for the regression tests covering both false positives.
     /// </summary>
     private static BootloaderLockState DeriveBootloaderLockStateFromProps(IReadOnlyDictionary<string, string> props)
     {
         var vbmetaDeviceState = GetProp(props, "ro.boot.vbmeta.device_state");
-        if (vbmetaDeviceState is not null)
+        if (vbmetaDeviceState is not null && vbmetaDeviceState.Equals("unlocked", StringComparison.OrdinalIgnoreCase))
         {
-            if (vbmetaDeviceState.Equals("unlocked", StringComparison.OrdinalIgnoreCase)) return BootloaderLockState.Unlocked;
-            if (vbmetaDeviceState.Equals("locked", StringComparison.OrdinalIgnoreCase)) return BootloaderLockState.Locked;
+            return BootloaderLockState.Unlocked;
         }
 
         var flashLocked = GetProp(props, "ro.boot.flash.locked");

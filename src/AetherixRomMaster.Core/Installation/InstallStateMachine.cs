@@ -72,10 +72,35 @@ public sealed class InstallStateMachine
         }
     }
 
-    private Task<StepResult> ExecuteCurrentStateAsync(InstallContext context, CancellationToken ct)
+    private async Task<StepResult> ExecuteCurrentStateAsync(InstallContext context, CancellationToken ct)
     {
         context.Logger.Log(LogLevel.Info, "StateMachine", $"--- {context.CurrentState} ---");
 
+        // A selected ROM/Initial Install file can vanish or become unreadable between being
+        // selected and Install being clicked (moved, ejected drive, permissions). Without
+        // this, RomPackageInspector's FileNotFoundException would propagate out of this
+        // IAsyncEnumerable unhandled, crashing the whole run instead of a clean, explicit
+        // "file not found" failure the user can act on.
+        try
+        {
+            return await DispatchCurrentStateAsync(context, ct);
+        }
+        catch (IOException ex)
+        {
+            var message = $"Could not read a required file for {context.CurrentState}: {ex.Message}. Re-select the file and try again.";
+            context.Logger.Log(LogLevel.Error, "StateMachine", message);
+            return StepResult.Failed(context.CurrentState, message, "rom-verification-error");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            var message = $"Could not access a required file for {context.CurrentState}: {ex.Message}. Check file permissions and try again.";
+            context.Logger.Log(LogLevel.Error, "StateMachine", message);
+            return StepResult.Failed(context.CurrentState, message, "rom-verification-error");
+        }
+    }
+
+    private Task<StepResult> DispatchCurrentStateAsync(InstallContext context, CancellationToken ct)
+    {
         return context.CurrentState switch
         {
             InstallState.Initialize => RunInitializeAsync(context),
@@ -256,14 +281,14 @@ public sealed class InstallStateMachine
         var issues = new List<string>();
         if (context.RomValidation is { Checksum.Matched: false } romResult)
         {
-            issues.Add($"ROM package: {DescribeChecksumMismatch(romResult.Checksum)}");
+            issues.Add($"ROM package: {romResult.Checksum.DescribeComputedVsExpected()} (source: {romResult.Checksum.Source}).");
         }
         // Initial Install is a deliberate exception (see RomValidationService): having no
         // published checksum for this specific package type is not itself a problem, so
         // only a GENUINE mismatch (a reference existed and didn't match) is flagged here.
         if (context.InitialInstallValidation is { Checksum.IsGenuineMismatch: true } initialResult)
         {
-            issues.Add($"Initial-install package: {DescribeChecksumMismatch(initialResult.Checksum)}");
+            issues.Add($"Initial-install package: {initialResult.Checksum.DescribeComputedVsExpected()} (source: {initialResult.Checksum.Source}).");
         }
 
         if (issues.Count > 0)
@@ -276,13 +301,6 @@ public sealed class InstallStateMachine
 
         return Task.FromResult(StepResult.Continue(context.CurrentState, "Checksums verified against official source."));
     }
-
-    private static string DescribeChecksumMismatch(ChecksumCheckResult checksum) => checksum switch
-    {
-        { ExpectedMd5: { } expectedMd5 } => $"computed MD5 {checksum.ComputedMd5}, expected {expectedMd5} ({checksum.Source}).",
-        { ExpectedSha256: { } expectedSha256 } => $"computed SHA-256 {checksum.ComputedSha256}, expected {expectedSha256} ({checksum.Source}).",
-        _ => $"no official checksum was available to compare against ({checksum.Source}).",
-    };
 
     private Task<StepResult> RunVerifyFirmwareAsync(InstallContext context)
     {
@@ -329,19 +347,32 @@ public sealed class InstallStateMachine
         return StepResult.Continue(context.CurrentState, assessment.Explanation);
     }
 
+    /// <summary>
+    /// Folded into the single RequestDataWipeConfirmation dialog below instead of its own
+    /// separate confirmation -- real installs need exactly one final confirmation before
+    /// anything destructive, not a chain of them. Still always logged, so the backup
+    /// reminder is never silently dropped from the record; context.BackupAcknowledged is
+    /// still set (and still exists as a field) for anything that keys off it, but no user
+    /// round-trip is required for it specifically anymore.
+    /// </summary>
     private Task<StepResult> RunCreateBackupGuidanceAsync(InstallContext context)
     {
-        if (context.BackupAcknowledged)
+        if (!context.BackupAcknowledged)
         {
-            return Task.FromResult(StepResult.Continue(context.CurrentState, "Backup guidance acknowledged."));
+            context.Logger.Log(LogLevel.Warning, "CreateBackupGuidance",
+                "This process will erase data on the device. Back up photos, messages, and anything else you want to " +
+                "keep (e.g. via your Google account or copying files off the device) before continuing -- see the " +
+                "final confirmation.");
+            context.BackupAcknowledged = true;
         }
-
-        const string message =
-            "This process will erase data on the device. Back up photos, messages, and anything else you want to keep " +
-            "(e.g. via your Google account or copying files off the device) before continuing.";
-        return Task.FromResult(StepResult.NeedsConfirmation(context.CurrentState, message, "backup-ack"));
+        return Task.FromResult(StepResult.Continue(context.CurrentState, "Backup guidance logged."));
     }
 
+    /// <summary>
+    /// The one, sole final confirmation before any destructive action -- covers backup,
+    /// the data wipe itself, partition modification, and keeping the USB connection
+    /// stable, all in a single itemized dialog rather than a chain of separate ones.
+    /// </summary>
     private Task<StepResult> RunRequestDataWipeConfirmationAsync(InstallContext context)
     {
         if (!context.RomProfile.RequiresDataFormat)
@@ -356,11 +387,15 @@ public sealed class InstallStateMachine
 
         var device = context.Device;
         var message =
-            "WARNING:\nFormatting Data will erase user data.\n\n" +
+            "FINAL CONFIRMATION BEFORE INSTALLATION\n\n" +
             $"Device: {device?.Manufacturer ?? "?"} {device?.Model ?? "?"}\n" +
             $"Codename: {device?.Codename ?? context.DeviceProfile.Codename}\n" +
             $"ROM: {context.RomProfile.RomName}\n" +
-            $"Android: {device?.AndroidVersion ?? "?"} → {context.RomProfile.AndroidVersionShipped ?? "?"}\n" +
+            $"Android: {device?.AndroidVersion ?? "?"} → {context.RomProfile.AndroidVersionShipped ?? "?"}\n\n" +
+            "This installation will:\n" +
+            "- Back up anything you want to keep first -- formatting /data erases ALL user data\n" +
+            "- Modify device partitions (the initial-install firmware, then the ROM itself)\n\n" +
+            "Keep the USB cable connected and the device powered on throughout. Do not disconnect during installation.\n\n" +
             $"Reason for wipe: {context.RomProfile.DataFormatNotes ?? "Moving to a different ROM requires formatting /data (fastboot -w) due to filesystem/encryption differences."}\n" +
             "Expected result: /data is erased and reformatted; the device proceeds to install the selected ROM.";
 

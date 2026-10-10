@@ -87,12 +87,10 @@ public sealed class RomValidationService
         }
         else if (!checksum.Matched)
         {
-            var expectedDescription = checksum.ExpectedMd5 is not null ? $"MD5 {checksum.ExpectedMd5}" : $"SHA-256 {checksum.ExpectedSha256}";
-            var computedDescription = checksum.ExpectedMd5 is not null ? $"MD5 {checksum.ComputedMd5}" : $"SHA-256 {checksum.ComputedSha256}";
             issues.Add(new RomCompatibilityIssue(
                 CompatibilityIssueSeverity.Blocking,
                 "CHECKSUM_MISMATCH",
-                $"Computed {computedDescription} does not match the expected {expectedDescription} from {checksum.Source}. " +
+                $"Checksum mismatch: {checksum.DescribeComputedVsExpected()} (source: {checksum.Source}). " +
                 "The file may be corrupt, incomplete, from a different variant, or tampered with."));
         }
 

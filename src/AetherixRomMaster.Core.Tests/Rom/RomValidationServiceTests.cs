@@ -145,8 +145,13 @@ public class RomValidationServiceTests : IDisposable
         var result = await _service.ValidateAsync(zip, CancunfDevice(), TestProfiles.Cancunf(), profile);
 
         Assert.False(result.Checksum.Matched);
-        Assert.Contains(result.Issues, i => i.Code == "CHECKSUM_MISMATCH");
+        var issue = Assert.Single(result.Issues, i => i.Code == "CHECKSUM_MISMATCH");
         Assert.True(result.HasBlockingIssues);
+        Assert.False(result.IsSafeToInstall);
+        // The exact bug reported: this message must never claim "SHA-256" was the
+        // algorithm checked when only MD5 candidates were ever compared.
+        Assert.DoesNotContain("expected SHA-256", issue.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("MD5", issue.Message);
     }
 
     [Fact]

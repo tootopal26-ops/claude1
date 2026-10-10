@@ -77,6 +77,98 @@ public class ChecksumVerifierTests : IDisposable
         Assert.Equal(expected, computed);
     }
 
+    // Explicit algorithm-correctness regression tests: hash algorithms must never be
+    // mixed. A real bug this guards against (found from a real device report): the local
+    // file's computed hash was correctly compared MD5-to-MD5 under the hood, but the
+    // MISMATCH MESSAGE defaulted to describing it as a SHA-256 comparison whenever no
+    // single candidate matched -- see ChecksumCheckResult.DescribeComputedVsExpected.
+
+    [Fact]
+    public async Task VerifyAsync_Md5LocalVsMd5Official_CanMatch()
+    {
+        var filePath = Path.Combine(_tempDir, "rom.zip");
+        var content = "pretend rom bytes"u8.ToArray();
+        await File.WriteAllBytesAsync(filePath, content);
+        var officialMd5 = Convert.ToHexString(MD5.HashData(content)).ToLowerInvariant();
+        var known = new[] { new RomChecksumEntry("GApps", "MD5", officialMd5, "official page") };
+
+        var result = await _verifier.VerifyAsync(filePath, explicitExpectedSha256: null, knownOfficialChecksums: known);
+
+        Assert.True(result.Matched);
+        Assert.Equal(officialMd5, result.ExpectedMd5);
+        Assert.Null(result.ExpectedSha256);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_Sha256LocalVsSha256Official_CanMatch()
+    {
+        var filePath = Path.Combine(_tempDir, "rom.zip");
+        var content = "pretend rom bytes"u8.ToArray();
+        await File.WriteAllBytesAsync(filePath, content);
+        var officialSha256 = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant();
+        var known = new[] { new RomChecksumEntry("Vanilla", "SHA256", officialSha256, "official page") };
+
+        var result = await _verifier.VerifyAsync(filePath, explicitExpectedSha256: null, knownOfficialChecksums: known);
+
+        Assert.True(result.Matched);
+        Assert.Equal(officialSha256, result.ExpectedSha256);
+        Assert.Null(result.ExpectedMd5);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_Md5LocalVsSha256Official_IsNeverConsideredAMatch()
+    {
+        var filePath = Path.Combine(_tempDir, "rom.zip");
+        var content = "pretend rom bytes"u8.ToArray();
+        await File.WriteAllBytesAsync(filePath, content);
+        // Deliberately the file's own computed MD5, offered as a fake "SHA256" official
+        // value -- this must never be treated as a match just because the digit strings
+        // happen to share a prefix/format; the algorithms are simply different questions.
+        var computedMd5 = Convert.ToHexString(MD5.HashData(content)).ToLowerInvariant();
+        var known = new[] { new RomChecksumEntry("GApps", "SHA256", computedMd5, "official page") };
+
+        var result = await _verifier.VerifyAsync(filePath, explicitExpectedSha256: null, knownOfficialChecksums: known);
+
+        Assert.False(result.Matched);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_Sha256LocalVsMd5Official_IsNeverConsideredAMatch()
+    {
+        var filePath = Path.Combine(_tempDir, "rom.zip");
+        var content = "pretend rom bytes"u8.ToArray();
+        await File.WriteAllBytesAsync(filePath, content);
+        var computedSha256 = Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant();
+        var known = new[] { new RomChecksumEntry("GApps", "MD5", computedSha256, "official page") };
+
+        var result = await _verifier.VerifyAsync(filePath, explicitExpectedSha256: null, knownOfficialChecksums: known);
+
+        Assert.False(result.Matched);
+    }
+
+    [Fact]
+    public async Task VerifyAsync_MismatchMessage_NeverMislabelsTheAlgorithmActuallyChecked()
+    {
+        // The exact bug reported: "Computed SHA-256 ... does not match the expected
+        // SHA-256 from checked official checksums [GApps (MD5), Vanilla (MD5)]" -- naming
+        // SHA-256 when only MD5 candidates were ever checked. DescribeComputedVsExpected
+        // must never name an algorithm that wasn't actually the one compared.
+        var filePath = Path.Combine(_tempDir, "rom.zip");
+        await File.WriteAllBytesAsync(filePath, "pretend rom bytes"u8.ToArray());
+        var known = new[]
+        {
+            new RomChecksumEntry("GApps", "MD5", new string('a', 32), "official page"),
+            new RomChecksumEntry("Vanilla", "MD5", new string('b', 32), "official page"),
+        };
+
+        var result = await _verifier.VerifyAsync(filePath, explicitExpectedSha256: null, knownOfficialChecksums: known);
+
+        Assert.False(result.Matched);
+        var description = result.DescribeComputedVsExpected();
+        Assert.DoesNotContain("expected SHA-256", description, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("MD5", description);
+    }
+
     [Fact]
     public async Task VerifyAsync_MatchesAgainstKnownOfficialMd5_AndReportsTheVariant()
     {

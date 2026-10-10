@@ -42,8 +42,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         BrowseInitialInstallCommand = new RelayCommand(_ => RequestBrowseInitialInstall?.Invoke(this, EventArgs.Empty));
         DownloadRomCommand = new AsyncRelayCommand(() => DownloadAsync(isInitialInstall: false), () => !IsBusy && !string.IsNullOrWhiteSpace(RomDownloadUrl));
         DownloadInitialInstallCommand = new AsyncRelayCommand(() => DownloadAsync(isInitialInstall: true), () => !IsBusy && !string.IsNullOrWhiteSpace(InitialInstallDownloadUrl));
+        // Dry Run is an optional preview; Install does not require having run it first.
+        // Both share the same precondition (device/profiles loaded, files selected) --
+        // every real safety check (device identity, bootloader state, ROM/checksum
+        // validity) runs automatically as part of Install itself, inside the state
+        // machine's own real-mode states, exactly as it would during a dry run.
         DryRunCommand = new AsyncRelayCommand(() => RunAsync(InstallMode.DryRun), CanStartRun);
-        InstallCommand = new AsyncRelayCommand(() => RunAsync(InstallMode.Real), () => CanStartRun() && (PreFlightReport?.CanProceed ?? false));
+        InstallCommand = new AsyncRelayCommand(() => RunAsync(InstallMode.Real), CanStartRun);
         VerifyBootloaderCommand = new AsyncRelayCommand(VerifyBootloaderAsync, CanVerifyBootloader);
         ConfirmBootloaderUnlockedManuallyCommand = new RelayCommand(_ => ConfirmBootloaderUnlockedManually(), _ => CanConfirmBootloaderManually);
         RevokeBootloaderManualConfirmationCommand = new RelayCommand(_ => RevokeBootloaderManualConfirmation(), _ => IsBootloaderManuallyConfirmedUnlocked);
@@ -609,13 +614,15 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             switch (last.Outcome)
             {
                 case StepOutcome.NeedsConfirmation:
+                    // "data-wipe" is now the sole final confirmation before anything
+                    // destructive -- CreateBackupGuidance no longer requests its own
+                    // separate round-trip (see InstallStateMachine).
                     var approved = await RequestConfirmationAsync(last.ConfirmationKey!, last.Message);
                     if (!approved)
                     {
-                        CurrentStateText = "Cancelled before data-wipe/backup confirmation.";
+                        CurrentStateText = "Cancelled before final confirmation.";
                         return;
                     }
-                    if (last.ConfirmationKey == "backup-ack") context.BackupAcknowledged = true;
                     if (last.ConfirmationKey == "data-wipe") context.DataWipeConfirmed = true;
                     continue; // re-enter RunAsync at the same state, now confirmed.
 
