@@ -30,8 +30,10 @@ is automatically recoverable — the moment something can't be verified.
 | KernelSU Root Restoration workflow (patch-via-Manager, verified image/partition only) | ✅ Implemented — gated Unverified for cancunf, see below |
 | Recovery automation (auto sideload detection, manual-navigation fallback) | ✅ Implemented |
 | Automation Capability report (AUTOMATIC / MANUAL / BLOCKED per step) | ✅ Implemented |
+| User-confirmed-unlocked bootloader override (for unreliable Fastboot USB enumeration) | ✅ Implemented — never overrides a positively-detected Locked state |
+| Advanced Maintenance (Format Data, reboot targets, ADB sideload -- device-aware) | ✅ Implemented — see below for what was deliberately left out and why |
 | Dark glassmorphism WPF UI | ✅ Implemented |
-| Automated tests (145 tests, see `src/AetherixRomMaster.Core.Tests`) | ✅ Implemented, all passing |
+| Automated tests (174 tests, see `src/AetherixRomMaster.Core.Tests`) | ✅ Implemented, all passing |
 | **WPF app actually compiles & runs on real Windows** | ✅ **Verified on GitHub Actions `windows-latest` — see below, not just claimed** |
 | **cancunf + Infinity-X ROM profile: `VerificationStatus = Unverified`** | ⚠️ **See below — action required before real flashing** |
 | **cancunf + Infinity-X KernelSU restoration profile: `VerificationStatus = Unverified`** | ⚠️ **Required image type/partition not yet confirmed — see below** |
@@ -200,6 +202,57 @@ See `RunInstallRomAsync`/`RunRequestDataWipeConfirmationAsync` in
 `src/AetherixRomMaster.Core/Installation/InstallStateMachine.cs` and
 `AetherixRomMaster.Core/Installation/AutomationCapabilityPlanner.cs`.
 
+## 🔓 User-Confirmed-Unlocked Bootloader Override
+
+On some PC/driver combinations (confirmed on a real Moto G64 5G), Windows loses the USB
+connection entirely when the phone enters `AP Fastboot Flash Mode`, so the Fastboot
+round-trip this app uses for authoritative bootloader verification can never complete
+even though the phone's own screen plainly shows `Flashing_unlocked`. Fastboot
+verification was always a defense-in-depth UX check, not the only thing standing between
+this app and a locked bootloader — fastboot itself still refuses to flash a genuinely
+locked device regardless of what this app believes.
+
+"Confirm Unlocked Manually" (next to the Fastboot verification button) lets a human
+attest to this instead. It is tracked per device serial (a different/reconnected device
+never inherits a stale attestation), and it **never** overrides a positively-detected
+Locked state — it only stands in for a check that couldn't complete. The bootloader
+status display always distinguishes `Unlocked` (app-verified) from `Unlocked — User
+confirmed` (human-attested), and every run that proceeds on the attestation alone logs
+that fact explicitly rather than claiming the app verified it.
+
+## 🧰 Advanced Maintenance
+
+A standalone panel for device-aware operations outside the guided ROM install, decided
+by `AdvancedMaintenancePlanner` (`src/AetherixRomMaster.Core/Installation/`) from real,
+verified facts about cancunf — not copied from another device's ROM flasher.
+
+**Added, and why each is safe for any Android device's fastboot/adb (not cancunf-specific
+guesses):**
+- **Format / Erase User Data** (`fastboot -w`) — a standard, universal fastboot
+  subcommand. Destructive; always shows device/codename/operation and requires explicit
+  confirmation. Its explanation text says so when the selected ROM's Verified profile
+  requires it as part of its own procedure.
+- **Reboot to Recovery / Bootloader / Fastbootd / System** — standard reboot targets,
+  picking the adb or fastboot client based on the device's current connection mode.
+  Non-destructive.
+- **ADB Sideload** — runs `adb sideload <file>` once the device is already in sideload
+  mode (refuses otherwise, with instructions); shows the exact file before confirming.
+
+**Deliberately NOT added:**
+- **Erase Metadata** — shown in the UI, disabled, with its reason: the only documented
+  case of a fastboot-level metadata erase tied to a userdata wipe is a Google
+  Pixel-specific fastbootd behavior. cancunf is a MediaTek Dimensity device, not a Pixel,
+  and no verified source confirms an equivalent requirement.
+- **FRP bypass/erase, or any "Erase FRP" button** — never implemented, never will be.
+  The panel shows a read-only explanation (no live status check, since no verified,
+  reliable way to query FRP state on this device was found) and points at the legitimate
+  recovery path (signing in with the device's previous Google account).
+- **Bootloader unlock/relock** — no code path for this exists anywhere in the app; a
+  structural reflection test (`BootloaderCommandSafetyTests`) guards that it stays that way.
+
+Every operation supports Dry Run (a toggle, defaulting on) which issues zero real
+process calls — proven by test, not just claimed.
+
 ## ✅ Pre-Flash Safety Check
 
 Before **Install Custom ROM** is enabled, `PreFlightSafetyChecker`
@@ -294,7 +347,8 @@ src/
     KernelSu/Restoration/          KernelSuRestorationSession/Planner/Profile, ImageArtifact
     Installation/
       AutomationCapabilityPlanner.cs  AUTOMATIC/MANUAL/BLOCKED per-step reporting
-  AetherixRomMaster.Core.Tests/    145 xUnit tests (see docs/TESTING.md)
+      AdvancedMaintenancePlanner/Executor.cs  cancunf-specific standalone maintenance ops
+  AetherixRomMaster.Core.Tests/    174 xUnit tests (see docs/TESTING.md)
   AetherixRomMaster.App/           WPF UI (net8.0-windows — Windows-only to build/run)
 profiles/
   cancunf.device.json              Device profile (researched facts + citations)

@@ -31,6 +31,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private KernelSuProfile? _kernelSuProfile;
     private KernelSuRestorationSession? _restorationSession;
     private InstallLogger? _restorationLogger;
+    private InstallLogger? _maintenanceLogger;
 
     public MainViewModel()
     {
@@ -53,6 +54,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         BrowsePatchedKernelSuImageCommand = new RelayCommand(_ => RequestBrowsePatchedKernelSuImage?.Invoke(this, EventArgs.Empty), _ => RestorationState == KernelSuRestorationState.WaitingForKernelSuManager);
         ConfirmKernelSuInstallCommand = new AsyncRelayCommand(ConfirmKernelSuInstallAsync, () => !IsBusy && RestorationState == KernelSuRestorationState.ReadyToRestore);
         CancelKernelSuRestorationCommand = new RelayCommand(_ => ResetKernelSuRestoration(), _ => _restorationSession is not null && !IsBusy);
+        ExecuteMaintenanceOperationCommand = new RelayCommand(ExecuteMaintenanceOperation, _ => !IsBusy && IsDeviceConnected);
         ConfirmCommand = new RelayCommand(_ => CompleteConfirmation(true), _ => IsConfirmationPending);
         DeclineCommand = new RelayCommand(_ => CompleteConfirmation(false), _ => IsConfirmationPending);
         RetryRecoveryCommand = new AsyncRelayCommand(RetryFailedStepAsync, CanRetryRecovery);
@@ -111,6 +113,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(RomRequiresInitialInstallPackage));
         OnPropertyChanged(nameof(DeviceCompatibilityMessage));
         OnPropertyChanged(nameof(AutomationCapabilityReport));
+        OnPropertyChanged(nameof(MaintenanceOperations));
 
         _devicePollTimer.Start();
         await RefreshDeviceAsync();
@@ -378,6 +381,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public event EventHandler? RequestBrowseInitialInstall;
     public event EventHandler? RequestBrowseOriginalKernelSuImage;
     public event EventHandler? RequestBrowsePatchedKernelSuImage;
+    public event EventHandler? RequestBrowseMaintenanceSideloadPackage;
 
     public ICommand BrowseRomCommand { get; }
     public ICommand BrowseInitialInstallCommand { get; }
@@ -822,6 +826,99 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _restorationLogger = null;
     }
 
+    // ----- Advanced Maintenance -----
+    // Standalone, device-aware maintenance actions outside the guided ROM install. Every
+    // operation here is decided by AdvancedMaintenancePlanner from real, verified facts
+    // about cancunf -- never copied from another device's ROM flasher -- and every
+    // destructive one goes through the same confirmation overlay the main install uses,
+    // showing the device, the exact operation, and whether dry run is active.
+
+    public IReadOnlyList<MaintenanceOperation> MaintenanceOperations =>
+        _engine?.MaintenancePlanner.BuildOperations(RomProfile) ?? [];
+
+    private bool _isMaintenanceDryRun = true;
+    public bool IsMaintenanceDryRun { get => _isMaintenanceDryRun; set => SetProperty(ref _isMaintenanceDryRun, value); }
+
+    private string? _maintenanceStatusMessage;
+    public string? MaintenanceStatusMessage { get => _maintenanceStatusMessage; private set => SetProperty(ref _maintenanceStatusMessage, value); }
+
+    public ICommand ExecuteMaintenanceOperationCommand { get; }
+
+    private void ExecuteMaintenanceOperation(object? parameter)
+    {
+        if (parameter is not string operationId) return;
+
+        if (operationId == "adb-sideload")
+        {
+            RequestBrowseMaintenanceSideloadPackage?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        _ = RunMaintenanceOperationAsync(operationId, filePath: null);
+    }
+
+    /// <summary>Called by the view after the user picks a package in response to
+    /// RequestBrowseMaintenanceSideloadPackage.</summary>
+    public Task SubmitMaintenanceSideloadPackageAsync(string path) => RunMaintenanceOperationAsync("adb-sideload", path);
+
+    private async Task RunMaintenanceOperationAsync(string operationId, string? filePath)
+    {
+        var serial = Device.Serial;
+        if (_engine is null || serial is null) return;
+
+        var operation = MaintenanceOperations.FirstOrDefault(o => o.Id == operationId);
+        if (operation is null || !operation.IsAvailable) return;
+
+        if (operation.Category == MaintenanceOperationCategory.Destructive)
+        {
+            var confirmMessage =
+                $"Device: {Device.Manufacturer ?? "?"} {Device.Model ?? "?"}\n" +
+                $"Codename: {Device.Codename ?? "?"}\n\n" +
+                $"About to run: {operation.Name}" + (filePath is null ? "" : $" ({Path.GetFileName(filePath)})") + "\n\n" +
+                operation.Explanation + "\n\n" +
+                (IsMaintenanceDryRun
+                    ? "Dry Run is ON -- no real command will be executed."
+                    : "Dry Run is OFF -- this WILL run a real, destructive command against the device above.");
+            var approved = await RequestConfirmationAsync($"maintenance-{operationId}", confirmMessage);
+            if (!approved)
+            {
+                MaintenanceStatusMessage = $"{operation.Name}: cancelled before running.";
+                return;
+            }
+        }
+
+        IsBusy = true;
+        try
+        {
+            _maintenanceLogger ??= new InstallLogger(Path.Combine(AppContext.BaseDirectory, "logs"));
+            var executor = _engine.CreateMaintenanceExecutor(_maintenanceLogger);
+            var mode = Device.ConnectionMode;
+
+            var result = operationId switch
+            {
+                "format-data" => await executor.FormatUserDataAsync(serial, IsMaintenanceDryRun),
+                "reboot-recovery" => await executor.RebootToRecoveryAsync(serial, mode, IsMaintenanceDryRun),
+                "reboot-bootloader" => await executor.RebootToBootloaderAsync(serial, mode, IsMaintenanceDryRun),
+                "reboot-fastbootd" => await executor.RebootToFastbootdAsync(serial, mode, IsMaintenanceDryRun),
+                "reboot-system" => await executor.RebootToSystemAsync(serial, mode, IsMaintenanceDryRun),
+                "adb-sideload" when filePath is not null => await executor.SideloadPackageAsync(serial, filePath, mode, IsMaintenanceDryRun),
+                _ => new MaintenanceActionResult(false, "Unknown or missing operation input."),
+            };
+
+            MaintenanceStatusMessage = $"{operation.Name}: {result.Message}";
+        }
+        catch (Exception ex)
+        {
+            MaintenanceStatusMessage = $"{operation.Name}: error -- {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        await RefreshDeviceAsync();
+    }
+
     private Task<bool> RequestConfirmationAsync(string key, string message)
     {
         _confirmationTcs = new TaskCompletionSource<bool>();
@@ -857,5 +954,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _runCts?.Cancel();
         DisposeActiveLogger();
         DisposeRestorationLogger();
+        _maintenanceLogger?.Dispose();
     }
 }

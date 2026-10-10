@@ -55,6 +55,10 @@ public sealed class InstallEngine
     public KernelSuRestorationSession CreateKernelSuRestorationSession(IInstallLogger logger, bool isDryRun) =>
         new(Adb, Fastboot, RootDetector, logger, isDryRun);
 
+    public AdvancedMaintenancePlanner MaintenancePlanner { get; } = new();
+
+    public AdvancedMaintenanceExecutor CreateMaintenanceExecutor(IInstallLogger logger) => new(Adb, Fastboot, logger);
+
     public InstallContext CreateContext(
         InstallMode mode,
         DeviceProfile deviceProfile,

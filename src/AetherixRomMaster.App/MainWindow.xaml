@@ -1,4 +1,5 @@
 <Window x:Class="AetherixRomMaster.App.MainWindow"
+        x:Name="RootWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:AetherixRomMaster.App.Converters"
@@ -277,6 +278,71 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Advanced Maintenance -->
+                    <Border Style="{StaticResource GlassCard}" Margin="0,0,0,16">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Advanced Maintenance" Style="{StaticResource HeadingText}" FontSize="16"/>
+                                <CheckBox Grid.Column="1" Content="Dry Run" IsChecked="{Binding IsMaintenanceDryRun}" VerticalAlignment="Center"
+                                          Foreground="{StaticResource WarningBrush}"/>
+                            </Grid>
+                            <TextBlock Text="Standalone device-aware operations for cancunf, decided from verified facts about this exact device -- never copied from another ROM flasher. Destructive operations always ask for explicit confirmation first." Style="{StaticResource CaptionText}" Margin="0,0,0,10" TextWrapping="Wrap"/>
+
+                            <ItemsControl ItemsSource="{Binding MaintenanceOperations}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,6,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                                <TextBlock Text="{Binding Name}" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding Explanation}" Style="{StaticResource CaptionText}" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" FontWeight="Bold" FontSize="11" VerticalAlignment="Top" Margin="0,2,10,0">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource CaptionText}">
+                                                        <Setter Property="Text" Value="{Binding Category}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Category}" Value="Destructive">
+                                                                <Setter Property="Text" Value="DESTRUCTIVE"/>
+                                                                <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Category}" Value="UnsupportedUnverified">
+                                                                <Setter Property="Text" Value="UNVERIFIED"/>
+                                                                <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Category}" Value="SafeNonDestructive">
+                                                                <Setter Property="Text" Value="SAFE"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <Button Grid.Column="2" Content="Run" Style="{StaticResource SecondaryButton}" Padding="12,4" VerticalAlignment="Top"
+                                                    IsEnabled="{Binding IsAvailable}"
+                                                    Command="{Binding DataContext.ExecuteMaintenanceOperationCommand, ElementName=RootWindow}"
+                                                    CommandParameter="{Binding Id}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Text="{Binding MaintenanceStatusMessage}" Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,8,0,12"/>
+
+                            <Separator Background="{StaticResource BorderBrush0}" Margin="0,0,0,10"/>
+                            <TextBlock Text="FRP / Factory Reset Protection" Style="{StaticResource BodyText}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap"
+                                       Text="Aetherix does not implement an FRP bypass or erasure feature, and never will. None of this app's ROM install or maintenance operations read, write, or erase an FRP-related partition. If the device is FRP-locked, the legitimate path is signing in with the same Google account that was previously on the device, or Google's own account-recovery process -- there is no verified, documented FRP status check this app can run reliably, so none is claimed here."/>
                         </StackPanel>
                     </Border>
 

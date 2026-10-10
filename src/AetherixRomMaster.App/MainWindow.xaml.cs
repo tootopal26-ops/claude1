@@ -18,6 +18,7 @@ public partial class MainWindow : Window
         _viewModel.RequestBrowseInitialInstall += (_, _) => BrowseForZip(path => _viewModel.InitialInstallZipPath = path);
         _viewModel.RequestBrowseOriginalKernelSuImage += (_, _) => BrowseForImage(path => _ = _viewModel.SubmitOriginalKernelSuImageAsync(path));
         _viewModel.RequestBrowsePatchedKernelSuImage += (_, _) => BrowseForImage(path => _ = _viewModel.SubmitPatchedKernelSuImageAsync(path));
+        _viewModel.RequestBrowseMaintenanceSideloadPackage += (_, _) => BrowseForZip(path => _ = _viewModel.SubmitMaintenanceSideloadPackageAsync(path));
         _viewModel.LogEntries.CollectionChanged += OnLogEntriesChanged;
         DataContext = _viewModel;
 
