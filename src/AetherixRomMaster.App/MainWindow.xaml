@@ -249,11 +249,9 @@
                                                    Foreground="{Binding Passed, Converter={StaticResource BoolToStatusBrush}}"
                                                    FontWeight="Bold" Width="20" Margin="0,0,8,0"/>
                                         <StackPanel Grid.Column="1">
-                                            <TextBlock Style="{StaticResource BodyText}">
-                                                <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
-                                                <Run Text=" (informational, does not block Install)" FontStyle="Italic" Foreground="{StaticResource TextSecondaryBrush}"
-                                                     Visibility="{Binding IsBlocking, Converter={StaticResource InverseBoolToVis}}"/>
-                                            </TextBlock>
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="(informational — does not block Install)" Style="{StaticResource CaptionText}" FontStyle="Italic"
+                                                       Visibility="{Binding IsBlocking, Converter={StaticResource InverseBoolToVis}}"/>
                                             <TextBlock Text="{Binding Detail}" Style="{StaticResource CaptionText}"/>
                                         </StackPanel>
                                     </Grid>
