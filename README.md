@@ -50,10 +50,10 @@ and smoke-tests that the EXE actually launches and stays running (not an immedia
 startup-exception crash). The badge above always reflects the latest run; check the
 [Actions tab](https://github.com/tootopal26-ops/claude1/actions/workflows/windows-build.yml) for details.
 
-Latest run observed directly during development (commit `afe53b7` — adds the KernelSU
-Root Restoration workflow and Recovery/Installation Automation, including all of the
-new WPF ViewModel/XAML that could not be compiled in the Linux sandbox that wrote it;
-[run #8](https://github.com/tootopal26-ops/claude1/actions/runs/38057099400)):
+Latest run observed directly during development (commit `81e281f` — adds the
+device-aware Advanced Maintenance operations, including all of the new WPF
+ViewModel/XAML that could not be compiled in the Linux sandbox that wrote it;
+[run #11](https://github.com/tootopal26-ops/claude1/actions/runs/38062052011)):
 
 ```
 dotnet build ... -c Release
@@ -63,22 +63,26 @@ Build succeeded.
 
 dotnet test ...
 Test Run Successful.
-Total tests: 145
-     Passed: 145
- Total time: 5.2170 Seconds
+Total tests: 174
+     Passed: 174
+ Total time: 4.5928 Seconds
 
 dotnet publish ... -r win-x64 --self-contained true -p:PublishSingleFile=true ...
   AetherixRomMaster.App -> ...\publish\win-x64\
-  (AetherixRomMaster.exe, 162,458,311 bytes; profiles\cancunf.infinity-x.kernelsu.json
+  (AetherixRomMaster.exe, 162,481,863 bytes; profiles\cancunf.infinity-x.kernelsu.json
    confirmed present in the published output alongside the device/ROM profiles)
 
-Smoke test: Process is still running after 6 seconds (PID 8448) -- startup looks healthy.
+Smoke test: Process is still running after 6 seconds (PID 7228) -- startup looks healthy.
 ```
 
 Earlier verified runs in this same history: [run #6](https://github.com/tootopal26-ops/claude1/actions/runs/38054491595)
-(the profile-loading/bootloader/root-detection fixes — 99/99 tests) and
+(the profile-loading/bootloader/root-detection fixes — 99/99 tests),
 [run #7](https://github.com/tootopal26-ops/claude1/actions/runs/38054626710) (the
-data-wipe-consequences message) were both independently green too.
+data-wipe-consequences message), [run #8](https://github.com/tootopal26-ops/claude1/actions/runs/38057099400)
+(KernelSU Root Restoration + Recovery/Installation Automation — 145/145 tests), and
+[run #10](https://github.com/tootopal26-ops/claude1/actions/runs/38061307669) (the
+user-confirmed-unlocked bootloader override — 151/151 tests) were all independently
+green too.
 
 This wasn't green on the first try for the Recovery/Pre-Flight UI commit, and that's worth
 being honest about: [run #3](https://github.com/tootopal26-ops/claude1/actions/runs/38051414906)
