@@ -13,6 +13,11 @@
         <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis"/>
         <converters:LogLevelToBrushConverter x:Key="LevelToBrush"/>
         <converters:BoolToStatusBrushConverter x:Key="BoolToStatusBrush"/>
+        <converters:NullToVisibilityConverter x:Key="NullToVis"/>
+        <converters:NullToVisibilityConverter x:Key="InverseNullToVis" Invert="True"/>
+        <converters:PassFailGlyphConverter x:Key="PassFailGlyphConverter"/>
+        <converters:ReadyToFlashTextConverter x:Key="ReadyToFlashTextConverter"/>
+        <converters:VerifiedTextConverter x:Key="VerifiedTextConverter"/>
     </Window.Resources>
 
     <Grid>
@@ -184,13 +189,13 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- Right column: actions, progress, logs, recovery -->
+            <!-- Right column: actions, pre-flight check, recovery mode, logs -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
                 <!-- Action buttons -->
@@ -211,29 +216,127 @@
                         <TextBlock Text="{Binding FinalSummary}" Style="{StaticResource BodyText}" FontWeight="SemiBold"
                                    Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" Margin="0,12,0,0"
                                    Visibility="{Binding HasFinalSummary, Converter={StaticResource BoolToVis}}"/>
+
+                        <TextBlock Text="Run a dry run first — Install unlocks once the Pre-Flash Safety Check below passes." Style="{StaticResource CaptionText}" Margin="0,10,0,0"
+                                   Visibility="{Binding PreFlightReport, Converter={StaticResource NullToVis}}"/>
                     </StackPanel>
                 </Border>
 
-                <!-- Recovery assistance -->
+                <!-- Pre-Flash Safety Check -->
                 <Border Grid.Row="1" Style="{StaticResource GlassCard}" Margin="0,0,0,16"
-                        BorderBrush="{StaticResource ErrorBrush}"
-                        Visibility="{Binding HasFailure, Converter={StaticResource BoolToVis}}">
+                        Visibility="{Binding PreFlightReport, Converter={StaticResource InverseNullToVis}}">
                     <StackPanel>
-                        <TextBlock Text="Recovery Assistance" Style="{StaticResource HeadingText}" FontSize="16" Foreground="{StaticResource ErrorBrush}"/>
-                        <TextBlock Text="{Binding FailureMessage}" Style="{StaticResource BodyText}" Margin="0,8,0,10"/>
-                        <TextBlock Text="{Binding ActiveRecoveryGuidance.Title}" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
-                        <ItemsControl ItemsSource="{Binding ActiveRecoveryGuidance.Steps}" Margin="0,6,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Pre-Flash Safety Check" Style="{StaticResource HeadingText}" FontSize="16"/>
+                            <Border Grid.Column="1" CornerRadius="999" Padding="10,3"
+                                    Background="{Binding PreFlightReport.CanProceed, Converter={StaticResource BoolToStatusBrush}}">
+                                <TextBlock Text="{Binding PreFlightReport.CanProceed, Converter={StaticResource ReadyToFlashTextConverter}}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                            </Border>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding PreFlightReport.Items}" Margin="0,10,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding StringFormat='•  {0}'}" Style="{StaticResource CaptionText}" Margin="0,2,0,2"/>
+                                    <Grid Margin="0,4,0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Passed, Converter={StaticResource PassFailGlyphConverter}}"
+                                                   Foreground="{Binding Passed, Converter={StaticResource BoolToStatusBrush}}"
+                                                   FontWeight="Bold" Width="20" Margin="0,0,8,0"/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Style="{StaticResource BodyText}">
+                                                <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                <Run Text=" (informational, does not block Install)" FontStyle="Italic" Foreground="{StaticResource TextSecondaryBrush}"
+                                                     Visibility="{Binding IsBlocking, Converter={StaticResource InverseBoolToVis}}"/>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource CaptionText}"/>
+                                        </StackPanel>
+                                    </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
                 </Border>
 
-                <!-- Live logs -->
-                <Border Grid.Row="2" Style="{StaticResource GlassCard}" Padding="0" Margin="0,0,0,0">
+                <!-- Recovery Mode -->
+                <Border Grid.Row="2" Style="{StaticResource GlassCard}" Margin="0,0,0,16"
+                        BorderBrush="{StaticResource ErrorBrush}"
+                        Visibility="{Binding HasFailure, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Recovery Mode" Style="{StaticResource HeadingText}" FontSize="16" Foreground="{StaticResource ErrorBrush}"/>
+                        <TextBlock Text="{Binding FailureMessage}" Style="{StaticResource BodyText}" Margin="0,8,0,12"/>
+
+                        <UniformGrid Columns="2" Margin="0,0,0,12">
+                            <StackPanel Margin="0,0,0,8">
+                                <TextBlock Text="DEVICE STATUS / CURRENT MODE" Style="{StaticResource CaptionText}"/>
+                                <TextBlock Text="{Binding ActiveRecoverySession.CurrentDeviceMode}" Style="{StaticResource BodyText}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,8">
+                                <TextBlock Text="VERIFICATION STATUS" Style="{StaticResource CaptionText}"/>
+                                <TextBlock Text="{Binding ActiveRecoverySession.PathAvailability}" Style="{StaticResource BodyText}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,8">
+                                <TextBlock Text="LAST SUCCESSFUL STATE" Style="{StaticResource CaptionText}"/>
+                                <TextBlock Text="{Binding ActiveRecoverySession.LastSuccessfulState}" Style="{StaticResource BodyText}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,0,8">
+                                <TextBlock Text="FAILED STATE" Style="{StaticResource CaptionText}"/>
+                                <TextBlock Text="{Binding ActiveRecoverySession.FailedState}" Style="{StaticResource BodyText}"/>
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <TextBlock Text="RECOVERY OPTIONS" Style="{StaticResource CaptionText}"/>
+                        <TextBlock Text="{Binding ActiveRecoverySession.AvailabilityExplanation}" Style="{StaticResource BodyText}" Margin="0,2,0,8"/>
+                        <ItemsControl ItemsSource="{Binding ActiveRecoverySession.Options}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{StaticResource BorderBrush0}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,8">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding Description}" Style="{StaticResource CaptionText}" Margin="0,2,0,6"/>
+                                            <ItemsControl ItemsSource="{Binding Steps}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding StringFormat='•  {0}'}" Style="{StaticResource CaptionText}" Margin="0,1,0,1"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Button Content="Retry failed step with verified files" Style="{StaticResource PrimaryButton}"
+                                Command="{Binding RetryRecoveryCommand}" HorizontalAlignment="Left" Margin="0,4,0,12"/>
+
+                        <TextBlock Text="REQUIRED FILES" Style="{StaticResource CaptionText}"/>
+                        <ItemsControl ItemsSource="{Binding ActiveRecoverySession.RequiredFiles}" Margin="0,2,0,12">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Style="{StaticResource CaptionText}" Margin="0,1,0,1">
+                                        <Run Text="{Binding Role, Mode=OneWay}"/>
+                                        <Run Text=": "/>
+                                        <Run Text="{Binding ChecksumVerified, Converter={StaticResource VerifiedTextConverter}, Mode=OneWay}" FontWeight="SemiBold"/>
+                                        <Run Text=" — "/>
+                                        <Run Text="{Binding Path, Mode=OneWay}"/>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="FULL RECOVERY / SESSION LOG" Style="{StaticResource CaptionText}"/>
+                        <TextBlock Text="{Binding ActiveRecoverySession.SessionLogPath}" Style="{StaticResource CaptionText}" FontFamily="Consolas" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Live logs (doubles as step-by-step progress log, including recovery retries) -->
+                <Border Grid.Row="3" Style="{StaticResource GlassCard}" Padding="0" Margin="0,0,0,0">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top" Text="Live Log" Style="{StaticResource HeadingText}" FontSize="16" Margin="18,16,18,10"/>
                         <ScrollViewer x:Name="LogScrollViewer" Padding="18,0,18,16">

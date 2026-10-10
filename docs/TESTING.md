@@ -4,9 +4,20 @@
 dotnet test src\AetherixRomMaster.Core.Tests\AetherixRomMaster.Core.Tests.csproj
 ```
 
-61 tests, all passing, all offline (no phone, no real `adb`/`fastboot` binary, no
+79 tests, all passing, all offline (no phone, no real `adb`/`fastboot` binary, no
 network) — they run against `FakeProcessRunner`, `FakeFlashExecutor`, and
 `ScriptedDeviceDetectionService` test doubles under `AetherixRomMaster.Core.Tests/TestDoubles/`.
+Verified both locally (Linux, this count) and on a real `windows-latest` GitHub Actions
+runner via `.github/workflows/windows-build.yml` (61/61 at the commit that added that
+workflow, before the Recovery/Pre-Flight tests below existed — see the badge in the root
+README for the current run against the full 79).
+
+Separately, `docs/BUILD.md`'s "why no pre-built .exe" note aside, a real (non-fake,
+apt-installed) `adb`/`fastboot` integration check was also run manually against this
+Core library with no device attached, confirming graceful "no device" handling and zero
+destructive subprocess calls end-to-end -- this wasn't kept as a checked-in automated
+test since it depends on real platform-tools binaries being present on the machine
+running it, but the same guarantee is covered continuously by the fake-based tests below.
 
 ## Coverage against the required scenarios
 
@@ -23,6 +34,10 @@ network) — they run against `FakeProcessRunner`, `FakeFlashExecutor`, and
 | Data-wipe confirmation | `InstallStateMachineTests.BackupAndDataWipe_RequireExplicitConfirmation_ThenResume` |
 | Successful installation verification | `InstallStateMachineTests.FullDryRunWalk_ReachesComplete_WithNoFailedStep`, `.FullRealWalk_NeverClaimsRootActive_WhenNoRootIsDetectedOnBootedDevice` |
 | "Exit code 0 ≠ rooted" | `RootDetectorTests.DetectAsync_DoesNotReportRoot_WhenExitCodeIsZeroButOutputLacksUidZero` (the specific scenario the task calls out by name) |
+| Never promises automatic hard-brick recovery | `RecoveryPlannerTests.BuildSessionAsync_NeverPromisesRecovery_ForBootloop_WhenDeviceUnreachable`, `.BuildSessionAsync_NeverOffersExecutableOption_WhenPathIsNotAvailable` |
+| Recovery retry never reuses an unverified file | `RecoveryPlannerTests.BuildSessionAsync_NeverOffersRetryWithSameFile_ForChecksumMismatch` |
+| Pre-Flash Safety Check gates real installs | `PreFlightSafetyCheckerTests.RunAsync_CanProceed_WhenEverythingIsVerified`, `.RunAsync_Blocks_WhenDeviceIsWrongCodename` / `.RunAsync_Blocks_WhenBootloaderIsLocked` / `.RunAsync_Blocks_WhenChecksumsNotYetVerified` / `.RunAsync_Blocks_WhenRecoveryPathNotAvailable` |
+| KernelSU gap never blocks the ROM install itself | `PreFlightSafetyCheckerTests.RunAsync_DoesNotBlock_WhenOnlyKernelSuItemIsUnconfirmed` |
 
 ## Other tests worth knowing about
 

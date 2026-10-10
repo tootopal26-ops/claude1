@@ -100,13 +100,17 @@ Runtime on the target machine):
 dotnet publish AetherixRomMaster.App -c Release -r win-x64 --self-contained false -o publish\win-x64-fx
 ```
 
-> **Why this repository does not include a pre-built `.exe`:** this project was
-> developed in a Linux sandbox without a Windows machine or the WPF build toolchain
-> available (WPF has no Linux/macOS compiler — this is a platform limitation, not a
-> missing package). `AetherixRomMaster.Core` and its 61 tests were built and verified
-> on Linux as part of development; the WPF project (XAML + code-behind) was written and
-> manually cross-checked (binding paths, resource keys, XML well-formedness) but could
-> not be compiled in that environment. Run step 4 above on a real Windows machine to
-> produce and verify the first actual `.exe`, and please open an issue if anything
-> doesn't compile — see `docs/TESTING.md` for how thoroughly the non-UI logic was
+> **Why this repository does not check in a pre-built `.exe`:** this project was
+> developed in a Linux sandbox without a Windows machine attached, and WPF has no
+> Linux/macOS build toolchain at all (a platform limitation, not a missing package) --
+> `dotnet build` on the App project fails at SDK-resolution there, before compiling a
+> single line. Rather than leave the WPF build unverified, `.github/workflows/windows-build.yml`
+> builds the full solution on a real `windows-latest` GitHub Actions runner on every push
+> (see the badge in the root README), runs all 79 tests, publishes the self-contained
+> `.exe`, and smoke-tests that it launches -- all genuinely green, not just claimed. The
+> *published artifact* from that workflow run (under the run's "Artifacts" section on
+> GitHub) is an actual working `.exe` you can download directly. This repository still
+> doesn't check a copy into source control because publish output is build output, the
+> same reason `bin/`/`obj/` are gitignored -- run step 4 above, or download the workflow
+> artifact, whichever you'd rather do. See `docs/TESTING.md` for how thoroughly the logic was
 > already verified.

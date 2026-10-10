@@ -5,7 +5,7 @@ namespace AetherixRomMaster.Core.Devices;
 /// Every field is either read verbatim from adb/fastboot output or left null/Unknown —
 /// nothing here is ever guessed from a marketing name.
 /// </summary>
-public sealed class DeviceInfo
+public sealed record DeviceInfo
 {
     public ConnectionMode ConnectionMode { get; init; } = ConnectionMode.Disconnected;
 

@@ -51,11 +51,13 @@ public sealed class InstallStateMachine
             {
                 var cancelled = StepResult.Cancelled(context.CurrentState);
                 context.Logger.Log(LogLevel.Warning, "StateMachine", $"Cancelled at {context.CurrentState}.");
+                context.History.Add(cancelled);
                 yield return cancelled;
                 yield break;
             }
 
             var result = await ExecuteCurrentStateAsync(context, ct);
+            context.History.Add(result);
             yield return result;
 
             if (result.Outcome != StepOutcome.Continue)

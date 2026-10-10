@@ -10,6 +10,7 @@ using AetherixRomMaster.Core.Download;
 using AetherixRomMaster.Core.Installation;
 using AetherixRomMaster.Core.Logging;
 using AetherixRomMaster.Core.Profiles;
+using AetherixRomMaster.Core.Recovery;
 using AetherixRomMaster.Core.Shell;
 
 namespace AetherixRomMaster.App.ViewModels;
@@ -24,7 +25,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private InstallLogger? _activeLogger;
     private CancellationTokenSource? _runCts;
     private TaskCompletionSource<bool>? _confirmationTcs;
-    private bool _dryRunSucceededForCurrentSelection;
+    private InstallContext? _activeContext;
+    private InstallStateMachine? _activeStateMachine;
 
     public MainViewModel()
     {
@@ -36,10 +38,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         DownloadRomCommand = new AsyncRelayCommand(() => DownloadAsync(isInitialInstall: false), () => !IsBusy && !string.IsNullOrWhiteSpace(RomDownloadUrl));
         DownloadInitialInstallCommand = new AsyncRelayCommand(() => DownloadAsync(isInitialInstall: true), () => !IsBusy && !string.IsNullOrWhiteSpace(InitialInstallDownloadUrl));
         DryRunCommand = new AsyncRelayCommand(() => RunAsync(InstallMode.DryRun), CanStartRun);
-        InstallCommand = new AsyncRelayCommand(() => RunAsync(InstallMode.Real), () => CanStartRun() && _dryRunSucceededForCurrentSelection);
+        InstallCommand = new AsyncRelayCommand(() => RunAsync(InstallMode.Real), () => CanStartRun() && (PreFlightReport?.CanProceed ?? false));
         CancelCommand = new RelayCommand(_ => _runCts?.Cancel(), _ => IsBusy);
         ConfirmCommand = new RelayCommand(_ => CompleteConfirmation(true), _ => IsConfirmationPending);
         DeclineCommand = new RelayCommand(_ => CompleteConfirmation(false), _ => IsConfirmationPending);
+        RetryRecoveryCommand = new AsyncRelayCommand(RetryFailedStepAsync, CanRetryRecovery);
 
         _devicePollTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2.5) };
         _devicePollTimer.Tick += async (_, _) => { if (!IsBusy) await RefreshDeviceAsync(); };
@@ -190,15 +193,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public string? RomZipPath
     {
         get => _romZipPath;
-        set { if (SetProperty(ref _romZipPath, value)) { _dryRunSucceededForCurrentSelection = false; RaiseAllCanExecuteChanged(); } }
+        set { if (SetProperty(ref _romZipPath, value)) { InvalidatePreFlightReport(); RaiseAllCanExecuteChanged(); } }
     }
 
     private string? _initialInstallZipPath;
     public string? InitialInstallZipPath
     {
         get => _initialInstallZipPath;
-        set { if (SetProperty(ref _initialInstallZipPath, value)) { _dryRunSucceededForCurrentSelection = false; RaiseAllCanExecuteChanged(); } }
+        set { if (SetProperty(ref _initialInstallZipPath, value)) { InvalidatePreFlightReport(); RaiseAllCanExecuteChanged(); } }
     }
+
+    /// <summary>A new file selection invalidates any prior Pre-Flash Safety Check --
+    /// Install stays disabled until a fresh dry run re-confirms the new selection.</summary>
+    private void InvalidatePreFlightReport() => PreFlightReport = null;
 
     public string RomDownloadUrl { get => _romDownloadUrl; set => SetProperty(ref _romDownloadUrl, value); }
     private string _romDownloadUrl = string.Empty;
@@ -305,35 +312,56 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public bool HasFinalSummary => !string.IsNullOrEmpty(FinalSummary);
 
+    // ----- Pre-Flash Safety Check -----
+
+    public PreFlightSafetyReport? PreFlightReport
+    {
+        get => _preFlightReport;
+        private set { if (SetProperty(ref _preFlightReport, value)) RaiseAllCanExecuteChanged(); }
+    }
+    private PreFlightSafetyReport? _preFlightReport;
+
+    // ----- Recovery Mode -----
+
+    public RecoverySession? ActiveRecoverySession { get => _activeRecoverySession; private set { if (SetProperty(ref _activeRecoverySession, value)) RaiseAllCanExecuteChanged(); } }
+    private RecoverySession? _activeRecoverySession;
+
     public ICommand DryRunCommand { get; }
     public ICommand InstallCommand { get; }
     public ICommand CancelCommand { get; }
     public ICommand ConfirmCommand { get; }
     public ICommand DeclineCommand { get; }
+    public ICommand RetryRecoveryCommand { get; }
 
     private bool CanStartRun() =>
         !IsBusy && PlatformToolsReady && DeviceProfile is not null && RomProfile is not null &&
         IsDeviceSupported && !string.IsNullOrWhiteSpace(RomZipPath) &&
         (!RomRequiresInitialInstallPackage || !string.IsNullOrWhiteSpace(InitialInstallZipPath));
 
+    private bool CanRetryRecovery() =>
+        !IsBusy && ActiveRecoverySession is { PathAvailability: RecoveryPathAvailability.Available } session &&
+        session.Options.Any(o => o.CanBeExecutedByThisApp);
+
     private async Task RunAsync(InstallMode mode)
     {
         if (_engine is null || DeviceProfile is null || RomProfile is null || RomZipPath is null) return;
 
-        IsBusy = true;
         ActiveMode = mode;
         HasFailure = false;
         ActiveRecoveryGuidance = null;
+        ActiveRecoverySession = null;
+        PreFlightReport = null;
         FinalSummary = string.Empty;
         LogEntries.Clear();
 
+        // A fresh run (not a retry) gets its own logger -- dispose whatever the previous
+        // run left behind first, now that nothing can still retry into it.
+        DisposeActiveLogger();
         var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
         _activeLogger = new InstallLogger(logDir);
         _activeLogger.EntryLogged += OnLogEntry;
 
-        _runCts = new CancellationTokenSource();
         var context = _engine.CreateContext(mode, DeviceProfile, RomProfile, RomZipPath, _activeLogger, InitialInstallZipPath);
-
         if (mode == InstallMode.DryRun)
         {
             // A dry run previews the whole plan unattended -- it can never act destructively
@@ -342,23 +370,58 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             context.DataWipeConfirmed = true;
         }
 
+        _activeContext = context;
+        _activeStateMachine = _engine.CreateStateMachine(mode);
+
+        await DriveAndFinalizeAsync();
+
+        if (mode == InstallMode.DryRun && !HasFailure)
+        {
+            PreFlightReport = await _engine.PreFlightSafetyChecker.RunAsync(context);
+        }
+    }
+
+    /// <summary>
+    /// Resumes the same, already-built context/state machine from wherever it stopped --
+    /// since a Failed outcome never advances CurrentStateIndex, this simply re-runs the
+    /// failed state using the exact same already-verified files. Only offered when
+    /// RecoveryPlanner classified the failure as Available with an executable option.
+    /// </summary>
+    private async Task RetryFailedStepAsync()
+    {
+        if (_activeContext is null || _activeStateMachine is null) return;
+
+        HasFailure = false;
+        FailureMessage = string.Empty;
+        ActiveRecoveryGuidance = null;
+        ActiveRecoverySession = null;
+
+        await DriveAndFinalizeAsync();
+    }
+
+    private async Task DriveAndFinalizeAsync()
+    {
+        if (_activeContext is null || _activeStateMachine is null) return;
+
+        IsBusy = true;
+        _runCts = new CancellationTokenSource();
         try
         {
-            var stateMachine = _engine.CreateStateMachine(mode);
-            await DriveToCompletionAsync(stateMachine, context, _runCts.Token);
-
-            if (mode == InstallMode.DryRun && !HasFailure)
-            {
-                _dryRunSucceededForCurrentSelection = true;
-            }
+            await DriveToCompletionAsync(_activeStateMachine, _activeContext, _runCts.Token);
         }
         finally
         {
-            _activeLogger.EntryLogged -= OnLogEntry;
-            _activeLogger.Dispose();
             IsBusy = false;
             RaiseAllCanExecuteChanged();
         }
+    }
+
+    private void DisposeActiveLogger()
+    {
+        if (_activeLogger is null) return;
+        _activeLogger.EntryLogged -= OnLogEntry;
+        _activeLogger.Dispose();
+        _activeLogger = null;
     }
 
     private async Task DriveToCompletionAsync(InstallStateMachine stateMachine, InstallContext context, CancellationToken ct)
@@ -397,6 +460,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                     HasFailure = true;
                     FailureMessage = last.Message;
                     ActiveRecoveryGuidance = RecoveryGuidance.Lookup(last.RecoveryGuidanceKey);
+                    if (_engine is not null)
+                    {
+                        ActiveRecoverySession = await _engine.RecoveryPlanner.BuildSessionAsync(context, ct);
+                    }
                     return;
 
                 case StepOutcome.Cancelled:
@@ -444,6 +511,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         _devicePollTimer.Stop();
         _runCts?.Cancel();
-        _activeLogger?.Dispose();
+        DisposeActiveLogger();
     }
 }

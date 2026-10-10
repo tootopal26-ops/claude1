@@ -38,6 +38,16 @@ public sealed class InstallContext
     public bool BackupAcknowledged { get; set; }
     public bool DataWipeConfirmed { get; set; }
 
+    /// <summary>Every StepResult this run has produced, in order, including the
+    /// terminal one. Populated by InstallStateMachine.RunAsync as it yields each
+    /// result -- this is what RecoveryPlanner uses to find the last state that
+    /// actually succeeded before a failure, without guessing or re-deriving it.</summary>
+    public List<StepResult> History { get; } = [];
+
+    public StepResult? LastSuccessfulStep => History.LastOrDefault(r => r.Outcome == StepOutcome.Continue || r.Outcome == StepOutcome.Finished);
+
+    public StepResult? LastFailedStep => History.LastOrDefault(r => r.Outcome == StepOutcome.Failed);
+
     public bool AdvanceToNextState()
     {
         if (CurrentStateIndex + 1 >= Plan.States.Count) return false;

@@ -2,6 +2,7 @@ using AetherixRomMaster.Core.Devices;
 using AetherixRomMaster.Core.KernelSu;
 using AetherixRomMaster.Core.Logging;
 using AetherixRomMaster.Core.Profiles;
+using AetherixRomMaster.Core.Recovery;
 using AetherixRomMaster.Core.Rom;
 using AetherixRomMaster.Core.Shell;
 
@@ -23,6 +24,8 @@ public sealed class InstallEngine
     public KernelSuCompatibilityChecker KernelSuChecker { get; }
     public RootDetector RootDetector { get; }
     public ProfileRepository Profiles { get; }
+    public RecoveryPlanner RecoveryPlanner { get; }
+    public PreFlightSafetyChecker PreFlightSafetyChecker { get; }
 
     public InstallEngine(string adbPath, string fastbootPath, string profilesDirectory, IProcessRunner? processRunner = null)
     {
@@ -35,6 +38,8 @@ public sealed class InstallEngine
         RomValidation = new RomValidationService();
         KernelSuChecker = new KernelSuCompatibilityChecker();
         Profiles = new ProfileRepository(profilesDirectory);
+        RecoveryPlanner = new RecoveryPlanner(DeviceDetection);
+        PreFlightSafetyChecker = new PreFlightSafetyChecker(DeviceDetection, RecoveryPlanner, DeviceCompatibility);
     }
 
     public InstallStateMachine CreateStateMachine(InstallMode mode)
