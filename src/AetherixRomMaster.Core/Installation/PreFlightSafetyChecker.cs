@@ -120,15 +120,27 @@ public sealed class PreFlightSafetyChecker
     {
         var initialRequired = context.RomProfile.RequiresInitialInstallPackage;
         var romOk = context.RomValidation?.Checksum.Matched ?? false;
-        var initialOk = !initialRequired || (context.InitialInstallValidation?.Checksum.Matched ?? false);
+
+        // The Initial Install package is a deliberate exception, researched and justified
+        // in RomValidationService: no checksum requirement exists anywhere in the official
+        // cancunf/Infinity-X documentation for this specific package type, so having no
+        // reference to compare against is acceptable here (never for the ROM package
+        // itself) -- but if a reference DOES exist (now or later), it must still match,
+        // exactly as strictly as the ROM package.
+        var initialChecksum = context.InitialInstallValidation?.Checksum;
+        var initialOk = !initialRequired || (initialChecksum is not null && !initialChecksum.IsGenuineMismatch);
+
         var ok = romOk && initialOk;
-        var evidenceExists = (context.RomValidation?.Checksum.HasOfficialReference ?? false) &&
-                              (!initialRequired || (context.InitialInstallValidation?.Checksum.HasOfficialReference ?? false));
+        var evidenceExists = context.RomValidation?.Checksum.HasOfficialReference ?? false;
 
         return new PreFlightCheckItem("SHA-256/MD5 checksums verified",
             ok ? PreFlightCheckStatus.Pass : evidenceExists ? PreFlightCheckStatus.Blocked : PreFlightCheckStatus.UnableToVerify,
             IsBlocking: true,
-            ok ? "All selected package(s) matched an official checksum."
+            ok ? "ROM package matched an official checksum." +
+                 (initialRequired ? (initialChecksum?.HasOfficialReference == true
+                     ? " Initial Install package matched an official checksum too."
+                     : " Initial Install package has no published checksum to check (researched -- none exists for this package type); verified instead by its declared required-board match.")
+                     : "")
                : "At least one selected package has not been checksum-verified against an official source yet -- run a dry run first.");
     }
 

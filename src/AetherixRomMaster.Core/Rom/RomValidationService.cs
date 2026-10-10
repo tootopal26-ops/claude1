@@ -56,12 +56,34 @@ public sealed class RomValidationService
 
         if (!checksum.HasOfficialReference)
         {
+            // The Initial Install / firmware-bootstrap package is a deliberate, researched
+            // exception: no MD5/SHA-256/SHA-1 or checksum manifest for this specific package
+            // type was found anywhere in the official cancunf/Infinity-X documentation (the
+            // cyberknight777.dev guide, the DroidWin walkthrough, or the official download
+            // page) across repeated, independent searches -- nor does android-info.txt (the
+            // manifest `fastboot update` itself reads) carry one; by AOSP's own format, it
+            // only ever declares `require board=`. Declared-board/device identity (checked
+            // below, unconditionally blocking on mismatch) is therefore the full extent of
+            // identity verification this package type's own official procedure and file
+            // format support -- treating a missing checksum as advisory here is not weaker
+            // verification, it's not inventing verification that was never real to begin
+            // with. The ROM package itself gets no such exception: a checksum is both
+            // published by the official source and enforced here, strictly, as Blocking.
+            var severity = expectedKind == RomPackageKind.InitialInstallPackage
+                ? CompatibilityIssueSeverity.Warning
+                : CompatibilityIssueSeverity.Blocking;
             issues.Add(new RomCompatibilityIssue(
-                CompatibilityIssueSeverity.Blocking,
+                severity,
                 "CHECKSUM_UNAVAILABLE",
-                "No official checksum was found for this file (no sibling .sha256/.sha256sum file, no checksum recorded " +
-                "on the ROM profile, and none supplied). This application will not flash a file it cannot verify — " +
-                "provide the checksum published on the ROM's official download page."));
+                severity == CompatibilityIssueSeverity.Warning
+                    ? "No checksum (official or sibling file) exists for this Initial Install package -- researched and " +
+                      "confirmed: no checksum requirement for this specific package type was found anywhere in the " +
+                      "official cancunf/Infinity-X documentation, and android-info.txt itself carries no such field. " +
+                      "Its identity is instead verified by its declared required-board match (see below), which still " +
+                      "blocks on a mismatch. This does not apply to the ROM package itself."
+                    : "No official checksum was found for this file (no sibling .sha256/.sha256sum file, no checksum recorded " +
+                      "on the ROM profile, and none supplied). This application will not flash a file it cannot verify — " +
+                      "provide the checksum published on the ROM's official download page."));
         }
         else if (!checksum.Matched)
         {

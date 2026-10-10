@@ -48,7 +48,10 @@ public sealed class AutomationCapabilityPlanner
         {
             items.Add(profileConfirmed
                 ? Item("Initial-install package transfer/flash", AutomationCapabilityLevel.Automatic,
-                    "Flashed via the confirmed fastboot update procedure -- still requires its own checksum to actually match before real flashing proceeds.")
+                    "Flashed via the confirmed fastboot update procedure. If an official checksum exists for this " +
+                    "package it must still match, exactly like the ROM package; researched and confirmed that none " +
+                    "is published for this specific package type (see RomValidationService), so identity is instead " +
+                    "verified by its declared required-board match, which still blocks on a mismatch.")
                 : Item("Initial-install package transfer/flash", AutomationCapabilityLevel.Blocked,
                     "Requires a confirmed ROM profile first."));
         }

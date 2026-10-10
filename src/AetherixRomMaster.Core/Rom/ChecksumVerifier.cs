@@ -16,7 +16,15 @@ public sealed record ChecksumCheckResult(
     string? ExpectedSha256,
     string? ExpectedMd5,
     string? MatchedVariantLabel,
-    string Source);
+    string Source)
+{
+    /// <summary>True only when there was an official reference to compare against AND the
+    /// local file's own computed hash didn't match it -- a confirmed, evidence-based
+    /// problem (corruption/tampering/wrong variant). False when nothing was ever available
+    /// to compare against (HasOfficialReference is false) -- that is a missing-evidence
+    /// condition, not a confirmed one, and callers must not treat the two the same way.</summary>
+    public bool IsGenuineMismatch => !Matched && HasOfficialReference;
+}
 
 /// <summary>
 /// Verifies a downloaded/selected ROM file against a checksum published by its own

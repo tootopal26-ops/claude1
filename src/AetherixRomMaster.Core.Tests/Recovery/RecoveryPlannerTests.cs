@@ -195,6 +195,32 @@ public class RecoveryPlannerTests : IDisposable
         Assert.False(ready);
     }
 
+    [Fact]
+    public async Task AssessRetryReadinessAsync_True_WhenInitialInstallHasNoChecksumAtAll_ButBoardMatches()
+    {
+        // The researched Initial-Install exception (see RomValidationService) must also
+        // apply here: this is the same "safe to retry with" judgment the Pre-Flash check
+        // and the real Recovery Mode system both rely on, so a missing (never published)
+        // checksum for this one package type must not make it look unverified/unsafe.
+        var romZip = RomZipFixtures.CreateLegacyRomZip(_tempDir, "rom.zip");
+        RomZipFixtures.WriteSiblingChecksum(romZip, await new ChecksumVerifier().ComputeSha256Async(romZip));
+        var initialZip = RomZipFixtures.CreateInitialInstallPackage(_tempDir, "infinity_gms_initial_install.zip");
+        // Deliberately no sibling checksum written for initialZip.
+
+        var harness = new InstallHarness();
+        var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
+        var validationService = new RomValidationService();
+        var device = InstallHarness.AdbCancunf();
+        context.RomValidation = await validationService.ValidateAsync(romZip, device, TestProfiles.Cancunf(), TestProfiles.InfinityXVerified());
+        context.InitialInstallValidation = await validationService.ValidateAsync(
+            initialZip, device, TestProfiles.Cancunf(), TestProfiles.InfinityXVerified(), RomPackageKind.InitialInstallPackage);
+        _detection.Current = InstallHarness.AdbCancunf();
+
+        var (ready, _) = await Planner.AssessRetryReadinessAsync(context);
+
+        Assert.True(ready);
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_tempDir, recursive: true); } catch { /* best-effort cleanup */ }

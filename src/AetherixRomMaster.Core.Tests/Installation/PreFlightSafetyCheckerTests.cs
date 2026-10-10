@@ -55,6 +55,42 @@ public class PreFlightSafetyCheckerTests : IDisposable
     }
 
     [Fact]
+    public async Task RunAsync_CanProceed_WhenInitialInstallHasNoChecksumAtAll_ButDeclaredBoardMatches()
+    {
+        // This is the actual, real-world case this app's own Initial Install package is
+        // in today: no sibling .sha256 file, nothing recorded in the ROM profile, and no
+        // official checksum exists anywhere to supply -- researched and confirmed, see
+        // RomValidationService. The Install button must not stay blocked by this alone.
+        var romZip = RomZipFixtures.CreateLegacyRomZip(_tempDir, "rom.zip");
+        RomZipFixtures.WriteSiblingChecksum(romZip, await new ChecksumVerifier().ComputeSha256Async(romZip));
+        var initialZip = RomZipFixtures.CreateInitialInstallPackage(_tempDir, "infinity_gms_initial_install.zip");
+        // Deliberately no sibling checksum written for initialZip.
+
+        var harness = new InstallHarness();
+        var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
+        var validationService = new RomValidationService();
+        var device = InstallHarness.AdbCancunf();
+        context.RomValidation = await validationService.ValidateAsync(romZip, device, TestProfiles.Cancunf(), TestProfiles.InfinityXVerified());
+        context.InitialInstallValidation = await validationService.ValidateAsync(
+            initialZip, device, TestProfiles.Cancunf(), TestProfiles.InfinityXVerified(), RomPackageKind.InitialInstallPackage);
+        context.KernelSuAssessment = new KernelSuCompatibilityAssessment
+        {
+            KernelLooksGki = true,
+            ParsedKernelVersion = "5.15.104-android13-8-weighu+",
+            BootImageHasKernelSuMarkers = true,
+            RecommendedAction = KernelSuRecommendedAction.UseBundledKernelSuAsIs,
+            Explanation = "Bundled KernelSU detected.",
+        };
+        _detection.Current = InstallHarness.AdbCancunf();
+
+        var report = await Checker.RunAsync(context);
+
+        var checksumItem = report.Items.First(i => i.Name.Contains("checksum", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(PreFlightCheckStatus.Pass, checksumItem.Status);
+        Assert.True(report.CanProceed);
+    }
+
+    [Fact]
     public async Task RunAsync_Blocks_WhenDeviceIsWrongCodename()
     {
         var context = await BuildFullyVerifiedContextAsync();

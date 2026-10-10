@@ -92,8 +92,14 @@ public sealed class RecoveryPlanner
         }
         if (context.InitialInstallZipPath is not null && context.InitialInstallValidation is not null)
         {
+            // Mirrors RomValidationService's researched Initial-Install exception: having
+            // no official checksum for this specific package type is not itself a problem
+            // (IsGenuineMismatch is false when nothing was ever available to compare
+            // against), so it must not make this file look unsafe to retry with. A real,
+            // confirmed mismatch (IsGenuineMismatch: true) still does.
+            var checksum = context.InitialInstallValidation.Checksum;
             files.Add(new RecoveryRequiredFile(
-                "Initial-install package", context.InitialInstallZipPath, context.InitialInstallValidation.Checksum.Matched, context.InitialInstallValidation.Checksum.ComputedSha256));
+                "Initial-install package", context.InitialInstallZipPath, !checksum.IsGenuineMismatch, checksum.ComputedSha256));
         }
         return files;
     }

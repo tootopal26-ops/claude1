@@ -258,7 +258,10 @@ public sealed class InstallStateMachine
         {
             issues.Add($"ROM package: {DescribeChecksumMismatch(romResult.Checksum)}");
         }
-        if (context.InitialInstallValidation is { Checksum.Matched: false } initialResult)
+        // Initial Install is a deliberate exception (see RomValidationService): having no
+        // published checksum for this specific package type is not itself a problem, so
+        // only a GENUINE mismatch (a reference existed and didn't match) is flagged here.
+        if (context.InitialInstallValidation is { Checksum.IsGenuineMismatch: true } initialResult)
         {
             issues.Add($"Initial-install package: {DescribeChecksumMismatch(initialResult.Checksum)}");
         }

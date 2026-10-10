@@ -35,7 +35,7 @@ is automatically recoverable — the moment something can't be verified.
 | Evidence-based Pre-Flash Safety Check (PASS / BLOCKED / UNABLE TO VERIFY per item) | ✅ Implemented — see "Bootloader detection fix" below |
 | MD5 checksum support + GApps/Vanilla variant detection (by checksum, never filename) | ✅ Implemented |
 | Dark glassmorphism WPF UI | ✅ Implemented |
-| Automated tests (197 tests, see `src/AetherixRomMaster.Core.Tests`) | ✅ Implemented, all passing |
+| Automated tests (202 tests, see `src/AetherixRomMaster.Core.Tests`) | ✅ Implemented, all passing |
 | **WPF app actually compiles & runs on real Windows** | ✅ **Verified on GitHub Actions `windows-latest` — see below, not just claimed** |
 | **cancunf + Infinity-X ROM profile: `VerificationStatus = PendingManualConfirmation`** | ⚠️ **Device owner confirmed build/checksums from the official page; this app's own tooling still couldn't independently fetch it — see below** |
 | **cancunf + Infinity-X KernelSU restoration profile: `VerificationStatus = Unverified`** | ⚠️ **Required image type/partition not yet confirmed — see below** |
@@ -342,21 +342,30 @@ given local ROM ZIP is gets decided by which official MD5 its own computed hash 
 matches — never by filename.** A file matching neither is rejected
 (`CHECKSUM_MISMATCH`), not silently accepted.
 
-**Still genuinely missing, and still correctly blocking:** no checksum (official or
-sibling `.sha256` file) has been confirmed for the separate **Initial Install** package
-specifically (`knownOfficialInitialInstallChecksums` is empty on purpose) — that
-package's own checksum check stays `CHECKSUM_UNAVAILABLE` until one is supplied. **If you
-have ROM/initial-install files already downloaded, personally verify they came from the
-real official page before trusting them** — do not assume a local file is genuine
-Infinity-X/cancunf without checking its exact name/size/checksum against that source
-yourself; re-confirm the two MD5 values above against the live page too, since they are
-a human transcription this app could not independently re-fetch.
+**Update (2026-10-10, second pass):** the Initial Install package's missing checksum is
+**no longer a blocker**. A dedicated research pass (repeated `WebFetch` on both the
+official download page and the `cyberknight777.dev` instructions page — both still
+DNS-blocked from this sandbox; several targeted `WebSearch` queries, one of which
+surfaced a real indexed snippet of the guide's own text) found **no MD5/SHA-256/SHA-1 or
+checksum manifest published anywhere for this specific package type**, for Infinity-X or
+any other ROM on that guide. `android-info.txt` itself (the manifest `fastboot update`
+reads) carries no such field by AOSP's own format — only `require board=`. So
+`CHECKSUM_UNAVAILABLE` for the Initial Install package is now a non-blocking advisory
+(`CompatibilityIssueSeverity.Warning`) instead of `Blocking`: its identity is instead
+verified strictly by its declared required-board match against the device profile's
+codename, which still blocks unconditionally on a mismatch. **This exception applies
+only to the Initial Install package — the ROM ZIP's checksum stays exactly as strict as
+before**, proven by an explicit regression test
+(`ValidateAsync_RomPackage_StillBlocksOnMissingChecksum_UnlikeInitialInstall`). If an
+official checksum for this package type is ever found or published, add it to
+`knownOfficialInitialInstallChecksums` in the profile and it becomes strictly enforced
+immediately — see `RomValidationService.cs` for the exact logic.
 
-**To fully close the gap:** supply a checksum for the Initial Install package (a sibling
-`.sha256` file next to it, or add an entry to `knownOfficialInitialInstallChecksums` in
-the profile with the same honest provenance style already used for the ROM ZIP's two
-entries), and optionally re-verify the recorded facts against the live page yourself
-before flipping `verificationStatus` all the way to `"Verified"`.
+**If you have ROM/initial-install files already downloaded, personally verify they came
+from the real official page before trusting them** — do not assume a local file is
+genuine Infinity-X/cancunf without checking its exact name/size against that source
+yourself; re-confirm the two ROM-ZIP MD5 values above against the live page too, since
+they are a human transcription this app could not independently re-fetch.
 
 Sources to check:
 - https://cyberknight777.dev/instructions/cancunf/ — device-specific flashing guide
