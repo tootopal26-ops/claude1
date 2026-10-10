@@ -3,6 +3,7 @@ using AetherixRomMaster.Core.Installation;
 using AetherixRomMaster.Core.KernelSu;
 using AetherixRomMaster.Core.Profiles;
 using AetherixRomMaster.Core.Rom;
+using AetherixRomMaster.Core.Shell;
 
 namespace AetherixRomMaster.Core.Tests.TestDoubles;
 
@@ -19,7 +20,7 @@ public sealed class InstallHarness
 
     public InstallHarness()
     {
-        RootProcessRunner.Handler = (_, _) => new Shell.ProcessResult { ExitCode = 0, StandardOutput = string.Empty, StandardError = string.Empty };
+        RootProcessRunner.Handler = (_, _) => new ProcessResult { ExitCode = 0, StandardOutput = string.Empty, StandardError = string.Empty };
 
         var adb = new AdbClient(RootProcessRunner, "adb");
         var rootDetector = new RootDetector(adb);

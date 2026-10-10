@@ -50,6 +50,65 @@ public sealed class DeviceDetectionService : IDeviceDetectionService
         return DeviceInfo.Disconnected;
     }
 
+    /// <summary>
+    /// The one bootloader check this app treats as fully authoritative: reboots the
+    /// device into the bootloader, queries fastboot directly (never a heuristic), then
+    /// reboots back to the system it was running. This is a real, user-visible device
+    /// action (two reboots) -- callers must only invoke it from an explicit, user-
+    /// initiated action, never automatically on a polling timer.
+    /// </summary>
+    public async Task<FastbootBootloaderCheckResult> VerifyBootloaderViaFastbootAsync(
+        string serial, TimeSpan timeout, CancellationToken ct = default)
+    {
+        var rebootResult = await _adb.RebootAsync(serial, "bootloader", ct);
+        if (!rebootResult.Succeeded)
+        {
+            return FastbootBootloaderCheckResult.Failed(
+                "Could not issue the reboot-to-bootloader command over ADB. Confirm the device is still connected and authorized.");
+        }
+
+        var reachedFastboot = await WaitForFastbootDeviceAsync(serial, timeout, ct);
+        if (!reachedFastboot)
+        {
+            return FastbootBootloaderCheckResult.Failed(
+                "The device did not appear in fastboot within the timeout. It may still be rebooting, may need its USB driver reinstalled for fastboot mode specifically, or may require a different cable/port.");
+        }
+
+        var vars = await _fastboot.GetAllVarsAsync(serial, "all", ct);
+        var lockState = DeriveBootloaderLockStateFromFastboot(vars);
+        var rawUnlocked = GetVar(vars, "unlocked");
+        var rawSecureState = GetVar(vars, "securestate");
+
+        await _fastboot.RebootAsync(serial, null, ct);
+
+        return FastbootBootloaderCheckResult.Success(lockState, rawUnlocked, rawSecureState);
+    }
+
+    private async Task<bool> WaitForFastbootDeviceAsync(string serial, TimeSpan timeout, CancellationToken ct)
+    {
+        using var timeoutCts = new CancellationTokenSource(timeout);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+        while (!linked.IsCancellationRequested)
+        {
+            var devices = await _fastboot.ListDevicesAsync(linked.Token);
+            if (devices.Contains(serial))
+            {
+                return true;
+            }
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1), linked.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+        }
+        return false;
+    }
+
     private async Task<DeviceInfo> BuildFromAdbAsync(AdbDeviceEntry device, CancellationToken ct)
     {
         var props = await _adb.GetAllPropsAsync(device.Serial, ct);
@@ -117,24 +176,43 @@ public sealed class DeviceDetectionService : IDeviceDetectionService
     /// generic AVB fallback (orange/yellow = unlocked, green = locked). Never guessed, never
     /// taken from a user toggle.
     /// </summary>
+    /// <summary>
+    /// Priority order matters here, and it's informed by a real false positive: a cancunf
+    /// device with a genuinely unlocked bootloader was reported as Locked because
+    /// ro.boot.verifiedbootstate=green was trusted as "locked". That property reflects
+    /// whether the *currently booted image* passed AVB signature verification against the
+    /// OEM key -- a stock, unmodified system partition reports green regardless of whether
+    /// OEM unlocking itself is enabled. It is not the same question as "is the bootloader
+    /// unlock-capable/unlocked", and conflating them produces exactly this false positive.
+    ///
+    /// ro.boot.vbmeta.device_state is the standard AVB 2.0 property for the actual device
+    /// lock state (values are literally "unlocked"/"locked", no interpretation needed) and
+    /// is checked first. ro.boot.flash.locked (Motorola-specific, 0/1) is second. If neither
+    /// is readable, verifiedbootstate is used only for its unambiguous "orange"/"yellow"
+    /// case (which in practice only occurs once a device really is unlocked or custom-signed)
+    /// -- its "green" value is deliberately never treated as proof of Locked anymore.
+    /// When nothing resolves it, this returns Unknown rather than guessing: see
+    /// DeviceDetectionServiceTests for the regression test covering this exact scenario.
+    /// </summary>
     private static BootloaderLockState DeriveBootloaderLockStateFromProps(IReadOnlyDictionary<string, string> props)
     {
+        var vbmetaDeviceState = GetProp(props, "ro.boot.vbmeta.device_state");
+        if (vbmetaDeviceState is not null)
+        {
+            if (vbmetaDeviceState.Equals("unlocked", StringComparison.OrdinalIgnoreCase)) return BootloaderLockState.Unlocked;
+            if (vbmetaDeviceState.Equals("locked", StringComparison.OrdinalIgnoreCase)) return BootloaderLockState.Locked;
+        }
+
         var flashLocked = GetProp(props, "ro.boot.flash.locked");
         if (flashLocked == "0") return BootloaderLockState.Unlocked;
         if (flashLocked == "1") return BootloaderLockState.Locked;
 
         var verifiedBootState = GetProp(props, "ro.boot.verifiedbootstate");
-        if (verifiedBootState is not null)
+        if (verifiedBootState is not null &&
+            (verifiedBootState.Equals("orange", StringComparison.OrdinalIgnoreCase) ||
+             verifiedBootState.Equals("yellow", StringComparison.OrdinalIgnoreCase)))
         {
-            if (verifiedBootState.Equals("orange", StringComparison.OrdinalIgnoreCase) ||
-                verifiedBootState.Equals("yellow", StringComparison.OrdinalIgnoreCase))
-            {
-                return BootloaderLockState.Unlocked;
-            }
-            if (verifiedBootState.Equals("green", StringComparison.OrdinalIgnoreCase))
-            {
-                return BootloaderLockState.Locked;
-            }
+            return BootloaderLockState.Unlocked;
         }
 
         return BootloaderLockState.Unknown;

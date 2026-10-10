@@ -61,4 +61,51 @@ public class ProfileRepositoryTests
 
         Assert.Null(profile);
     }
+
+    [Fact]
+    public void DescribeDeviceProfileLookup_ReportsMissingDirectory_WhenProfilesFolderDoesNotExist()
+    {
+        var missingDir = Path.Combine(Path.GetTempPath(), "aetherix-test-missing-" + Guid.NewGuid());
+        var repo = new ProfileRepository(missingDir);
+
+        var diagnostics = repo.DescribeDeviceProfileLookup("cancunf");
+
+        Assert.False(diagnostics.DirectoryExists);
+        Assert.False(diagnostics.DeviceProfileFileExists);
+        Assert.Contains("profiles", diagnostics.ToDisplayText(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(missingDir, diagnostics.ToDisplayText());
+    }
+
+    [Fact]
+    public void DescribeDeviceProfileLookup_ListsFilesPresent_WhenDirectoryExistsButProfileFileIsMissing()
+    {
+        var dir = Directory.CreateTempSubdirectory("aetherix-test-").FullName;
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "unrelated.txt"), "not a profile");
+            var repo = new ProfileRepository(dir);
+
+            var diagnostics = repo.DescribeDeviceProfileLookup("cancunf");
+
+            Assert.True(diagnostics.DirectoryExists);
+            Assert.False(diagnostics.DeviceProfileFileExists);
+            Assert.Contains("unrelated.txt", diagnostics.FilesFoundInDirectory);
+            Assert.Contains("unrelated.txt", diagnostics.ToDisplayText());
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void DescribeDeviceProfileLookup_MatchesRealShippedProfile_ForCancunf()
+    {
+        var repo = new ProfileRepository(ProfilesDirectory);
+
+        var diagnostics = repo.DescribeDeviceProfileLookup("cancunf");
+
+        Assert.True(diagnostics.DirectoryExists);
+        Assert.True(diagnostics.DeviceProfileFileExists);
+    }
 }

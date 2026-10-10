@@ -39,6 +39,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         DownloadInitialInstallCommand = new AsyncRelayCommand(() => DownloadAsync(isInitialInstall: true), () => !IsBusy && !string.IsNullOrWhiteSpace(InitialInstallDownloadUrl));
         DryRunCommand = new AsyncRelayCommand(() => RunAsync(InstallMode.DryRun), CanStartRun);
         InstallCommand = new AsyncRelayCommand(() => RunAsync(InstallMode.Real), () => CanStartRun() && (PreFlightReport?.CanProceed ?? false));
+        VerifyBootloaderCommand = new AsyncRelayCommand(VerifyBootloaderAsync, CanVerifyBootloader);
         CancelCommand = new RelayCommand(_ => _runCts?.Cancel(), _ => IsBusy);
         ConfirmCommand = new RelayCommand(_ => CompleteConfirmation(true), _ => IsConfirmationPending);
         DeclineCommand = new RelayCommand(_ => CompleteConfirmation(false), _ => IsConfirmationPending);
@@ -66,31 +67,68 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        _engine = new InstallEngine(resolution.AdbPath!, resolution.FastbootPath!, profilesDirectory);
+        // A published single-file exe can leave more than one plausible "app directory"
+        // candidate in play (AppContext.BaseDirectory vs. the process executable's own
+        // directory vs. the current working directory) -- try each rather than trusting
+        // the one the caller happened to pass in, which is the scenario a real user hit
+        // (profiles/ not found) when they didn't copy the folder next to a relocated .exe.
+        var resolvedProfilesDirectory = ResolveProfilesDirectory(appBaseDirectory, profilesDirectory);
+
+        _engine = new InstallEngine(resolution.AdbPath!, resolution.FastbootPath!, resolvedProfilesDirectory);
         PlatformToolsReady = true;
         PlatformToolsStatus = $"Platform tools ready ({resolution.Source}).";
         OnPropertyChanged(nameof(PlatformToolsReady));
         OnPropertyChanged(nameof(PlatformToolsStatus));
 
         DeviceProfile = await _engine.Profiles.LoadDeviceProfileAsync(Codename);
+        _deviceProfileDiagnostics = DeviceProfile is null ? _engine.Profiles.DescribeDeviceProfileLookup(Codename) : null;
+
         var romProfiles = await _engine.Profiles.LoadRomProfilesAsync(Codename);
         RomProfile = romProfiles.FirstOrDefault();
+        _romProfileLoadIssue = RomProfile is null ? BuildRomProfileLoadIssueText(resolvedProfilesDirectory) : null;
 
         OnPropertyChanged(nameof(DeviceProfile));
         OnPropertyChanged(nameof(RomProfile));
         OnPropertyChanged(nameof(RomProfileSummary));
         OnPropertyChanged(nameof(RomVerificationStatusText));
         OnPropertyChanged(nameof(RomRequiresInitialInstallPackage));
+        OnPropertyChanged(nameof(DeviceCompatibilityMessage));
 
         _devicePollTimer.Start();
         await RefreshDeviceAsync();
     }
 
+    private static string ResolveProfilesDirectory(string appBaseDirectory, string fallbackProfilesDirectory)
+    {
+        string[] appDirCandidates =
+        [
+            appBaseDirectory,
+            Environment.ProcessPath is { } processPath ? Path.GetDirectoryName(processPath) ?? appBaseDirectory : appBaseDirectory,
+            Directory.GetCurrentDirectory(),
+        ];
+
+        var found = AppRelativeDirectoryResolver.FindFirstContaining(
+            appDirCandidates.Select(dir => Path.Combine(dir, "profiles")),
+            $"{Codename}.device.json");
+
+        return found ?? fallbackProfilesDirectory;
+    }
+
+    private string BuildRomProfileLoadIssueText(string profilesDirectory)
+    {
+        var expected = $"{Codename}.<rom-name>.rom.json";
+        return _deviceProfileDiagnostics is { } d
+            ? $"No ROM profile found for '{Codename}' (expected a file named like '{expected}'). {d.ToDisplayText()}"
+            : $"No file matching '{expected}' was found in {profilesDirectory}.";
+    }
+
     public DeviceProfile? DeviceProfile { get; private set; }
     public RomProfile? RomProfile { get; private set; }
+    private ProfileLookupDiagnostics? _deviceProfileDiagnostics;
+    private string? _romProfileLoadIssue;
 
     public string RomProfileSummary => RomProfile is null
-        ? "No ROM profile loaded."
+        ? _romProfileLoadIssue ?? "No ROM profile loaded."
         : $"{RomProfile.RomName} — targets {RomProfile.TargetCodename}, firmware Android {RomProfile.RequiredFirmwareAndroidVersion ?? "unspecified"}.";
 
     public string RomVerificationStatusText => RomProfile is null
@@ -128,7 +166,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public bool IsDeviceSupported => DeviceProfile is not null && new DeviceCompatibilityChecker().Check(Device, DeviceProfile).IsSupported;
 
     public string DeviceCompatibilityMessage => DeviceProfile is null
-        ? "Device profile not loaded."
+        ? _deviceProfileDiagnostics?.ToDisplayText() ?? "Device profile not loaded."
         : new DeviceCompatibilityChecker().Check(Device, DeviceProfile).Reason;
 
     public bool IsDeviceConnected => Device.ConnectionMode != ConnectionMode.Disconnected;
@@ -145,12 +183,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public string DeviceBootloaderDisplay => Device.BootloaderLockState.ToString();
 
+    // Never collapse to a bare "Not rooted": KernelSU grants root per calling identity, so
+    // Aetherix/adb lacking a grant is a distinct, expected state from the device having no
+    // root solution at all -- each RootSolutionType gets its own honest label instead.
     public string DeviceRootDisplay => Device.RootSolution switch
     {
-        RootSolutionType.KernelSU => $"KernelSU — {Device.RootSolutionDetail}",
+        RootSolutionType.KernelSU => $"KernelSU (active) — {Device.RootSolutionDetail}",
+        RootSolutionType.KernelSuDetectedNotGranted => $"KernelSU running, not granted to Aetherix — {Device.RootSolutionDetail}",
+        RootSolutionType.KernelSuManagerInstalledOnly => $"KernelSU Manager installed, kernel integration unconfirmed — {Device.RootSolutionDetail}",
         RootSolutionType.Magisk => $"Magisk detected (unsupported) — {Device.RootSolutionDetail}",
         RootSolutionType.OtherOrUnknown => $"Unknown root — {Device.RootSolutionDetail}",
-        _ => "Not rooted",
+        RootSolutionType.Inconclusive => $"Root status inconclusive — {Device.RootSolutionDetail}",
+        RootSolutionType.None => Device.RootSolutionDetail ?? "No root solution detected",
+        _ => Device.RootSolutionDetail ?? "Unknown",
     };
 
     public string DeviceStorageDisplay => Device.AvailableStorageBytes is { } bytes
@@ -186,6 +231,46 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     }
 
     public ICommand RefreshDeviceCommand { get; }
+
+    // ----- Authoritative Fastboot bootloader verification -----
+    // This is a real, user-visible device action (two reboots), so it is only ever
+    // triggered by this explicit, user-initiated command -- never from the polling timer.
+
+    private string _bootloaderVerificationStatus = "Not yet verified via fastboot. ADB-reported bootloader state above is a best-effort inference and can be wrong.";
+    public string BootloaderVerificationStatus
+    {
+        get => _bootloaderVerificationStatus;
+        private set => SetProperty(ref _bootloaderVerificationStatus, value);
+    }
+
+    public ICommand VerifyBootloaderCommand { get; }
+
+    private bool CanVerifyBootloader() => !IsBusy && _engine is not null && Device.ConnectionMode == ConnectionMode.Adb && Device.Serial is not null;
+
+    private async Task VerifyBootloaderAsync()
+    {
+        if (_engine is null || Device.Serial is null) return;
+
+        IsBusy = true;
+        BootloaderVerificationStatus = "Rebooting to bootloader for an authoritative fastboot check (the device will reboot twice: to bootloader, then back to system)…";
+        try
+        {
+            var result = await _engine.DeviceDetection.VerifyBootloaderViaFastbootAsync(Device.Serial, TimeSpan.FromSeconds(30));
+            BootloaderVerificationStatus = result.Succeeded
+                ? $"Fastboot-verified: {result.LockState} (unlocked={result.RawUnlockedVar ?? "n/a"}, securestate={result.RawSecureStateVar ?? "n/a"})."
+                : $"Fastboot verification failed: {result.ErrorMessage}";
+        }
+        catch (Exception ex)
+        {
+            BootloaderVerificationStatus = $"Fastboot verification failed: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+
+        await RefreshDeviceAsync();
+    }
 
     // ----- ROM selection -----
 

@@ -454,10 +454,12 @@ public sealed class InstallStateMachine
         var serial = RequireSerial(context);
         context.PostInstallRoot = await _rootDetector.DetectAsync(serial, ct);
 
-        context.Logger.Log(
-            context.PostInstallRoot.Solution == RootSolutionType.KernelSU ? LogLevel.Info : LogLevel.Warning,
-            "VerifyKernelSuRoot",
-            $"{context.PostInstallRoot.Solution}: {context.PostInstallRoot.Detail}");
+        // KernelSuDetectedNotGranted means KernelSU IS confirmed running on the device --
+        // Aetherix/adb simply has no grant yet, which is routine, not a warning-worthy outcome.
+        var level = context.PostInstallRoot.Solution is RootSolutionType.KernelSU or RootSolutionType.KernelSuDetectedNotGranted
+            ? LogLevel.Info
+            : LogLevel.Warning;
+        context.Logger.Log(level, "VerifyKernelSuRoot", $"{context.PostInstallRoot.Solution}: {context.PostInstallRoot.Detail}");
 
         return StepResult.Continue(context.CurrentState, context.PostInstallRoot.Detail ?? context.PostInstallRoot.Solution.ToString());
     }
@@ -465,13 +467,23 @@ public sealed class InstallStateMachine
     private Task<StepResult> RunCompleteAsync(InstallContext context)
     {
         var romOk = context.Mode == InstallMode.DryRun || context.PostInstallBuildFingerprint is not null;
-        var rootOk = context.PostInstallRoot?.Solution == RootSolutionType.KernelSU;
+
+        // Each state gets its own honest summary -- collapsing anything but a fully-granted
+        // KernelSU session into "NOT ESTABLISHED" would misreport a device where KernelSU is
+        // genuinely running but Aetherix itself just hasn't been granted access yet.
+        var rootSummary = context.PostInstallRoot?.Solution switch
+        {
+            RootSolutionType.KernelSU => $"ACTIVE (verified) — {context.PostInstallRoot?.Detail}",
+            RootSolutionType.KernelSuDetectedNotGranted => $"RUNNING ON DEVICE, NOT YET GRANTED TO AETHERIX — {context.PostInstallRoot?.Detail}",
+            RootSolutionType.KernelSuManagerInstalledOnly => $"MANAGER INSTALLED, KERNEL INTEGRATION UNCONFIRMED — {context.PostInstallRoot?.Detail}",
+            RootSolutionType.Inconclusive => $"COULD NOT BE VERIFIED — {context.PostInstallRoot?.Detail}",
+            null => "not checked",
+            _ => $"NOT ESTABLISHED — {context.PostInstallRoot?.Detail}",
+        };
 
         var summary = context.Mode == InstallMode.DryRun
             ? "[DRY RUN] Plan walked to completion with no destructive commands executed. Review the log above for anything that would have blocked a real run."
-            : $"ROM install: {(romOk ? "SUCCESS" : "UNKNOWN")}. " +
-              $"KernelSU root: {(rootOk ? "ACTIVE (verified)" : "NOT ESTABLISHED")}" +
-              (rootOk ? "." : $" — {context.PostInstallRoot?.Detail ?? "see VerifyKernelSuRoot log entry for why."}");
+            : $"ROM install: {(romOk ? "SUCCESS" : "UNKNOWN")}. KernelSU root: {rootSummary}";
 
         context.Logger.Log(LogLevel.Info, "Complete", summary);
         return Task.FromResult(StepResult.Finished(context.CurrentState, summary));

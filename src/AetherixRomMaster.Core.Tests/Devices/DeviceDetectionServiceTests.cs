@@ -89,4 +89,169 @@ public class DeviceDetectionServiceTests
         Assert.Equal(ConnectionMode.Disconnected, device.ConnectionMode);
         Assert.Null(device.Codename);
     }
+
+    private static FakeProcessRunner BuildRunnerWithBootloaderProps(string bootloaderPropLines)
+    {
+        return new FakeProcessRunner
+        {
+            Handler = (_, args) =>
+            {
+                var joined = string.Join(" ", args);
+                if (joined.StartsWith("devices"))
+                    return Ok("List of devices attached\nSERIAL123\tdevice\n");
+                if (joined.Contains("shell getprop") && !joined.Contains("getprop ro"))
+                    return Ok(
+                        "[ro.product.manufacturer]: [motorola]\n" +
+                        "[ro.product.model]: [moto g64 5g]\n" +
+                        "[ro.product.device]: [cancunf]\n" +
+                        "[ro.build.version.release]: [15]\n" +
+                        "[ro.build.fingerprint]: [motorola/cancunf/cancunf:15/T3SL33.1-99/1:user/release-keys]\n" +
+                        bootloaderPropLines);
+                return Ok("");
+            },
+        };
+    }
+
+    [Fact]
+    public async Task DetectAsync_ReportsUnlocked_WhenVerifiedBootStateGreenButVbmetaDeviceStateUnlocked()
+    {
+        // Regression test for a real false positive reported on cancunf hardware: a
+        // genuinely OEM-unlocked device was reported as Locked purely because
+        // ro.boot.verifiedbootstate=green (current-boot AVB signature state) was being
+        // trusted as "bootloader locked". It must now lose to the authoritative
+        // ro.boot.vbmeta.device_state property.
+        var runner = BuildRunnerWithBootloaderProps(
+            "[ro.boot.verifiedbootstate]: [green]\n" +
+            "[ro.boot.vbmeta.device_state]: [unlocked]\n");
+        var adb = new AdbClient(runner, "adb");
+        var fastboot = new FastbootClient(runner, "fastboot");
+        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
+
+        var device = await service.DetectAsync();
+
+        Assert.Equal(BootloaderLockState.Unlocked, device.BootloaderLockState);
+    }
+
+    [Fact]
+    public async Task DetectAsync_ReportsLocked_WhenMotorolaFlashLockedPropertyIsOne()
+    {
+        var runner = BuildRunnerWithBootloaderProps("[ro.boot.flash.locked]: [1]\n");
+        var adb = new AdbClient(runner, "adb");
+        var fastboot = new FastbootClient(runner, "fastboot");
+        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
+
+        var device = await service.DetectAsync();
+
+        Assert.Equal(BootloaderLockState.Locked, device.BootloaderLockState);
+    }
+
+    [Fact]
+    public async Task DetectAsync_ReportsUnlocked_WhenOnlyVerifiedBootStateOrangeIsPresent()
+    {
+        var runner = BuildRunnerWithBootloaderProps("[ro.boot.verifiedbootstate]: [orange]\n");
+        var adb = new AdbClient(runner, "adb");
+        var fastboot = new FastbootClient(runner, "fastboot");
+        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
+
+        var device = await service.DetectAsync();
+
+        Assert.Equal(BootloaderLockState.Unlocked, device.BootloaderLockState);
+    }
+
+    [Fact]
+    public async Task DetectAsync_ReportsUnknown_WhenVerifiedBootStateGreenIsTheOnlySignal()
+    {
+        // "green" alone, with none of the more authoritative properties present, must
+        // resolve to Unknown -- never guessed as Locked. This is the crux of the fix: the
+        // old code treated bare "green" as proof of Locked.
+        var runner = BuildRunnerWithBootloaderProps("[ro.boot.verifiedbootstate]: [green]\n");
+        var adb = new AdbClient(runner, "adb");
+        var fastboot = new FastbootClient(runner, "fastboot");
+        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
+
+        var device = await service.DetectAsync();
+
+        Assert.Equal(BootloaderLockState.Unknown, device.BootloaderLockState);
+    }
+
+    [Fact]
+    public async Task DetectAsync_ReportsUnknown_WhenNoBootloaderSignalIsPresentAtAll()
+    {
+        var runner = BuildRunnerWithBootloaderProps("");
+        var adb = new AdbClient(runner, "adb");
+        var fastboot = new FastbootClient(runner, "fastboot");
+        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
+
+        var device = await service.DetectAsync();
+
+        Assert.Equal(BootloaderLockState.Unknown, device.BootloaderLockState);
+    }
+
+    [Fact]
+    public async Task VerifyBootloaderViaFastbootAsync_ReturnsAuthoritativeUnlockedState_WhenDeviceReachesFastboot()
+    {
+        var runner = new FakeProcessRunner
+        {
+            Handler = (path, args) =>
+            {
+                var joined = string.Join(" ", args);
+                if (path.Contains("adb") && joined.Contains("reboot bootloader")) return Ok("");
+                if (path.Contains("fastboot") && args is ["devices"]) return Ok("SERIAL123\tfastboot\n");
+                if (path.Contains("fastboot") && joined.Contains("getvar all"))
+                    return new ProcessResult { ExitCode = 0, StandardOutput = "", StandardError = "unlocked: yes\nsecurestate: flashing_unlocked\nfinished. total time: 0.001s\n" };
+                if (path.Contains("fastboot") && joined.Contains("reboot")) return Ok("");
+                return Ok("");
+            },
+        };
+        var adb = new AdbClient(runner, "adb");
+        var fastboot = new FastbootClient(runner, "fastboot");
+        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
+
+        var result = await service.VerifyBootloaderViaFastbootAsync("SERIAL123", TimeSpan.FromSeconds(5));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(BootloaderLockState.Unlocked, result.LockState);
+        Assert.Equal("yes", result.RawUnlockedVar);
+    }
+
+    [Fact]
+    public async Task VerifyBootloaderViaFastbootAsync_FailsWithExplanation_WhenDeviceNeverReachesFastboot()
+    {
+        var runner = new FakeProcessRunner
+        {
+            Handler = (path, args) =>
+            {
+                var joined = string.Join(" ", args);
+                if (path.Contains("adb") && joined.Contains("reboot bootloader")) return Ok("");
+                if (path.Contains("fastboot") && args is ["devices"]) return Ok(""); // never appears
+                return Ok("");
+            },
+        };
+        var adb = new AdbClient(runner, "adb");
+        var fastboot = new FastbootClient(runner, "fastboot");
+        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
+
+        var result = await service.VerifyBootloaderViaFastbootAsync("SERIAL123", TimeSpan.FromMilliseconds(50));
+
+        Assert.False(result.Succeeded);
+        Assert.Null(result.LockState);
+        Assert.NotNull(result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task VerifyBootloaderViaFastbootAsync_FailsWithExplanation_WhenAdbRebootCommandItselfFails()
+    {
+        var runner = new FakeProcessRunner
+        {
+            Handler = (_, _) => new ProcessResult { ExitCode = 1, StandardOutput = "", StandardError = "device offline" },
+        };
+        var adb = new AdbClient(runner, "adb");
+        var fastboot = new FastbootClient(runner, "fastboot");
+        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
+
+        var result = await service.VerifyBootloaderViaFastbootAsync("SERIAL123", TimeSpan.FromMilliseconds(50));
+
+        Assert.False(result.Succeeded);
+        Assert.NotNull(result.ErrorMessage);
+    }
 }

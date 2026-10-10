@@ -45,7 +45,7 @@
 
                 <Border Grid.Column="2" CornerRadius="999" Padding="12,5" VerticalAlignment="Center"
                         Background="{Binding IsDeviceSupported, Converter={StaticResource BoolToStatusBrush}}">
-                    <TextBlock Text="{Binding DeviceCompatibilityMessage}" Foreground="White" FontSize="11" FontWeight="SemiBold" MaxWidth="320" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding DeviceCompatibilityMessage}" Foreground="White" FontSize="11" FontWeight="SemiBold" MaxWidth="420" TextWrapping="Wrap"/>
                 </Border>
             </Grid>
         </Border>
@@ -116,6 +116,18 @@
                                     <TextBlock Text="{Binding DeviceBatteryDisplay}" Style="{StaticResource BodyText}"/>
                                 </StackPanel>
                             </UniformGrid>
+
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Content="Verify Bootloader via Fastboot" Style="{StaticResource SecondaryButton}"
+                                        Command="{Binding VerifyBootloaderCommand}" Padding="12,5"/>
+                                <TextBlock Grid.Column="2" Text="{Binding BootloaderVerificationStatus}" Style="{StaticResource CaptionText}"
+                                           VerticalAlignment="Center" TextWrapping="Wrap"/>
+                            </Grid>
 
                             <TextBlock Text="BUILD FINGERPRINT" Style="{StaticResource CaptionText}" Margin="0,4,0,0"/>
                             <TextBlock Text="{Binding DeviceFingerprintDisplay}" Style="{StaticResource CaptionText}" FontFamily="Consolas" TextWrapping="Wrap"/>

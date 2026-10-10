@@ -13,6 +13,8 @@ public sealed class ProfileRepository
 
     private readonly string _profilesDirectory;
 
+    public string ProfilesDirectory => _profilesDirectory;
+
     public ProfileRepository(string profilesDirectory)
     {
         _profilesDirectory = profilesDirectory;
@@ -25,6 +27,32 @@ public sealed class ProfileRepository
 
         await using var stream = File.OpenRead(path);
         return await JsonSerializer.DeserializeAsync<DeviceProfile>(stream, JsonOptions, ct);
+    }
+
+    /// <summary>Explains exactly why LoadDeviceProfileAsync(codename) returned null (or
+    /// would), for display to the user instead of a bare "not loaded" message.</summary>
+    public ProfileLookupDiagnostics DescribeDeviceProfileLookup(string codename)
+    {
+        var path = Path.Combine(_profilesDirectory, $"{codename}.device.json");
+        var directoryExists = Directory.Exists(_profilesDirectory);
+        IReadOnlyList<string> filesFound = [];
+        if (directoryExists)
+        {
+            try
+            {
+                filesFound = Directory.EnumerateFiles(_profilesDirectory)
+                    .Select(Path.GetFileName)
+                    .Where(n => n is not null)
+                    .Select(n => n!)
+                    .ToList();
+            }
+            catch
+            {
+                // Directory exists but isn't enumerable (permissions, etc.) -- report what we know.
+            }
+        }
+
+        return new ProfileLookupDiagnostics(_profilesDirectory, path, directoryExists, File.Exists(path), filesFound);
     }
 
     public async Task<IReadOnlyList<RomProfile>> LoadRomProfilesAsync(string codename, CancellationToken ct = default)
