@@ -128,6 +128,29 @@
                                 <TextBlock Grid.Column="2" Text="{Binding BootloaderVerificationStatus}" Style="{StaticResource CaptionText}"
                                            VerticalAlignment="Center" TextWrapping="Wrap"/>
                             </Grid>
+                            <TextBlock Text="Optional -- some devices lose their USB connection to the PC on entering fastboot, in which case this will time out. Use &quot;Confirm Unlocked Manually&quot; below instead." Style="{StaticResource CaptionText}" FontStyle="Italic" TextWrapping="Wrap" Margin="0,2,0,10"/>
+
+                            <Grid Margin="0,0,0,4" Visibility="{Binding CanConfirmBootloaderManually, Converter={StaticResource BoolToVis}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Content="Confirm Unlocked Manually" Style="{StaticResource SecondaryButton}"
+                                        Command="{Binding ConfirmBootloaderUnlockedManuallyCommand}" Padding="12,5"/>
+                            </Grid>
+                            <StackPanel Visibility="{Binding IsBootloaderManuallyConfirmedUnlocked, Converter={StaticResource BoolToVis}}" Margin="0,0,0,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding BootloaderManualConfirmationWarning}" Style="{StaticResource CaptionText}"
+                                               Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="Undo" Style="{StaticResource SecondaryButton}" Padding="10,4" Margin="8,0,0,0"
+                                            Command="{Binding RevokeBootloaderManualConfirmationCommand}"/>
+                                </Grid>
+                            </StackPanel>
 
                             <TextBlock Text="BUILD FINGERPRINT" Style="{StaticResource CaptionText}" Margin="0,4,0,0"/>
                             <TextBlock Text="{Binding DeviceFingerprintDisplay}" Style="{StaticResource CaptionText}" FontFamily="Consolas" TextWrapping="Wrap"/>

@@ -138,16 +138,40 @@ public sealed class InstallStateMachine
 
         if (device.BootloaderLockState != BootloaderLockState.Unlocked)
         {
-            var message = device.BootloaderLockState == BootloaderLockState.Locked
-                ? "Bootloader lock state reports Locked. AETHERIX ROM MASTER never unlocks a bootloader itself and will not " +
-                  "proceed: unlocking it (OEM unlocking + 'fastboot flashing unlock', done by you, on the device, outside this " +
-                  "app) is an irreversible, user-initiated action that WIPES ALL DATA on the device as a side effect of the " +
-                  "unlock itself, before any ROM is even flashed. Back up anything you need first if you choose to unlock."
-                : "Bootloader lock state could not be confirmed as Unlocked (reports 'Unknown'). AETHERIX ROM MASTER will not " +
-                  "proceed on an unconfirmed state — use \"Verify Bootloader via Fastboot\" for an authoritative check (reboots " +
-                  "the device into fastboot and reads its lock state directly) rather than assuming either way.";
-            if (IsReal(context)) return StepResult.Failed(context.CurrentState, message);
-            context.Logger.Log(LogLevel.Warning, "VerifyBootloader", "[DRY RUN] " + message);
+            if (device.BootloaderLockState == BootloaderLockState.Locked)
+            {
+                // A user attestation never overrides a positively-detected Locked state --
+                // it only stands in for a check that couldn't complete, never for one that
+                // actively found the opposite of what's being claimed.
+                var lockedMessage =
+                    "Bootloader lock state reports Locked. AETHERIX ROM MASTER never unlocks a bootloader itself and will not " +
+                    "proceed: unlocking it (OEM unlocking + 'fastboot flashing unlock', done by you, on the device, outside this " +
+                    "app) is an irreversible, user-initiated action that WIPES ALL DATA on the device as a side effect of the " +
+                    "unlock itself, before any ROM is even flashed. Back up anything you need first if you choose to unlock.";
+                if (IsReal(context)) return StepResult.Failed(context.CurrentState, lockedMessage);
+                context.Logger.Log(LogLevel.Warning, "VerifyBootloader", "[DRY RUN] " + lockedMessage);
+            }
+            else if (context.BootloaderUserConfirmedUnlocked)
+            {
+                // Detection reports Unknown (ADB props unreadable and/or the Fastboot
+                // round-trip itself unreachable -- e.g. the device's fastboot USB interface
+                // doesn't enumerate reliably on this PC) but the user has explicitly
+                // attested it's unlocked. Proceeding, but this is never presented as
+                // something the app itself verified -- only that the user did.
+                context.Logger.Log(
+                    LogLevel.Warning, "VerifyBootloader",
+                    "Proceeding on a USER-CONFIRMED bootloader-unlocked attestation -- AETHERIX ROM MASTER could not verify " +
+                    "this itself (detected state: Unknown). This is not an app-verified fact.");
+            }
+            else
+            {
+                var unknownMessage =
+                    "Bootloader lock state could not be confirmed as Unlocked (reports 'Unknown'). AETHERIX ROM MASTER will not " +
+                    "proceed on an unconfirmed state — use \"Verify Bootloader via Fastboot\" for an authoritative check, or " +
+                    "confirm manually if Fastboot verification isn't reachable on this PC, rather than assuming either way.";
+                if (IsReal(context)) return StepResult.Failed(context.CurrentState, unknownMessage);
+                context.Logger.Log(LogLevel.Warning, "VerifyBootloader", "[DRY RUN] " + unknownMessage);
+            }
         }
 
         context.PreInstallBuildFingerprint = device.BuildFingerprint;

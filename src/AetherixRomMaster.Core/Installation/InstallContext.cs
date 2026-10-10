@@ -38,6 +38,13 @@ public sealed class InstallContext
     public bool BackupAcknowledged { get; set; }
     public bool DataWipeConfirmed { get; set; }
 
+    /// <summary>Set only by an explicit user action when this app's own detection (ADB
+    /// props and/or the Fastboot round-trip) could not confirm Unlocked -- e.g. a device
+    /// whose fastboot USB interface doesn't enumerate reliably on the user's PC. This is
+    /// never set automatically, and VerifyBootloader always logs plainly when it is the
+    /// reason a run proceeded, instead of presenting it as something the app verified.</summary>
+    public bool BootloaderUserConfirmedUnlocked { get; set; }
+
     /// <summary>Set once InstallRom has actually issued "reboot to recovery" for this
     /// attempt. When InstallRom is re-entered after a manual-recovery-navigation
     /// confirmation, this prevents re-issuing the reboot command to a device that has

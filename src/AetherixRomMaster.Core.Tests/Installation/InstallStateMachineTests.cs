@@ -1,3 +1,4 @@
+using AetherixRomMaster.Core.Devices;
 using AetherixRomMaster.Core.Installation;
 using AetherixRomMaster.Core.Tests.TestDoubles;
 using Xunit;
@@ -55,6 +56,88 @@ public class InstallStateMachineTests : IDisposable
         var last = results[^1];
         Assert.Equal(InstallState.VerifyRom, last.State);
         Assert.Equal(StepOutcome.Failed, last.Outcome);
+    }
+
+    [Fact]
+    public async Task VerifyBootloader_Fails_WhenDetectedUnknown_AndNotUserConfirmed()
+    {
+        var harness = new InstallHarness();
+        harness.Detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Unknown };
+        var (romZip, initialZip) = CreateValidPackages();
+        var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
+
+        var results = await DrainAsync(harness.StateMachine.RunAsync(context));
+
+        var last = results[^1];
+        Assert.Equal(InstallState.VerifyBootloader, last.State);
+        Assert.Equal(StepOutcome.Failed, last.Outcome);
+    }
+
+    [Fact]
+    public async Task VerifyBootloader_Proceeds_WhenUserConfirmedUnlocked_DespiteUnknownDetectedState()
+    {
+        var harness = new InstallHarness();
+        harness.Detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Unknown };
+        var (romZip, initialZip) = CreateValidPackages();
+        var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
+        context.BootloaderUserConfirmedUnlocked = true;
+        context.BackupAcknowledged = true;
+        context.DataWipeConfirmed = true;
+
+        // Only VerifyBootloader's own outcome is under test -- draining further would run
+        // into EnterRequiredInstallationMode's real "wait for fastbootd" timeout, since this
+        // test isn't modeling a reboot into fastbootd.
+        StepResult? verifyBootloaderResult = null;
+        await foreach (var step in harness.StateMachine.RunAsync(context))
+        {
+            if (step.State == InstallState.VerifyBootloader)
+            {
+                verifyBootloaderResult = step;
+                break;
+            }
+        }
+
+        Assert.NotNull(verifyBootloaderResult);
+        Assert.Equal(StepOutcome.Continue, verifyBootloaderResult!.Outcome);
+    }
+
+    [Fact]
+    public async Task VerifyBootloader_StillFails_WhenDetectedLocked_EvenIfUserConfirmedUnlocked()
+    {
+        // A user attestation must never override a POSITIVELY detected Locked state --
+        // it only stands in for a check that couldn't complete, never for one that
+        // actively found the opposite of what's being claimed.
+        var harness = new InstallHarness();
+        harness.Detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Locked };
+        var (romZip, initialZip) = CreateValidPackages();
+        var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
+        context.BootloaderUserConfirmedUnlocked = true;
+
+        var results = await DrainAsync(harness.StateMachine.RunAsync(context));
+
+        var last = results[^1];
+        Assert.Equal(InstallState.VerifyBootloader, last.State);
+        Assert.Equal(StepOutcome.Failed, last.Outcome);
+        Assert.Contains("Locked", last.Message);
+    }
+
+    [Fact]
+    public async Task VerifyBootloader_LogsExplicitWarning_WhenProceedingOnUserConfirmationAlone()
+    {
+        var harness = new InstallHarness();
+        harness.Detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Unknown };
+        var (romZip, initialZip) = CreateValidPackages();
+        var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
+        context.BootloaderUserConfirmedUnlocked = true;
+        context.BackupAcknowledged = true;
+        context.DataWipeConfirmed = true;
+
+        await foreach (var step in harness.StateMachine.RunAsync(context))
+        {
+            if (step.State == InstallState.VerifyBootloader) break;
+        }
+
+        Assert.Contains(harness.Logger.Entries, e => e.Message.Contains("USER-CONFIRMED") && e.Message.Contains("not an app-verified fact"));
     }
 
     [Fact]

@@ -44,6 +44,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         DryRunCommand = new AsyncRelayCommand(() => RunAsync(InstallMode.DryRun), CanStartRun);
         InstallCommand = new AsyncRelayCommand(() => RunAsync(InstallMode.Real), () => CanStartRun() && (PreFlightReport?.CanProceed ?? false));
         VerifyBootloaderCommand = new AsyncRelayCommand(VerifyBootloaderAsync, CanVerifyBootloader);
+        ConfirmBootloaderUnlockedManuallyCommand = new RelayCommand(_ => ConfirmBootloaderUnlockedManually(), _ => CanConfirmBootloaderManually);
+        RevokeBootloaderManualConfirmationCommand = new RelayCommand(_ => RevokeBootloaderManualConfirmation(), _ => IsBootloaderManuallyConfirmedUnlocked);
         CancelCommand = new RelayCommand(_ => _runCts?.Cancel(), _ => IsBusy);
         RestoreKernelSuRootCommand = new AsyncRelayCommand(() => StartKernelSuRestorationAsync(isDryRun: false), CanStartKernelSuRestoration);
         DryRunKernelSuRestorationCommand = new AsyncRelayCommand(() => StartKernelSuRestorationAsync(isDryRun: true), CanStartKernelSuRestoration);
@@ -162,6 +164,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         nameof(IsDeviceSupported), nameof(DeviceCompatibilityMessage), nameof(IsDeviceConnected),
         nameof(DeviceManufacturerModel), nameof(DeviceSummaryLine), nameof(DeviceFingerprintDisplay),
         nameof(DeviceBootloaderDisplay), nameof(DeviceRootDisplay), nameof(DeviceStorageDisplay),
+        nameof(IsBootloaderManuallyConfirmedUnlocked), nameof(CanConfirmBootloaderManually),
         nameof(DeviceBatteryDisplay), nameof(DeviceConnectivityDisplay), nameof(DeviceAdbConnected),
         nameof(DeviceFastbootConnected), nameof(DeviceFastbootdConnected), nameof(AutomationCapabilityReport),
     ];
@@ -197,7 +200,51 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public string DeviceFingerprintDisplay => Device.BuildFingerprint ?? "—";
 
-    public string DeviceBootloaderDisplay => Device.BootloaderLockState.ToString();
+    // Never collapse these: "Unlocked" means the app itself confirmed it (ADB props or the
+    // Fastboot round-trip); "Unlocked — User confirmed" means the app could NOT verify it
+    // and a human attested to it instead. The two must never look the same in the UI.
+    public string DeviceBootloaderDisplay => Device.BootloaderLockState == BootloaderLockState.Unlocked
+        ? "Unlocked"
+        : IsBootloaderManuallyConfirmedUnlocked
+            ? "Unlocked — User confirmed"
+            : Device.BootloaderLockState.ToString();
+
+    private string? _bootloaderManualConfirmationSerial;
+
+    /// <summary>True only while the currently connected device's serial matches the one
+    /// the user attested for -- reconnecting a different device (or no device) never
+    /// carries a stale attestation forward.</summary>
+    public bool IsBootloaderManuallyConfirmedUnlocked =>
+        Device.Serial is not null && Device.Serial == _bootloaderManualConfirmationSerial;
+
+    public bool CanConfirmBootloaderManually =>
+        IsDeviceConnected && Device.Serial is not null && Device.BootloaderLockState != BootloaderLockState.Unlocked && !IsBootloaderManuallyConfirmedUnlocked;
+
+    public string BootloaderManualConfirmationWarning =>
+        "Bootloader state was manually confirmed by the user. Fastboot verification is unavailable because Windows loses " +
+        "the USB connection when entering Fastboot mode.";
+
+    public ICommand ConfirmBootloaderUnlockedManuallyCommand { get; }
+    public ICommand RevokeBootloaderManualConfirmationCommand { get; }
+
+    private void ConfirmBootloaderUnlockedManually()
+    {
+        if (Device.Serial is null) return;
+        _bootloaderManualConfirmationSerial = Device.Serial;
+        OnPropertyChanged(nameof(IsBootloaderManuallyConfirmedUnlocked));
+        OnPropertyChanged(nameof(CanConfirmBootloaderManually));
+        OnPropertyChanged(nameof(DeviceBootloaderDisplay));
+        RaiseAllCanExecuteChanged();
+    }
+
+    private void RevokeBootloaderManualConfirmation()
+    {
+        _bootloaderManualConfirmationSerial = null;
+        OnPropertyChanged(nameof(IsBootloaderManuallyConfirmedUnlocked));
+        OnPropertyChanged(nameof(CanConfirmBootloaderManually));
+        OnPropertyChanged(nameof(DeviceBootloaderDisplay));
+        RaiseAllCanExecuteChanged();
+    }
 
     // Never collapse to a bare "Not rooted": KernelSU grants root per calling identity, so
     // Aetherix/adb lacking a grant is a distinct, expected state from the device having no
@@ -471,7 +518,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _activeLogger = new InstallLogger(logDir);
         _activeLogger.EntryLogged += OnLogEntry;
 
-        var context = _engine.CreateContext(mode, DeviceProfile, RomProfile, RomZipPath, _activeLogger, InitialInstallZipPath);
+        var context = _engine.CreateContext(
+            mode, DeviceProfile, RomProfile, RomZipPath, _activeLogger, InitialInstallZipPath,
+            bootloaderUserConfirmedUnlocked: IsBootloaderManuallyConfirmedUnlocked);
         if (mode == InstallMode.DryRun)
         {
             // A dry run previews the whole plan unattended -- it can never act destructively

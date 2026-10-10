@@ -64,7 +64,8 @@ public sealed class InstallEngine
         string? initialInstallZipPath = null,
         bool filesAlreadyLocal = true,
         string? explicitRomChecksum = null,
-        string? explicitInitialInstallChecksum = null)
+        string? explicitInitialInstallChecksum = null,
+        bool bootloaderUserConfirmedUnlocked = false)
     {
         var plan = new InstallPlanBuilder().Build(romProfile, filesAlreadyLocal);
         return new InstallContext
@@ -76,6 +77,7 @@ public sealed class InstallEngine
             Logger = logger,
             RomZipPath = romZipPath,
             InitialInstallZipPath = initialInstallZipPath,
+            BootloaderUserConfirmedUnlocked = bootloaderUserConfirmedUnlocked,
             ExplicitRomChecksum = explicitRomChecksum,
             ExplicitInitialInstallChecksum = explicitInitialInstallChecksum,
         };
