@@ -34,6 +34,19 @@ public sealed class InstallHarness
             FlashExecutor);
     }
 
+    /// <summary>
+    /// An idealized, everything-passes device fixture for tests that are not themselves
+    /// about bootloader verification (checksum, ROM validation, KernelSU restoration,
+    /// recovery planning, etc.) -- it is deliberately given VerifiedUnlocked so those
+    /// tests don't also have to think about the bootloader gate. Real ADB detection can
+    /// NEVER actually produce this combination (ConnectionMode.Adb + VerifiedUnlocked):
+    /// DeviceDetectionService.BuildFromAdbAsync unconditionally reports UnableToVerify
+    /// while connected over plain ADB, since no ADB property is trusted as bootloader
+    /// evidence anymore. Tests that need a realistic ADB-connected device -- or that are
+    /// specifically about the bootloader gate itself -- should override BootloaderLockState
+    /// explicitly (see the dedicated bootloader regression tests) rather than relying on
+    /// this fixture's default.
+    /// </summary>
     public static DeviceInfo AdbCancunf(string fingerprint = "motorola/cancunf/cancunf:15/T1/0001:user/release-keys", string serial = "S1") => new()
     {
         ConnectionMode = ConnectionMode.Adb,
@@ -43,7 +56,7 @@ public sealed class InstallHarness
         Codename = "cancunf",
         AndroidVersion = "15",
         BuildFingerprint = fingerprint,
-        BootloaderLockState = BootloaderLockState.Unlocked,
+        BootloaderLockState = BootloaderLockState.VerifiedUnlocked,
         KernelVersion = "5.15.104-android13-8-weighu+",
     };
 
@@ -52,7 +65,7 @@ public sealed class InstallHarness
         ConnectionMode = ConnectionMode.FastbootUserspace,
         Serial = serial,
         Codename = "cancunf",
-        BootloaderLockState = BootloaderLockState.Unlocked,
+        BootloaderLockState = BootloaderLockState.VerifiedUnlocked,
     };
 
     public static DeviceInfo AdbSideloadCancunf(string serial = "S1") => new()

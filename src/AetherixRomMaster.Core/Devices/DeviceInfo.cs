@@ -19,7 +19,7 @@ public sealed record DeviceInfo
     public string? BuildFingerprint { get; init; }
     public string? KernelVersion { get; init; }
 
-    public BootloaderLockState BootloaderLockState { get; init; } = BootloaderLockState.Unknown;
+    public BootloaderLockState BootloaderLockState { get; init; } = BootloaderLockState.UnableToVerify;
     public string? BootloaderVersion { get; init; }
     public string? AntiRollbackIndex { get; init; }
 

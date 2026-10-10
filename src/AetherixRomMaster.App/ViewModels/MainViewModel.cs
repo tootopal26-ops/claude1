@@ -208,14 +208,20 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public string DeviceFingerprintDisplay => Device.BuildFingerprint ?? "—";
 
-    // Never collapse these: "Unlocked" means the app itself confirmed it (ADB props or the
-    // Fastboot round-trip); "Unlocked — User confirmed" means the app could NOT verify it
-    // and a human attested to it instead. The two must never look the same in the UI.
-    public string DeviceBootloaderDisplay => Device.BootloaderLockState == BootloaderLockState.Unlocked
-        ? "Unlocked"
-        : IsBootloaderManuallyConfirmedUnlocked
-            ? "Unlocked — User confirmed"
-            : Device.BootloaderLockState.ToString();
+    // Never collapse these: "Unlocked" means the app itself confirmed it via an authoritative
+    // Fastboot round-trip; "Unlocked — User confirmed" means the app could NOT verify it and
+    // a human attested to it instead. The two must never look the same in the UI, and a bare
+    // UnableToVerify (no manual confirmation yet) must never render as or be confused with
+    // "Locked" -- see DeviceDetectionService.DeriveBootloaderLockStateFromFastboot's doc
+    // comment for the real false-"Locked" reports this distinction exists to prevent.
+    public string DeviceBootloaderDisplay => Device.BootloaderLockState switch
+    {
+        BootloaderLockState.VerifiedUnlocked => "Unlocked",
+        BootloaderLockState.VerifiedLocked => "Locked",
+        _ when IsBootloaderManuallyConfirmedUnlocked => "Unlocked — User confirmed",
+        _ when Device.AdbConnected => "Unable to verify bootloader — reboot to bootloader/Fastboot to verify.",
+        _ => "Unable to verify — run \"Verify Bootloader via Fastboot\" for an authoritative check.",
+    };
 
     private string? _bootloaderManualConfirmationSerial;
 
@@ -226,7 +232,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         Device.Serial is not null && Device.Serial == _bootloaderManualConfirmationSerial;
 
     public bool CanConfirmBootloaderManually =>
-        IsDeviceConnected && Device.Serial is not null && Device.BootloaderLockState != BootloaderLockState.Unlocked && !IsBootloaderManuallyConfirmedUnlocked;
+        IsDeviceConnected && Device.Serial is not null && Device.BootloaderLockState != BootloaderLockState.VerifiedUnlocked && !IsBootloaderManuallyConfirmedUnlocked;
 
     public string BootloaderManualConfirmationWarning =>
         "Bootloader state was manually confirmed by the user. Fastboot verification is unavailable because Windows loses " +
@@ -314,7 +320,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     // This is a real, user-visible device action (two reboots), so it is only ever
     // triggered by this explicit, user-initiated command -- never from the polling timer.
 
-    private string _bootloaderVerificationStatus = "Not yet verified via fastboot. ADB-reported bootloader state above is a best-effort inference and can be wrong.";
+    private string _bootloaderVerificationStatus = "Not yet verified via fastboot this session. The BOOTLOADER field above is never inferred from ADB properties -- while the device is in Android/ADB mode it honestly reports that it cannot verify, rather than guessing.";
     public string BootloaderVerificationStatus
     {
         get => _bootloaderVerificationStatus;

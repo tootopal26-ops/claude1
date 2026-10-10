@@ -57,7 +57,10 @@ public class DeviceDetectionServiceTests
         Assert.Equal("motorola", device.Manufacturer);
         Assert.Equal("cancunf", device.Codename);
         Assert.Equal("15", device.AndroidVersion);
-        Assert.Equal(BootloaderLockState.Unlocked, device.BootloaderLockState);
+        // Plain ADB/Android mode never yields a verified verdict anymore, regardless of
+        // what ro.boot.flash.locked (or any other property) says -- see the dedicated
+        // Theory below for the full regression coverage of why.
+        Assert.Equal(BootloaderLockState.UnableToVerify, device.BootloaderLockState);
         Assert.Equal(RootSolutionType.KernelSU, device.RootSolution);
         Assert.Equal("5.15.104-android13-8-weighu+", device.KernelVersion);
         Assert.Equal(87, device.BatteryPercent);
@@ -136,152 +139,42 @@ public class DeviceDetectionServiceTests
         };
     }
 
-    [Fact]
-    public async Task DetectAsync_ReportsUnlocked_WhenVerifiedBootStateGreenButVbmetaDeviceStateUnlocked()
+    // Regression coverage for THREE separate real false-"Locked" positives reported in
+    // turn on actual cancunf hardware -- ro.boot.verifiedbootstate, then
+    // ro.boot.vbmeta.device_state, then (independently) ro.boot.flash.locked -- each one
+    // trusted in turn as "the" authoritative ADB-readable bootloader signal, and each one
+    // in turn proven wrong on a genuinely OEM-unlocked device (one case externally
+    // documented: a Pixel 5 where `fastboot flashing unlock` genuinely succeeded yet
+    // ro.boot.vbmeta.device_state stayed "locked" until a separate, later step).
+    // Rather than chase a fourth "reliable" property, this app no longer trusts ANY ADB
+    // property as bootloader evidence at all: while connected over plain ADB/Android, the
+    // state is always UnableToVerify, regardless of what any property (or combination of
+    // properties, including the previously-"authoritative" flash.locked=1) says. Only a
+    // genuine Fastboot round-trip, or an explicit user attestation (Unlocked only), can
+    // ever produce a verified verdict -- see VerifyBootloaderViaFastbootAsync tests below.
+    // This is regression coverage for points C and G of the bootloader state-model fix:
+    // (C) VerificationStatus=NotAvailable must never be reported as Locked, and
+    // (G) UnableToVerify must never be collapsed into/confused with Locked.
+    [Theory]
+    [InlineData("")]
+    [InlineData("[ro.boot.flash.locked]: [0]\n")]
+    [InlineData("[ro.boot.flash.locked]: [1]\n")]
+    [InlineData("[ro.boot.vbmeta.device_state]: [unlocked]\n")]
+    [InlineData("[ro.boot.vbmeta.device_state]: [locked]\n")]
+    [InlineData("[ro.boot.verifiedbootstate]: [green]\n")]
+    [InlineData("[ro.boot.verifiedbootstate]: [orange]\n")]
+    [InlineData("[ro.boot.flash.locked]: [1]\n[ro.boot.vbmeta.device_state]: [locked]\n[ro.boot.verifiedbootstate]: [green]\n")]
+    public async Task DetectAsync_AlwaysReportsUnableToVerify_OverPlainAdb_RegardlessOfAnyAdbProperty(string bootloaderPropLines)
     {
-        // Regression test for a real false positive reported on cancunf hardware: a
-        // genuinely OEM-unlocked device was reported as Locked purely because
-        // ro.boot.verifiedbootstate=green (current-boot AVB signature state) was being
-        // trusted as "bootloader locked". It must now lose to the authoritative
-        // ro.boot.vbmeta.device_state property.
-        var runner = BuildRunnerWithBootloaderProps(
-            "[ro.boot.verifiedbootstate]: [green]\n" +
-            "[ro.boot.vbmeta.device_state]: [unlocked]\n");
+        var runner = BuildRunnerWithBootloaderProps(bootloaderPropLines);
         var adb = new AdbClient(runner, "adb");
         var fastboot = new FastbootClient(runner, "fastboot");
         var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
 
         var device = await service.DetectAsync();
 
-        Assert.Equal(BootloaderLockState.Unlocked, device.BootloaderLockState);
-    }
-
-    [Fact]
-    public async Task DetectAsync_ReportsLocked_WhenMotorolaFlashLockedPropertyIsOne()
-    {
-        var runner = BuildRunnerWithBootloaderProps("[ro.boot.flash.locked]: [1]\n");
-        var adb = new AdbClient(runner, "adb");
-        var fastboot = new FastbootClient(runner, "fastboot");
-        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
-
-        var device = await service.DetectAsync();
-
-        Assert.Equal(BootloaderLockState.Locked, device.BootloaderLockState);
-    }
-
-    // Regression tests for a second real false positive, reported directly on real
-    // cancunf hardware: ADB-connected, Fastboot/FastbootD unavailable, device genuinely
-    // OEM-unlocked (its own screen showed "Flashing_unlocked"), yet this app reported
-    // Locked. Root cause: ro.boot.vbmeta.device_state="locked" was trusted as proof of
-    // Locked, but externally-documented real-world reports (e.g. a Pixel 5 where
-    // `fastboot flashing unlock` genuinely succeeded yet this property stayed "locked"
-    // until a separate, later step) show it reflects AVB-verification-enforcement state,
-    // not the bootloader's own flash-lock state -- a device can be fully OEM-unlocked
-    // while still running untouched stock firmware, where this property legitimately
-    // still reads "locked".
-
-    [Fact]
-    public async Task DetectAsync_ReportsUnknown_WhenVbmetaDeviceStateLockedIsTheOnlySignal()
-    {
-        // This is the exact real-world scenario reported: must never be Locked purely
-        // from this one property.
-        var runner = BuildRunnerWithBootloaderProps("[ro.boot.vbmeta.device_state]: [locked]\n");
-        var adb = new AdbClient(runner, "adb");
-        var fastboot = new FastbootClient(runner, "fastboot");
-        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
-
-        var device = await service.DetectAsync();
-
-        Assert.Equal(BootloaderLockState.Unknown, device.BootloaderLockState);
-    }
-
-    [Fact]
-    public async Task DetectAsync_ReportsUnlocked_WhenVbmetaDeviceStateLocked_ButFlashLockedPropertyIsZero()
-    {
-        // The one authoritative Motorola-specific signal (flash.locked=0) must still be
-        // able to positively confirm Unlocked even while vbmeta.device_state says "locked".
-        var runner = BuildRunnerWithBootloaderProps(
-            "[ro.boot.vbmeta.device_state]: [locked]\n" +
-            "[ro.boot.flash.locked]: [0]\n");
-        var adb = new AdbClient(runner, "adb");
-        var fastboot = new FastbootClient(runner, "fastboot");
-        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
-
-        var device = await service.DetectAsync();
-
-        Assert.Equal(BootloaderLockState.Unlocked, device.BootloaderLockState);
-    }
-
-    [Fact]
-    public async Task DetectAsync_ReportsLocked_WhenFlashLockedPropertyIsOne_EvenIfVbmetaDeviceStateIsAbsent()
-    {
-        // flash.locked remains the sole authoritative ADB-readable Locked signal,
-        // unaffected by this fix.
-        var runner = BuildRunnerWithBootloaderProps("[ro.boot.flash.locked]: [1]\n");
-        var adb = new AdbClient(runner, "adb");
-        var fastboot = new FastbootClient(runner, "fastboot");
-        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
-
-        var device = await service.DetectAsync();
-
-        Assert.Equal(BootloaderLockState.Locked, device.BootloaderLockState);
-    }
-
-    [Fact]
-    public async Task DetectAsync_ReportsUnlocked_WhenVbmetaDeviceStateUnlocked_IsStillTrusted()
-    {
-        // vbmeta.device_state's "unlocked" reading is unaffected -- only its "locked"
-        // reading is no longer trusted alone.
-        var runner = BuildRunnerWithBootloaderProps("[ro.boot.vbmeta.device_state]: [unlocked]\n");
-        var adb = new AdbClient(runner, "adb");
-        var fastboot = new FastbootClient(runner, "fastboot");
-        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
-
-        var device = await service.DetectAsync();
-
-        Assert.Equal(BootloaderLockState.Unlocked, device.BootloaderLockState);
-    }
-
-    [Fact]
-    public async Task DetectAsync_ReportsUnlocked_WhenOnlyVerifiedBootStateOrangeIsPresent()
-    {
-        var runner = BuildRunnerWithBootloaderProps("[ro.boot.verifiedbootstate]: [orange]\n");
-        var adb = new AdbClient(runner, "adb");
-        var fastboot = new FastbootClient(runner, "fastboot");
-        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
-
-        var device = await service.DetectAsync();
-
-        Assert.Equal(BootloaderLockState.Unlocked, device.BootloaderLockState);
-    }
-
-    [Fact]
-    public async Task DetectAsync_ReportsUnknown_WhenVerifiedBootStateGreenIsTheOnlySignal()
-    {
-        // "green" alone, with none of the more authoritative properties present, must
-        // resolve to Unknown -- never guessed as Locked. This is the crux of the fix: the
-        // old code treated bare "green" as proof of Locked.
-        var runner = BuildRunnerWithBootloaderProps("[ro.boot.verifiedbootstate]: [green]\n");
-        var adb = new AdbClient(runner, "adb");
-        var fastboot = new FastbootClient(runner, "fastboot");
-        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
-
-        var device = await service.DetectAsync();
-
-        Assert.Equal(BootloaderLockState.Unknown, device.BootloaderLockState);
-    }
-
-    [Fact]
-    public async Task DetectAsync_ReportsUnknown_WhenNoBootloaderSignalIsPresentAtAll()
-    {
-        var runner = BuildRunnerWithBootloaderProps("");
-        var adb = new AdbClient(runner, "adb");
-        var fastboot = new FastbootClient(runner, "fastboot");
-        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
-
-        var device = await service.DetectAsync();
-
-        Assert.Equal(BootloaderLockState.Unknown, device.BootloaderLockState);
+        Assert.Equal(BootloaderLockState.UnableToVerify, device.BootloaderLockState);
+        Assert.NotEqual(BootloaderLockState.VerifiedLocked, device.BootloaderLockState);
     }
 
     [Fact]
@@ -307,7 +200,7 @@ public class DeviceDetectionServiceTests
         var result = await service.VerifyBootloaderViaFastbootAsync("SERIAL123", TimeSpan.FromSeconds(5));
 
         Assert.True(result.Succeeded);
-        Assert.Equal(BootloaderLockState.Unlocked, result.LockState);
+        Assert.Equal(BootloaderLockState.VerifiedUnlocked, result.LockState);
         Assert.Equal("yes", result.RawUnlockedVar);
     }
 
@@ -358,12 +251,12 @@ public class DeviceDetectionServiceTests
     // "yes"/"no", or a garbled/partial read) fell through to an unconditional
     // "else = Locked" instead of treating an unrecognized value as unable-to-verify.
     [Theory]
-    [InlineData("true", BootloaderLockState.Unlocked)]
-    [InlineData("false", BootloaderLockState.Locked)]
-    [InlineData("1", BootloaderLockState.Unlocked)]
-    [InlineData("0", BootloaderLockState.Locked)]
-    [InlineData("yes", BootloaderLockState.Unlocked)]
-    [InlineData("no", BootloaderLockState.Locked)]
+    [InlineData("true", BootloaderLockState.VerifiedUnlocked)]
+    [InlineData("false", BootloaderLockState.VerifiedLocked)]
+    [InlineData("1", BootloaderLockState.VerifiedUnlocked)]
+    [InlineData("0", BootloaderLockState.VerifiedLocked)]
+    [InlineData("yes", BootloaderLockState.VerifiedUnlocked)]
+    [InlineData("no", BootloaderLockState.VerifiedLocked)]
     public async Task VerifyBootloaderViaFastbootAsync_RecognizesAlternateTrueFalseSpellings_ForUnlockedGetvar(
         string rawUnlockedValue, BootloaderLockState expected)
     {
@@ -415,6 +308,6 @@ public class DeviceDetectionServiceTests
         var result = await service.VerifyBootloaderViaFastbootAsync("SERIAL123", TimeSpan.FromSeconds(5));
 
         Assert.True(result.Succeeded);
-        Assert.NotEqual(BootloaderLockState.Locked, result.LockState);
+        Assert.NotEqual(BootloaderLockState.VerifiedLocked, result.LockState);
     }
 }

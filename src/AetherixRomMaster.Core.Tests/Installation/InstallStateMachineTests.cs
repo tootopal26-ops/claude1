@@ -62,7 +62,7 @@ public class InstallStateMachineTests : IDisposable
     public async Task VerifyBootloader_Fails_WhenDetectedUnknown_AndNotUserConfirmed()
     {
         var harness = new InstallHarness();
-        harness.Detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Unknown };
+        harness.Detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.UnableToVerify };
         var (romZip, initialZip) = CreateValidPackages();
         var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
 
@@ -77,7 +77,7 @@ public class InstallStateMachineTests : IDisposable
     public async Task VerifyBootloader_Proceeds_WhenUserConfirmedUnlocked_DespiteUnknownDetectedState()
     {
         var harness = new InstallHarness();
-        harness.Detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Unknown };
+        harness.Detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.UnableToVerify };
         var (romZip, initialZip) = CreateValidPackages();
         var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
         context.BootloaderUserConfirmedUnlocked = true;
@@ -108,7 +108,7 @@ public class InstallStateMachineTests : IDisposable
         // it only stands in for a check that couldn't complete, never for one that
         // actively found the opposite of what's being claimed.
         var harness = new InstallHarness();
-        harness.Detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Locked };
+        harness.Detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.VerifiedLocked };
         var (romZip, initialZip) = CreateValidPackages();
         var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
         context.BootloaderUserConfirmedUnlocked = true;
@@ -125,7 +125,7 @@ public class InstallStateMachineTests : IDisposable
     public async Task VerifyBootloader_LogsExplicitWarning_WhenProceedingOnUserConfirmationAlone()
     {
         var harness = new InstallHarness();
-        harness.Detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Unknown };
+        harness.Detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.UnableToVerify };
         var (romZip, initialZip) = CreateValidPackages();
         var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
         context.BootloaderUserConfirmedUnlocked = true;

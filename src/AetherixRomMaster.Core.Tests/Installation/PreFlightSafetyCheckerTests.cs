@@ -108,7 +108,7 @@ public class PreFlightSafetyCheckerTests : IDisposable
     public async Task RunAsync_Blocks_WhenBootloaderIsLocked()
     {
         var context = await BuildFullyVerifiedContextAsync();
-        _detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Locked };
+        _detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.VerifiedLocked };
 
         var report = await Checker.RunAsync(context);
 
@@ -124,7 +124,7 @@ public class PreFlightSafetyCheckerTests : IDisposable
         // The actual bug this guards: detection that could not complete must never be
         // reported (or logged) as if it had positively found a locked bootloader.
         var context = await BuildFullyVerifiedContextAsync();
-        _detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Unknown };
+        _detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.UnableToVerify };
 
         var report = await Checker.RunAsync(context);
 
@@ -143,7 +143,7 @@ public class PreFlightSafetyCheckerTests : IDisposable
         // consulted it at all, so a manually-confirmed-unlocked device stayed blocked
         // here regardless of what the state machine would have allowed.
         var context = await BuildFullyVerifiedContextAsync();
-        _detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Unknown };
+        _detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.UnableToVerify };
         context.BootloaderUserConfirmedUnlocked = true;
 
         var report = await Checker.RunAsync(context);
@@ -160,7 +160,7 @@ public class PreFlightSafetyCheckerTests : IDisposable
         // it only stands in for a check that couldn't complete, never for one that
         // actively found the opposite of what's being claimed.
         var context = await BuildFullyVerifiedContextAsync();
-        _detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Locked };
+        _detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.VerifiedLocked };
         context.BootloaderUserConfirmedUnlocked = true;
 
         var report = await Checker.RunAsync(context);

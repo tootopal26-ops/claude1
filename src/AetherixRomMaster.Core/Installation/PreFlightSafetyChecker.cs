@@ -56,48 +56,65 @@ public sealed class PreFlightSafetyChecker
 
     /// <summary>
     /// Evidence-based tri-state, matching exactly what was actually observed:
-    /// - Pass: the device itself reported Unlocked (ADB properties or an authoritative
-    ///   Fastboot round-trip), OR detection was Unknown and the user explicitly attested
-    ///   Unlocked via "Confirm Unlocked Manually" (always logged as a human attestation,
-    ///   never presented as something this app verified).
-    /// - Blocked: the device positively reported Locked. A user attestation never
+    /// - Pass: the device itself reported VerifiedUnlocked (only ever from an authoritative
+    ///   Fastboot round-trip -- no ADB property is trusted as bootloader evidence anymore,
+    ///   see DeviceDetectionService.DeriveBootloaderLockStateFromFastboot), OR detection was
+    ///   UnableToVerify and the user explicitly attested Unlocked via "Confirm Unlocked
+    ///   Manually" (always logged as a human attestation, never presented as something this
+    ///   app verified).
+    /// - Blocked: the device positively reported VerifiedLocked. A user attestation never
     ///   overrides this -- it only stands in for a check that couldn't complete, never for
     ///   one that actively found the opposite of what's being claimed. Mirrors
     ///   InstallStateMachine.RunVerifyBootloaderAsync's identical rule at install time.
-    /// - UnableToVerify: neither ADB nor Fastboot could confirm either state, and no
-    ///   manual confirmation has been given yet. This still withholds Install (IsBlocking
-    ///   stays true) but must never be reported or logged as "Locked" -- that was a real
-    ///   bug this checklist previously had no way to express.
+    /// - UnableToVerify: no reliable read-only query could confirm either state (including,
+    ///   always, while the device is in plain ADB/Android mode), and no manual confirmation
+    ///   has been given yet. This still withholds Install (IsBlocking stays true) but must
+    ///   never be reported or logged as "Locked" -- that was a real bug this checklist
+    ///   previously had no way to express.
     /// </summary>
     private static PreFlightCheckItem CheckBootloaderState(DeviceInfo device, InstallContext context)
     {
         const string name = "Bootloader state is Unlocked";
 
-        if (device.BootloaderLockState == BootloaderLockState.Unlocked)
+        if (device.BootloaderLockState == BootloaderLockState.VerifiedUnlocked)
         {
             return new PreFlightCheckItem(name, PreFlightCheckStatus.Pass, IsBlocking: true,
-                $"Verified Unlocked -- read directly from the device, never user-selectable. (Detected state: {device.BootloaderLockState}.)");
+                $"Verified Unlocked -- confirmed by an authoritative Fastboot query, never user-selectable. (Detected state: {device.BootloaderLockState}.)");
         }
 
-        if (device.BootloaderLockState == BootloaderLockState.Locked)
+        if (device.BootloaderLockState == BootloaderLockState.VerifiedLocked)
         {
             return new PreFlightCheckItem(name, PreFlightCheckStatus.Blocked, IsBlocking: true,
-                "Verified Locked -- the device itself reports a locked bootloader. AETHERIX ROM MASTER never unlocks a " +
-                "bootloader itself and will not proceed; a manual confirmation cannot override a positively-detected " +
-                "Locked state.");
+                "Verified Locked -- an authoritative Fastboot query reports a locked bootloader. AETHERIX ROM MASTER never " +
+                "unlocks a bootloader itself and will not proceed; a manual confirmation cannot override a positively-" +
+                "detected Locked state.");
         }
 
         if (context.BootloaderUserConfirmedUnlocked)
         {
             return new PreFlightCheckItem(name, PreFlightCheckStatus.Pass, IsBlocking: true,
-                "Unable to verify via ADB or Fastboot (detected state: Unknown), but the user explicitly confirmed " +
+                "Unable to verify via a Fastboot query (detected state: UnableToVerify), but the user explicitly confirmed " +
                 "Unlocked via \"Confirm Unlocked Manually\". This is a human attestation, not an app-verified fact.");
         }
 
+        if (device.AdbConnected)
+        {
+            // Deliberately never uses the word "Locked" anywhere in this message, even in
+            // passing -- a real bug this guards against had Recovery Mode and this
+            // checklist both casually mention "Locked" while explaining an UnableToVerify
+            // state, which read, at a glance, like the device had been found locked.
+            return new PreFlightCheckItem(name, PreFlightCheckStatus.UnableToVerify, IsBlocking: true,
+                "Unable to verify bootloader — reboot to bootloader/Fastboot to verify. The device is currently in " +
+                "Android/ADB mode, where no ADB property is trusted as bootloader-lock evidence anymore (several have each " +
+                "been proven, on real hardware, to report this device's state incorrectly). Run \"Verify Bootloader via " +
+                "Fastboot\" for an authoritative check, or use \"Confirm Unlocked Manually\" if Fastboot is not reachable " +
+                "on this PC.");
+        }
+
         return new PreFlightCheckItem(name, PreFlightCheckStatus.UnableToVerify, IsBlocking: true,
-            "Unable to verify: neither ADB properties nor a Fastboot query could confirm the bootloader state " +
-            "(detected state: Unknown). Run \"Verify Bootloader via Fastboot\" for an authoritative check, or use " +
-            "\"Confirm Unlocked Manually\" if Fastboot is not reachable on this PC -- this is not the same as Locked.");
+            "Unable to verify: no device is connected, or a Fastboot query could not complete (unavailable, timed out, or " +
+            "the device was not found). Run \"Verify Bootloader via Fastboot\" for an authoritative check, or use " +
+            "\"Confirm Unlocked Manually\".");
     }
 
     private static PreFlightCheckItem CheckRequiredPackagesPresent(InstallContext context)
