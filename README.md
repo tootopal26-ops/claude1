@@ -48,24 +48,35 @@ and smoke-tests that the EXE actually launches and stays running (not an immedia
 startup-exception crash). The badge above always reflects the latest run; check the
 [Actions tab](https://github.com/tootopal26-ops/claude1/actions/workflows/windows-build.yml) for details.
 
-Latest run observed directly during development (commit `19cdcf6`, Windows Server 2025 /
-`windows-2025-vs2026` image, [run #4](https://github.com/tootopal26-ops/claude1/actions/runs/38051709337)):
+Latest run observed directly during development (commit `afe53b7` — adds the KernelSU
+Root Restoration workflow and Recovery/Installation Automation, including all of the
+new WPF ViewModel/XAML that could not be compiled in the Linux sandbox that wrote it;
+[run #8](https://github.com/tootopal26-ops/claude1/actions/runs/38057099400)):
 
 ```
-dotnet build AetherixRomMaster.sln -c Release --no-restore
+dotnet build ... -c Release
   AetherixRomMaster.Core -> ...\AetherixRomMaster.Core.dll
-  AetherixRomMaster.App -> ...\net8.0-windows\AetherixRomMaster.dll
-Build succeeded. 0 Warning(s)  0 Error(s)
+  AetherixRomMaster.App -> ...\net8.0-windows\win-x64\AetherixRomMaster.dll
+Build succeeded.
 
 dotnet test ...
-Test Run Successful. Total tests: 79  Passed: 79
+Test Run Successful.
+Total tests: 145
+     Passed: 145
+ Total time: 5.2170 Seconds
 
 dotnet publish ... -r win-x64 --self-contained true -p:PublishSingleFile=true ...
   AetherixRomMaster.App -> ...\publish\win-x64\
-  (AetherixRomMaster.exe, 162,369,735 bytes)
+  (AetherixRomMaster.exe, 162,458,311 bytes; profiles\cancunf.infinity-x.kernelsu.json
+   confirmed present in the published output alongside the device/ROM profiles)
 
-Smoke test: Process is still running after 6 seconds (PID 5180) -- startup looks healthy.
+Smoke test: Process is still running after 6 seconds (PID 8448) -- startup looks healthy.
 ```
+
+Earlier verified runs in this same history: [run #6](https://github.com/tootopal26-ops/claude1/actions/runs/38054491595)
+(the profile-loading/bootloader/root-detection fixes — 99/99 tests) and
+[run #7](https://github.com/tootopal26-ops/claude1/actions/runs/38054626710) (the
+data-wipe-consequences message) were both independently green too.
 
 This wasn't green on the first try for the Recovery/Pre-Flight UI commit, and that's worth
 being honest about: [run #3](https://github.com/tootopal26-ops/claude1/actions/runs/38051414906)
