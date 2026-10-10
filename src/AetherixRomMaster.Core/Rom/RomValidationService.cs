@@ -30,7 +30,10 @@ public sealed class RomValidationService
         CancellationToken ct = default)
     {
         var package = await _inspector.InspectAsync(zipPath, ct);
-        var checksum = await _checksumVerifier.VerifyAsync(zipPath, explicitChecksum, ct);
+        var knownChecksums = expectedKind == RomPackageKind.InitialInstallPackage
+            ? romProfile.KnownOfficialInitialInstallChecksums
+            : romProfile.KnownOfficialChecksums;
+        var checksum = await _checksumVerifier.VerifyAsync(zipPath, explicitChecksum, knownChecksums, ct);
         var issues = new List<RomCompatibilityIssue>();
 
         if (package.Kind == RomPackageKind.Unknown)
@@ -51,30 +54,51 @@ public sealed class RomValidationService
 
         CheckDeclaredDeviceCompatibility(package, detectedDevice, deviceProfile, issues);
 
-        if (checksum.ExpectedSha256 is null)
+        if (!checksum.HasOfficialReference)
         {
             issues.Add(new RomCompatibilityIssue(
                 CompatibilityIssueSeverity.Blocking,
                 "CHECKSUM_UNAVAILABLE",
-                "No official checksum was found for this file (no sibling .sha256/.sha256sum file and none supplied). " +
-                "This application will not flash a file it cannot verify — provide the checksum published on the ROM's official download page."));
+                "No official checksum was found for this file (no sibling .sha256/.sha256sum file, no checksum recorded " +
+                "on the ROM profile, and none supplied). This application will not flash a file it cannot verify — " +
+                "provide the checksum published on the ROM's official download page."));
         }
         else if (!checksum.Matched)
         {
+            var expectedDescription = checksum.ExpectedMd5 is not null ? $"MD5 {checksum.ExpectedMd5}" : $"SHA-256 {checksum.ExpectedSha256}";
+            var computedDescription = checksum.ExpectedMd5 is not null ? $"MD5 {checksum.ComputedMd5}" : $"SHA-256 {checksum.ComputedSha256}";
             issues.Add(new RomCompatibilityIssue(
                 CompatibilityIssueSeverity.Blocking,
                 "CHECKSUM_MISMATCH",
-                $"Computed SHA-256 ({checksum.ComputedSha256}) does not match the expected checksum from {checksum.Source} ({checksum.ExpectedSha256}). " +
-                "The file may be corrupt, incomplete, or tampered with."));
+                $"Computed {computedDescription} does not match the expected {expectedDescription} from {checksum.Source}. " +
+                "The file may be corrupt, incomplete, from a different variant, or tampered with."));
         }
 
-        if (romProfile.VerificationStatus != VerificationStatus.Verified)
+        switch (romProfile.VerificationStatus)
         {
-            issues.Add(new RomCompatibilityIssue(
-                CompatibilityIssueSeverity.Blocking,
-                "ROM_PROFILE_UNVERIFIED",
-                $"This ROM profile's installation details are not yet marked Verified (current status: {romProfile.VerificationStatus}). " +
-                (romProfile.VerificationGapNotes ?? "A human must confirm the official installation instructions before real flashing can proceed.")));
+            case VerificationStatus.Verified:
+                break;
+            case VerificationStatus.PendingManualConfirmation:
+                // Deliberately non-blocking: the profile's build/checksum facts were supplied
+                // directly by the device owner from the cited official source rather than
+                // independently fetched by this application (see Citations for provenance).
+                // This does not bypass anything -- the checksum/device/package checks above
+                // are the real, evidence-based gate and still block on their own if the actual
+                // local file doesn't match what was recorded.
+                issues.Add(new RomCompatibilityIssue(
+                    CompatibilityIssueSeverity.Info,
+                    "ROM_PROFILE_PENDING_MANUAL_CONFIRMATION",
+                    "This ROM profile's build/checksum facts were confirmed by the device owner directly from the " +
+                    "official source rather than independently fetched by this application — see the profile's " +
+                    "citations for exactly what was recorded and from where."));
+                break;
+            default:
+                issues.Add(new RomCompatibilityIssue(
+                    CompatibilityIssueSeverity.Blocking,
+                    "ROM_PROFILE_UNVERIFIED",
+                    $"This ROM profile's installation details are not yet marked Verified (current status: {romProfile.VerificationStatus}). " +
+                    (romProfile.VerificationGapNotes ?? "A human must confirm the official installation instructions before real flashing can proceed.")));
+                break;
         }
 
         return new RomValidationResult { Package = package, Checksum = checksum, Issues = issues };

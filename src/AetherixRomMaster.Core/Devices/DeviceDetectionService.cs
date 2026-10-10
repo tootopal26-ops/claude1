@@ -236,14 +236,26 @@ public sealed class DeviceDetectionService : IDeviceDetectionService
         return BootloaderLockState.Unknown;
     }
 
+    /// <summary>
+    /// Mirrors <see cref="DeriveBootloaderLockStateFromProps"/>'s fail-safe design: a real
+    /// bug here reported Locked for a device whose own Fastboot screen showed
+    /// "Flashing_unlocked", because `getvar unlocked` returning anything other than the
+    /// exact literal "yes" (e.g. a bootloader that answers "true"/"false" instead of
+    /// "yes"/"no", or a partial/garbled read on a flaky USB enumeration) fell through to
+    /// an unconditional "else = Locked". An unrecognized value must never be treated as
+    /// proof of Locked -- only an explicit, recognized "locked" signal does that. Anything
+    /// else falls through to the next signal, and ultimately to Unknown ("unable to
+    /// verify") rather than guessing. See DeviceDetectionServiceTests for the regression
+    /// test covering this exact scenario.
+    /// </summary>
     private static BootloaderLockState DeriveBootloaderLockStateFromFastboot(IReadOnlyDictionary<string, string> vars)
     {
         var unlocked = GetVar(vars, "unlocked");
         if (unlocked is not null)
         {
-            return unlocked.Equals("yes", StringComparison.OrdinalIgnoreCase)
-                ? BootloaderLockState.Unlocked
-                : BootloaderLockState.Locked;
+            if (IsAffirmative(unlocked)) return BootloaderLockState.Unlocked;
+            if (IsNegative(unlocked)) return BootloaderLockState.Locked;
+            // Unrecognized value -- fall through instead of guessing.
         }
 
         var secureState = GetVar(vars, "securestate");
@@ -255,6 +267,16 @@ public sealed class DeviceDetectionService : IDeviceDetectionService
 
         return BootloaderLockState.Unknown;
     }
+
+    private static bool IsAffirmative(string value) =>
+        value.Equals("yes", StringComparison.OrdinalIgnoreCase) ||
+        value.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+        value == "1";
+
+    private static bool IsNegative(string value) =>
+        value.Equals("no", StringComparison.OrdinalIgnoreCase) ||
+        value.Equals("false", StringComparison.OrdinalIgnoreCase) ||
+        value == "0";
 
     private async Task<string?> GetKernelVersionAsync(string serial, CancellationToken ct)
     {

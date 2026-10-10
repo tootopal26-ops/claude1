@@ -1,4 +1,6 @@
+using System.Security.Cryptography;
 using AetherixRomMaster.Core.Devices;
+using AetherixRomMaster.Core.Profiles;
 using AetherixRomMaster.Core.Rom;
 using AetherixRomMaster.Core.Tests.TestDoubles;
 using Xunit;
@@ -103,6 +105,88 @@ public class RomValidationServiceTests : IDisposable
 
         Assert.True(result.IsSafeToInstall);
         Assert.Empty(result.Issues);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_MatchesOfficialMd5Checksum_AndIdentifiesTheVariant()
+    {
+        var zip = RomZipFixtures.CreateLegacyRomZip(_tempDir, "Project_Infinity-X-3.12-cancunf-gapps.zip");
+        var officialMd5 = Convert.ToHexString(MD5.HashData(await File.ReadAllBytesAsync(zip))).ToLowerInvariant();
+        var profile = TestProfiles.InfinityXUnverified() with
+        {
+            VerificationStatus = VerificationStatus.PendingManualConfirmation,
+            KnownOfficialChecksums = [new RomChecksumEntry("GApps", "MD5", officialMd5, "test fixture")],
+        };
+
+        var result = await _service.ValidateAsync(zip, CancunfDevice(), TestProfiles.Cancunf(), profile);
+
+        Assert.True(result.Checksum.Matched);
+        Assert.Equal("GApps", result.Checksum.MatchedVariantLabel);
+        Assert.Equal(officialMd5, result.Checksum.ExpectedMd5);
+        Assert.Null(result.Checksum.ExpectedSha256);
+        Assert.DoesNotContain(result.Issues, i => i.Code is "CHECKSUM_MISMATCH" or "CHECKSUM_UNAVAILABLE");
+        Assert.True(result.IsSafeToInstall);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_RejectsFile_WhenItMatchesNeitherKnownOfficialMd5Variant()
+    {
+        var zip = RomZipFixtures.CreateLegacyRomZip(_tempDir, "rom.zip");
+        var profile = TestProfiles.InfinityXUnverified() with
+        {
+            VerificationStatus = VerificationStatus.PendingManualConfirmation,
+            KnownOfficialChecksums =
+            [
+                new RomChecksumEntry("GApps", "MD5", new string('a', 32), "test fixture"),
+                new RomChecksumEntry("Vanilla", "MD5", new string('b', 32), "test fixture"),
+            ],
+        };
+
+        var result = await _service.ValidateAsync(zip, CancunfDevice(), TestProfiles.Cancunf(), profile);
+
+        Assert.False(result.Checksum.Matched);
+        Assert.Contains(result.Issues, i => i.Code == "CHECKSUM_MISMATCH");
+        Assert.True(result.HasBlockingIssues);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_DoesNotBlock_OnPendingManualConfirmation_WhenRealChecksumEvidenceMatches()
+    {
+        var zip = RomZipFixtures.CreateLegacyRomZip(_tempDir, "rom.zip");
+        var officialMd5 = Convert.ToHexString(MD5.HashData(await File.ReadAllBytesAsync(zip))).ToLowerInvariant();
+        var profile = TestProfiles.InfinityXUnverified() with
+        {
+            VerificationStatus = VerificationStatus.PendingManualConfirmation,
+            KnownOfficialChecksums = [new RomChecksumEntry("Vanilla", "MD5", officialMd5, "test fixture")],
+        };
+
+        var result = await _service.ValidateAsync(zip, CancunfDevice(), TestProfiles.Cancunf(), profile);
+
+        // PendingManualConfirmation must never blanket-block the way Unverified does --
+        // only a genuine, evidence-based problem (a real mismatch/missing fact) should.
+        Assert.DoesNotContain(result.Issues, i => i.Code == "ROM_PROFILE_UNVERIFIED");
+        Assert.False(result.HasBlockingIssues);
+        Assert.True(result.IsSafeToInstall);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_InitialInstallPackage_StaysBlockedOnMissingChecksum_EvenWhenRomProfileIsPendingManualConfirmation()
+    {
+        var zip = RomZipFixtures.CreateInitialInstallPackage(_tempDir, "infinity_gms_initial_install.zip");
+        var profile = TestProfiles.InfinityXUnverified() with
+        {
+            VerificationStatus = VerificationStatus.PendingManualConfirmation,
+            KnownOfficialChecksums = [new RomChecksumEntry("GApps", "MD5", new string('a', 32), "test fixture")],
+            // Deliberately empty, mirroring the real cancunf.infinity-x.rom.json: no official
+            // checksum has ever been confirmed for the Initial Install package specifically.
+            KnownOfficialInitialInstallChecksums = [],
+        };
+
+        var result = await _service.ValidateAsync(
+            zip, CancunfDevice(), TestProfiles.Cancunf(), profile, RomPackageKind.InitialInstallPackage);
+
+        Assert.Contains(result.Issues, i => i.Code == "CHECKSUM_UNAVAILABLE");
+        Assert.True(result.HasBlockingIssues);
     }
 
     public void Dispose()

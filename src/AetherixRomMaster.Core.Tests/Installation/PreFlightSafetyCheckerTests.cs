@@ -79,6 +79,76 @@ public class PreFlightSafetyCheckerTests : IDisposable
         Assert.False(report.CanProceed);
         var item = report.Items.First(i => i.Name.Contains("Bootloader"));
         Assert.False(item.Passed);
+        Assert.Equal(PreFlightCheckStatus.Blocked, item.Status);
+    }
+
+    [Fact]
+    public async Task RunAsync_ReportsUnableToVerify_NotBlocked_WhenBootloaderIsUnknownAndUnconfirmed()
+    {
+        // The actual bug this guards: detection that could not complete must never be
+        // reported (or logged) as if it had positively found a locked bootloader.
+        var context = await BuildFullyVerifiedContextAsync();
+        _detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Unknown };
+
+        var report = await Checker.RunAsync(context);
+
+        Assert.False(report.CanProceed);
+        var item = report.Items.First(i => i.Name.Contains("Bootloader"));
+        Assert.Equal(PreFlightCheckStatus.UnableToVerify, item.Status);
+        Assert.NotEqual(PreFlightCheckStatus.Blocked, item.Status);
+    }
+
+    [Fact]
+    public async Task RunAsync_CanProceed_WhenBootloaderUnknown_ButUserConfirmedUnlockedManually()
+    {
+        // This is the "too conservative in the wrong place" bug: InstallStateMachine
+        // already honored BootloaderUserConfirmedUnlocked, but this separate Pre-Flight
+        // gate (the one that actually controls the Install button's CanExecute) never
+        // consulted it at all, so a manually-confirmed-unlocked device stayed blocked
+        // here regardless of what the state machine would have allowed.
+        var context = await BuildFullyVerifiedContextAsync();
+        _detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Unknown };
+        context.BootloaderUserConfirmedUnlocked = true;
+
+        var report = await Checker.RunAsync(context);
+
+        var item = report.Items.First(i => i.Name.Contains("Bootloader"));
+        Assert.Equal(PreFlightCheckStatus.Pass, item.Status);
+        Assert.True(report.CanProceed);
+    }
+
+    [Fact]
+    public async Task RunAsync_StillBlocks_WhenBootloaderIsLocked_EvenIfUserConfirmedUnlockedManually()
+    {
+        // A user attestation must never override a positively-detected Locked state --
+        // it only stands in for a check that couldn't complete, never for one that
+        // actively found the opposite of what's being claimed.
+        var context = await BuildFullyVerifiedContextAsync();
+        _detection.Current = InstallHarness.AdbCancunf() with { BootloaderLockState = BootloaderLockState.Locked };
+        context.BootloaderUserConfirmedUnlocked = true;
+
+        var report = await Checker.RunAsync(context);
+
+        var item = report.Items.First(i => i.Name.Contains("Bootloader"));
+        Assert.Equal(PreFlightCheckStatus.Blocked, item.Status);
+        Assert.False(report.CanProceed);
+    }
+
+    [Fact]
+    public async Task RunAsync_NeverIncludesAPlayIntegrityCheck_AndKernelSuNeverBlocksTheRomInstall()
+    {
+        // TASK: Root/KernelSU/Play Integrity are post-install features, never prerequisites
+        // for the ROM install itself. There is no Play Integrity check anywhere in this
+        // checklist (nothing in this app reads or reports Play Integrity status at all),
+        // and the one root-related item (KernelSU) is explicitly advisory-only.
+        var context = await BuildFullyVerifiedContextAsync();
+        _detection.Current = InstallHarness.AdbCancunf();
+
+        var report = await Checker.RunAsync(context);
+
+        Assert.DoesNotContain(report.Items, i => i.Name.Contains("Integrity", StringComparison.OrdinalIgnoreCase));
+        var kernelSuItem = report.Items.Single(i => i.Name.Contains("KernelSU"));
+        Assert.False(kernelSuItem.IsBlocking);
     }
 
     [Fact]

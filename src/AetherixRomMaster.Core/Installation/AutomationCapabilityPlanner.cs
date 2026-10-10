@@ -25,20 +25,32 @@ public sealed class AutomationCapabilityPlanner
                 "Model, codename, Android version, bootloader and root state are all read via ADB/Fastboot queries."),
         };
 
-        var verified = romProfile.VerificationStatus == VerificationStatus.Verified;
-        items.Add(verified
+        // Verified and PendingManualConfirmation both allow progress here: PendingManualConfirmation
+        // means a human (the device owner) confirmed the profile's build/checksum facts directly from
+        // the official source, rather than this application's own tooling fetching them -- it does not
+        // skip the real, evidence-based checksum/device/package checks, which still run and still block
+        // on their own if the actual local file doesn't match. Only Unverified/Rejected are actually
+        // blocked here. Mirrors RomValidationService's identical, non-blanket treatment of this status.
+        var profileConfirmed = romProfile.VerificationStatus is VerificationStatus.Verified or VerificationStatus.PendingManualConfirmation;
+        var fullyVerified = romProfile.VerificationStatus == VerificationStatus.Verified;
+        items.Add(profileConfirmed
             ? Item("ROM/firmware verification", AutomationCapabilityLevel.Automatic,
-                "This ROM profile is Verified -- checksum and compatibility checks run automatically.")
+                fullyVerified
+                    ? "This ROM profile is Verified -- checksum and compatibility checks run automatically."
+                    : "This ROM profile is Pending Manual Confirmation -- its build/checksum facts were confirmed by " +
+                      "the device owner directly from the official source rather than independently fetched by this " +
+                      "app (see the profile's citations). The actual checksum/device/package checks below still run " +
+                      "automatically against the real local file and still block on their own if it doesn't match.")
             : Item("ROM/firmware verification", AutomationCapabilityLevel.Blocked,
-                $"ROM profile is '{romProfile.VerificationStatus}', not Verified -- {romProfile.VerificationGapNotes ?? "real flashing stays blocked until a human confirms this profile."}"));
+                $"ROM profile is '{romProfile.VerificationStatus}', not yet confirmed -- {romProfile.VerificationGapNotes ?? "real flashing stays blocked until a human confirms this profile."}"));
 
         if (romProfile.RequiresInitialInstallPackage)
         {
-            items.Add(verified
+            items.Add(profileConfirmed
                 ? Item("Initial-install package transfer/flash", AutomationCapabilityLevel.Automatic,
-                    "Flashed via the verified fastboot update procedure once the ROM profile is Verified.")
+                    "Flashed via the confirmed fastboot update procedure -- still requires its own checksum to actually match before real flashing proceeds.")
                 : Item("Initial-install package transfer/flash", AutomationCapabilityLevel.Blocked,
-                    "Requires a Verified ROM profile first."));
+                    "Requires a confirmed ROM profile first."));
         }
 
         items.Add(romProfile.RequiresDataFormat
@@ -58,10 +70,10 @@ public sealed class AutomationCapabilityPlanner
             "Only needed as a fallback -- skipped entirely when the recovery enters sideload mode automatically after reboot. " +
             "Aetherix never attempts to tap/navigate a recovery's touchscreen UI itself."));
 
-        items.Add(Item("Fastbootd / fastboot flashing", verified ? AutomationCapabilityLevel.Automatic : AutomationCapabilityLevel.Blocked,
-            verified
-                ? "Only the verified device/ROM-specific command sequence is ever run -- never an arbitrary or generated flashing command."
-                : "Blocked until the ROM profile is Verified -- Aetherix will not generate or guess a flashing command."));
+        items.Add(Item("Fastbootd / fastboot flashing", profileConfirmed ? AutomationCapabilityLevel.Automatic : AutomationCapabilityLevel.Blocked,
+            profileConfirmed
+                ? "Only the confirmed device/ROM-specific command sequence is ever run -- never an arbitrary or generated flashing command."
+                : "Blocked until the ROM profile is confirmed -- Aetherix will not generate or guess a flashing command."));
 
         items.Add(BuildKernelSuItem(romProfile, kernelSuProfile, currentRoot));
 

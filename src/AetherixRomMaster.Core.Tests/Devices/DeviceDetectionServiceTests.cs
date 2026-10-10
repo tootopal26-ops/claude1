@@ -278,4 +278,70 @@ public class DeviceDetectionServiceTests
         Assert.False(result.Succeeded);
         Assert.NotNull(result.ErrorMessage);
     }
+
+    // Regression coverage for a real bug: a device whose own Fastboot screen plainly
+    // showed "Flashing_unlocked" was reported Locked, because `getvar unlocked` returning
+    // anything other than the exact literal "yes" (e.g. "true"/"false" instead of
+    // "yes"/"no", or a garbled/partial read) fell through to an unconditional
+    // "else = Locked" instead of treating an unrecognized value as unable-to-verify.
+    [Theory]
+    [InlineData("true", BootloaderLockState.Unlocked)]
+    [InlineData("false", BootloaderLockState.Locked)]
+    [InlineData("1", BootloaderLockState.Unlocked)]
+    [InlineData("0", BootloaderLockState.Locked)]
+    [InlineData("yes", BootloaderLockState.Unlocked)]
+    [InlineData("no", BootloaderLockState.Locked)]
+    public async Task VerifyBootloaderViaFastbootAsync_RecognizesAlternateTrueFalseSpellings_ForUnlockedGetvar(
+        string rawUnlockedValue, BootloaderLockState expected)
+    {
+        var runner = new FakeProcessRunner
+        {
+            Handler = (path, args) =>
+            {
+                var joined = string.Join(" ", args);
+                if (path.Contains("adb") && joined.Contains("reboot bootloader")) return Ok("");
+                if (path.Contains("fastboot") && args is ["devices"]) return Ok("SERIAL123\tfastboot\n");
+                if (path.Contains("fastboot") && joined.Contains("getvar all"))
+                    return new ProcessResult { ExitCode = 0, StandardOutput = "", StandardError = $"unlocked: {rawUnlockedValue}\nfinished. total time: 0.001s\n" };
+                if (path.Contains("fastboot") && joined.Contains("reboot")) return Ok("");
+                return Ok("");
+            },
+        };
+        var adb = new AdbClient(runner, "adb");
+        var fastboot = new FastbootClient(runner, "fastboot");
+        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
+
+        var result = await service.VerifyBootloaderViaFastbootAsync("SERIAL123", TimeSpan.FromSeconds(5));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(expected, result.LockState);
+    }
+
+    [Fact]
+    public async Task VerifyBootloaderViaFastbootAsync_NeverReportsLocked_ForAnUnrecognizedUnlockedValue()
+    {
+        // A garbled/unexpected getvar value must fall through to "unable to verify"
+        // (Unknown), never default to Locked -- that is the exact bug being guarded here.
+        var runner = new FakeProcessRunner
+        {
+            Handler = (path, args) =>
+            {
+                var joined = string.Join(" ", args);
+                if (path.Contains("adb") && joined.Contains("reboot bootloader")) return Ok("");
+                if (path.Contains("fastboot") && args is ["devices"]) return Ok("SERIAL123\tfastboot\n");
+                if (path.Contains("fastboot") && joined.Contains("getvar all"))
+                    return new ProcessResult { ExitCode = 0, StandardOutput = "", StandardError = "unlocked: unsupported\nfinished. total time: 0.001s\n" };
+                if (path.Contains("fastboot") && joined.Contains("reboot")) return Ok("");
+                return Ok("");
+            },
+        };
+        var adb = new AdbClient(runner, "adb");
+        var fastboot = new FastbootClient(runner, "fastboot");
+        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
+
+        var result = await service.VerifyBootloaderViaFastbootAsync("SERIAL123", TimeSpan.FromSeconds(5));
+
+        Assert.True(result.Succeeded);
+        Assert.NotEqual(BootloaderLockState.Locked, result.LockState);
+    }
 }

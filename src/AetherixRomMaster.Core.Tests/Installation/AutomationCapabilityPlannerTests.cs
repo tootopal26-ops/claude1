@@ -64,6 +64,24 @@ public class AutomationCapabilityPlannerTests
     }
 
     [Fact]
+    public void BuildReport_MarksCoreStepsAutomatic_WhenRomProfileIsPendingManualConfirmation()
+    {
+        // PendingManualConfirmation (a human confirmed the facts directly from the official
+        // source) must not be reported as Blocked the same way Unverified is -- the real,
+        // evidence-based checksum/device/package checks are what actually gate real
+        // flashing, not this status. Mirrors RomValidationService's identical treatment.
+        var report = new AutomationCapabilityPlanner().BuildReport(
+            BuildDevice(), BuildRomProfile(VerificationStatus.PendingManualConfirmation), kernelSuProfile: null, currentRoot: null);
+
+        var romVerification = Assert.Single(report, i => i.StepName == "ROM/firmware verification");
+        Assert.Equal(AutomationCapabilityLevel.Automatic, romVerification.Level);
+        Assert.Contains("Pending Manual Confirmation", romVerification.Explanation);
+
+        var fastboot = Assert.Single(report, i => i.StepName == "Fastbootd / fastboot flashing");
+        Assert.Equal(AutomationCapabilityLevel.Automatic, fastboot.Level);
+    }
+
+    [Fact]
     public void BuildReport_FormatDataRequiresConfirmation_WhenRomRequiresIt()
     {
         var report = new AutomationCapabilityPlanner().BuildReport(

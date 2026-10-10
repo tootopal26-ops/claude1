@@ -36,9 +36,21 @@ public class ProfileRepositoryTests
         Assert.Equal(InstallationMethod.FastbootUpdatePackageThenSideload, infinityX.InstallationMethod);
         Assert.True(infinityX.RequiresInitialInstallPackage);
 
-        // This is the gate that must hold until a human confirms the official page:
-        // the shipped ROM profile must NOT claim Verified on its own.
-        Assert.Equal(VerificationStatus.Unverified, infinityX.VerificationStatus);
+        // As of 2026-10-10 the device owner confirmed the ROM identity, installation
+        // procedure, and the two official GApps/Vanilla MD5 checksums directly from the
+        // official page -- but this application's own tooling never independently fetched
+        // that page itself (blocked by this sandbox's network policy), so this is
+        // PendingManualConfirmation, never Verified outright: it must still never claim
+        // Verified on its own say-so. The real per-file checksum/device/package checks
+        // (RomValidationService) are what actually gate real flashing, not this status.
+        Assert.Equal(VerificationStatus.PendingManualConfirmation, infinityX.VerificationStatus);
+        Assert.NotEqual(VerificationStatus.Verified, infinityX.VerificationStatus);
+        Assert.NotEmpty(infinityX.KnownOfficialChecksums);
+        Assert.All(infinityX.KnownOfficialChecksums, c => Assert.Equal("MD5", c.Algorithm));
+
+        // The Initial Install package's own checksum is still genuinely unconfirmed --
+        // this must stay empty so CHECKSUM_UNAVAILABLE keeps blocking it specifically.
+        Assert.Empty(infinityX.KnownOfficialInitialInstallChecksums);
         Assert.False(string.IsNullOrWhiteSpace(infinityX.VerificationGapNotes));
     }
 

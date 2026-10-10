@@ -32,10 +32,12 @@ is automatically recoverable — the moment something can't be verified.
 | Automation Capability report (AUTOMATIC / MANUAL / BLOCKED per step) | ✅ Implemented |
 | User-confirmed-unlocked bootloader override (for unreliable Fastboot USB enumeration) | ✅ Implemented — never overrides a positively-detected Locked state |
 | Advanced Maintenance (Format Data, reboot targets, ADB sideload -- device-aware) | ✅ Implemented — see below for what was deliberately left out and why |
+| Evidence-based Pre-Flash Safety Check (PASS / BLOCKED / UNABLE TO VERIFY per item) | ✅ Implemented — see "Bootloader detection fix" below |
+| MD5 checksum support + GApps/Vanilla variant detection (by checksum, never filename) | ✅ Implemented |
 | Dark glassmorphism WPF UI | ✅ Implemented |
-| Automated tests (174 tests, see `src/AetherixRomMaster.Core.Tests`) | ✅ Implemented, all passing |
+| Automated tests (197 tests, see `src/AetherixRomMaster.Core.Tests`) | ✅ Implemented, all passing |
 | **WPF app actually compiles & runs on real Windows** | ✅ **Verified on GitHub Actions `windows-latest` — see below, not just claimed** |
-| **cancunf + Infinity-X ROM profile: `VerificationStatus = Unverified`** | ⚠️ **See below — action required before real flashing** |
+| **cancunf + Infinity-X ROM profile: `VerificationStatus = PendingManualConfirmation`** | ⚠️ **Device owner confirmed build/checksums from the official page; this app's own tooling still couldn't independently fetch it — see below** |
 | **cancunf + Infinity-X KernelSU restoration profile: `VerificationStatus = Unverified`** | ⚠️ **Required image type/partition not yet confirmed — see below** |
 
 ## ✅ Verified on real Windows (not just "should build")
@@ -261,12 +263,22 @@ process calls — proven by test, not just claimed.
 
 Before **Install Custom ROM** is enabled, `PreFlightSafetyChecker`
 (`src/AetherixRomMaster.Core/Installation/PreFlightSafetyChecker.cs`) runs seven checks,
-all shown in the UI, re-querying the device fresh rather than trusting a stale dry run:
+all shown in the UI, re-querying the device fresh rather than trusting a stale dry run.
+Every item reports one of three evidence-based statuses (`PreFlightCheckItem.Status`):
+**Pass**, **Blocked** (a genuine, confirmed problem), or **UnableToVerify** (this app
+simply couldn't obtain evidence either way — never presented as if it were a confirmed
+problem):
 
 1. Device is exactly Moto G64 5G / `cancunf` (codename match, never model name)
-2. Bootloader state is Unlocked (read from the device, never user-selectable)
+2. Bootloader state is Unlocked — **Pass** if ADB or an authoritative Fastboot query
+   confirms Unlocked, **or** if detection is Unknown and the user explicitly used
+   "Confirm Unlocked Manually"; **Blocked** only on a positively-detected Locked state
+   (never overridable by a manual confirmation); **UnableToVerify** if detection is
+   Unknown and nothing has confirmed it either way yet
 3. Required package(s) are selected and present on disk
-4. SHA-256 checksums verified against an official source
+4. SHA-256/MD5 checksums verified against an official source (whichever algorithm that
+   source actually publishes — never a pretended SHA-256 match for a file whose official
+   source only ever published MD5)
 5. ROM compatible with this device and profile (no blocking validation issues)
 6. KernelSU compatibility confirmed — shown but **does not block** installing the ROM
    itself (an unconfirmed KernelSU path affects root only, not device safety; this is
@@ -275,53 +287,74 @@ all shown in the UI, re-querying the device fresh rather than trusting a stale d
    reachable + files already checksum-verified) — explicitly **not** a promise that
    every possible failure, including a hard-brick mid-flash, is recoverable
 
-Tests: `AetherixRomMaster.Core.Tests/Installation/PreFlightSafetyCheckerTests.cs`.
+Nothing here (or anywhere else in the app) ever reads, reports, or gates on Play
+Integrity, Magisk, or FRP status — see `InstallPrerequisiteSafetyTests.cs` for the
+structural regression guard.
+
+Tests: `AetherixRomMaster.Core.Tests/Installation/PreFlightSafetyCheckerTests.cs`,
+`InstallPrerequisiteSafetyTests.cs`.
+
+### Bootloader-detection bug fix (2026-10-10)
+
+A real hardware report: a Moto G64 5G whose own Fastboot screen plainly showed
+`Flashing_unlocked` was reported **Locked** by this app. Root cause, found by reading
+`DeviceDetectionService.DeriveBootloaderLockStateFromFastboot`: `fastboot getvar
+unlocked` returning anything other than the exact literal `"yes"` (e.g. `"true"` instead
+of `"yes"`, or a partial/garbled read) fell through to an unconditional `else = Locked`
+— an *unrecognized* value was being treated as *proof* of Locked. Fixed to recognize
+`"yes"/"true"/"1"` and `"no"/"false"/"0"` symmetrically and fall through to the next
+signal (then to `Unknown`, i.e. "unable to verify") for anything else — mirroring the
+fail-safe design `DeriveBootloaderLockStateFromProps` already had from an earlier fix.
+A second, separate bug was fixed alongside it: the Pre-Flash Safety Check's own
+bootloader item never consulted `InstallContext.BootloaderUserConfirmedUnlocked` at all
+(only `InstallStateMachine` did), so a manually-confirmed-unlocked device stayed blocked
+at the Install button regardless. Both are now covered by regression tests in
+`DeviceDetectionServiceTests.cs` and `PreFlightSafetyCheckerTests.cs`.
 
 ## ⚠️ Before you flash anything real: the one gap you must close
 
-This build environment's network egress policy blocked direct access to the ROM's
+This build environment's network egress policy blocks direct access to the ROM's
 official pages (`cyberknight777.dev`, `projectinfinity-x.com`, `droidwin.com` all
-returned HTTP 403 — an organization policy block, not a transient failure). Research via
-search confirmed, with multiple independent sources, that:
+denied — HTTP 403 or DNS resolution failure depending on when it was tried — an
+organization policy block, not a transient failure or evidence the pages are down).
 
-- `cancunf` is the shared codename for the Moto G54 5G **and** Moto G64 5G.
-- Project Infinity X ships Android-16-based builds for `cancunf`, installed via
-  `fastboot --skip-reboot update <initial-install>.zip` then `adb sideload <rom>.zip`
-  from the stock recovery.
-- cancunf is a MediaTek device with anti-rollback (ARB) enforcement — flashing firmware
-  older than the fused ARB index can **hard-brick** the device.
+**Update (2026-10-10):** the device owner opened `https://projectinfinity-x.com/downloads/cancunf`
+directly and reported back: Motorola G54/G64, codename `cancunf`, **Infinity-X 3.12**
+dated **2026-08-13**; published **MD5** checksums for the **GApps** and **Vanilla**
+variants; and an install procedure (FastbootD → matching Initial Install ZIP → Recovery
+data format → ADB sideload of the matching ROM ZIP) that independently matches the
+pattern already recorded from the `cyberknight777.dev`/`droidwin.com` citations. This
+application's own tooling re-attempted the same URL the same day and still got a DNS
+failure, and a web-search sweep found no independent third-party mirror of the specific
+checksums. So `profiles/cancunf.infinity-x.rom.json`'s `verificationStatus` is now
+**`"PendingManualConfirmation"`** — not `"Unverified"`, because real, specific facts
+are now recorded; **not `"Verified"` either**, because this app never independently
+fetched them itself. See the profile's own `citations` for exactly what was recorded,
+from where, and by whom.
 
-What could **not** be confirmed first-hand, and is therefore deliberately left blank
-rather than invented anywhere in this codebase: the exact current Infinity-X download
-URL, the ROM zip's file name, its published SHA-256 checksum, and the verbatim
-initial-install command sequence for the current build.
+This does not weaken anything: `RomValidationService` treats `PendingManualConfirmation`
+as non-blocking *only* at the profile level — the real gate is still the live,
+evidence-based checksum/device/package checks, which compute the actual local file's own
+MD5/SHA-256 and require a genuine match. **Which of the two variants (GApps/Vanilla) a
+given local ROM ZIP is gets decided by which official MD5 its own computed hash actually
+matches — never by filename.** A file matching neither is rejected
+(`CHECKSUM_MISMATCH`), not silently accepted.
 
-A later session re-attempted this directly (`https://projectinfinity-x.com/downloads/cancunf`)
-and hit the same network policy block (this time a DNS failure rather than HTTP 403 — a
-sandbox/proxy denial either way, not evidence the page is down). A web-search sweep at
-that time additionally found no independent confirmation that an Infinity-X build for
-cancunf exists at all — one search summary stated the official Infinity-X device list
-shows 0 supported devices, though that's a search-snippet inference, not a direct page
-read, so it's recorded as a open question, not a fact, in `profiles/cancunf.infinity-x.rom.json`'s
-citations. **If you have ROM/initial-install files already downloaded, personally verify
-they came from the real official page before trusting them** — do not assume a local
-file is genuine Infinity-X/cancunf without checking its exact name/size/checksum against
-that source yourself.
+**Still genuinely missing, and still correctly blocking:** no checksum (official or
+sibling `.sha256` file) has been confirmed for the separate **Initial Install** package
+specifically (`knownOfficialInitialInstallChecksums` is empty on purpose) — that
+package's own checksum check stays `CHECKSUM_UNAVAILABLE` until one is supplied. **If you
+have ROM/initial-install files already downloaded, personally verify they came from the
+real official page before trusting them** — do not assume a local file is genuine
+Infinity-X/cancunf without checking its exact name/size/checksum against that source
+yourself; re-confirm the two MD5 values above against the live page too, since they are
+a human transcription this app could not independently re-fetch.
 
-**`profiles/cancunf.infinity-x.rom.json`** encodes this honestly: `verificationStatus`
-is `"Unverified"`, and `RomValidationService` (see
-`src/AetherixRomMaster.Core/Rom/RomValidationService.cs`) hard-blocks real flashing
-with a `ROM_PROFILE_UNVERIFIED` issue (surfaced in the Pre-Flash Safety Check's "ROM
-compatible" item too) until that field is changed to `"Verified"`. Dry run works today,
-right now, with no changes needed.
-
-**To unlock real flashing:** open the cited pages below yourself, confirm the current
-build's exact file name/checksum/commands, then either place a `.sha256` file next to
-the downloaded ROM zip (the app reads it automatically) and flip
-`verificationStatus` to `"Verified"` in the profile, or supply a checksum directly in
-the app. Never hand-edit that field to `"Verified"` without actually re-checking the
-source — that field exists specifically so nobody, including a future AI session, skips
-this step.
+**To fully close the gap:** supply a checksum for the Initial Install package (a sibling
+`.sha256` file next to it, or add an entry to `knownOfficialInitialInstallChecksums` in
+the profile with the same honest provenance style already used for the ROM ZIP's two
+entries), and optionally re-verify the recorded facts against the live page yourself
+before flipping `verificationStatus` all the way to `"Verified"`.
 
 Sources to check:
 - https://cyberknight777.dev/instructions/cancunf/ — device-specific flashing guide

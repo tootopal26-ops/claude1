@@ -254,13 +254,13 @@ public sealed class InstallStateMachine
     private Task<StepResult> RunVerifyChecksumsAsync(InstallContext context)
     {
         var issues = new List<string>();
-        if (context.RomValidation is { Checksum.Matched: false })
+        if (context.RomValidation is { Checksum.Matched: false } romResult)
         {
-            issues.Add($"ROM package: computed {context.RomValidation.Checksum.ComputedSha256}, expected {context.RomValidation.Checksum.ExpectedSha256 ?? "(none available)"}.");
+            issues.Add($"ROM package: {DescribeChecksumMismatch(romResult.Checksum)}");
         }
-        if (context.InitialInstallValidation is { Checksum.Matched: false })
+        if (context.InitialInstallValidation is { Checksum.Matched: false } initialResult)
         {
-            issues.Add($"Initial-install package: computed {context.InitialInstallValidation.Checksum.ComputedSha256}, expected {context.InitialInstallValidation.Checksum.ExpectedSha256 ?? "(none available)"}.");
+            issues.Add($"Initial-install package: {DescribeChecksumMismatch(initialResult.Checksum)}");
         }
 
         if (issues.Count > 0)
@@ -273,6 +273,13 @@ public sealed class InstallStateMachine
 
         return Task.FromResult(StepResult.Continue(context.CurrentState, "Checksums verified against official source."));
     }
+
+    private static string DescribeChecksumMismatch(ChecksumCheckResult checksum) => checksum switch
+    {
+        { ExpectedMd5: { } expectedMd5 } => $"computed MD5 {checksum.ComputedMd5}, expected {expectedMd5} ({checksum.Source}).",
+        { ExpectedSha256: { } expectedSha256 } => $"computed SHA-256 {checksum.ComputedSha256}, expected {expectedSha256} ({checksum.Source}).",
+        _ => $"no official checksum was available to compare against ({checksum.Source}).",
+    };
 
     private Task<StepResult> RunVerifyFirmwareAsync(InstallContext context)
     {

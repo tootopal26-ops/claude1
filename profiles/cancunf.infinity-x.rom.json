@@ -1,16 +1,31 @@
 {
   "romName": "Project Infinity X (Infinity-X)",
   "targetCodename": "cancunf",
-  "androidVersionShipped": "16 (community references to Infinity-X v3.9 / v3.10 QPR2 builds for cancunf; the exact current build must be confirmed on the official download page before install)",
+  "androidVersionShipped": "16 (Infinity-X 3.12 for cancunf, dated 2026-08-13 -- confirmed by the device owner directly from the official download page; see citations)",
   "requiredFirmwareAndroidVersion": "15",
   "installationMethod": "FastbootUpdatePackageThenSideload",
   "requiresInitialInstallPackage": true,
-  "initialInstallPackageNotes": "The cancunf-specific guide at cyberknight777.dev/instructions/cancunf/ and the DroidWin Android-16-ROM guide for G54/G64 both describe the same pattern: boot to fastbootd with 'adb reboot fastboot', flash the initial-install package with 'fastboot --skip-reboot update <package>.zip', then 'fastboot reboot recovery' and 'adb sideload <rom>.zip'. The exact initial-install package file name/version for the currently published Infinity-X build was not retrievable in this environment -- see verificationGapNotes.",
+  "initialInstallPackageNotes": "Official procedure (confirmed independently twice -- once via the cyberknight777.dev/DroidWin guide pattern, once directly by the device owner from the official download page): boot to fastbootd ('adb reboot fastboot'), flash the initial-install package with 'fastboot --skip-reboot update <package>.zip', then 'fastboot reboot recovery' and 'adb sideload <rom>.zip'. The device owner's locally downloaded file is named approximately 'infinity_gms_initial_install...zip' -- its exact official filename/version and a published checksum for it were not confirmed, so CHECKSUM_UNAVAILABLE correctly still blocks real flashing for this specific package until one is supplied (e.g. a sibling .sha256 file, or this profile's knownOfficialInitialInstallChecksums updated with a value transcribed from the official page).",
   "requiresDataFormat": true,
-  "dataFormatNotes": "Moving from the stock Motorola firmware to an AOSP-derived custom ROM for the first time requires wiping /data (different filesystem encryption/format expectations). This is standard custom-ROM guidance, not cancunf-specific, and must still be reconfirmed on the official instructions page for the exact build used.",
-  "kernelSuNotes": "KernelSU officially supports GKI 2.0 kernels (5.10+) with a matching KMI; a non-GKI or older kernel needs a manually built KernelSU kernel, which this app will not attempt to source or flash blindly. Whether the Infinity-X cancunf build ships a KernelSU-enabled kernel out of the box has not been confirmed -- VERIFY_KERNELSU_COMPATIBILITY must check the installed kernel's 'uname -r' string and the boot image itself (see KernelSuCompatibilityChecker) rather than assuming compatibility from the ROM's name or Android version.",
-  "checksumManifestUrl": null,
-  "verificationStatus": "Unverified",
+  "dataFormatNotes": "The official cancunf guide's clean-install procedure includes a Recovery data format step (fastboot -w) before sideloading the ROM. Moving from stock Motorola firmware to an AOSP-derived custom ROM for the first time also independently requires this due to filesystem/encryption differences.",
+  "kernelSuNotes": "KernelSU officially supports GKI 2.0 kernels (5.10+) with a matching KMI; a non-GKI or older kernel needs a manually built KernelSU kernel, which this app will not attempt to source or flash blindly. Whether the Infinity-X 3.12 cancunf build ships a KernelSU-enabled kernel out of the box has not been confirmed -- VERIFY_KERNELSU_COMPATIBILITY checks the installed kernel's 'uname -r' string and the boot image itself (see KernelSuCompatibilityChecker) rather than assuming compatibility from the ROM's name or Android version. This is deliberately independent of whether KernelSU Manager is merely installed -- see RootDetector/RootSolutionType for why that alone never proves kernel integration.",
+  "checksumManifestUrl": "https://projectinfinity-x.com/downloads/cancunf",
+  "knownOfficialChecksums": [
+    {
+      "variantLabel": "GApps",
+      "algorithm": "MD5",
+      "value": "4480a2e30529927491006775375ad35c",
+      "source": "User-confirmed by the device owner directly from https://projectinfinity-x.com/downloads/cancunf on 2026-10-10 (Infinity-X 3.12, dated 2026-08-13). This application's own network access to that domain is blocked by this build/dev sandbox's egress policy (DNS resolution denied) and a 2026-10-10 web-search sweep found no independent third-party mirror of this value either -- so this is recorded as a human attestation of the official page's own published value, not as something this application independently fetched. The actual pass/fail check this value drives is still fully evidence-based: it only matches a local file whose own computed MD5 equals this exact string."
+    },
+    {
+      "variantLabel": "Vanilla",
+      "algorithm": "MD5",
+      "value": "a7cb62226a55618908aadfb0aeeed88b",
+      "source": "User-confirmed by the device owner directly from https://projectinfinity-x.com/downloads/cancunf on 2026-10-10 (Infinity-X 3.12, dated 2026-08-13). Same provenance and the same caveat as the GApps entry above -- not independently fetched by this application."
+    }
+  ],
+  "knownOfficialInitialInstallChecksums": [],
+  "verificationStatus": "PendingManualConfirmation",
   "citations": [
     {
       "title": "How to Install Android 16 Custom ROMs on Moto G54/G64 - DroidWin",
@@ -20,23 +35,18 @@
     {
       "title": "Motorola G54/G64 5G Custom ROM Guide :: Cyber Knight",
       "url": "https://cyberknight777.dev/instructions/cancunf/",
-      "note": "The device-specific authoritative instructions page referenced by the task. Blocked by this environment's egress policy (HTTP 403); a human must open this page directly and transcribe/confirm the exact steps and files before real (non-dry-run) flashing is enabled for this ROM profile."
+      "note": "The device-specific authoritative instructions page referenced by the task. Blocked by this environment's egress policy (HTTP 403)."
     },
     {
-      "title": "Infinity X - GSI downloads (projectinfinity-x.com)",
-      "url": "https://projectinfinity-x.com/download/gsi/",
-      "note": "Official Infinity-X site exists and is reachable in principle, but this page specifically serves GSI (Generic System Image) builds, not a cancunf device-specific build. The device-specific download page/URL for cancunf was not located or fetched in this environment and must be confirmed by a human before use."
-    },
-    {
-      "title": "projectinfinity-x.com/downloads/cancunf (direct fetch attempt)",
+      "title": "Infinity X cancunf official download page -- confirmed directly by the device owner (2026-10-10)",
       "url": "https://projectinfinity-x.com/downloads/cancunf",
-      "note": "Re-attempted directly on 2026-10-10 at the user's explicit request. Failed at DNS resolution (ENOTFOUND) from this sandboxed build environment -- a network policy denial, not confirmation the page is missing. A human (or this app running outside the sandbox) must open this URL directly; this environment's network policy can be widened to allow projectinfinity-x.com under the cloud environment's network settings if direct verification from here is wanted."
+      "note": "The device owner reported, from directly opening this page on 2026-10-10: Motorola G54/G64, codename cancunf, Infinity-X 3.12 dated 2026-08-13; published MD5 checksums for the GApps and Vanilla variants (recorded in knownOfficialChecksums above); and an installation procedure (FastbootD, matching Initial Install ZIP, Recovery data format, ADB sideload of the matching ROM ZIP) that independently matches the pattern already recorded from the cyberknight777.dev/DroidWin citations above. This application's own tooling re-attempted a direct fetch of this exact URL on the same date and got DNS resolution failure (ENOTFOUND) from this sandbox's network policy -- a policy denial, not a correction of the device owner's report -- and a web-search sweep for independent third-party corroboration of the specific checksums found none. VerificationStatus is therefore PendingManualConfirmation, not Verified: the ROM name/version/device match and installation procedure are corroborated by two independent sources and treated as reliable, but the checksum values themselves rest on the device owner's own transcription and should be re-confirmed against the live page if ever in doubt. The real per-file safety gate does not depend on trusting this unconditionally either way -- it always re-computes the local file's own MD5/SHA-256 and requires an actual match."
     },
     {
-      "title": "Web search sweep for an Infinity-X cancunf build (2026-10-10)",
+      "title": "Web search sweep for an Infinity-X cancunf build and its published checksums (2026-10-10)",
       "url": "",
-      "note": "Two search passes found no direct evidence of an Infinity-X build for cancunf/Moto G64 -- one search summary stated the official Infinity-X device list shows 0 supported devices, though that is a search-snippet inference, not a direct page read, so it is not treated as confirmed either way. The only ROM-project hit for this device was an unrelated, unofficial LineageOS 23.2 build on XDA (not Infinity-X). Several third-party stock-firmware mirrors for XT2431-1/cancunf were found but are not a source for a custom ROM and were not used. This materially raises the importance of the user confirming, by opening the official page themselves, that their downloaded ROM ZIP actually came from an Infinity-X cancunf release page and not a different source."
+      "note": "A search for the exact MD5 values above, and for general corroboration of an Infinity-X 3.12 cancunf build, found no independent third-party mirror or forum post repeating them. This does not contradict the device owner's report -- it simply means this application could not corroborate it from a second independent source beyond the installation-procedure match noted above."
     }
   ],
-  "verificationGapNotes": "This build environment's network egress policy blocks direct retrieval of cyberknight777.dev, projectinfinity-x.com, and droidwin.com (HTTP 403 / DNS denial from the sandbox proxy -- an organization policy denial, not a transient error, and not evidence the pages themselves are down). As a result: the exact current Infinity-X build/version number, ZIP file name and size, published checksum and its algorithm, Initial Install package compatibility, and literal verbatim flashing commands for cancunf could NOT be confirmed first-hand in this environment and are deliberately left blank/null in this profile rather than invented. A 2026-10-10 web-search sweep additionally could not find independent confirmation that an Infinity-X build for cancunf exists at all (see citations) -- this does not prove it doesn't exist, but it means the user's locally downloaded ROM ZIP should not be assumed genuine Infinity-X/cancunf without the user personally opening https://projectinfinity-x.com/downloads/cancunf and cross-checking the exact filename, size and published checksum against the files in their AETHERIX_FILES folder. AETHERIX ROM MASTER's VERIFY_ROM and VERIFY_CHECKSUMS states will refuse to proceed past dry-run for this ROM profile until a human confirms the current build's instructions and checksum and updates this profile file (or supplies a checksum file alongside the downloaded ROM zip) -- consistent with the project rule to stop and explain rather than guess."
+  "verificationGapNotes": "RESOLVED as of 2026-10-10 (device-owner-confirmed, see citations): ROM identity (Infinity-X 3.12, cancunf, 2026-08-13), the two official GApps/Vanilla MD5 checksums, and the installation procedure. STILL OPEN: (1) this application's own network access to projectinfinity-x.com remains blocked in this build/dev sandbox, so these facts are human-attested rather than agent-fetched -- re-confirm against the live page yourself if in doubt; (2) no checksum (official or sibling file) has been confirmed for the Initial Install package specifically, so CHECKSUM_UNAVAILABLE will correctly keep blocking real flashing for that package until one is supplied; (3) which of the two ROM variants the device owner's actual local ROM ZIP is (GApps or Vanilla) is never inferred from its filename -- it is determined at runtime by which of the two known MD5 values the real local file's own computed MD5 actually matches, and the install is blocked if it matches neither."
 }
