@@ -138,8 +138,14 @@ public sealed class InstallStateMachine
 
         if (device.BootloaderLockState != BootloaderLockState.Unlocked)
         {
-            var message = $"Bootloader lock state reports '{device.BootloaderLockState}', not Unlocked. " +
-                           "AETHERIX ROM MASTER never unlocks a bootloader itself — this must already be unlocked.";
+            var message = device.BootloaderLockState == BootloaderLockState.Locked
+                ? "Bootloader lock state reports Locked. AETHERIX ROM MASTER never unlocks a bootloader itself and will not " +
+                  "proceed: unlocking it (OEM unlocking + 'fastboot flashing unlock', done by you, on the device, outside this " +
+                  "app) is an irreversible, user-initiated action that WIPES ALL DATA on the device as a side effect of the " +
+                  "unlock itself, before any ROM is even flashed. Back up anything you need first if you choose to unlock."
+                : "Bootloader lock state could not be confirmed as Unlocked (reports 'Unknown'). AETHERIX ROM MASTER will not " +
+                  "proceed on an unconfirmed state — use \"Verify Bootloader via Fastboot\" for an authoritative check (reboots " +
+                  "the device into fastboot and reads its lock state directly) rather than assuming either way.";
             if (IsReal(context)) return StepResult.Failed(context.CurrentState, message);
             context.Logger.Log(LogLevel.Warning, "VerifyBootloader", "[DRY RUN] " + message);
         }
