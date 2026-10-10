@@ -1,0 +1,271 @@
+<Window x:Class="AetherixRomMaster.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:AetherixRomMaster.App.Converters"
+        Title="AETHERIX ROM MASTER"
+        Height="860" Width="1320" MinHeight="700" MinWidth="1080"
+        Background="{StaticResource WindowBackgroundBrush}"
+        WindowStartupLocation="CenterScreen"
+        Icon="Assets/icon.png"
+        FontFamily="Segoe UI">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis"/>
+        <converters:LogLevelToBrushConverter x:Key="LevelToBrush"/>
+        <converters:BoolToStatusBrushConverter x:Key="BoolToStatusBrush"/>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Padding="28,18" BorderBrush="{StaticResource BorderBrush0}" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Image Grid.Column="0" Source="Assets/icon.png" Width="42" Height="42" Margin="0,0,14,0" VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="AETHERIX ROM MASTER" Style="{StaticResource HeadingText}"/>
+                    <TextBlock Text="Motorola Moto G64 5G (cancunf) · Custom ROM + KernelSU installer · Magisk never used" Style="{StaticResource SubheadingText}"/>
+                </StackPanel>
+
+                <Border Grid.Column="2" CornerRadius="999" Padding="12,5" VerticalAlignment="Center"
+                        Background="{Binding IsDeviceSupported, Converter={StaticResource BoolToStatusBrush}}">
+                    <TextBlock Text="{Binding DeviceCompatibilityMessage}" Foreground="White" FontSize="11" FontWeight="SemiBold" MaxWidth="320" TextWrapping="Wrap"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Platform tools missing warning -->
+        <Border Grid.Row="1" Background="#3A1E1E" Padding="16,10"
+                Visibility="{Binding PlatformToolsReady, Converter={StaticResource InverseBoolToVis}}">
+            <TextBlock Text="{Binding PlatformToolsStatus}" Foreground="{StaticResource ErrorBrush}" TextWrapping="Wrap" FontSize="12"/>
+        </Border>
+
+        <!-- Main content -->
+        <Grid Grid.Row="2" Margin="24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.05*"/>
+                <ColumnDefinition Width="18"/>
+                <ColumnDefinition Width="1.3*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left column: Device / ROM / KernelSU cards -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+
+                    <!-- Device card -->
+                    <Border Style="{StaticResource GlassCard}" Margin="0,0,0,16">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Connected Device" Style="{StaticResource HeadingText}" FontSize="16"/>
+                                <Button Grid.Column="1" Content="Refresh" Style="{StaticResource SecondaryButton}" Command="{Binding RefreshDeviceCommand}" Padding="12,5"/>
+                            </Grid>
+                            <TextBlock Text="{Binding DeviceManufacturerModel}" Style="{StaticResource BodyText}" FontSize="16" FontWeight="SemiBold" Margin="0,10,0,2"/>
+                            <TextBlock Text="{Binding DeviceSummaryLine}" Style="{StaticResource CaptionText}" Margin="0,0,0,12"/>
+
+                            <UniformGrid Columns="2">
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="CONNECTIVITY" Style="{StaticResource CaptionText}"/>
+                                    <TextBlock Text="{Binding DeviceConnectivityDisplay}" Style="{StaticResource BodyText}"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="BOOTLOADER" Style="{StaticResource CaptionText}"/>
+                                    <TextBlock Text="{Binding DeviceBootloaderDisplay}" Style="{StaticResource BodyText}"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="ADB" Style="{StaticResource CaptionText}"/>
+                                    <TextBlock Text="{Binding DeviceAdbConnected}" Style="{StaticResource BodyText}"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="FASTBOOT / FASTBOOTD" Style="{StaticResource CaptionText}"/>
+                                    <TextBlock Style="{StaticResource BodyText}">
+                                        <Run Text="{Binding DeviceFastbootConnected, Mode=OneWay}"/>
+                                        <Run Text=" / "/>
+                                        <Run Text="{Binding DeviceFastbootdConnected, Mode=OneWay}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="ROOT SOLUTION" Style="{StaticResource CaptionText}"/>
+                                    <TextBlock Text="{Binding DeviceRootDisplay}" Style="{StaticResource BodyText}"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="STORAGE FREE" Style="{StaticResource CaptionText}"/>
+                                    <TextBlock Text="{Binding DeviceStorageDisplay}" Style="{StaticResource BodyText}"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,0,10">
+                                    <TextBlock Text="BATTERY" Style="{StaticResource CaptionText}"/>
+                                    <TextBlock Text="{Binding DeviceBatteryDisplay}" Style="{StaticResource BodyText}"/>
+                                </StackPanel>
+                            </UniformGrid>
+
+                            <TextBlock Text="BUILD FINGERPRINT" Style="{StaticResource CaptionText}" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding DeviceFingerprintDisplay}" Style="{StaticResource CaptionText}" FontFamily="Consolas" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ROM selection card -->
+                    <Border Style="{StaticResource GlassCard}" Margin="0,0,0,16">
+                        <StackPanel>
+                            <TextBlock Text="ROM Selection" Style="{StaticResource HeadingText}" FontSize="16" Margin="0,0,0,10"/>
+                            <TextBlock Text="{Binding RomProfileSummary}" Style="{StaticResource BodyText}"/>
+                            <TextBlock Text="{Binding RomVerificationStatusText}" Style="{StaticResource CaptionText}" Foreground="{StaticResource WarningBrush}" Margin="0,2,0,12"/>
+
+                            <TextBlock Text="ROM ZIP" Style="{StaticResource CaptionText}"/>
+                            <Grid Margin="0,4,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Text="{Binding RomZipPath, Mode=OneWay}" IsReadOnly="True"/>
+                                <Button Grid.Column="2" Content="Select ZIP…" Style="{StaticResource SecondaryButton}" Command="{Binding BrowseRomCommand}"/>
+                            </Grid>
+
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Text="{Binding RomDownloadUrl, UpdateSourceTrigger=PropertyChanged}" Tag="Paste official ROM download URL here"/>
+                                <Button Grid.Column="2" Content="Download" Style="{StaticResource SecondaryButton}" Command="{Binding DownloadRomCommand}"/>
+                            </Grid>
+
+                            <StackPanel Visibility="{Binding RomRequiresInitialInstallPackage, Converter={StaticResource BoolToVis}}">
+                                <Separator Margin="0,4,0,10" Background="{StaticResource BorderBrush0}"/>
+                                <TextBlock Text="REQUIRED INITIAL-INSTALL PACKAGE" Style="{StaticResource CaptionText}"/>
+                                <Grid Margin="0,4,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Text="{Binding InitialInstallZipPath, Mode=OneWay}" IsReadOnly="True"/>
+                                    <Button Grid.Column="2" Content="Select ZIP…" Style="{StaticResource SecondaryButton}" Command="{Binding BrowseInitialInstallCommand}"/>
+                                </Grid>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Text="{Binding InitialInstallDownloadUrl, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <Button Grid.Column="2" Content="Download" Style="{StaticResource SecondaryButton}" Command="{Binding DownloadInitialInstallCommand}"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding DownloadStatusText}" Style="{StaticResource CaptionText}" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- KernelSU status card -->
+                    <Border Style="{StaticResource GlassCard}" Margin="0,0,0,16">
+                        <StackPanel>
+                            <TextBlock Text="KernelSU Compatibility" Style="{StaticResource HeadingText}" FontSize="16" Margin="0,0,0,10"/>
+                            <TextBlock Text="{Binding KernelSuStatusText}" Style="{StaticResource BodyText}"/>
+                            <TextBlock Text="Magisk is never installed, recommended, or used by this application." Style="{StaticResource CaptionText}" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Right column: actions, progress, logs, recovery -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Action buttons -->
+                <Border Grid.Row="0" Style="{StaticResource GlassCard}" Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="Installation" Style="{StaticResource HeadingText}" FontSize="16" Margin="0,0,0,12"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Dry Run (Preview, Safe)" Style="{StaticResource SecondaryButton}" Command="{Binding DryRunCommand}" Margin="0,0,10,0"/>
+                            <Button Content="Install Custom ROM" Style="{StaticResource PrimaryButton}" Command="{Binding InstallCommand}" Margin="0,0,10,0"/>
+                            <Button Content="Cancel" Style="{StaticResource DangerButton}" Command="{Binding CancelCommand}"/>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,14,0,0" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="{Binding CurrentStateText}" Style="{StaticResource BodyText}" Margin="0,0,0,6"/>
+                            <ProgressBar Value="{Binding ProgressPercent, Mode=OneWay}" Minimum="0" Maximum="100"/>
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding FinalSummary}" Style="{StaticResource BodyText}" FontWeight="SemiBold"
+                                   Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" Margin="0,12,0,0"
+                                   Visibility="{Binding HasFinalSummary, Converter={StaticResource BoolToVis}}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Recovery assistance -->
+                <Border Grid.Row="1" Style="{StaticResource GlassCard}" Margin="0,0,0,16"
+                        BorderBrush="{StaticResource ErrorBrush}"
+                        Visibility="{Binding HasFailure, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Recovery Assistance" Style="{StaticResource HeadingText}" FontSize="16" Foreground="{StaticResource ErrorBrush}"/>
+                        <TextBlock Text="{Binding FailureMessage}" Style="{StaticResource BodyText}" Margin="0,8,0,10"/>
+                        <TextBlock Text="{Binding ActiveRecoveryGuidance.Title}" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
+                        <ItemsControl ItemsSource="{Binding ActiveRecoveryGuidance.Steps}" Margin="0,6,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding StringFormat='•  {0}'}" Style="{StaticResource CaptionText}" Margin="0,2,0,2"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Live logs -->
+                <Border Grid.Row="2" Style="{StaticResource GlassCard}" Padding="0" Margin="0,0,0,0">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="Live Log" Style="{StaticResource HeadingText}" FontSize="16" Margin="18,16,18,10"/>
+                        <ScrollViewer x:Name="LogScrollViewer" Padding="18,0,18,16">
+                            <ItemsControl ItemsSource="{Binding LogEntries}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="11"
+                                                   Foreground="{Binding Level, Converter={StaticResource LevelToBrush}}"
+                                                   TextWrapping="Wrap" Margin="0,1,0,1"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Confirmation overlay -->
+        <Grid Grid.Row="0" Grid.RowSpan="3" Background="#B0000000"
+              Visibility="{Binding IsConfirmationPending, Converter={StaticResource BoolToVis}}">
+            <Border Style="{StaticResource GlassCard}" MaxWidth="520" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="{StaticResource SurfaceRaisedBrush}" BorderBrush="{StaticResource WarningBrush}">
+                <StackPanel>
+                    <TextBlock Text="Confirmation required" Style="{StaticResource HeadingText}" Foreground="{StaticResource WarningBrush}"/>
+                    <TextBlock Text="{Binding ConfirmationMessage}" Style="{StaticResource BodyText}" Margin="0,14,0,18"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Cancel" Style="{StaticResource SecondaryButton}" Command="{Binding DeclineCommand}" Margin="0,0,10,0"/>
+                        <Button Content="I understand, continue" Style="{StaticResource PrimaryButton}" Command="{Binding ConfirmCommand}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

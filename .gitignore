@@ -1,0 +1,18 @@
+# .NET build output
+bin/
+obj/
+publish/
+
+# Rider / VS / VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+
+# App runtime output (created next to the built exe, not part of source)
+logs/
+downloads/
+
+# OS cruft
+.DS_Store
+Thumbs.db

@@ -1,0 +1,34 @@
+{
+  "codename": "cancunf",
+  "manufacturer": "Motorola",
+  "supportedModels": [
+    "Moto G64 5G",
+    "Moto G54 5G"
+  ],
+  "chipset": "MediaTek Dimensity 7025 (6nm)",
+  "stockOsAtLaunch": "Android 14, with an Android 15 upgrade and 3 years of security updates committed by Motorola. This profile targets a device already updated to Android 15, per the supported v1 configuration.",
+  "enforceAntiRollbackCheck": true,
+  "verificationStatus": "PendingManualConfirmation",
+  "citations": [
+    {
+      "title": "Motorola Moto G64 - GSMArena spec sheet",
+      "url": "https://m.gsmarena.com/motorola_moto_g64-12925.php",
+      "note": "Confirms chipset (MediaTek Dimensity 7025), launch Android version, RAM/storage variants."
+    },
+    {
+      "title": "Motorola G54/G64 5G Custom ROM Guide :: Cyber Knight",
+      "url": "https://cyberknight777.dev/instructions/cancunf/",
+      "note": "Dedicated flashing-instructions page for the cancunf codename, authored by a recognized AOSP/GKI kernel developer. Confirms cancunf covers both the G54 5G and G64 5G, and that the page is scoped to Android-16-based ROMs built on Android 15 firmware. This exact host was blocked by this build environment's network egress policy (HTTP 403) and could not be fetched directly to extract verbatim commands -- a human must open it before real flashing is enabled."
+    },
+    {
+      "title": "Cancunf_Stock_Flash_Guide (GitHub)",
+      "url": "https://github.com/NonameBlank007/Cancunf_Stock_Flash_Guide",
+      "note": "Stock flash/relock guide for cancunf noting it is an MTK (MediaTek) device, and warning that flashing firmware below the device's fused anti-rollback (ARB) index can hard-brick it. Source of the EnforceAntiRollbackCheck=true flag on this profile."
+    },
+    {
+      "title": "[ROM][A16] Moto G54/G64 LineageOS 23.2 Unofficial - XDA",
+      "url": "https://xdaforums.com/t/rom-a16-moto-g54-g64-lineageos-23-2-unofficial.4793920/",
+      "note": "Independent confirmation that cancunf (G54/G64) has an active AOSP-derived custom ROM community and unofficial LineageOS builds."
+    }
+  ]
+}
