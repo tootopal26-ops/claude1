@@ -54,10 +54,11 @@ and smoke-tests that the EXE actually launches and stays running (not an immedia
 startup-exception crash). The badge above always reflects the latest run; check the
 [Actions tab](https://github.com/tootopal26-ops/claude1/actions/workflows/windows-build.yml) for details.
 
-Latest run observed directly during development (commit `73ded8a` — removes the
-artificial Initial Install checksum blocker after researching that no authoritative
-checksum for that package type exists, rather than inventing one;
-[run #15](https://github.com/tootopal26-ops/claude1/actions/runs/38066702641)):
+Latest run observed directly during development (commit `380ff47` — fixes the checksum
+mismatch-message bug and a second bootloader false positive, and removes the artificial
+Dry-Run-first gate on Install, including new WPF `MultiBinding` converters that could
+only be validated by the real Windows compiler;
+[run #17](https://github.com/tootopal26-ops/claude1/actions/runs/38069072034)):
 
 ```
 dotnet build ... -c Release
@@ -67,16 +68,15 @@ Build succeeded.
 
 dotnet test ...
 Test Run Successful.
-Total tests: 202
-     Passed: 202
- Total time: 4.8071 Seconds
+Total tests: 214
+     Passed: 214
+ Total time: 5.1143 Seconds
 
 dotnet publish ... -r win-x64 --self-contained true -p:PublishSingleFile=true ...
   AetherixRomMaster.App -> ...\publish\win-x64\
-  (AetherixRomMaster.exe, 162,494,151 bytes; profiles\cancunf.infinity-x.rom.json now
-   10,406 bytes, confirming the new research citations/notes shipped)
+  (AetherixRomMaster.exe, 162,496,199 bytes)
 
-Smoke test: Process is still running after 6 seconds (PID 8000) -- startup looks healthy.
+Smoke test: Process is still running after 6 seconds (PID 4900) -- startup looks healthy.
 ```
 
 Earlier verified runs in this same history: [run #6](https://github.com/tootopal26-ops/claude1/actions/runs/38054491595)
@@ -87,10 +87,12 @@ data-wipe-consequences message), [run #8](https://github.com/tootopal26-ops/clau
 [run #10](https://github.com/tootopal26-ops/claude1/actions/runs/38061307669) (the
 user-confirmed-unlocked bootloader override — 151/151 tests),
 [run #11](https://github.com/tootopal26-ops/claude1/actions/runs/38062052011) (the
-device-aware Advanced Maintenance operations — 174/174 tests), and
+device-aware Advanced Maintenance operations — 174/174 tests),
 [run #13](https://github.com/tootopal26-ops/claude1/actions/runs/38065526232) (the
-bootloader Locked-on-failure fix and evidence-based ROM-profile gate — 197/197 tests)
-were all independently green too.
+bootloader Locked-on-failure fix and evidence-based ROM-profile gate — 197/197 tests),
+and [run #15](https://github.com/tootopal26-ops/claude1/actions/runs/38066702641) (the
+Initial Install checksum-blocker removal — 202/202 tests) were all independently green
+too.
 
 This wasn't green on the first try for the Recovery/Pre-Flight UI commit, and that's worth
 being honest about: [run #3](https://github.com/tootopal26-ops/claude1/actions/runs/38051414906)
