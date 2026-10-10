@@ -42,29 +42,33 @@ and smoke-tests that the EXE actually launches and stays running (not an immedia
 startup-exception crash). The badge above always reflects the latest run; check the
 [Actions tab](https://github.com/tootopal26-ops/claude1/actions/workflows/windows-build.yml) for details.
 
-Last run observed directly during development (commit `0155fba`, Windows Server 2025 /
-`windows-2025-vs2026` image):
+Latest run observed directly during development (commit `19cdcf6`, Windows Server 2025 /
+`windows-2025-vs2026` image, [run #4](https://github.com/tootopal26-ops/claude1/actions/runs/38051709337)):
 
 ```
 dotnet build AetherixRomMaster.sln -c Release --no-restore
   AetherixRomMaster.Core -> ...\AetherixRomMaster.Core.dll
-  AetherixRomMaster.Core.Tests -> ...\AetherixRomMaster.Core.Tests.dll
   AetherixRomMaster.App -> ...\net8.0-windows\AetherixRomMaster.dll
 Build succeeded. 0 Warning(s)  0 Error(s)
 
-dotnet test ... 
-Test Run Successful. Total tests: 61  Passed: 61
+dotnet test ...
+Test Run Successful. Total tests: 79  Passed: 79
 
 dotnet publish ... -r win-x64 --self-contained true -p:PublishSingleFile=true ...
   AetherixRomMaster.App -> ...\publish\win-x64\
-  (AetherixRomMaster.exe, 162,333,895 bytes)
+  (AetherixRomMaster.exe, 162,369,735 bytes)
 
-Smoke test: Process is still running after 6 seconds (PID 5248) -- startup looks healthy.
+Smoke test: Process is still running after 6 seconds (PID 5180) -- startup looks healthy.
 ```
 
-(61/61 reflects the test count at that commit; 18 more tests were added afterward for the
-Recovery & Pre-Flight system below — see the live badge/Actions tab for the current run
-against the latest commit, which re-verifies all 79.)
+This wasn't green on the first try for the Recovery/Pre-Flight UI commit, and that's worth
+being honest about: [run #3](https://github.com/tootopal26-ops/claude1/actions/runs/38051414906)
+failed with a real compiler error (`MC3072: The property 'Visibility' does not exist`) —
+a `<Run>` inline text element had been given a `Visibility` binding, which only a
+`UIElement` (not a `TextElement`/`Inline`) supports. No amount of manual XAML
+cross-checking in the Linux sandbox could have caught that; the real Windows compiler
+did, immediately. It was fixed (replaced with plain `TextBlock`s) and re-verified green
+in run #4 above — see the commit history for both.
 
 ## 🛡️ Recovery & Rollback Safety System ("Recovery Mode")
 
