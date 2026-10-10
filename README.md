@@ -37,7 +37,7 @@ the moment something can't be verified.
 | Evidence-based Pre-Flash Safety Check (PASS / BLOCKED / UNABLE TO VERIFY per item) | ✅ Implemented — see "Bootloader detection fix" below |
 | MD5 checksum support + GApps/Vanilla variant detection (by checksum, never filename) | ✅ Implemented |
 | Dark glassmorphism WPF UI | ✅ Implemented |
-| Automated tests (214 tests, see `src/AetherixRomMaster.Core.Tests`) | ✅ Implemented, all passing |
+| Automated tests (221 tests, see `src/AetherixRomMaster.Core.Tests`) | ✅ Implemented, all passing |
 | **WPF app actually compiles & runs on real Windows** | ✅ **Verified on GitHub Actions `windows-latest` — see below, not just claimed** |
 | **cancunf + Infinity-X ROM profile: `VerificationStatus = PendingManualConfirmation`** | ⚠️ **Device owner confirmed build/checksums from the official page; this app's own tooling still couldn't independently fetch it — see below** |
 | **cancunf + Infinity-X KernelSU restoration profile: `VerificationStatus = Unverified`** | ⚠️ **Required image type/partition not yet confirmed — see below** |
@@ -54,11 +54,11 @@ and smoke-tests that the EXE actually launches and stays running (not an immedia
 startup-exception crash). The badge above always reflects the latest run; check the
 [Actions tab](https://github.com/tootopal26-ops/claude1/actions/workflows/windows-build.yml) for details.
 
-Latest run observed directly during development (commit `380ff47` — fixes the checksum
-mismatch-message bug and a second bootloader false positive, and removes the artificial
-Dry-Run-first gate on Install, including new WPF `MultiBinding` converters that could
-only be validated by the real Windows compiler;
-[run #17](https://github.com/tootopal26-ops/claude1/actions/runs/38069072034)):
+Latest run observed directly during development (commit `820734d` — eliminates all
+ADB-property-based bootloader inference and renames `BootloaderLockState` to
+`UnableToVerify`/`VerifiedLocked`/`VerifiedUnlocked`, after a third such property
+independently reproduced a real false-"Locked" report on live hardware;
+[run #19](https://github.com/tootopal26-ops/claude1/actions/runs/38071458636)):
 
 ```
 dotnet build ... -c Release
@@ -68,15 +68,15 @@ Build succeeded.
 
 dotnet test ...
 Test Run Successful.
-Total tests: 214
-     Passed: 214
- Total time: 5.1143 Seconds
+Total tests: 221
+     Passed: 221
+ Total time: 5.7147 Seconds
 
 dotnet publish ... -r win-x64 --self-contained true -p:PublishSingleFile=true ...
   AetherixRomMaster.App -> ...\publish\win-x64\
-  (AetherixRomMaster.exe, 162,496,199 bytes)
+  (AetherixRomMaster.exe, 162,497,735 bytes)
 
-Smoke test: Process is still running after 6 seconds (PID 4900) -- startup looks healthy.
+Smoke test: Process is still running after 6 seconds (PID 2884) -- startup looks healthy.
 ```
 
 Earlier verified runs in this same history: [run #6](https://github.com/tootopal26-ops/claude1/actions/runs/38054491595)
@@ -90,8 +90,11 @@ user-confirmed-unlocked bootloader override — 151/151 tests),
 device-aware Advanced Maintenance operations — 174/174 tests),
 [run #13](https://github.com/tootopal26-ops/claude1/actions/runs/38065526232) (the
 bootloader Locked-on-failure fix and evidence-based ROM-profile gate — 197/197 tests),
-and [run #15](https://github.com/tootopal26-ops/claude1/actions/runs/38066702641) (the
-Initial Install checksum-blocker removal — 202/202 tests) were all independently green
+[run #15](https://github.com/tootopal26-ops/claude1/actions/runs/38066702641) (the
+Initial Install checksum-blocker removal — 202/202 tests), and
+[run #17](https://github.com/tootopal26-ops/claude1/actions/runs/38069072034) (the
+checksum mismatch-message fix, a second bootloader false positive, and removal of the
+artificial Dry-Run-first gate on Install — 214/214 tests) were all independently green
 too.
 
 This wasn't green on the first try for the Recovery/Pre-Flight UI commit, and that's worth
@@ -309,11 +312,13 @@ simply couldn't obtain evidence either way — never presented as if it were a c
 problem):
 
 1. Device is exactly Moto G64 5G / `cancunf` (codename match, never model name)
-2. Bootloader state is Unlocked — **Pass** if ADB or an authoritative Fastboot query
-   confirms Unlocked, **or** if detection is Unknown and the user explicitly used
-   "Confirm Unlocked Manually"; **Blocked** only on a positively-detected Locked state
-   (never overridable by a manual confirmation); **UnableToVerify** if detection is
-   Unknown and nothing has confirmed it either way yet
+2. Bootloader state is Unlocked — **Pass** only on a genuine Fastboot-verified
+   `VerifiedUnlocked`, **or** if detection is `UnableToVerify` and the user explicitly
+   used "Confirm Unlocked Manually"; **Blocked** only on a positively Fastboot-verified
+   `VerifiedLocked` (never overridable by a manual confirmation); **UnableToVerify**
+   otherwise — including, always, while the device is connected over plain ADB/Android,
+   where no ADB property is trusted as bootloader-lock evidence at all (see "Bootloader-
+   detection bug fix" below)
 3. Required package(s) are selected and present on disk
 4. SHA-256/MD5 checksums verified against an official source (whichever algorithm that
    source actually publishes — never a pretended SHA-256 match for a file whose official
@@ -366,7 +371,34 @@ its `"locked"` reading is not. `ro.boot.flash.locked` -- the one property Motoro
 documentation ties specifically to the actual flash-lock state -- is now the sole
 ADB-readable signal this app trusts to declare Locked.
 
-**A third bug, in the checksum mismatch message, not the comparison itself:** when a
+**A third, final false positive (reported live, 2026-10-10), which retired
+ADB-property-based bootloader detection entirely:** ADB-connected, Fastboot/FastbootD
+unavailable, device genuinely OEM-unlocked -- still reported **Locked**, with Recovery
+Mode saying "Bootloader lock state reports Locked" and Verification Status reading
+`NotAvailable`. Root cause: `ro.boot.flash.locked` -- the property the *previous* fix
+had just promoted to "the sole ADB-readable signal this app trusts to declare Locked" --
+independently reproduced the exact same false positive on this real device. Rather than
+patch in a fourth "reliable" property after three had each failed in turn, this app no
+longer treats **any** ADB property as bootloader-lock evidence, at all.
+`DeviceDetectionService.BuildFromAdbAsync` unconditionally reports `UnableToVerify`
+while connected over plain ADB/Android; only an authoritative Fastboot round-trip, or
+an explicit user attestation (Unlocked only), can ever produce a verified verdict.
+`BootloaderLockState` was renamed to the three-value model this now makes exact:
+`UnableToVerify` / `VerifiedLocked` / `VerifiedUnlocked` -- applied consistently across
+`DeviceDetectionService`, `PreFlightSafetyChecker`, `InstallStateMachine`, and
+`MainViewModel`. While ADB-connected and unconfirmed, the bootloader field now reads
+the exact text "Unable to verify bootloader — reboot to bootloader/Fastboot to
+verify." -- and, since Recovery Mode's displayed message is sourced from the same
+`StepResult` the state machine produced (never a separate copy), fixing that one
+message fixed what Recovery Mode shows too. 8 letter-labeled regression tests
+(`BootloaderStateModelRegressionTests.cs`) prove: Fastboot unavailable/timeout both
+yield `UnableToVerify` never `Locked`; an unconfirmed `UnableToVerify` state is never
+classified or worded as Locked by the Pre-Flight checker, the state machine, or
+Recovery Mode; explicit Fastboot responses correctly yield `VerifiedUnlocked`/
+`VerifiedLocked`; `VerifiedLocked` blocks installation unconditionally; and Recovery
+Mode's message is proven identical to the state machine's own.
+
+**A fourth bug, in the checksum mismatch message, not the comparison itself:** when a
 local file matched none of several known official checksums, the message defaulted to
 labeling the comparison "SHA-256" even when only MD5 candidates were ever checked (the
 underlying comparison was always correctly MD5-to-MD5 -- only the message was wrong).
