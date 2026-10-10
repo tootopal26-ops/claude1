@@ -1,0 +1,19 @@
+{
+  "targetCodename": "cancunf",
+  "targetRomName": "Project Infinity X (Infinity-X)",
+  "targetRomBuildFingerprint": null,
+  "requiredImageType": null,
+  "requiredImageFileName": null,
+  "targetPartition": null,
+  "kmiIdentifier": null,
+  "securityPatchLevel": null,
+  "verificationStatus": "Unverified",
+  "citations": [
+    {
+      "title": "Motorola G54/G64 5G Custom ROM Guide :: Cyber Knight",
+      "url": "https://cyberknight777.dev/instructions/cancunf/",
+      "note": "The most likely place this would be documented (device-specific custom ROM instructions for cancunf), but blocked by this environment's network policy -- not yet opened or confirmed by a human."
+    }
+  ],
+  "verificationGapNotes": "Whether cancunf's Infinity-X build needs boot.img or init_boot.img patched for KernelSU, and which fastboot partition that maps to, has not been confirmed against any official source. This is exactly the kind of fact AETHERIX ROM MASTER will not guess: GKI 2.0 devices with the init_boot split need init_boot.img patched, not boot.img, and flashing the wrong one does not produce a working root (and can affect boot). KernelSuRestorationPlanner refuses to build an actionable restoration plan while this profile stays Unverified -- real KernelSU restoration for cancunf/Infinity-X is blocked until a human confirms the required image type, exact file name, and target partition (e.g. from the device's own kernel 'uname -r' GKI marker plus the ROM's own install instructions) and updates this file."
+}

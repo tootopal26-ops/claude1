@@ -61,6 +61,12 @@ public sealed class InstallHarness
         Serial = serial,
     };
 
+    public static DeviceInfo AdbRecoveryManualCancunf(string serial = "S1") => new()
+    {
+        ConnectionMode = ConnectionMode.AdbRecoveryManual,
+        Serial = serial,
+    };
+
     public InstallContext BuildContext(
         InstallMode mode,
         RomProfile romProfile,

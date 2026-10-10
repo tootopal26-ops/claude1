@@ -137,6 +137,102 @@ public class InstallStateMachineTests : IDisposable
     }
 
     [Fact]
+    public async Task InstallRom_RequestsManualNavigation_WhenRecoveryReachesPlainAdbButNotSideload()
+    {
+        var harness = new InstallHarness();
+        harness.Detection.Current = InstallHarness.AdbCancunf();
+        var (romZip, initialZip) = CreateValidPackages();
+        var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
+        context.BackupAcknowledged = true;
+        context.DataWipeConfirmed = true;
+
+        var results = new List<StepResult>();
+        await foreach (var step in harness.StateMachine.RunAsync(context))
+        {
+            results.Add(step);
+            if (step.State == InstallState.DetectDevice && step.Outcome == StepOutcome.Continue)
+            {
+                harness.Detection.Current = InstallHarness.FastbootUserspaceCancunf();
+            }
+            else if (step.State == InstallState.EnterRequiredInstallationMode && step.Outcome == StepOutcome.Continue)
+            {
+                // Recovery boots but stays in plain ADB -- this recovery needs the menu navigated by hand.
+                harness.Detection.Current = InstallHarness.AdbRecoveryManualCancunf();
+            }
+        }
+
+        var last = results[^1];
+        Assert.Equal(InstallState.InstallRom, last.State);
+        Assert.Equal(StepOutcome.NeedsConfirmation, last.Outcome);
+        Assert.Equal("manual-recovery-navigation", last.ConfirmationKey);
+        Assert.Contains("manual interaction", last.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("RebootToRecovery", harness.FlashExecutor.Calls);
+        Assert.DoesNotContain("SideloadRom", harness.FlashExecutor.Calls);
+    }
+
+    [Fact]
+    public async Task InstallRom_Succeeds_AfterManualNavigationConfirmation_WithoutReissuingReboot()
+    {
+        var harness = new InstallHarness();
+        harness.Detection.Current = InstallHarness.AdbCancunf();
+        var (romZip, initialZip) = CreateValidPackages();
+        var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
+        context.BackupAcknowledged = true;
+        context.DataWipeConfirmed = true;
+
+        await foreach (var step in harness.StateMachine.RunAsync(context))
+        {
+            if (step.State == InstallState.DetectDevice && step.Outcome == StepOutcome.Continue)
+            {
+                harness.Detection.Current = InstallHarness.FastbootUserspaceCancunf();
+            }
+            else if (step.State == InstallState.EnterRequiredInstallationMode && step.Outcome == StepOutcome.Continue)
+            {
+                harness.Detection.Current = InstallHarness.AdbRecoveryManualCancunf();
+            }
+        }
+
+        // The user has now (per the test's narrative) manually navigated the recovery menu.
+        // Only the InstallRom retry itself is under test here -- draining the rest of the
+        // pipeline would run into VerifyFinalOs's real 5-minute "wait for ADB" timeout,
+        // since this test isn't modeling a reboot back to a normally-booted system.
+        harness.Detection.Current = InstallHarness.AdbSideloadCancunf();
+        StepResult? last = null;
+        await foreach (var step in harness.StateMachine.RunAsync(context))
+        {
+            last = step;
+            break;
+        }
+
+        Assert.NotNull(last);
+        Assert.Equal(InstallState.InstallRom, last!.State);
+        Assert.Equal(StepOutcome.Continue, last.Outcome);
+        Assert.Contains("SideloadRom", harness.FlashExecutor.Calls);
+        // RebootToRecovery must have been issued exactly once across both attempts, never repeated.
+        Assert.Equal(1, harness.FlashExecutor.Calls.Count(c => c == "RebootToRecovery"));
+    }
+
+    [Fact]
+    public async Task RequestDataWipeConfirmation_MessageIncludesStructuredSafetyFields()
+    {
+        var harness = new InstallHarness();
+        harness.Detection.Current = InstallHarness.AdbCancunf();
+        var (romZip, initialZip) = CreateValidPackages();
+        var context = harness.BuildContext(InstallMode.Real, TestProfiles.InfinityXVerified(), romZip, initialZip);
+        context.BackupAcknowledged = true;
+
+        var results = await DrainAsync(harness.StateMachine.RunAsync(context));
+
+        var last = results[^1];
+        Assert.Equal(StepOutcome.NeedsConfirmation, last.Outcome);
+        Assert.Equal("data-wipe", last.ConfirmationKey);
+        foreach (var required in new[] { "WARNING", "Device:", "Codename:", "ROM:", "Android:", "Reason for wipe:", "Expected result:" })
+        {
+            Assert.Contains(required, last.Message);
+        }
+    }
+
+    [Fact]
     public async Task FullDryRunWalk_ReachesComplete_WithNoFailedStep()
     {
         var harness = new InstallHarness();

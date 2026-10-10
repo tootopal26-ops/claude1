@@ -1,5 +1,6 @@
 using AetherixRomMaster.Core.Devices;
 using AetherixRomMaster.Core.KernelSu;
+using AetherixRomMaster.Core.KernelSu.Restoration;
 using AetherixRomMaster.Core.Logging;
 using AetherixRomMaster.Core.Profiles;
 using AetherixRomMaster.Core.Recovery;
@@ -50,6 +51,9 @@ public sealed class InstallEngine
 
         return new InstallStateMachine(DeviceDetection, DeviceCompatibility, RomValidation, KernelSuChecker, RootDetector, executor);
     }
+
+    public KernelSuRestorationSession CreateKernelSuRestorationSession(IInstallLogger logger, bool isDryRun) =>
+        new(Adb, Fastboot, RootDetector, logger, isDryRun);
 
     public InstallContext CreateContext(
         InstallMode mode,

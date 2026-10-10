@@ -38,6 +38,12 @@ public sealed class InstallContext
     public bool BackupAcknowledged { get; set; }
     public bool DataWipeConfirmed { get; set; }
 
+    /// <summary>Set once InstallRom has actually issued "reboot to recovery" for this
+    /// attempt. When InstallRom is re-entered after a manual-recovery-navigation
+    /// confirmation, this prevents re-issuing the reboot command to a device that has
+    /// already left fastboot mode (which would just fail).</summary>
+    public bool RecoveryRebootIssuedForSideload { get; set; }
+
     /// <summary>Every StepResult this run has produced, in order, including the
     /// terminal one. Populated by InstallStateMachine.RunAsync as it yields each
     /// result -- this is what RecoveryPlanner uses to find the last state that

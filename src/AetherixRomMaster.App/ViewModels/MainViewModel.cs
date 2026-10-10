@@ -8,6 +8,7 @@ using AetherixRomMaster.Core.Devices;
 using AetherixRomMaster.Core.Diagnostics;
 using AetherixRomMaster.Core.Download;
 using AetherixRomMaster.Core.Installation;
+using AetherixRomMaster.Core.KernelSu.Restoration;
 using AetherixRomMaster.Core.Logging;
 using AetherixRomMaster.Core.Profiles;
 using AetherixRomMaster.Core.Recovery;
@@ -27,6 +28,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private TaskCompletionSource<bool>? _confirmationTcs;
     private InstallContext? _activeContext;
     private InstallStateMachine? _activeStateMachine;
+    private KernelSuProfile? _kernelSuProfile;
+    private KernelSuRestorationSession? _restorationSession;
+    private InstallLogger? _restorationLogger;
 
     public MainViewModel()
     {
@@ -41,6 +45,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         InstallCommand = new AsyncRelayCommand(() => RunAsync(InstallMode.Real), () => CanStartRun() && (PreFlightReport?.CanProceed ?? false));
         VerifyBootloaderCommand = new AsyncRelayCommand(VerifyBootloaderAsync, CanVerifyBootloader);
         CancelCommand = new RelayCommand(_ => _runCts?.Cancel(), _ => IsBusy);
+        RestoreKernelSuRootCommand = new AsyncRelayCommand(() => StartKernelSuRestorationAsync(isDryRun: false), CanStartKernelSuRestoration);
+        DryRunKernelSuRestorationCommand = new AsyncRelayCommand(() => StartKernelSuRestorationAsync(isDryRun: true), CanStartKernelSuRestoration);
+        BrowseOriginalKernelSuImageCommand = new RelayCommand(_ => RequestBrowseOriginalKernelSuImage?.Invoke(this, EventArgs.Empty), _ => RestorationState == KernelSuRestorationState.RestorationRequired);
+        BrowsePatchedKernelSuImageCommand = new RelayCommand(_ => RequestBrowsePatchedKernelSuImage?.Invoke(this, EventArgs.Empty), _ => RestorationState == KernelSuRestorationState.WaitingForKernelSuManager);
+        ConfirmKernelSuInstallCommand = new AsyncRelayCommand(ConfirmKernelSuInstallAsync, () => !IsBusy && RestorationState == KernelSuRestorationState.ReadyToRestore);
+        CancelKernelSuRestorationCommand = new RelayCommand(_ => ResetKernelSuRestoration(), _ => _restorationSession is not null && !IsBusy);
         ConfirmCommand = new RelayCommand(_ => CompleteConfirmation(true), _ => IsConfirmationPending);
         DeclineCommand = new RelayCommand(_ => CompleteConfirmation(false), _ => IsConfirmationPending);
         RetryRecoveryCommand = new AsyncRelayCommand(RetryFailedStepAsync, CanRetryRecovery);
@@ -87,12 +97,18 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         RomProfile = romProfiles.FirstOrDefault();
         _romProfileLoadIssue = RomProfile is null ? BuildRomProfileLoadIssueText(resolvedProfilesDirectory) : null;
 
+        var kernelSuProfiles = await _engine.Profiles.LoadKernelSuProfilesAsync(Codename);
+        _kernelSuProfile = RomProfile is null
+            ? null
+            : kernelSuProfiles.FirstOrDefault(p => string.Equals(p.TargetRomName, RomProfile.RomName, StringComparison.OrdinalIgnoreCase));
+
         OnPropertyChanged(nameof(DeviceProfile));
         OnPropertyChanged(nameof(RomProfile));
         OnPropertyChanged(nameof(RomProfileSummary));
         OnPropertyChanged(nameof(RomVerificationStatusText));
         OnPropertyChanged(nameof(RomRequiresInitialInstallPackage));
         OnPropertyChanged(nameof(DeviceCompatibilityMessage));
+        OnPropertyChanged(nameof(AutomationCapabilityReport));
 
         _devicePollTimer.Start();
         await RefreshDeviceAsync();
@@ -147,7 +163,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         nameof(DeviceManufacturerModel), nameof(DeviceSummaryLine), nameof(DeviceFingerprintDisplay),
         nameof(DeviceBootloaderDisplay), nameof(DeviceRootDisplay), nameof(DeviceStorageDisplay),
         nameof(DeviceBatteryDisplay), nameof(DeviceConnectivityDisplay), nameof(DeviceAdbConnected),
-        nameof(DeviceFastbootConnected), nameof(DeviceFastbootdConnected),
+        nameof(DeviceFastbootConnected), nameof(DeviceFastbootdConnected), nameof(AutomationCapabilityReport),
     ];
 
     private DeviceInfo _device = DeviceInfo.Disconnected;
@@ -210,12 +226,19 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ConnectionMode.FastbootBootloader => "Fastboot (bootloader)",
         ConnectionMode.FastbootUserspace => "Fastboot (fastbootd)",
         ConnectionMode.AdbSideload => "ADB sideload",
+        ConnectionMode.AdbRecoveryManual => "Recovery (manual — not yet in sideload)",
         _ => "Disconnected",
     };
 
     public string DeviceAdbConnected => Device.AdbConnected ? "Yes" : "No";
     public string DeviceFastbootConnected => Device.FastbootConnected ? "Yes" : "No";
     public string DeviceFastbootdConnected => Device.FastbootdConnected ? "Yes" : "No";
+
+    /// <summary>What Aetherix can automate right now for this exact device/ROM/KernelSU
+    /// profile combination -- read-only, recomputed from current state, never a fixed claim.</summary>
+    public IReadOnlyList<AutomationCapabilityItem> AutomationCapabilityReport => RomProfile is null
+        ? []
+        : new AutomationCapabilityPlanner().BuildReport(Device, RomProfile, _kernelSuProfile, new RootDetectionResult(Device.RootSolution, Device.RootSolutionDetail));
 
     private async Task RefreshDeviceAsync()
     {
@@ -306,6 +329,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public event EventHandler? RequestBrowseRom;
     public event EventHandler? RequestBrowseInitialInstall;
+    public event EventHandler? RequestBrowseOriginalKernelSuImage;
+    public event EventHandler? RequestBrowsePatchedKernelSuImage;
 
     public ICommand BrowseRomCommand { get; }
     public ICommand BrowseInitialInstallCommand { get; }
@@ -563,6 +588,191 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    // ----- KernelSU Root restoration -----
+    // A ROM install can replace the boot-related image and remove KernelSU root with it.
+    // This section drives the separate "Restore KernelSU Root" workflow: it reuses the
+    // same RootDetector as everywhere else in the app (never a looser check), and real
+    // flashing here is gated by KernelSuRestorationPlanner exactly like the main installer
+    // is gated by VerificationStatus -- an unverified device/ROM/image combination blocks
+    // before anything is transferred or flashed, never silently guessed.
+
+    public ICommand RestoreKernelSuRootCommand { get; }
+    public ICommand DryRunKernelSuRestorationCommand { get; }
+    public ICommand BrowseOriginalKernelSuImageCommand { get; }
+    public ICommand BrowsePatchedKernelSuImageCommand { get; }
+    public ICommand ConfirmKernelSuInstallCommand { get; }
+    public ICommand CancelKernelSuRestorationCommand { get; }
+
+    private KernelSuRestorationState? _restorationState;
+    public KernelSuRestorationState? RestorationState
+    {
+        get => _restorationState;
+        private set
+        {
+            if (SetProperty(ref _restorationState, value))
+            {
+                OnPropertyChanged(nameof(RestorationStateDisplay));
+                OnPropertyChanged(nameof(IsRestorationAwaitingOriginalImage));
+                OnPropertyChanged(nameof(IsRestorationAwaitingPatchedImage));
+                OnPropertyChanged(nameof(IsRestorationReadyToInstall));
+                RaiseAllCanExecuteChanged();
+            }
+        }
+    }
+
+    private string? _restorationMessage;
+    public string? RestorationMessage { get => _restorationMessage; private set => SetProperty(ref _restorationMessage, value); }
+
+    public bool HasActiveKernelSuRestoration => _restorationSession is not null;
+
+    public string RestorationStateDisplay => RestorationState switch
+    {
+        null => "Not started.",
+        KernelSuRestorationState.CheckingKernelSu => "Checking KernelSU...",
+        KernelSuRestorationState.AlreadyIntegrated => "KernelSU already integrated",
+        KernelSuRestorationState.RestorationRequired => "KernelSU restoration required",
+        KernelSuRestorationState.PreparingImage => "Preparing image...",
+        KernelSuRestorationState.TransferringImageToDevice => "Transferring image to phone...",
+        KernelSuRestorationState.WaitingForKernelSuManager => "Waiting for KernelSU Manager...",
+        KernelSuRestorationState.WaitingForPatchedImage => "Waiting for patched image...",
+        KernelSuRestorationState.VerifyingPatchedImage => "Verifying patched image...",
+        KernelSuRestorationState.PatchedImageVerified => "Patched image verified",
+        KernelSuRestorationState.ReadyToRestore => "Ready to restore KernelSU",
+        KernelSuRestorationState.RebootingToRequiredMode => "Rebooting to required mode...",
+        KernelSuRestorationState.Installing => "Installing...",
+        KernelSuRestorationState.RebootingToSystem => "Rebooting...",
+        KernelSuRestorationState.VerifyingKernelSu => "Verifying KernelSU...",
+        KernelSuRestorationState.RestoredSuccessfully => "KernelSU restored successfully",
+        KernelSuRestorationState.Blocked => "Restoration blocked — compatibility could not be verified",
+        _ => RestorationState.ToString() ?? "Unknown",
+    };
+
+    public bool IsRestorationAwaitingOriginalImage => RestorationState == KernelSuRestorationState.RestorationRequired;
+    public bool IsRestorationAwaitingPatchedImage => RestorationState == KernelSuRestorationState.WaitingForKernelSuManager;
+    public bool IsRestorationReadyToInstall => RestorationState == KernelSuRestorationState.ReadyToRestore;
+
+    private bool CanStartKernelSuRestoration() =>
+        !IsBusy && _engine is not null && RomProfile is not null && IsDeviceConnected && Device.ConnectionMode == ConnectionMode.Adb;
+
+    private async Task StartKernelSuRestorationAsync(bool isDryRun)
+    {
+        if (_engine is null || RomProfile is null) return;
+
+        DisposeRestorationLogger();
+        _restorationLogger = new InstallLogger(Path.Combine(AppContext.BaseDirectory, "logs"));
+        _restorationSession = _engine.CreateKernelSuRestorationSession(_restorationLogger, isDryRun);
+        OnPropertyChanged(nameof(HasActiveKernelSuRestoration));
+
+        IsBusy = true;
+        try
+        {
+            var result = await _restorationSession.CheckAsync(Device, RomProfile, _kernelSuProfile);
+            ApplyRestorationStepResult(result);
+        }
+        catch (Exception ex)
+        {
+            RestorationMessage = $"Error checking KernelSU status: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>Called by the view after the user picks the original (pre-patch) image
+    /// file in response to RequestBrowseOriginalKernelSuImage.</summary>
+    public async Task SubmitOriginalKernelSuImageAsync(string path)
+    {
+        if (_restorationSession is null) return;
+        IsBusy = true;
+        try
+        {
+            var result = await _restorationSession.PrepareAndTransferImageAsync(path);
+            ApplyRestorationStepResult(result);
+        }
+        catch (Exception ex)
+        {
+            RestorationMessage = $"Error preparing/transferring image: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>Called by the view after the user picks the KernelSU-patched image file
+    /// in response to RequestBrowsePatchedKernelSuImage. Verifying it successfully chains
+    /// straight into building the mandatory safety summary -- there is nothing else to do
+    /// with a verified patched image except show it before asking for install confirmation.</summary>
+    public async Task SubmitPatchedKernelSuImageAsync(string path)
+    {
+        if (_restorationSession is null || RomProfile is null) return;
+        IsBusy = true;
+        try
+        {
+            var verifyResult = await _restorationSession.RetrieveAndVerifyPatchedImageAsync(path);
+            ApplyRestorationStepResult(verifyResult);
+            if (verifyResult.Outcome == StepOutcome.Continue)
+            {
+                ApplyRestorationStepResult(_restorationSession.BuildSafetySummary(Device, RomProfile));
+            }
+        }
+        catch (Exception ex)
+        {
+            RestorationMessage = $"Error verifying patched image: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task ConfirmKernelSuInstallAsync()
+    {
+        var serial = Device.Serial;
+        if (_restorationSession is null || serial is null) return;
+        IsBusy = true;
+        try
+        {
+            var installResult = await _restorationSession.InstallPatchedImageAsync(Device.Codename);
+            ApplyRestorationStepResult(installResult);
+            if (installResult.Outcome == StepOutcome.Continue)
+            {
+                ApplyRestorationStepResult(await _restorationSession.VerifyAfterRebootAsync(serial));
+            }
+        }
+        catch (Exception ex)
+        {
+            RestorationMessage = $"Error installing patched image: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+        await RefreshDeviceAsync();
+    }
+
+    private void ResetKernelSuRestoration()
+    {
+        _restorationSession = null;
+        RestorationState = null;
+        RestorationMessage = null;
+        DisposeRestorationLogger();
+        OnPropertyChanged(nameof(HasActiveKernelSuRestoration));
+    }
+
+    private void ApplyRestorationStepResult(KernelSuRestorationStepResult result)
+    {
+        RestorationState = result.State;
+        RestorationMessage = result.Message;
+    }
+
+    private void DisposeRestorationLogger()
+    {
+        _restorationLogger?.Dispose();
+        _restorationLogger = null;
+    }
+
     private Task<bool> RequestConfirmationAsync(string key, string message)
     {
         _confirmationTcs = new TaskCompletionSource<bool>();
@@ -597,5 +807,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         _devicePollTimer.Stop();
         _runCts?.Cancel();
         DisposeActiveLogger();
+        DisposeRestorationLogger();
     }
 }

@@ -26,9 +26,15 @@ public sealed class DeviceDetectionService : IDeviceDetectionService
 
         if (adbDevice is not null)
         {
-            return adbDevice.State == "sideload"
-                ? await BuildFromSideloadAsync(adbDevice, ct)
-                : await BuildFromAdbAsync(adbDevice, ct);
+            return adbDevice.State switch
+            {
+                "sideload" => await BuildFromSideloadAsync(adbDevice, ct),
+                // Plain "recovery" is a real, distinct adb state from a normally-booted
+                // system -- getprop/root-detection assumptions in BuildFromAdbAsync don't
+                // hold here, so this is never routed through that path.
+                "recovery" => await BuildFromRecoveryAsync(adbDevice, ct),
+                _ => await BuildFromAdbAsync(adbDevice, ct),
+            };
         }
 
         var unauthorized = adbDevices.FirstOrDefault(d => d.State == "unauthorized");
@@ -140,6 +146,18 @@ public sealed class DeviceDetectionService : IDeviceDetectionService
             ConnectionMode = ConnectionMode.AdbSideload,
             Serial = device.Serial,
             RootSolutionDetail = "Device is in ADB sideload mode, waiting for a package to be pushed.",
+        };
+    }
+
+    private async Task<DeviceInfo> BuildFromRecoveryAsync(AdbDeviceEntry device, CancellationToken ct)
+    {
+        await Task.CompletedTask;
+        return new DeviceInfo
+        {
+            ConnectionMode = ConnectionMode.AdbRecoveryManual,
+            Serial = device.Serial,
+            RootSolutionDetail = "Device is in recovery with plain ADB access (not yet in sideload mode). If a sideload " +
+                                  "install is pending, select \"Apply Update\" → \"Apply from ADB\" in the recovery menu.",
         };
     }
 

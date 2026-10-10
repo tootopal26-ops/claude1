@@ -320,7 +320,16 @@ public sealed class InstallStateMachine
             return Task.FromResult(StepResult.Continue(context.CurrentState, "Data wipe confirmed by user."));
         }
 
-        var message = context.RomProfile.DataFormatNotes ?? "This will erase all data on the device (fastboot -w).";
+        var device = context.Device;
+        var message =
+            "WARNING:\nFormatting Data will erase user data.\n\n" +
+            $"Device: {device?.Manufacturer ?? "?"} {device?.Model ?? "?"}\n" +
+            $"Codename: {device?.Codename ?? context.DeviceProfile.Codename}\n" +
+            $"ROM: {context.RomProfile.RomName}\n" +
+            $"Android: {device?.AndroidVersion ?? "?"} → {context.RomProfile.AndroidVersionShipped ?? "?"}\n" +
+            $"Reason for wipe: {context.RomProfile.DataFormatNotes ?? "Moving to a different ROM requires formatting /data (fastboot -w) due to filesystem/encryption differences."}\n" +
+            "Expected result: /data is erased and reformatted; the device proceeds to install the selected ROM.";
+
         return Task.FromResult(StepResult.NeedsConfirmation(context.CurrentState, message, "data-wipe"));
     }
 
@@ -365,20 +374,44 @@ public sealed class InstallStateMachine
             : StepResult.Failed(context.CurrentState, "Formatting /data failed.");
     }
 
+    private static readonly ConnectionMode[] RecoveryReadyModes = [ConnectionMode.AdbSideload, ConnectionMode.AdbRecoveryManual];
+
     private async Task<StepResult> RunInstallRomAsync(InstallContext context, CancellationToken ct)
     {
         var serial = RequireSerial(context);
 
-        var rebooted = await _flashExecutor.RebootToRecoveryAsync(serial, context.Logger, ct);
-        if (!rebooted)
-        {
-            return StepResult.Failed(context.CurrentState, "Failed to reboot into recovery for sideload.", "fastboot-detection-failure");
-        }
-
         if (IsReal(context))
         {
-            var confirmed = await WaitForConnectionModeAsync(context, ConnectionMode.AdbSideload, TimeSpan.FromSeconds(60), ct);
-            if (!confirmed)
+            // This state is re-entered after a manual-recovery-navigation confirmation --
+            // re-issuing "fastboot reboot recovery" to a device that already left fastboot
+            // mode for recovery would just fail, so it's only ever issued once per attempt.
+            if (!context.RecoveryRebootIssuedForSideload)
+            {
+                var rebooted = await _flashExecutor.RebootToRecoveryAsync(serial, context.Logger, ct);
+                if (!rebooted)
+                {
+                    return StepResult.Failed(context.CurrentState, "Failed to reboot into recovery for sideload.", "fastboot-detection-failure");
+                }
+                context.RecoveryRebootIssuedForSideload = true;
+            }
+            else
+            {
+                context.Logger.Log(LogLevel.Info, "InstallRom", "Reboot-to-recovery already issued for this attempt -- waiting for the recovery to become ready instead of repeating it.");
+            }
+
+            var reached = await WaitForAnyConnectionModeAsync(context, RecoveryReadyModes, TimeSpan.FromSeconds(45), ct);
+            if (reached == ConnectionMode.AdbRecoveryManual)
+            {
+                return StepResult.NeedsConfirmation(
+                    context.CurrentState,
+                    "Recovery requires manual interaction. The device reached recovery but has not entered ADB sideload " +
+                    "mode automatically -- this recovery needs the menu navigated by hand. On the device: select \"Apply " +
+                    "Update\" → \"Apply from ADB\" (wording varies by recovery). Once the device shows it is waiting " +
+                    "for a sideload, confirm here to continue -- Aetherix never attempts to tap/navigate the recovery's " +
+                    "touchscreen UI itself.",
+                    "manual-recovery-navigation");
+            }
+            if (reached != ConnectionMode.AdbSideload)
             {
                 return StepResult.Failed(context.CurrentState, "Device did not reach ADB sideload mode in recovery.", "sideload-failure");
             }
@@ -529,6 +562,37 @@ public sealed class InstallStateMachine
             }
         }
         return false;
+    }
+
+    /// <summary>Like WaitForConnectionModeAsync, but succeeds on any of several acceptable
+    /// modes and reports which one was actually reached -- used where more than one real
+    /// outcome is a legitimate "got there", not just a single exact match.</summary>
+    private async Task<ConnectionMode?> WaitForAnyConnectionModeAsync(
+        InstallContext context, IReadOnlyCollection<ConnectionMode> desiredModes, TimeSpan timeout, CancellationToken ct)
+    {
+        using var timeoutCts = new CancellationTokenSource(timeout);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+        while (!linked.IsCancellationRequested)
+        {
+            var device = await _deviceDetection.DetectAsync(linked.Token).ContinueWith(
+                t => t.IsCompletedSuccessfully ? t.Result : DeviceInfo.Disconnected, CancellationToken.None);
+
+            if (desiredModes.Contains(device.ConnectionMode))
+            {
+                return device.ConnectionMode;
+            }
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2), linked.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+        }
+        return null;
     }
 
     private static void LogIssues(InstallContext context, string source, IReadOnlyList<RomCompatibilityIssue> issues)

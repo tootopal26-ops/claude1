@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AetherixRomMaster.Core.KernelSu.Restoration;
 
 namespace AetherixRomMaster.Core.Profiles;
 
@@ -64,6 +65,28 @@ public sealed class ProfileRepository
         {
             await using var stream = File.OpenRead(path);
             var profile = await JsonSerializer.DeserializeAsync<RomProfile>(stream, JsonOptions, ct);
+            if (profile is not null)
+            {
+                profiles.Add(profile);
+            }
+        }
+        return profiles;
+    }
+
+    /// <summary>Mirrors LoadRomProfilesAsync's glob convention: every
+    /// "{codename}.*.kernelsu.json" file is a KernelSU restoration profile for one
+    /// device/ROM (optionally pinned to one build). Callers match TargetRomName against
+    /// the currently selected RomProfile themselves, same as they already do for the
+    /// equivalent ROM-profile list.</summary>
+    public async Task<IReadOnlyList<KernelSuProfile>> LoadKernelSuProfilesAsync(string codename, CancellationToken ct = default)
+    {
+        if (!Directory.Exists(_profilesDirectory)) return [];
+
+        var profiles = new List<KernelSuProfile>();
+        foreach (var path in Directory.EnumerateFiles(_profilesDirectory, $"{codename}.*.kernelsu.json"))
+        {
+            await using var stream = File.OpenRead(path);
+            var profile = await JsonSerializer.DeserializeAsync<KernelSuProfile>(stream, JsonOptions, ct);
             if (profile is not null)
             {
                 profiles.Add(profile);

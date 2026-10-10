@@ -198,6 +198,65 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- KernelSU Root restoration -->
+                    <Border Style="{StaticResource GlassCard}" Margin="0,0,0,16">
+                        <StackPanel>
+                            <TextBlock Text="KernelSU Root" Style="{StaticResource HeadingText}" FontSize="16" Margin="0,0,0,10"/>
+                            <TextBlock Text="A custom ROM install can replace the boot-related image and remove KernelSU root with it. This restores it through a verified, user-driven KernelSU Manager patch -- never Magisk, never a guessed image." Style="{StaticResource CaptionText}" Margin="0,0,0,10" TextWrapping="Wrap"/>
+
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="Dry Run Restoration" Style="{StaticResource SecondaryButton}" Command="{Binding DryRunKernelSuRestorationCommand}" Margin="0,0,10,0"/>
+                                <Button Content="Restore KernelSU Root" Style="{StaticResource PrimaryButton}" Command="{Binding RestoreKernelSuRootCommand}" Margin="0,0,10,0"/>
+                                <Button Content="Cancel" Style="{StaticResource DangerButton}" Command="{Binding CancelKernelSuRestorationCommand}"
+                                        Visibility="{Binding HasActiveKernelSuRestoration, Converter={StaticResource BoolToVis}}"/>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,12,0,0" Visibility="{Binding HasActiveKernelSuRestoration, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="{Binding RestorationStateDisplay}" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding RestorationMessage}" Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+                                <Button Content="Select Original Image…" Style="{StaticResource SecondaryButton}" Margin="0,10,0,0" HorizontalAlignment="Left"
+                                        Command="{Binding BrowseOriginalKernelSuImageCommand}"
+                                        Visibility="{Binding IsRestorationAwaitingOriginalImage, Converter={StaticResource BoolToVis}}"/>
+
+                                <Button Content="Select Patched Image…" Style="{StaticResource SecondaryButton}" Margin="0,10,0,0" HorizontalAlignment="Left"
+                                        Command="{Binding BrowsePatchedKernelSuImageCommand}"
+                                        Visibility="{Binding IsRestorationAwaitingPatchedImage, Converter={StaticResource BoolToVis}}"/>
+
+                                <Button Content="Install Verified KernelSU Image" Style="{StaticResource PrimaryButton}" Margin="0,10,0,0" HorizontalAlignment="Left"
+                                        Command="{Binding ConfirmKernelSuInstallCommand}"
+                                        Visibility="{Binding IsRestorationReadyToInstall, Converter={StaticResource BoolToVis}}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Automation capability -->
+                    <Border Style="{StaticResource GlassCard}" Margin="0,0,0,16">
+                        <StackPanel>
+                            <TextBlock Text="Automation Capability" Style="{StaticResource HeadingText}" FontSize="16" Margin="0,0,0,10"/>
+                            <TextBlock Text="What Aetherix can automate for this exact device/ROM right now, versus what needs you." Style="{StaticResource CaptionText}" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            <ItemsControl ItemsSource="{Binding AutomationCapabilityReport}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,4,0,4">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding Marker}" FontWeight="Bold" Width="20" Margin="0,0,8,0"/>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding StepName}" Style="{StaticResource BodyText}" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding Explanation}" Style="{StaticResource CaptionText}" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="2" Text="{Binding Level}" Style="{StaticResource CaptionText}" VerticalAlignment="Top" Margin="8,0,0,0"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
                 </StackPanel>
             </ScrollViewer>
 

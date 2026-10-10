@@ -66,6 +66,30 @@ public class DeviceDetectionServiceTests
     }
 
     [Fact]
+    public async Task DetectAsync_ReportsAdbRecoveryManual_WhenAdbStateIsPlainRecovery()
+    {
+        // "recovery" is a real, distinct adb device state from "sideload" -- it must never
+        // be routed through the normally-booted-system detection path (which would read
+        // nonsensical getprop/root data from a recovery environment).
+        var runner = new FakeProcessRunner
+        {
+            Handler = (_, args) => args switch
+            {
+                ["devices", "-l"] => Ok("List of devices attached\nSERIAL123\trecovery\n"),
+                _ => Ok(""),
+            },
+        };
+        var adb = new AdbClient(runner, "adb");
+        var fastboot = new FastbootClient(runner, "fastboot");
+        var service = new DeviceDetectionService(adb, fastboot, new RootDetector(adb));
+
+        var device = await service.DetectAsync();
+
+        Assert.Equal(ConnectionMode.AdbRecoveryManual, device.ConnectionMode);
+        Assert.Equal("SERIAL123", device.Serial);
+    }
+
+    [Fact]
     public async Task DetectAsync_ReturnsDisconnected_WhenNoAdbOrFastbootDevicesPresent()
     {
         var runner = new FakeProcessRunner

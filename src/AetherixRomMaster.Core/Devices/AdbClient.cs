@@ -81,4 +81,29 @@ public sealed class AdbClient
 
     public async Task<ProcessResult> WaitForDeviceAsync(string serial, TimeSpan timeout, CancellationToken ct = default)
         => await _runner.RunAsync(_adbPath, ["-s", serial, "wait-for-device"], timeout, ct);
+
+    /// <summary>`adb push` -- used to transfer an original boot-related image to the
+    /// device for KernelSU Manager to patch. Image files can be tens of MB, so callers
+    /// pass their own timeout rather than the short default used for property queries.</summary>
+    public async Task<ProcessResult> PushAsync(string serial, string localPath, string remotePath, TimeSpan timeout, CancellationToken ct = default)
+        => await _runner.RunAsync(_adbPath, ["-s", serial, "push", localPath, remotePath], timeout, ct);
+
+    /// <summary>`adb pull` -- used to retrieve the KernelSU-patched image the user
+    /// produced on-device back to the PC for hashing and verification before flashing.</summary>
+    public async Task<ProcessResult> PullAsync(string serial, string remotePath, string localPath, TimeSpan timeout, CancellationToken ct = default)
+        => await _runner.RunAsync(_adbPath, ["-s", serial, "pull", remotePath, localPath], timeout, ct);
+
+    /// <summary>Lists file names in a remote directory, most-recently-modified first
+    /// ("ls -t"), so the UI can offer the patched image KernelSU Manager just produced as
+    /// the top candidate -- parsed here in C#, never by piping through a remote grep/awk.</summary>
+    public async Task<IReadOnlyList<string>> ListFilesAsync(string serial, string remoteDirectory, CancellationToken ct = default)
+    {
+        var result = await ShellAsync(serial, $"ls -t \"{remoteDirectory}\"", ct);
+        if (!result.Succeeded) return [];
+
+        return result.StandardOutput
+            .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Where(line => !line.StartsWith("ls:", StringComparison.Ordinal))
+            .ToList();
+    }
 }

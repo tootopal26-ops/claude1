@@ -25,10 +25,16 @@ is automatically recoverable — the moment something can't be verified.
 | KernelSU compatibility assessment + honest post-flash root verification | ✅ Implemented |
 | Pre-Flash Safety Check (7-point checklist gating real installs) | ✅ Implemented |
 | Recovery & Rollback Safety System ("Recovery Mode") | ✅ Implemented |
+| KernelSU-aware root detection (5 honest states, never "rooted"/"not rooted" guessed) | ✅ Implemented |
+| Authoritative Fastboot bootloader verification + profile-load diagnostics | ✅ Implemented |
+| KernelSU Root Restoration workflow (patch-via-Manager, verified image/partition only) | ✅ Implemented — gated Unverified for cancunf, see below |
+| Recovery automation (auto sideload detection, manual-navigation fallback) | ✅ Implemented |
+| Automation Capability report (AUTOMATIC / MANUAL / BLOCKED per step) | ✅ Implemented |
 | Dark glassmorphism WPF UI | ✅ Implemented |
-| Automated tests (79 tests, see `src/AetherixRomMaster.Core.Tests`) | ✅ Implemented, all passing |
+| Automated tests (145 tests, see `src/AetherixRomMaster.Core.Tests`) | ✅ Implemented, all passing |
 | **WPF app actually compiles & runs on real Windows** | ✅ **Verified on GitHub Actions `windows-latest` — see below, not just claimed** |
 | **cancunf + Infinity-X ROM profile: `VerificationStatus = Unverified`** | ⚠️ **See below — action required before real flashing** |
+| **cancunf + Infinity-X KernelSU restoration profile: `VerificationStatus = Unverified`** | ⚠️ **Required image type/partition not yet confirmed — see below** |
 
 ## ✅ Verified on real Windows (not just "should build")
 
@@ -102,6 +108,87 @@ Tests: `AetherixRomMaster.Core.Tests/Recovery/RecoveryPlannerTests.cs`, includin
 specific assertion that a hard-brick-shaped failure never gets an executable "fix it"
 option, only an honest "stop" explanation.
 
+## 🔑 KernelSU Root Restoration
+
+Installing a custom ROM can replace the boot-related image (`boot.img` or
+`init_boot.img`, depending on the device's kernel) and remove the existing KernelSU root
+as a side effect — this is normal, expected, and not itself a failure of the ROM
+install. The **KernelSU Root** card detects this and walks through a verified,
+user-driven restoration:
+
+1. **Check** — re-runs the same `RootDetector` used everywhere else in the app
+   (`src/AetherixRomMaster.Core/Devices/RootDetector.cs`). If KernelSU is already
+   integrated and operational, restoration is skipped entirely.
+2. **Plan** — `KernelSuRestorationPlanner` resolves the exact required image type, file
+   name, and target fastboot partition from a `KernelSuProfile`
+   (`profiles/{codename}.{rom}.kernelsu.json`) pinned to this device/ROM/build. If that
+   profile is missing, unverified, or incomplete, restoration is **Blocked** with the
+   specific missing fact named — never a guessed `boot.img`/`boot` default.
+3. **Prepare & transfer** — the user selects the original (pre-patch) image file
+   (Aetherix does not extract it from a ROM/firmware archive itself); it's hashed and
+   pushed to the device via `adb push`.
+4. **Patch (user action)** — Aetherix shows the exact steps: open KernelSU Manager →
+   Install → Patch Image → select the transferred file → let it patch → return to
+   Aetherix. **Aetherix never patches a kernel image itself and never installs or
+   recommends Magisk anywhere in this flow.**
+5. **Retrieve & verify** — the user selects the resulting patched file; it's validated
+   (exists, readable, plausible size, and not byte-identical to the original — a real,
+   concrete check that the Manager actually produced something) and hashed.
+6. **Safety summary** — before any flashing, a mandatory summary (device, ROM, build,
+   image type, file, SHA-256, partition) is shown with the exact required confirmation
+   sentence. If anything is unverified, this step is never reached — the user sees
+   *"KernelSU restoration cannot continue safely..."* instead.
+7. **Install** — reboots to bootloader, best-effort re-verifies the device's fastboot
+   `product` matches the expected codename, flashes **only** the verified partition via
+   `fastboot flash`, reboots to system.
+8. **Verify** — waits for ADB, then re-runs `RootDetector` again. KernelSU being
+   integrated-but-not-yet-granted-to-Aetherix is still reported as success (with that
+   caveat) — "KernelSU exists" and "Aetherix currently has root permission" are always
+   kept as separate, honestly-labeled facts, never conflated.
+
+Dry Run simulates every step above (including the file-selection/patch-wait UI flow)
+without pushing, patching, or flashing anything real. See
+`src/AetherixRomMaster.Core/KernelSu/Restoration/` for the full implementation
+(`KernelSuRestorationSession`, `KernelSuRestorationPlanner`, `ImageArtifact`,
+`KernelSuProfile`) and `AetherixRomMaster.Core.Tests/KernelSu/Restoration/` for its tests.
+
+**cancunf + Infinity-X is Unverified today** — `profiles/cancunf.infinity-x.kernelsu.json`
+has no confirmed image type/file name/partition yet, so real restoration for this exact
+device/ROM is blocked until a human confirms those facts (e.g. from the device's own
+kernel `uname -r` GKI marker plus the ROM's own install instructions) and updates that
+file. This is the same Unverified-blocks-real-action pattern as the ROM profile itself.
+
+## 🤖 Recovery & Installation Automation
+
+Every step Aetherix can drive through a documented ADB/Fastboot/recovery interface is
+automated; anything that needs a human (a destructive confirmation, or a recovery that
+needs its menu navigated by hand) stops and asks, rather than guessing or simulating
+touches:
+
+- **Recovery state is a real, distinct signal.** `adb devices` reports `recovery` and
+  `sideload` as different states; `DeviceDetectionService` now tells them apart
+  (`ConnectionMode.AdbRecoveryManual` vs `ConnectionMode.AdbSideload`) instead of
+  treating a plain-recovery ADB session like a normally-booted system.
+- **Sideload is attempted automatically first.** If the recovery enters ADB sideload
+  mode on its own after `fastboot reboot recovery`, Aetherix proceeds with no user
+  interaction. If it only reaches plain recovery ADB (most custom recoveries need the
+  menu navigated to "Apply Update → Apply from ADB"), Aetherix shows **"Recovery
+  requires manual interaction"** with the exact instructions and waits for confirmation
+  — it never attempts to tap or script the recovery's touchscreen UI itself. Retrying
+  never re-issues the reboot command to a device that's already left fastboot mode.
+- **Format Data always shows a dedicated, itemized warning** (device, codename, ROM,
+  Android version, reason for the wipe, expected result) before the one explicit
+  confirmation gate, never bypassed.
+- **Automation Capability report** (`AutomationCapabilityPlanner`) lists every pipeline
+  step with an honest AUTOMATIC / needs-confirmation / MANUAL / BLOCKED label and why —
+  shown in the UI's "Automation Capability" card and usable as a Dry Run preview of
+  what would and wouldn't need you. A step is only ever marked Automatic when the
+  profile data backing it is actually Verified.
+
+See `RunInstallRomAsync`/`RunRequestDataWipeConfirmationAsync` in
+`src/AetherixRomMaster.Core/Installation/InstallStateMachine.cs` and
+`AetherixRomMaster.Core/Installation/AutomationCapabilityPlanner.cs`.
+
 ## ✅ Pre-Flash Safety Check
 
 Before **Install Custom ROM** is enabled, `PreFlightSafetyChecker`
@@ -140,6 +227,18 @@ What could **not** be confirmed first-hand, and is therefore deliberately left b
 rather than invented anywhere in this codebase: the exact current Infinity-X download
 URL, the ROM zip's file name, its published SHA-256 checksum, and the verbatim
 initial-install command sequence for the current build.
+
+A later session re-attempted this directly (`https://projectinfinity-x.com/downloads/cancunf`)
+and hit the same network policy block (this time a DNS failure rather than HTTP 403 — a
+sandbox/proxy denial either way, not evidence the page is down). A web-search sweep at
+that time additionally found no independent confirmation that an Infinity-X build for
+cancunf exists at all — one search summary stated the official Infinity-X device list
+shows 0 supported devices, though that's a search-snippet inference, not a direct page
+read, so it's recorded as a open question, not a fact, in `profiles/cancunf.infinity-x.rom.json`'s
+citations. **If you have ROM/initial-install files already downloaded, personally verify
+they came from the real official page before trusting them** — do not assume a local
+file is genuine Infinity-X/cancunf without checking its exact name/size/checksum against
+that source yourself.
 
 **`profiles/cancunf.infinity-x.rom.json`** encodes this honestly: `verificationStatus`
 is `"Unverified"`, and `RomValidationService` (see
@@ -181,11 +280,15 @@ src/
                                     KernelSU compatibility, Recovery & Pre-Flight safety
                                     systems, logging — cross-platform, no WPF dependency.
     Recovery/                      RecoveryPlanner, RecoverySession, RecoveryOption
-  AetherixRomMaster.Core.Tests/    79 xUnit tests (see docs/TESTING.md)
+    KernelSu/Restoration/          KernelSuRestorationSession/Planner/Profile, ImageArtifact
+    Installation/
+      AutomationCapabilityPlanner.cs  AUTOMATIC/MANUAL/BLOCKED per-step reporting
+  AetherixRomMaster.Core.Tests/    145 xUnit tests (see docs/TESTING.md)
   AetherixRomMaster.App/           WPF UI (net8.0-windows — Windows-only to build/run)
 profiles/
   cancunf.device.json              Device profile (researched facts + citations)
   cancunf.infinity-x.rom.json      ROM profile (verification-gated, see above)
+  cancunf.infinity-x.kernelsu.json KernelSU restoration profile (verification-gated)
 assets/icon/                       App icon source (source.png) + rendered sizes/.ico
 docs/
   BUILD.md                         Windows build instructions
