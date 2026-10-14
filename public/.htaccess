@@ -26,7 +26,11 @@ DirectoryIndex index.php
 
 # ── security ────────────────────────────────────────────────────────────────
 <IfModule mod_headers.c>
-    Header always set X-Content-Type-Options "nosniff"
+    # Static files only: pages and API answers (index.php) already carry their own full set of security headers.
+    <FilesMatch "\.(css|js|mjs|json|webmanifest|svg|png|jpe?g|gif|webp|ico|woff2?|txt|xml)$">
+        Header always set X-Content-Type-Options "nosniff"
+    </FilesMatch>
+    Header always unset X-Powered-By
 </IfModule>
 
 # Only index.php may execute in this folder.
@@ -55,16 +59,21 @@ DirectoryIndex index.php
 </IfModule>
 
 <IfModule mod_expires.c>
-    ExpiresActive On
-    ExpiresByType image/svg+xml  "access plus 30 days"
-    ExpiresByType image/webp     "access plus 30 days"
-    ExpiresByType image/png      "access plus 30 days"
-    ExpiresByType image/jpeg     "access plus 30 days"
-    ExpiresByType font/woff2     "access plus 1 year"
-    # CSS/JS are versioned with ?v=<mtime> by the templates
-    ExpiresByType text/css       "access plus 1 year"
-    ExpiresByType application/javascript "access plus 1 year"
-    ExpiresByType text/javascript "access plus 1 year"
+    # Static files only. Pages, JSON and the dynamic /theme.css (all served by index.php) set their own Cache-Control.
+    <FilesMatch "\.(css|js|svg|png|jpe?g|gif|webp|ico|woff2?)$">
+        ExpiresActive On
+        ExpiresByType image/svg+xml  "access plus 30 days"
+        ExpiresByType image/webp     "access plus 30 days"
+        ExpiresByType image/png      "access plus 30 days"
+        ExpiresByType image/jpeg     "access plus 30 days"
+        ExpiresByType image/x-icon   "access plus 30 days"
+        ExpiresByType image/vnd.microsoft.icon "access plus 30 days"
+        ExpiresByType font/woff2     "access plus 1 year"
+        # CSS/JS are versioned with ?v=<mtime> by the templates
+        ExpiresByType text/css       "access plus 1 year"
+        ExpiresByType application/javascript "access plus 1 year"
+        ExpiresByType text/javascript "access plus 1 year"
+    </FilesMatch>
 </IfModule>
 
 AddType font/woff2 .woff2

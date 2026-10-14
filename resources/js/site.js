@@ -290,6 +290,12 @@ function initOrders() {
         <button type="button" class="btn mt-4" data-action="open-orders">Try again</button></div>`);
     }
   });
+
+  // "?orders=1": other pages (order tracking) send the Shop icon here, so it opens the drawer on arrival
+  if (/[?&]orders=1(&|$)/.test(location.search)) {
+    try { history.replaceState(null, '', location.pathname + location.hash); } catch { /* ignore */ }
+    queueMicrotask(() => $('[data-action=open-orders]')?.click());
+  }
 }
 
 initTabs();

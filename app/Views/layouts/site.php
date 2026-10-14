@@ -35,7 +35,7 @@ $ogImage = str_starts_with($ogImage, 'http') ? $ogImage : absolute_url(strtok($o
 </head>
 <body class="ambient" data-page="<?= e($page ?? '') ?>" data-base="<?= e(base_path()) ?>">
 <a class="skip-link" href="#main">Skip to content</a>
-<?= \App\Core\View::partial('site-header', ['site' => $site, 'shop' => $shop ?? true]) ?>
+<?= \App\Core\View::partial('site-header', ['site' => $site, 'shop' => $shop ?? true, 'page' => $page ?? '']) ?>
 <main id="main" tabindex="-1">
 <?= $content ?>
 </main>

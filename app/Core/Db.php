@@ -61,6 +61,10 @@ final class Db
         return $pdo;
     }
 
+    /** Diagnostics for the dev-only Server-Timing header: how many statements this request ran and how long they took (ms). */
+    public static int $queries = 0;
+    public static float $queryMs = 0.0;
+
     /** Forget the connection (tests / forked workers). */
     public static function reset(): void
     {
@@ -70,6 +74,18 @@ final class Db
 
     /** @param array<int|string,mixed> $params */
     public static function run(string $sql, array $params = []): PDOStatement
+    {
+        self::$queries++;
+        $t0 = hrtime(true);
+        try {
+            return self::execute($sql, $params);
+        } finally {
+            self::$queryMs += (hrtime(true) - $t0) / 1e6;
+        }
+    }
+
+    /** @param array<int|string,mixed> $params */
+    private static function execute(string $sql, array $params): PDOStatement
     {
         $stmt = self::pdo()->prepare($sql);
         $i = 1;

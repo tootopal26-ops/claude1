@@ -13,6 +13,7 @@ const browser = await launch();
 const page = await newPage(browser, { width: 1440, height: 900 });
 t.page = page;
 const text = (loc) => t.text(loc);
+const fresh = async () => { const p = await newPage(browser, { width: 1440, height: 900 }); t.page = p; return p; };
 const css = (sel, prop) => page.$eval(sel, (el, p) => getComputedStyle(el)[p], prop);
 
 const CATALOG = {
@@ -362,6 +363,18 @@ await t.step('TRACK ORDER shows the progress timeline; page polls and stays free
   t.eq(page.problems.filter((p) => !/favicon/.test(p)), [], page.problems.join('\n'));
 });
 
+await t.step('Shop icon on the order-tracking page takes you to your orders (drawer opens on arrival, URL is cleaned)', async () => {
+  const p = await fresh();
+  const { ref } = await placeOrder(p, 'ig-likes-100', 'https://www.instagram.com/p/ShopFromOrder1/');
+  await payOk(ref); await p.waitForSelector('[data-view=paid]:not([hidden])', { timeout: 9000 });
+  await p.click('#btn-track'); await p.waitForURL(/\/order\//);
+  t.eq(await p.locator('.shop-btn').evaluate((e) => e.tagName), 'A', 'a plain link on pages that have no drawer');
+  await Promise.all([p.waitForURL((u) => u.pathname === '/' || u.pathname === ''), p.click('.shop-btn')]);
+  await p.waitForSelector('#orders-drawer[open]'); await p.waitForSelector('.order-row');
+  t.ok(!p.url().includes('orders=1'), p.url());
+  await p.close();
+});
+
 await t.step('MANUAL order: paid → waits for admin approval (no SMM call, honest status for the customer)', async () => {
   resetLimits(); const before = (await (await fetch('http://127.0.0.1:4020/__state')).json()).requests.length;
   const { ref } = await placeOrder(page, 'ig-followers-100k', 'https://instagram.com/manual_buyer');
@@ -433,7 +446,6 @@ await t.step('duplicate webhook delivery is idempotent (one payment, one order, 
 });
 
 // ───────────────────────────── Shop drawer ─────────────────────────────
-const fresh = async () => { const p = await newPage(browser, { width: 1440, height: 900 }); t.page = p; return p; };
 
 await t.step('Shop drawer: empty state on a fresh device, then lists orders with status chips; badge counts active orders', async () => {
   const p = await fresh();

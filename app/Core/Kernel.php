@@ -16,6 +16,10 @@ final class Kernel
         $req = Request::capture();
         $res = self::handle($req);
         SecurityHeaders::apply($res, $req);
+        if (Env::debug() && !headers_sent()) {
+            // dev only: lets the QA suite assert "N queries, M ms" per page
+            $res->header('Server-Timing', sprintf('app;dur=%.1f, db;dur=%.1f;desc="%d queries"', (microtime(true) - SMB_STARTED) * 1000, Db::$queryMs, Db::$queries));
+        }
 
         if ($req->method === 'HEAD') {
             $res->body = '';

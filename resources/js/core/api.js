@@ -23,7 +23,9 @@ export const setCsrf = (t) => { csrfToken = t; };
  *  - `idempotency: true|string` sends an Idempotency-Key (double-click / retry safety).
  */
 export async function api(path, { method = 'GET', body, headers = {}, timeout = 20000, idempotency = false, signal } = {}) {
-  const url = /^https?:/.test(path) ? path : base() + path;
+  // `path` is app-relative ("/api/checkout"); a URL the server already built with the folder prefix ("/booster/api/…") is left alone
+  const b = base();
+  const url = /^https?:/.test(path) || (b !== '' && (path === b || path.startsWith(b + '/'))) ? path : b + path;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort('timeout'), timeout);
   if (signal) signal.addEventListener('abort', () => ctrl.abort('aborted'), { once: true });

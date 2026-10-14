@@ -90,7 +90,15 @@ async function onExpire() {
   await poll(true);
 }
 
-function stopTimers() { clearInterval(tickTimer); tickTimer = null; }
+function stopTimers() { clearTimeout(tickTimer); tickTimer = null; }
+
+/** Tick right after each whole second, so the digits change exactly once per second (a fixed 250 ms interval made some steps 1.2 s long). */
+function scheduleTick() {
+  clearTimeout(tickTimer);
+  if (state !== 'pending') return;
+  const remaining = expiresAt - now();
+  tickTimer = setTimeout(() => { tick(); scheduleTick(); }, remaining <= 0 ? 250 : (remaining % 1000) + 25);
+}
 
 // ───────────────────────── server polling ─────────────────────────
 function applyServer(r) {
@@ -127,13 +135,13 @@ function schedule(slow = false) {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && !stopped) { tick(); poll(); }
+  if (!document.hidden && !stopped) { tick(); scheduleTick(); poll(); }
 });
 
 // ───────────────────────── boot ─────────────────────────
 if (state === 'pending') {
   tick();
-  tickTimer = setInterval(tick, 250);
+  scheduleTick();
   if (data.returned) {
     // The customer just came back from the gateway: verify before showing anything.
     showView('verifying');
