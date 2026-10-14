@@ -48,6 +48,15 @@ final class Db
         // Deterministic behaviour on every host: UTC, strict mode, ONLY_FULL_GROUP_BY.
         $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci, time_zone = '+00:00', "
             . "sql_mode = 'STRICT_TRANS_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+        // A stuck lock must become a clean (retried, then reported) error instead of tying a PHP worker up for minutes.
+        // Both variables exist on MySQL and MariaDB; max_statement_time is MariaDB-only, so it is best effort.
+        foreach (['SET SESSION lock_wait_timeout = 10, innodb_lock_wait_timeout = 8', ...(PHP_SAPI === 'cli' ? [] : ['SET SESSION max_statement_time = 25'])] as $guard) {
+            try {
+                $pdo->exec($guard);
+            } catch (PDOException) {
+                // option not supported by this server: carry on
+            }
+        }
         self::$pdo = $pdo;
         return $pdo;
     }
@@ -179,7 +188,9 @@ final class Db
                     $pdo->rollBack();
                 }
                 self::$txDepth = 0;
-                if ($try < $attempts && self::isRetryable($e)) {
+                // Deadlocks fail fast and are worth retrying; a lock-wait TIMEOUT has already cost seconds, so it gets one retry only.
+                $kind = self::retryKind($e);
+                if ($kind !== null && $try < $attempts && ($kind === 'deadlock' || $try < 2)) {
                     usleep(random_int(20_000, 120_000) * $try);
                     continue;
                 }
@@ -193,13 +204,16 @@ final class Db
         return self::$txDepth > 0;
     }
 
-    private static function isRetryable(\Throwable $e): bool
+    private static function retryKind(\Throwable $e): ?string
     {
         if (!$e instanceof PDOException) {
-            return false;
+            return null;
         }
-        $code = (int) ($e->errorInfo[1] ?? 0);
-        return $code === 1213 /* deadlock */ || $code === 1205 /* lock wait timeout */;
+        return match ((int) ($e->errorInfo[1] ?? 0)) {
+            1213 => 'deadlock',
+            1205 => 'timeout',
+            default => null,
+        };
     }
 
     /** Named advisory lock (cron overlap protection). */

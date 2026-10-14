@@ -4,7 +4,7 @@
     <p class="pay-kicker"><?= icon('history', 'icon icon-sm') ?> Order status</p>
     <h1 class="pay-title" id="o-heading"><?= e($o['status_label']) ?></h1>
     <p class="pay-summary"><b class="num" id="o-amount"><?= e($o['amount']) ?></b><span><?= e($o['service']) ?></span></p>
-    <p class="pay-note">Order <b class="text-ink"><?= e($o['order_id']) ?></b> · for <b class="text-ink break-all"><?= e($o['target']) ?></b></p>
+    <p class="pay-note">Order <b class="text-ink"><?= e($o['order_id']) ?></b><br>for <b class="text-ink [overflow-wrap:anywhere]"><?= e($o['target']) ?></b></p>
     <div class="stepper" id="o-steps" aria-live="polite">
       <?php foreach ($o['steps'] as $i => $st): ?>
         <div class="step" data-state="<?= $i === count($o['steps']) - 1 && !$o['done'] ? 'now' : 'done' ?>">

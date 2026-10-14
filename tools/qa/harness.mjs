@@ -8,6 +8,7 @@ export function suite(name, outDir = process.env.QA_OUT || '/tmp/qa') {
   const api = {
     page: null,
     async step(title, fn) {
+      if (process.env.QA_ONLY && !new RegExp(process.env.QA_ONLY, 'i').test(title)) return;   // QA_ONLY=regex runs just the matching steps
       current = title;
       const t0 = Date.now();
       try {

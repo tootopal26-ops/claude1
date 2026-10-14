@@ -144,8 +144,8 @@ function visitorsCard(d) {
   const srcTotal = src.instagram + src.youtube + src.direct + src.other || 1;
   const bar = (label, val, total, a, b) => html`<div class="hbar"><span class="hbar-label">${label}</span><span class="hbar-value">${num(val)} · ${pct(Math.round((val / total) * 1000))}</span>
     <div class="hbar-track"><div class="hbar-fill" data-w="${Math.round((val / total) * 100)}" data-a="${a}" data-b="${b}"></div></div></div>`;
-  return html`<section class="card" aria-labelledby="h-visitors">
-    <div class="card-head"><h2 class="card-title" id="h-visitors">${icon('users')}Visitor analytics</h2><span class="card-sub">Qualified = stayed on the page ${qs} seconds or more</span></div>
+  return html`<section class="card" aria-labelledby="h-visitor-analytics">
+    <div class="card-head"><h2 class="card-title" id="h-visitor-analytics">${icon('users')}Visitor analytics</h2><span class="card-sub">Qualified = stayed on the page ${qs} seconds or more</span></div>
     <div class="stat-grid">
       <div class="stat"><small>Visitors today</small><strong>${num(v.today.visitors)}</strong><span>${num(v.today.qualified)} qualified</span></div>
       <div class="stat"><small>Lifetime visitors</small><strong>${num(v.lifetime_visitors)}</strong><span>unique browsers</span></div>

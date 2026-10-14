@@ -164,13 +164,39 @@ T::test('auto failure: invalid SMM service id → FAILED (rejected)', function (
     T::contains('Incorrect service ID', (string) $o['last_error']);
 });
 
-T::test('auto failure: AUTO service without SMM service id / provider → FAILED (misconfigured), no call made', function () {
+T::test('checkout: an AUTO service that cannot be routed (no SMM service id / no active provider) is NOT sellable and is hidden from the store', function () {
     ['gid' => $gid] = ff_setup();
-    T::makeAuto('ig-followers-50', '', 100, null);
+    $id = T::makeAuto('ig-followers-50', '', 100, null);
+    $cards = static fn(): array => array_merge(...array_map(static fn(array $p): array => array_merge([], ...array_map(static fn(array $s): array => $s['services'], $p['sections'])), \App\Services\Catalog::storefront()));
+    T::same(null, \App\Services\Catalog::orderable($id), 'empty SMM service id');
+    T::false(in_array($id, array_column($cards(), 'id'), true), 'hidden from the storefront');
+    T::throws(HttpException::class, fn() => pf_place('ig-followers-50', '@john', ['visitor_id' => null, 'session_id' => null], ff_ip()), 422);
+
+    T::makeAuto('ig-followers-50', '1001', 100, null);                 // service id present, but no provider exists at all
     Db::exec('DELETE FROM smm_providers');
-    $o = ff_paid($gid);
+    T::same(null, \App\Services\Catalog::orderable($id), 'no provider');
+    T::false(in_array($id, array_column($cards(), 'id'), true));
+
+    $pid = T::configureSmm();                                         // provider exists but is switched off
+    T::makeAuto('ig-followers-50', '1001', 100, $pid);
+    T::true(\App\Services\Catalog::orderable($id) !== null, 'active provider → sellable');
+    Db::exec('UPDATE smm_providers SET is_active = 0');
+    T::same(null, \App\Services\Catalog::orderable($id), 'inactive provider');
+    Db::exec('UPDATE smm_providers SET is_active = 1');
+    T::true(in_array($id, array_column($cards(), 'id'), true), 'back on sale once the provider is active again');
+    T::true(\App\Services\Catalog::orderable((int) Db::val("SELECT id FROM services WHERE code = 'ig-followers-100k'")) !== null, 'MANUAL services are always sellable');
+});
+
+T::test('auto failure: the provider / SMM id disappears AFTER the customer paid → FAILED (misconfigured), no call made, nothing lost', function () {
+    ['gid' => $gid] = ff_setup();
+    $p = pf_place('ig-followers-50', '@john', ['visitor_id' => null, 'session_id' => null], ff_ip());
+    Db::exec('DELETE FROM smm_providers');
+    Db::exec("UPDATE orders SET smm_provider_id = NULL, smm_service_id = '' WHERE id = ?", [$p['order']['id']]);
+    pf_webhook($gid, pf_evt($p['payment']));
+    $o = pf_order((int) $p['order']['id']);
     T::same('FAILED', $o['status']);
     T::same('misconfigured', $o['failure_kind']);
+    T::same('success', Db::val('SELECT status FROM payments WHERE id = ?', [$p['payment']['id']]), 'the payment itself is recorded');
     T::same(0, count(ff_smm_adds()));
 });
 

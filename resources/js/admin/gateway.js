@@ -29,8 +29,8 @@ function render(gw, testResult = null) {
 
       <div class="form-section"><h3>Environment</h3>
         <div class="seg" role="radiogroup" aria-label="Environment">
-          <button type="button" role="radio" data-env="test" aria-checked="${!live}" aria-selected="${!live}">Test</button>
-          <button type="button" role="radio" data-env="production" aria-checked="${live}" aria-selected="${live}">Production</button></div>
+          <button type="button" role="radio" data-env="test" aria-checked="${live ? 'false' : 'true'}">Test</button>
+          <button type="button" role="radio" data-env="production" aria-checked="${live ? 'true' : 'false'}">Production</button></div>
         <input type="hidden" name="environment" value="${g.environment}">
         <p class="field-hint">Test mode is only a label for you — it does not change the gateway URL. Use your provider’s sandbox URL while testing, then switch both to production.</p></div>
 
@@ -78,7 +78,7 @@ export default async function init() {
   wireSecrets(r);
   on(r, 'click', '[data-env]', (e, b) => {
     $('[name="environment"]').value = b.dataset.env;
-    r.querySelectorAll('[data-env]').forEach((x) => { const on_ = x === b; x.setAttribute('aria-checked', String(on_)); x.setAttribute('aria-selected', String(on_)); });
+    r.querySelectorAll('[data-env]').forEach((x) => { const on_ = x === b; x.setAttribute('aria-checked', String(on_)); });
   });
   on(r, 'click', '[data-copy-url]', () => copyText(g.webhook_url, 'Webhook URL copied'));
   on(r, 'click', '[data-retry]', () => location.reload());

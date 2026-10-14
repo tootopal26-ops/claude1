@@ -110,7 +110,7 @@ await t.step('order drawer: opens by click, shows all sections, closes with ESC 
 });
 
 await t.step('drawer opens by keyboard (Enter on a row) and via ?open= deep link', async () => {
-  await rows().nth(1).focus();
+  await rows().nth(1).locator('button[data-open]').focus();                       // rows are not controls; the View button inside is
   await page.keyboard.press('Enter');
   await page.waitForSelector('#order-drawer[open] .od-hero');
   const id = new URL(page.url()).searchParams.get('open');

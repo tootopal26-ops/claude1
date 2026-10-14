@@ -18,6 +18,13 @@ final class Catalog
     /** Section order on the page. */
     private const TYPE_ORDER = ['followers', 'subscribers', 'likes', 'views', 'verification', 'watch_time'];
 
+    /**
+     * Never sell what cannot be routed: an AUTO service needs its SMM service id AND an active provider (its own, or the default one).
+     * MANUAL services are always sellable. (Alias `s` = services.)
+     */
+    private const ROUTABLE_SQL = "(s.mode <> 'AUTO' OR (s.smm_service_id IS NOT NULL AND s.smm_service_id <> '' AND EXISTS ("
+        . "SELECT 1 FROM smm_providers pr WHERE pr.is_active = 1 AND (pr.id = s.smm_provider_id OR (s.smm_provider_id IS NULL AND pr.is_default = 1)))))";
+
     /** @return list<array<string,mixed>> */
     public static function platforms(bool $onlyActive = true): array
     {
@@ -58,7 +65,7 @@ final class Catalog
         }
         $rows = Db::all(
             "SELECT s.* FROM services s JOIN platforms p ON p.id = s.platform_id "
-            . "WHERE s.status = 'active' AND s.deleted_at IS NULL AND p.is_active = 1 ORDER BY s.sort_order, s.id"
+            . "WHERE s.status = 'active' AND s.deleted_at IS NULL AND p.is_active = 1 AND " . self::ROUTABLE_SQL . " ORDER BY s.sort_order, s.id"
         );
         $sections = [];
         foreach ($rows as $r) {
@@ -120,7 +127,7 @@ final class Catalog
     {
         $r = Db::one(
             "SELECT s.*, p.slug AS platform_slug, p.name AS platform_name FROM services s JOIN platforms p ON p.id = s.platform_id "
-            . "WHERE s.id = ? AND s.status = 'active' AND s.deleted_at IS NULL AND p.is_active = 1",
+            . "WHERE s.id = ? AND s.status = 'active' AND s.deleted_at IS NULL AND p.is_active = 1 AND " . self::ROUTABLE_SQL,
             [$serviceId]
         );
         if ($r === null) {

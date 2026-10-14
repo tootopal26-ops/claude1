@@ -37,7 +37,7 @@ function bannerHtml(s) {
   const gw = s.setup.find((i) => i.key === 'gateway');
   if (gw && !gw.ok) out.push(banner('gateway-missing', 'error', 'circle-alert', html`<strong>Payments are not set up.</strong> Customers cannot pay until a payment gateway is active.`, link('/admin/gateway', 'Set up gateway'), false));
   else if (s.gateway_env === 'test') out.push(banner('gateway-test', 'info', 'info', html`<strong>Payment gateway is in test mode.</strong> Switch it to production before you take real orders.`, link('/admin/gateway', 'Review')));
-  if (s.auto_services > 0 && !s.smm_ok) out.push(banner('smm-missing', 'warning', 'triangle-alert', html`<strong>${s.auto_services} AUTO service${s.auto_services === 1 ? '' : 's'} need an SMM provider.</strong> Paid orders cannot be sent to a provider until one is connected.`, link('/admin/smm', 'Connect provider')));
+  if (s.auto_services > 0 && !s.smm_ok) out.push(banner('smm-missing', 'warning', 'triangle-alert', html`<strong>${s.auto_services} AUTO service${s.auto_services === 1 ? ' needs' : 's need'} an SMM provider.</strong> ${s.auto_services === 1 ? 'It is' : 'They are'} hidden from the store until one is connected, so no customer pays for something that cannot be delivered.`, link('/admin/smm', 'Connect provider')));
   if (!s.cron.ok) out.push(banner('cron', 'warning', 'clock', html`<strong>Background tasks are not running.</strong> Pending payments will not expire, provider orders will not sync and reports will lag until the cron job runs.`, link('/admin/system', 'How to fix')));
   return out.filter((h) => { const id = /data-banner="([^"]+)"/.exec(String(h))?.[1]; return !id || !isDismissed(id); }).map(String).join('');
 }

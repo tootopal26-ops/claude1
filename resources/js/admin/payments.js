@@ -20,7 +20,7 @@ const WH_TONE = { processed: 'chip-ok', duplicate: 'chip-gray', ignored: 'chip-g
 function render(d) {
   data = d;
   $('#pay-chips').innerHTML = CHIPS.map(([k, l]) => `<button type="button" class="fchip" data-status="${k}" aria-pressed="${state.status === k}">${esc(l)}</button>`).join('');
-  const table = d.rows.length ? html`<div class="tbl-wrap"><div class="tbl-scroll"><table class="tbl tbl-resp">
+  const table = d.rows.length ? html`<div class="tbl-wrap"><div class="tbl-scroll" tabindex="0" role="region" aria-label="Payments"><table class="tbl tbl-resp">
     <thead><tr><th>Order</th><th>Service</th><th class="num">Amount</th><th>Status</th><th>Bank ref (UTR)</th><th>Verified</th><th>Time</th><th><span class="sr-only">Open</span></th></tr></thead>
     <tbody>${d.rows.map((p) => html`<tr>
       <td data-label="Order"><span class="cell-main"><b class="mono">${p.order}</b><small class="mono" title="Gateway order id">${p.gateway_order_id}</small></span></td>
@@ -33,7 +33,7 @@ function render(d) {
       <td class="row-actions-cell"><span class="row-actions"><a class="btn btn-sm" href="${url('/admin/orders')}?open=${p.order_id}" aria-label="Open order ${p.order}">${icon('arrow-up-right', 'icon-sm')}<span>Order</span></a></span></td></tr>`)}</tbody></table></div>${pager({ page: d.page, pages: d.pages, total: d.total, per: 25 }, 'payments')}</div>`
     : html`<div class="tbl-wrap">${emptyState({ ico: 'credit-card', title: state.q || state.status ? 'No payments match' : 'No payments yet', text: state.q || state.status ? 'Try another status or search.' : 'Payments appear here once customers reach the payment page.' })}</div>`;
   const wh = html`<section class="card mt-6" aria-labelledby="h-wh"><div class="card-head"><h2 class="card-title" id="h-wh">${icon('webhook')}Latest webhook deliveries</h2><span class="card-sub">Signed notifications from the payment gateway</span></div>
-    ${d.webhooks.length ? html`<div class="tbl-scroll"><table class="tbl tbl-resp"><thead><tr><th>Received</th><th>Event</th><th>Signature</th><th>Result</th><th class="num">Attempts</th></tr></thead>
+    ${d.webhooks.length ? html`<div class="tbl-scroll" tabindex="0" role="region" aria-label="Webhook events"><table class="tbl tbl-resp"><thead><tr><th>Received</th><th>Event</th><th>Signature</th><th>Result</th><th class="num">Attempts</th></tr></thead>
       <tbody>${d.webhooks.map((w) => html`<tr><td data-label="Received">${fmtDateTime(w.at)}</td><td data-label="Event"><span class="cell-main"><b>${w.type || 'event'}</b><small class="mono">${w.event_id || ''}</small></span></td>
         <td data-label="Signature">${w.signature_valid ? html`<span class="chip chip-ok">valid</span>` : html`<span class="chip chip-bad">invalid</span>`}</td>
         <td data-label="Result"><span class="chip ${WH_TONE[w.status] || 'chip-gray'}">${w.status}</span>${w.error ? html`<br><small class="text-muted">${w.error}</small>` : ''}</td><td data-label="Attempts" class="num">${w.attempts}</td></tr>`)}</tbody></table></div>`

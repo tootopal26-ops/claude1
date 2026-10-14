@@ -14,8 +14,9 @@ $state = $pay['state'];
       <h1 class="pay-title">SCAN AND PAY</h1>
       <p class="pay-summary"><b class="num"><?= e($pay['amount']) ?></b><span><?= e($pay['service']) ?></span></p>
 
-      <div class="qr-frame rgb-ring" id="qr-frame" data-dead="false">
-        <img id="qr-img" src="<?= e($pay['qr_url']) ?>" width="280" height="280" alt="Payment QR code for <?= e($pay['amount']) ?>" decoding="async">
+      <?php $live = $state === 'pending'; /* an expired / paid / failed / under-review session never ships its QR or payment link */ ?>
+      <div class="qr-frame rgb-ring" id="qr-frame" data-dead="<?= $live ? 'false' : 'true' ?>">
+        <img id="qr-img"<?= $live ? ' src="' . e($pay['qr_url']) . '"' : '' ?> width="280" height="280" alt="Payment QR code for <?= e($pay['amount']) ?>" decoding="async">
         <span class="qr-corner tl"></span><span class="qr-corner tr"></span><span class="qr-corner bl"></span><span class="qr-corner br"></span>
         <div class="qr-dead"><?= icon('clock', 'icon icon-xl mx-auto') ?><span>Payment session expired</span></div>
       </div>
@@ -27,8 +28,8 @@ $state = $pay['state'];
       </div>
 
       <div class="pay-actions">
-        <a class="btn btn-lg" id="btn-download" href="<?= e($pay['download_url']) ?>" download><?= icon('download') ?> DOWNLOAD QR</a>
-        <a class="btn btn-success btn-lg" id="btn-open" href="<?= e($pay['pay_url']) ?>" rel="noopener noreferrer"><?= icon('smartphone') ?> PAY ON THIS DEVICE</a>
+        <a class="btn btn-lg" id="btn-download"<?= $live ? ' href="' . e($pay['download_url']) . '" download' : ' aria-disabled="true" tabindex="-1"' ?>><?= icon('download') ?> DOWNLOAD QR</a>
+        <a class="btn btn-success btn-lg" id="btn-open"<?= $live ? ' href="' . e($pay['pay_url']) . '"' : ' aria-disabled="true" tabindex="-1"' ?> rel="noopener noreferrer"><?= icon('smartphone') ?> PAY ON THIS DEVICE</a>
       </div>
       <p class="pay-status" id="pay-status"><i></i><span>Waiting for your payment…</span></p>
       <p class="pay-note"><?= e($pay['instructions']) ?></p>

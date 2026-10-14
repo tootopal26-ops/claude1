@@ -29,7 +29,7 @@ function summary(a) {
 function render(d) {
   data = d;
   $('#audit-chips').innerHTML = GROUPS.map(([k, l]) => `<button type="button" class="fchip" data-group="${k}" aria-pressed="${state.group === k}">${esc(l)}</button>`).join('');
-  root().innerHTML = String(d.rows.length ? html`<div class="tbl-wrap"><div class="tbl-scroll"><table class="tbl tbl-resp">
+  root().innerHTML = String(d.rows.length ? html`<div class="tbl-wrap"><div class="tbl-scroll" tabindex="0" role="region" aria-label="Audit log"><table class="tbl tbl-resp">
     <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Details</th><th>Where from</th></tr></thead>
     <tbody>${d.rows.map((a) => html`<tr>
       <td data-label="When"><span class="cell-main"><b>${fmtDateTime(a.at)}</b><small>${timeAgo(a.at)}</small></span></td>

@@ -46,6 +46,13 @@ final class Settlement
             }
             $orderId = (int) $p['order_id'];
             if (in_array($p['status'], Status::PAY_RECEIVED, true)) {
+                // A DIFFERENT bank reference for an already-paid order means the customer paid twice: leave a note so an admin can refund it.
+                $again = isset($evidence['utr']) ? trim((string) $evidence['utr']) : '';
+                if ($again !== '' && $source !== 'admin' && $p['provider_txn_id'] !== null && $again !== (string) $p['provider_txn_id']) {
+                    $status = (string) Db::val('SELECT status FROM orders WHERE id = ?', [$orderId], '');
+                    Orders::history($orderId, $status, $status, 'system', null, 'Duplicate payment received (bank ref ' . mb_substr($again, 0, 40) . ') for an order that was already paid. Refund the duplicate.');
+                    Log::warning('Duplicate payment for an already-paid order', ['payment' => $paymentId, 'utr' => $again]);
+                }
                 return self::out(self::ALREADY, $orderId, $paymentId, null, 'Payment was already confirmed.');
             }
 

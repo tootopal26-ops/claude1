@@ -10,6 +10,8 @@
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
 </head>
 <body class="ambient">
+<main id="main">
 <?= $content ?>
+</main>
 </body>
 </html>

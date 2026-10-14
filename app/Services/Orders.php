@@ -80,6 +80,35 @@ final class Orders
             throw new HttpException(503, 'Payments are temporarily unavailable. Please try again soon.', 'payments_unavailable');
         }
 
+        // One checkout at a time per visitor + service + link: concurrent requests (double submit, two tabs, a retry racing the
+        // original) queue up here, so the second one finds the first one's payment session and reuses it instead of creating a twin.
+        $lock = null;
+        if ($visitor['visitor_id']) {
+            $lock = 'co:' . $visitor['visitor_id'] . ':' . $service['id'] . ':' . substr(sha1((string) $check['url']), 0, 20);
+            if (!Db::tryLock($lock, 10)) {
+                throw new HttpException(409, 'Your previous request is still being processed. Please wait a moment and try again.', 'in_progress');
+            }
+        }
+        try {
+            return self::openSession($service, $rawTarget, $check, $gwRow, $visitor);
+        } finally {
+            if ($lock !== null) {
+                Db::unlock($lock);
+            }
+        }
+    }
+
+    /**
+     * Reuse the visitor's live payment session for this exact order, or create the order + payment and ask the gateway for a QR.
+     *
+     * @param array<string,mixed> $service
+     * @param array{ok:bool,url?:string,display?:string} $check
+     * @param array<string,mixed> $gwRow
+     * @param array{visitor_id:?int,session_id:?int} $visitor
+     * @return array{ref:string,order_id:string,reused:bool}
+     */
+    private static function openSession(array $service, string $rawTarget, array $check, array $gwRow, array $visitor): array
+    {
         // Same visitor, same service, same target, a still-valid unpaid session → reuse it (no duplicate orders).
         if ($visitor['visitor_id']) {
             $existing = Db::one(
@@ -121,7 +150,7 @@ final class Orders
                     [
                         $publicId, Crypto::token(16), $userId, $visitor['visitor_id'], $visitor['session_id'], $service['id'], $service['platform_id'],
                         $service['platform_slug'], $service['code'], $service['title'], $service['type'], $service['mode'], $service['quantity'], $service['price_paise'],
-                        mb_substr(trim($rawTarget), 0, 500), $check['url'],
+                        mb_substr(Targets::clean($rawTarget), 0, 500), $check['url'],
                         $auto ? $service['smm_provider_id'] : null, $auto ? $service['smm_service_id'] : null,
                         $auto ? (int) $service['smm_cost_paise'] : 0,
                         $day, Clock::sql($now), Clock::sql($now),

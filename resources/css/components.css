@@ -199,5 +199,5 @@
   .seg::-webkit-scrollbar { display: none; }
   .seg > button, .seg > a { min-height: 2.25rem; padding: 0 0.875rem; border-radius: var(--radius-sm); font-size: 0.8125rem; font-weight: 600; color: var(--color-muted); white-space: nowrap; display: inline-flex; align-items: center; gap: 0.4rem; transition: background-color 0.2s, color 0.2s, box-shadow 0.2s; }
   .seg > button:hover, .seg > a:hover { color: var(--color-ink); }
-  .seg > [aria-selected="true"], .seg > [aria-current="page"], .seg > .is-active { background: #fff; color: var(--color-ink); box-shadow: var(--shadow-sm); }
+  .seg > [aria-selected="true"], .seg > [aria-checked="true"], .seg > [aria-current="page"], .seg > .is-active { background: #fff; color: var(--color-ink); box-shadow: var(--shadow-sm); }
 }

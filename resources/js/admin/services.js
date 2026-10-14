@@ -57,7 +57,7 @@ function renderList() {
   root().innerHTML = String(html`${groups().map(({ platform, items }) => html`<section class="mb-6" aria-labelledby="pl-${platform.id}">
     <div class="flex items-center gap-3 mb-2"><img class="h-8 w-8 rounded-full ring-1 ring-line bg-white" src="${platform.logo_url}" alt="" width="32" height="32">
       <h2 id="pl-${platform.id}" class="text-lg font-extrabold">${platform.name}</h2><span class="chip chip-gray">${items.length} services</span>${platform.is_active ? '' : html`<span class="chip chip-warn">platform hidden</span>`}</div>
-    <div class="tbl-wrap"><div class="tbl-scroll"><table class="tbl tbl-resp">
+    <div class="tbl-wrap"><div class="tbl-scroll" tabindex="0" role="region" aria-label="${platform.name} services"><table class="tbl tbl-resp">
       <thead><tr><th>Service</th><th class="num">Price</th><th>Mode</th><th class="num">Provider cost</th><th class="num">Profit / order</th><th class="num">Paid orders</th><th>Active</th><th><span class="sr-only">Actions</span></th></tr></thead>
       <tbody>${items.map(row)}</tbody></table></div></div></section>`)}
     <p class="text-[13px] text-muted">${inactive ? `${inactive} service${inactive === 1 ? ' is' : 's are'} hidden from the store. ` : ''}Profit / order = price − provider cost (AUTO only), before advertising. Open a service to see the estimate after the average ad cost per order (${inr(meta.est_ad_cost_paise, true)} · ${meta.est_ad_cost_basis}).</p>`);
@@ -134,8 +134,8 @@ function editorHtml(s) {
     <div class="form-section"><h3>Delivery</h3>
       <p class="lead">AUTO sends paid orders to your SMM provider. MANUAL puts them in the approval queue so you deliver them yourself.</p>
       <div class="seg mb-3" role="radiogroup" aria-label="Delivery mode">
-        <button type="button" role="radio" data-mode="AUTO" aria-checked="${mode === 'AUTO'}" aria-selected="${mode === 'AUTO'}">${icon('zap', 'icon-sm')}AUTO</button>
-        <button type="button" role="radio" data-mode="MANUAL" aria-checked="${mode === 'MANUAL'}" aria-selected="${mode === 'MANUAL'}">${icon('user', 'icon-sm')}MANUAL</button></div>
+        <button type="button" role="radio" data-mode="AUTO" aria-checked="${mode === 'AUTO' ? 'true' : 'false'}">${icon('zap', 'icon-sm')}AUTO</button>
+        <button type="button" role="radio" data-mode="MANUAL" aria-checked="${mode === 'MANUAL' ? 'true' : 'false'}">${icon('user', 'icon-sm')}MANUAL</button></div>
       <input type="hidden" name="mode" value="${mode}">
       <div id="auto-fields" ${mode === 'AUTO' ? '' : 'hidden'}>
         <div class="field-row"><div class="field"><label class="label req" for="f-smm_provider_id">SMM provider</label>
@@ -144,8 +144,8 @@ function editorHtml(s) {
           <div class="field"><label class="label req" for="f-smm_service_id">SMM service ID</label>
           <input class="input mono" id="f-smm_service_id" name="smm_service_id" maxlength="64" value="${s?.smm_service_id || ''}" placeholder="e.g. 1234" spellcheck="false"></div></div>
         <div class="field combo"><label class="label" for="svc-search">Find the service on your provider</label>
-          <input class="input" id="svc-search" type="search" placeholder="Search by name, category or ID…" autocomplete="off" aria-controls="svc-results" aria-expanded="false">
-          <div class="combo-list" id="svc-results" role="listbox" hidden></div>
+          <input class="input" id="svc-search" type="search" role="combobox" placeholder="Search by name, category or ID…" autocomplete="off" aria-autocomplete="list" aria-controls="svc-results" aria-expanded="false" aria-describedby="svc-search-hint">
+          <div class="combo-list" id="svc-results" role="listbox" aria-label="Services at your provider" hidden></div>
           <p class="field-hint" id="svc-search-hint">Pick a result to fill the ID and estimate the cost.</p></div>
         <div class="field"><label class="label req" for="f-smm_cost">Provider cost per purchase</label>
           <div class="input-affix"><span class="affix">₹</span><input class="input" id="f-smm_cost" name="smm_cost" inputmode="decimal" value="${s ? plain(s.smm_cost_paise).replace(/\.00$/, '') : ''}" placeholder="58"></div>
@@ -219,7 +219,7 @@ function syncTargetKinds() {
 
 function setMode(mode) {
   $('#sd-body [name="mode"]').value = mode;
-  $$('#sd-body [data-mode]').forEach((b) => { const on = b.dataset.mode === mode; b.setAttribute('aria-checked', String(on)); b.setAttribute('aria-selected', String(on)); });
+  $$('#sd-body [data-mode]').forEach((b) => { const on = b.dataset.mode === mode; b.setAttribute('aria-checked', String(on)); });
   $('#auto-fields').hidden = mode !== 'AUTO';
   updatePreview();
 }
@@ -245,7 +245,7 @@ async function searchProvider(q) {
     list.innerHTML = result.items.length ? result.items.map((s) => {
       const c = qty ? costFromRate(s.rate, qty) : null;
       return `<button type="button" class="combo-item" role="option" data-pick='${esc(JSON.stringify({ id: s.service, cost: c }))}'><b>#${esc(s.service)} · ${esc(s.name)}</b><small>${esc(s.category)} · rate ${esc(s.rate)}/1000 · min ${esc(s.min)} · max ${esc(s.max)}${c !== null ? ` · ≈ ${esc(inr(c, true))} for ${esc(num(qty))}` : ''}</small></button>`;
-    }).join('') : '<div class="combo-item"><small>No matching services.</small></div>';
+    }).join('') : '<div class="combo-item" role="option" aria-disabled="true"><small>No matching services.</small></div>';
     list.hidden = false;
     $('#svc-search').setAttribute('aria-expanded', 'true');
     hint.textContent = result.message + ' — pick one to fill the ID and cost.';

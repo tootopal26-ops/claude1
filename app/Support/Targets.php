@@ -252,7 +252,8 @@ final class Targets
         return (bool) preg_match('/^@?[A-Za-z0-9._]{1,' . $max . '}$/D', $s);
     }
 
-    private static function clean(string $s): string
+    /** Strip control / zero-width characters and surrounding whitespace (what the customer meant, not what the clipboard added). */
+    public static function clean(string $s): string
     {
         $s = (string) preg_replace('/[\x00-\x1F\x7F\x{200B}-\x{200D}\x{FEFF}]/u', '', $s);
         return trim($s);

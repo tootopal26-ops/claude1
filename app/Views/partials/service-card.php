@@ -20,7 +20,7 @@ $classes = 'svc glass' . ($s['is_premium'] ? ' svc-premium svc-wide' : '');
       <span class="svc-chip"><img src="<?= e($p['logo_url']) ?>" alt="" width="22" height="22" loading="lazy" decoding="async"></span>
     </div>
     <div class="svc-body">
-      <h4 class="svc-title"><?= e($s['title']) ?></h4>
+      <h3 class="svc-title"><?= e($s['title']) ?></h3>
       <?php if ($s['subtitle'] !== ''): ?><p class="svc-sub"><?= e($s['subtitle']) ?></p><?php endif; ?>
     </div>
     <div class="svc-price"><b class="num"><?= e($s['price']) ?></b></div>

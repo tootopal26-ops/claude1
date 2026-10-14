@@ -228,7 +228,10 @@ final class Request
         }
         $port = $allowed['port'] ?? null;
         $origin = $this->header('origin');
-        $source = $origin !== null && $origin !== 'null' ? $origin : $this->header('referer');
+        if ($origin !== null && strtolower(trim($origin)) === 'null') {
+            return false;   // opaque origin (sandboxed iframe, data: page, cross-origin redirect): our own pages never send it
+        }
+        $source = $origin !== null ? $origin : $this->header('referer');
         if ($source === null || $source === '') {
             return true; // privacy tools may strip both; token checks still apply
         }

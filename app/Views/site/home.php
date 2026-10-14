@@ -36,7 +36,7 @@ $first = $platforms[0]['slug'] ?? '';
           <div class="site-empty glass rounded-xl">No services are available for <?= e($p['name']) ?> right now.</div>
         <?php endif; ?>
         <?php foreach ($p['sections'] as $sec): ?>
-          <div class="sec-head"><?= icon(match ($sec['type']) { 'followers' => 'user-plus', 'likes' => 'heart', 'views' => 'eye', 'verification' => 'badge-check', 'subscribers' => 'bell-ring', 'watch_time' => 'clock', default => 'sparkles' }) ?><h3><?= e($sec['label']) ?></h3></div>
+          <div class="sec-head"><?= icon(match ($sec['type']) { 'followers' => 'user-plus', 'likes' => 'heart', 'views' => 'eye', 'verification' => 'badge-check', 'subscribers' => 'bell-ring', 'watch_time' => 'clock', default => 'sparkles' }) ?><h2><?= e($sec['label']) ?></h2></div>
           <div class="svc-grid">
             <?php foreach ($sec['services'] as $s): ?>
               <?= \App\Core\View::partial('service-card', ['s' => $s, 'p' => $p]) ?>
@@ -59,9 +59,9 @@ $first = $platforms[0]['slug'] ?? '';
     <div class="dlg-body" data-orders-body>
       <p class="text-sm text-muted">Loading your orders…</p>
     </div>
-    <div class="dlg-foot justify-between">
-      <span class="text-xs text-muted self-center">Orders are remembered on this device.</span>
-      <button type="button" class="btn btn-primary" data-dialog-close data-scroll="#services">Browse services</button>
+    <div class="dlg-foot justify-between max-sm:flex-col max-sm:items-stretch">
+      <span class="text-xs text-muted self-center max-sm:order-2">Orders are remembered on this device.</span>
+      <button type="button" class="btn btn-primary max-sm:order-1" data-dialog-close data-scroll="#services">Browse services</button>
     </div>
   </div>
 </dialog>

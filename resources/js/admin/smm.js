@@ -13,7 +13,7 @@ const root = () => $('#smm-root');
 function card(p) {
   const t = p.last_test_ok === null ? null : p.last_test_ok;
   return html`<article class="card prov-card" data-provider="${p.id}" aria-label="${p.name}">
-    <div class="prov-head"><div class="min-w-0"><h3 class="text-lg font-extrabold truncate">${p.name}</h3><p class="text-xs text-muted mono break-all">${p.api_url}</p></div>
+    <div class="prov-head"><div class="min-w-0"><h2 class="text-lg font-extrabold truncate">${p.name}</h2><p class="text-xs text-muted mono break-all">${p.api_url}</p></div>
       <span class="flex flex-wrap gap-1.5">${p.is_default ? html`<span class="chip chip-brand">Default</span>` : ''}<span class="chip ${p.is_active ? 'chip-ok' : 'chip-gray'}">${p.is_active ? 'Active' : 'Inactive'}</span></span></div>
     <dl class="dl"><dt>Currency</dt><dd>${p.currency}${p.currency !== 'INR' ? ` · 1 ${p.currency} = ₹${p.rate_to_inr}` : ''}</dd>
       <dt>API key</dt><dd class="mono">${p.has_api_key ? p.api_key_hint : 'not set'}</dd>

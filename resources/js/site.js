@@ -171,12 +171,14 @@ async function proceed(card) {
   setMsg(card, 'idle', html`<span class="spinner icon-sm"></span><span>Creating secure payment…</span>`);
 
   try {
-    // One key per attempt: a double click / retry reuses it and can never create a second order.
-    card._idem ||= uuid();
+    // One key per attempt: a double click / retry reuses it and can never create a second order. It is KEPT when the outcome is
+    // unknown (connection lost, timeout: the server may well have created the order) so the retry is answered with that very order;
+    // it changes only when the typed value changes or the server gave a definite answer.
+    if (!card._idem || card._idem.value !== input.value) card._idem = { key: uuid(), value: input.value };
     const res = await api('/api/checkout', {
       method: 'POST', timeout: 30000,
       body: { service_id: Number(card.dataset.id), target: input.value },
-      headers: { 'Idempotency-Key': card._idem },
+      headers: { 'Idempotency-Key': card._idem.key },
     });
     remember(res, card);
     setMsg(card, 'valid', html`${icon('circle-check')}<span><strong>Order created.</strong> Opening secure payment…</span>`);
@@ -184,7 +186,7 @@ async function proceed(card) {
     document.body.classList.add('is-leaving');
     setTimeout(() => location.assign(res.url), reduceMotion() ? 0 : 280);
   } catch (err) {
-    card._idem = null;                                      // a fresh click is a fresh attempt
+    if (err.code !== 'network' && err.code !== 'timeout') card._idem = null;   // a definite answer: the next click is a fresh attempt
     card._busy = false;
     btn.classList.remove('is-loading');
     btn.removeAttribute('aria-busy');

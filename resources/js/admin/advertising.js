@@ -35,7 +35,7 @@ function render(a) {
   </div>
 
   <section class="card mt-5" aria-labelledby="h-hist"><div class="card-head"><h2 class="card-title" id="h-hist">${icon('history')}CPC history</h2></div>
-    <div class="tbl-scroll"><table class="tbl tbl-resp"><thead><tr><th>Set on</th><th class="num">CPC</th><th class="num">Qualify after</th><th>Changed by</th></tr></thead>
+    <div class="tbl-scroll" tabindex="0" role="region" aria-label="Earlier CPC settings"><table class="tbl tbl-resp"><thead><tr><th>Set on</th><th class="num">CPC</th><th class="num">Qualify after</th><th>Changed by</th></tr></thead>
     <tbody>${a.history.map((h) => html`<tr><td data-label="Set on">${fmtDateTime(h.at)}</td><td data-label="CPC" class="num"><b>${h.cpc}</b></td><td data-label="Qualify after" class="num">${h.qualify_seconds} s</td><td data-label="By">${h.by}</td></tr>`)}</tbody></table></div></section>`);
   autoClearErrors(root());
   root().setAttribute('aria-busy', 'false');

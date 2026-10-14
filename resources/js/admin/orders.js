@@ -47,7 +47,7 @@ function profitCell(o) {
 }
 
 function rowHtml(o) {
-  return html`<tr data-open="${o.id}" tabindex="0" role="button" aria-label="Open order ${o.public_id}">
+  return html`<tr data-open="${o.id}">
     <td data-label="Order"><span class="cell-main"><b class="mono">${o.public_id}</b><small>${fmtDateTime(o.created_at)}</small></span></td>
     <td data-label="Service" class="span2"><span class="cell-svc">${platformIcon(o.platform) ? html`<img src="${platformIcon(o.platform)}" alt="" width="30" height="30" loading="lazy">` : ''}<span class="cell-main"><b>${o.service}</b><small title="${o.target}">${o.target}</small></span></span></td>
     <td data-label="Amount" class="num"><span class="cell-main"><b>${inr(o.amount_paise)}</b>${o.refunded_paise ? html`<small class="amt-neg">−${inr(o.refunded_paise)} refunded</small>` : ''}</span></td>
@@ -82,7 +82,7 @@ function renderList(d) {
       : emptyState({ ico: 'package', title: 'No orders yet', text: 'Orders appear here the moment a customer starts checkout. Share your store link to get the first one.' })}</div>`);
     return;
   }
-  root().innerHTML = String(html`<div class="tbl-wrap"><div class="tbl-scroll"><table class="tbl tbl-resp">
+  root().innerHTML = String(html`<div class="tbl-wrap"><div class="tbl-scroll" tabindex="0" role="region" aria-label="Orders"><table class="tbl tbl-resp">
     <thead><tr><th>Order</th><th>Service &amp; target</th><th class="num">Amount</th><th>Payment · mode</th><th class="num">Profit</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
     <tbody>${d.rows.map(rowHtml)}</tbody></table></div>${pager(d, 'orders')}</div>`);
 }
@@ -335,11 +335,8 @@ export default async function init() {
   on(root(), 'click', '[data-clear]', reset);
   on(root(), 'click', '[data-retry]', () => load());
   on(root(), 'click', '[data-page]', (e, b) => { if (b.disabled) return; state.page = Number(b.dataset.page); load(); $('#page-title').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-  on(root(), 'click', '[data-open]', (e, el) => { if (e.target.closest('a')) return; openOrder(el.dataset.open, el); });
-  root().addEventListener('keydown', (e) => {
-    const tr = e.target instanceof Element ? e.target.closest('tr[data-open]') : null;
-    if (tr && e.target === tr && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openOrder(tr.dataset.open, tr); }
-  });
+  // the whole row is a mouse convenience; the real control (and the element focus returns to) is the "View" button inside it
+  on(root(), 'click', '[data-open]', (e, el) => { if (e.target.closest('a')) return; openOrder(el.dataset.open, el.matches('tr') ? el.querySelector('button[data-open]') || el : el); });
   $('#order-drawer').addEventListener('close', () => { openId = null; drawerData = null; writeUrl(); });
   on($('#order-drawer'), 'click', '[data-act]', (e, b) => { if (drawerData && !b.disabled) runAction(b.dataset.act, b); });
   on($('#order-drawer'), 'click', '[data-copy]', (e, b) => copyText(b.dataset.copy));
