@@ -197,13 +197,26 @@ await t.step('BUY NOW opens the order form INSIDE the card (animated height + op
   const card = page.locator(`[data-id="${id}"]`);
   const url0 = page.url();
   const before = await card.evaluate((e) => e.getBoundingClientRect().height);
+  // sample every frame for 1.5 s instead of looking at one instant: a busy machine delays frames, but a real animation always passes
+  // through intermediate heights and opacities
+  await card.evaluate((e) => {
+    window.__samples = [];
+    const t0 = performance.now();
+    const tick = () => {
+      window.__samples.push({ h: e.getBoundingClientRect().height, op: Number(getComputedStyle(e.querySelector('.expand')).opacity) });
+      if (performance.now() - t0 < 1500) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
   await card.locator('[data-action=buy]').click();
-  await page.waitForTimeout(90);
-  const mid = await card.evaluate((e) => ({ h: e.getBoundingClientRect().height, op: getComputedStyle(e.querySelector('.expand')).opacity }));
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(1700);
+  const samples = await page.evaluate(() => window.__samples);
   const after = await card.evaluate((e) => ({ h: e.getBoundingClientRect().height, op: getComputedStyle(e.querySelector('.expand')).opacity, focus: document.activeElement?.name, inert: e.querySelector('.expand').inert }));
   t.eq(page.url(), url0, 'no navigation');
-  t.ok(mid.h > before && mid.h < after.h, `height animates: ${before} → ${mid.h} → ${after.h}`);
+  const midH = samples.filter((x) => x.h > before + 1 && x.h < after.h - 1);
+  t.ok(midH.length >= 1, `height animates through intermediate values: ${before} → [${midH.slice(0, 3).map((x) => Math.round(x.h)).join(', ')}] → ${after.h} (${samples.length} frames sampled)`);
+  t.ok(samples.every((x, i) => i === 0 || x.h >= samples[i - 1].h - 0.5), 'the card only ever grows while opening (no jump back)');
+  t.ok(samples.some((x) => x.op > 0.02 && x.op < 0.98), 'the form fades in through intermediate opacities');
   t.ok(after.h > before + 90, `expanded by ${after.h - before}px`);
   t.eq(after.op, '1'); t.eq(after.focus, 'target'); t.eq(after.inert, false);
   t.eq(await card.locator('[data-action=buy]').getAttribute('aria-expanded'), 'true');
