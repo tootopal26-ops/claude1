@@ -1,7 +1,7 @@
 // Phone/tablet behaviour of the admin panel: navigation drawer, drawers/dialogs fit the screen, touch charts, tap targets.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
-import { launch, newPage, login, go, layoutReport, BASE } from './admin.mjs';
+import { launch, newPage, login, go, layoutReport, coveredControls, BASE } from './admin.mjs';
 import { suite } from './harness.mjs';
 
 const OUT = process.env.QA_OUT || '/tmp/qa';
@@ -136,6 +136,15 @@ await t.step('every admin page: no horizontal overflow at 360, 390, 412 and tabl
       await go(page, '/admin/' + p, { settle: 300 });
       const rep = await layoutReport(page);
       t.ok(!rep.overflowX && rep.wide.length === 0, `${p} @${w}: scrollW ${rep.scrollW} wide=${rep.wide.join(';')}`);
+      // nothing may sit on top of a control (z-index / stray overlay): hit-test every visible control at the top, middle and bottom of the page
+      const covered = [];
+      for (const frac of [0, 0.5, 1]) {
+        await page.evaluate((f) => window.scrollTo({ top: (document.documentElement.scrollHeight - window.innerHeight) * f, behavior: 'instant' }), frac);
+        await page.waitForTimeout(120);
+        covered.push(...await coveredControls(page));
+      }
+      t.eq([...new Set(covered)], [], `${p} @${w}: controls covered by other elements`);
+      await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
     }
   }
 });

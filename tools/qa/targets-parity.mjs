@@ -13,5 +13,5 @@ for (const c of cases) {
     console.log(`✗ ${c.platform}/${c.kind} ${JSON.stringify(c.input)}\n    expected ${c.ok ? c.url : 'reject'}  got ${r.ok ? r.url : 'reject (' + r.error + ')'}`);
   }
 }
-console.log(bad === 0 ? `✓ JS matches PHP on all ${cases.length} fixtures` : `${bad} of ${cases.length} fixtures differ`);
+console.log(bad === 0 ? `✓ JS matches PHP on all ${cases.length} fixtures\ntargets-parity: ${cases.length}/${cases.length} passed` : `${bad} of ${cases.length} fixtures differ\ntargets-parity: ${cases.length - bad}/${cases.length} passed, ${bad} failed`);
 process.exit(bad ? 1 : 0);

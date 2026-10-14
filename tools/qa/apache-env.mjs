@@ -14,8 +14,19 @@ const APACHE = ['/usr/sbin/apache2'].find(existsSync);
 const MOD_PHP = ['/usr/lib/apache2/modules/libphp8.3.so', '/usr/lib/apache2/modules/libphp8.2.so', '/usr/lib/apache2/modules/libphp8.1.so'].find(existsSync);
 export const sh = (cmd) => execFileSync('bash', ['-c', cmd], { stdio: 'pipe', encoding: 'utf8' });
 
+/** Stop a previous instance (a suite that ran just before us may still be shutting down) and wait until the ports are free. */
+async function stopPrevious() {
+  if (existsSync(`${W}/apache2.conf`)) spawnSync(APACHE, ['-f', `${W}/apache2.conf`, '-k', 'stop']);
+  for (let i = 0; i < 60; i++) {
+    const busy = await Promise.all([PORT_A, PORT_B, PORT_C].map((p) => fetch(`http://127.0.0.1:${p}/`, { signal: AbortSignal.timeout(500) }).then(() => true, (e) => e?.name === 'TimeoutError')));
+    if (!busy.some(Boolean)) return;
+    await sleep(250);
+  }
+}
+
 export async function startApache() {
   if (!APACHE || !MOD_PHP) return null;
+  await stopPrevious();
   rmSync(W, { recursive: true, force: true }); mkdirSync(`${W}/run`, { recursive: true });
   const EXCL = "--exclude node_modules --exclude .git --exclude 'storage/logs/*' --exclude 'storage/cache/*' --exclude storage/installed.lock --exclude '.env'";
   sh(`rsync -a ${EXCL} ${ROOT}/ ${W}/siteA/`);

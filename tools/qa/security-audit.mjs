@@ -11,7 +11,7 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 
 const PORT = 8093;
 process.env.BASE = `http://127.0.0.1:${PORT}`;                 // must be set before the helpers are imported
-const { launch, newPage, BASE, ROOT, sql, rows, alpha, smm, mocksReset, resetLimits, payment, serviceId, sleep, php, useMockProviderIds, DESKTOP_UA } = await import('./site.mjs');
+const { launch, newPage, BASE, ROOT, sql, rows, alpha, smm, mocksReset, resetLimits, payment, serviceId, sleep, php, useMockProviderIds, DESKTOP_UA, waitUntil } = await import('./site.mjs');
 const { login, CREDS } = await import('./admin.mjs');
 const { suite } = await import('./harness.mjs');
 
@@ -335,7 +335,8 @@ await t.step('Q8 · can a duplicate webhook create a duplicate order? NO — 20 
     ...Array.from({ length: 4 }, () => webhook(evt(o.p))),                                                               // new event ids, new bank references (customer paid again?)
   ]);
   t.ok(rs.every((r) => r.status === 200), 'all acknowledged (so the gateway stops retrying): ' + rs.map((r) => r.status));
-  await sleep(1500);
+  await waitUntil(() => historyCount(o.p.id, 'SUBMITTED') >= 1, { timeout: 15000 });   // the provider call happens after the webhook has been answered
+  await sleep(1000);                                                                 // …and a duplicate (there must be none) would show up by now
   t.eq(Number(sql(`SELECT COUNT(*) FROM payments WHERE gateway_order_id = '${o.p.gwOrder}'`)), 1, 'one payment row');
   t.eq(payment(o.ref).pStatus, 'success');
   t.eq(historyCount(o.p.id, 'PAID'), 1, 'the order became PAID exactly once');

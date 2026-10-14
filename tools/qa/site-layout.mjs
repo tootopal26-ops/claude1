@@ -2,6 +2,7 @@
 // problems and takes screenshots (kept in $QA_OUT, default /tmp/qa/layout) for visual review. Covers home (both platforms), an expanded card
 // (valid + invalid), the Shop drawer, the payment page (pending, expired, paid), the order page, the 404 page and maintenance mode.
 import { execFileSync } from 'node:child_process';
+import { coveredControls } from './admin.mjs';
 import { launch, newPage, BASE, VIEWPORTS, sql, resetLimits, mocksReset, payment, payOk, placeOrder, openCard, serviceId, sleep, useMockProviderIds } from './site.mjs';
 import { suite } from './harness.mjs';
 
@@ -86,6 +87,14 @@ for (const vp of VIEWPORTS) {
     t.ok(cards.every((c) => c.btnH >= 44), 'BUY NOW is at least 44px tall: ' + cards.map((c) => c.btnH));
     t.ok(cards.every((c) => c.titleFs >= 16 && c.priceFs >= 18), 'title/price font sizes readable');
     t.ok(cards.every((c) => c.w >= (mobile ? 280 : 340)), 'card widths: ' + cards.map((c) => Math.round(c.w)));
+    // z-index / unreachable controls: hit-test at the top, middle and bottom of the page
+    const covered = [];
+    for (const frac of [0, 0.35, 0.7, 1]) {
+      await page.evaluate((f) => window.scrollTo({ top: (document.documentElement.scrollHeight - window.innerHeight) * f, behavior: 'instant' }), frac);
+      await page.waitForTimeout(150); covered.push(...await coveredControls(page));
+    }
+    t.eq([...new Set(covered)], [], 'controls covered by something else (z-index): ' + covered.join(' | '));
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
     await shot('home-instagram');
     clean('home');
   });
@@ -115,6 +124,7 @@ for (const vp of VIEWPORTS) {
     await card.locator('[data-action=proceed]').scrollIntoViewIfNeeded();
     const vis = await card.locator('[data-action=proceed]').evaluate((e) => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= window.innerHeight; });
     t.ok(vis, 'PROCEED TO PAYMENT can be scrolled fully into view');
+    t.eq(await coveredControls(page), [], 'the open order form is not covered by the header, toasts or neighbours');
     await shot('card-valid');
     const a2 = await audit(page); t.eq(a2.issues, [], JSON.stringify(a2.issues));
     await card.locator('[data-action=cancel]').click(); await page.waitForTimeout(500);
@@ -125,9 +135,13 @@ for (const vp of VIEWPORTS) {
     await page.click('[data-action=open-orders]'); await page.waitForSelector('#orders-drawer[open]'); await page.waitForTimeout(500);
     const d = await page.$eval('#orders-drawer .dlg-panel', (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, r: r.right, b: r.bottom, w: r.width, h: r.height }; });
     t.ok(d.x >= -1 && d.r <= vp.width + 1 && d.y >= -1 && d.b <= vp.height + 1, 'drawer inside the viewport: ' + JSON.stringify(d));
-    const closeBox = await page.locator('#orders-drawer [data-dialog-close][aria-label=Close]').boundingBox(); t.ok(closeBox.width >= 36 && closeBox.height >= 36, 'close button ' + closeBox.width);
-    await shot('drawer');
-    await page.keyboard.press('Escape'); await page.waitForFunction(() => !document.querySelector('#orders-drawer[open]'));
+    try {
+      const closeBox = await page.locator('#orders-drawer [data-dialog-close][aria-label=Close]').boundingBox(); t.ok(closeBox.width >= 43.5 && closeBox.height >= 43.5, `close button ${closeBox.width}x${closeBox.height} (touch target ≥ 44 px)`);
+        t.eq(await coveredControls(page), [], 'inside the open drawer every control is on top (the page behind is inert)');
+      const top = await page.evaluate(() => { const d = document.querySelector('#orders-drawer .dlg-panel').getBoundingClientRect(); const e = document.elementFromPoint(d.left + d.width / 2, d.top + 60); return !!e?.closest('#orders-drawer'); });
+      t.ok(top, 'the drawer is the top layer above the header');
+      await shot('drawer');
+    } finally { await page.keyboard.press('Escape'); await page.waitForFunction(() => !document.querySelector('#orders-drawer[open]')); }
   });
 
   await t.step(`${vp.name}: payment page (pending, expired, paid) — QR, timer and buttons visible, no overflow`, async () => {
@@ -138,6 +152,7 @@ for (const vp of VIEWPORTS) {
     const qr = await metrics(page, '#qr-img'); const timer = await metrics(page, '#timer-value'); const dl = await metrics(page, '#btn-download');
     t.ok(qr.w >= 220 && qr.w <= 360 && qr.w === qr.h, `QR ${qr.w}x${qr.h}`);
     t.ok(parseFloat(timer.fs) >= 28, 'timer font ' + timer.fs); t.ok(dl.h >= 44, 'download button ' + dl.h);
+    t.eq(await coveredControls(page), [], 'payment page controls are reachable');
     const above = await page.evaluate(() => ({ qrTop: document.querySelector('#qr-img').getBoundingClientRect().top, vh: window.innerHeight }));
     t.ok(above.qrTop < above.vh * 0.7, 'QR starts in the first screen: ' + above.qrTop);
     await shot('pay-pending');

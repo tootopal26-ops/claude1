@@ -73,6 +73,28 @@ export const payment = (ref) => {
 
 export const refFromUrl = (url) => (String(url).match(/\/pay\/([a-f0-9]{32})/) || [])[1];
 
+/** Poll until fn() is truthy (returns it) or the time is up (returns the last value). For work that continues after an HTTP answer. */
+export async function waitUntil(fn, { timeout = 20000, interval = 100 } = {}) {
+  const end = Date.now() + timeout;
+  for (;;) {
+    const v = await fn();
+    if (v || Date.now() >= end) return v;
+    await sleep(interval);
+  }
+}
+
+/**
+ * The webhook is answered BEFORE an AUTO order is sent to the provider (that happens after the response). Wait until that
+ * attempt has finished: the order is no longer being processed and at least one attempt was made. Returns the order row.
+ */
+export async function waitSubmission(ref, timeout = 20000) {
+  await waitUntil(() => {
+    const o = payment(ref);
+    return o && o.oStatus !== 'PROCESSING' && Number(sql(`SELECT provider_attempts FROM orders WHERE id = ${o.id}`)) >= 1;
+  }, { timeout });
+  return payment(ref);
+}
+
 /** Pay an order through the mock gateway (it sends a correctly signed webhook to our server). */
 export const payOk = (ref, body = {}) => alpha(`/__pay/${payment(ref).gwOrder}/success`, body);
 

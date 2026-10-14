@@ -1,6 +1,8 @@
 // Gateway, SMM provider, advertising, security (password/sessions/forced change), audit log and system pages.
 import { execFileSync } from 'node:child_process';
+import { writeFileSync, unlinkSync } from 'node:fs';
 import { launch, newPage, login, go, BASE } from './admin.mjs';
+import { sql } from './site.mjs';
 import { suite } from './harness.mjs';
 
 const t = suite('admin-integrations');
@@ -230,6 +232,28 @@ await t.step('system: health shows PHP/DB/extensions; "Run background tasks now"
   t.has(await t.text(page.locator('.chip:has-text("Last run")')), 'just now');
   await page.reload({ waitUntil: 'networkidle' });
   t.ok(await page.locator('#banners:has-text("Background tasks are not running")').count() === 0, 'cron banner gone');
+});
+
+await t.step('system: "Database updates" — up to date; a pending migration raises a banner and "Apply database updates" applies it exactly once', async () => {
+  const card = page.locator('[aria-labelledby="h-db"]');
+  t.has((await t.text(card)).toLowerCase(), 'database updates'); t.has(await t.text(card.locator('.chip')), 'Up to date');
+  t.eq(await page.locator('#run-migrate').isDisabled(), true, 'nothing to apply → button disabled');
+  const file = '/home/user/claude1/database/migrations/998_qa_tmp.sql';
+  writeFileSync(file, 'CREATE TABLE IF NOT EXISTS qa_tmp_migration2 (id INT NOT NULL PRIMARY KEY) ENGINE=InnoDB;\n');
+  try {
+    await page.reload({ waitUntil: 'networkidle' });
+    t.has(await t.text(page.locator('#banners')), 'database update is waiting');
+    t.has(await t.text(card.locator('.chip')), '1 pending'); t.has(await t.text(card), '998_qa_tmp');
+    await page.click('#run-migrate'); await toast('success').waitFor();
+    t.has(await t.text(card.locator('.chip')), 'Up to date');
+    t.eq(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'smb_dev' AND TABLE_NAME = 'qa_tmp_migration2'"), '1', 'the migration ran');
+    t.eq(sql("SELECT COUNT(*) FROM audit_logs WHERE action = 'system.migrated'"), '1', 'and was audited');
+    await page.reload({ waitUntil: 'networkidle' });
+    t.eq(await page.locator('#banners:has-text("database update is waiting")').count(), 0, 'banner gone');
+  } finally {
+    try { unlinkSync(file); } catch { /* already gone */ }
+    sql('DROP TABLE IF EXISTS qa_tmp_migration2'); sql("DELETE FROM schema_migrations WHERE version = '998_qa_tmp'");
+  }
 });
 
 await t.step('system: the cron HTTP endpoint needs the key (403 without / with a wrong key)', async () => {

@@ -7,7 +7,7 @@
 import { execFileSync } from 'node:child_process';
 import { writeFileSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { ROOT, sql, alpha, mocksReset, resetLimits, useMockProviderIds, sleep, serviceId, launch, newPage } from './site.mjs';
+import { ROOT, sql, alpha, smm, mocksReset, resetLimits, useMockProviderIds, sleep, serviceId, launch, newPage, waitUntil } from './site.mjs';
 import { startApache, sh, PORT_A, PORT_B, PORT_C } from './apache-env.mjs';
 import { suite } from './harness.mjs';
 
@@ -20,6 +20,12 @@ if (!apache) { console.log('apache2 / mod_php not installed — skipping the Apa
 const W = apache.W;
 const evil = '<?php echo "PWNED-" . (1+1); ?>';
 for (const [dir, name] of [[`${W}/siteA/public/uploads`, 'evil.php'], [`${W}/siteA/public/uploads`, 'evil.phtml'], [`${W}/siteA/public/uploads`, 'evil.php.png'], [`${W}/siteA/public/uploads`, 'evil.php5'], [`${W}/siteB/public_html/uploads`, 'evil.php'], [`${W}/siteB/public_html/uploads`, 'evil.phtml'], [`${W}/siteB/public_html/uploads`, 'evil.php.png']]) writeFileSync(`${dir}/${name}`, evil);
+// a stray script in the web root, a PHP file dropped into assets/, and (layout B) OTHER sites sharing the same web root: a PHP app and a static site in sub-folders
+const stray = '<?php echo "STRAY-RAN";';
+for (const [dir, name] of [[`${W}/siteA/public`, 'stray.php'], [`${W}/siteB/public_html`, 'stray.php'], [`${W}/siteA/public/assets`, 'evil.php'], [`${W}/siteB/public_html/assets`, 'evil.php'], [`${W}/siteB/public_html/assets/css`, 'evil.php5']]) writeFileSync(`${dir}/${name}`, stray);
+sh(`mkdir -p ${W}/siteB/public_html/otherapp ${W}/siteB/public_html/oldsite`);
+writeFileSync(`${W}/siteB/public_html/otherapp/hello.php`, '<?php echo "OTHER-APP-OK";');
+writeFileSync(`${W}/siteB/public_html/oldsite/index.html`, '<h1>OLD-STATIC-SITE</h1>');
 sh(`chmod -R go+rX ${W}`);
 t.ok(true, 'index.php carries the documented layout-B line (the module throws otherwise)');
 
@@ -87,6 +93,17 @@ for (const [label, port] of [['A (everything in public_html)', PORT_A], ['B (cod
     const png = await get('/uploads/evil.php.png'); t.ok(png.headers.get('content-security-policy') === null || png.status !== 200 || /default-src 'none'/.test(png.headers.get('content-security-policy')), 'uploads carry a locked-down CSP');
   });
 
+  await t.step(`layout ${label}: only index.php executes at the top of the web root, assets/ is inert${port === PORT_B ? ', and OTHER sites sharing the web root keep working' : ''}`, async () => {
+    const stray = await get('/stray.php'); t.eq(stray.status, 403, `a stray PHP file in the web root must be refused: ${stray.status}`); t.ok(!stray.text.includes('STRAY-RAN'), 'stray.php executed!');
+    const up = await get('/STRAY.PHP'); t.ok(!up.text.includes('STRAY-RAN'), 'case tricks execute it!');
+    for (const f of ['/assets/evil.php', '/assets/css/evil.php5']) { const r = await get(f); t.ok([403, 404].includes(r.status) && !r.text.includes('STRAY-RAN'), `${f} → ${r.status}`); }
+    t.eq((await get('/index.php')).status, 200, 'index.php itself still runs'); t.eq((await get('/assets/css/app.css')).status, 200, 'static assets still served');
+    if (port === PORT_B) {
+      const app = await get('/otherapp/hello.php'); t.eq(app.status, 200, 'a PHP app in a sub-folder of the web root must not be blocked by our .htaccess'); t.has(app.text, 'OTHER-APP-OK');
+      const old = await get('/oldsite/'); t.eq(old.status, 200, 'a static site in a sub-folder is served (DirectoryIndex falls back to index.html)'); t.has(old.text, 'OLD-STATIC-SITE');
+    }
+  });
+
   await t.step(`layout ${label}: full round trip through Apache — order → QR → signed webhook → SMM → tracking page → cron`, async () => {
     await mocksReset(); await alpha('/__control', { webhookUrl: `${base}/webhooks/payments/1` }); resetLimits();
     const home = await get('/');
@@ -96,9 +113,10 @@ for (const [label, port] of [['A (everything in public_html)', PORT_A], ['B (cod
     const qr = await get(`/pay/${ref}/qr.png`); t.eq(qr.status, 200); t.eq(qr.buf.subarray(1, 4).toString(), 'PNG'); t.has(qr.headers.get('content-type'), 'image/png');
     const gw = sql(`SELECT gateway_order_id FROM payments WHERE ref = '${ref}'`);
     const paid = await alpha(`/__pay/${gw}/success`, {}); t.eq(paid.webhook?.status, 200, JSON.stringify(paid));
-    await sleep(800);
+    const orderStatus = () => sql(`SELECT o.status FROM orders o JOIN payments p ON p.order_id = o.id WHERE p.ref = '${ref}'`);
+    await waitUntil(() => ['SUBMITTED', 'IN_PROGRESS', 'COMPLETED'].includes(orderStatus()), { timeout: 15000 });   // the provider call runs after the webhook has been answered
     const st = JSON.parse((await get(`/api/pay/${ref}/status`)).text); t.eq(st.state, 'paid');
-    t.ok(['SUBMITTED', 'IN_PROGRESS', 'COMPLETED'].includes(sql(`SELECT o.status FROM orders o JOIN payments p ON p.order_id = o.id WHERE p.ref = '${ref}'`)), 'handed to the SMM provider');
+    t.ok(['SUBMITTED', 'IN_PROGRESS', 'COMPLETED'].includes(orderStatus()), 'handed to the SMM provider: ' + orderStatus());
     const tr = await get(`/order/${j.token}`); t.eq(tr.status, 200); t.has(tr.text, 'Order');
     const wrong = await get('/cron/run?key=wrong'); t.eq(wrong.status, 403);
     const key = readFileSync(`${ROOT}/.env`, 'utf8').match(/^CRON_KEY=(.*)$/m)?.[1]?.replace(/"/g, '');
@@ -109,11 +127,24 @@ for (const [label, port] of [['A (everything in public_html)', PORT_A], ['B (cod
     void home;
   });
 
+  await t.step(`layout ${label}: the payment webhook is answered at once even while the SMM provider hangs (mod_php cannot close the connection early, so the answer carries its Content-Length)`, async () => {
+    await mocksReset(); await alpha('/__control', { webhookUrl: `${base}/webhooks/payments/1` }); resetLimits();
+    await smm('/__control', { hang: true });                                   // the provider call after the answer will take its full 30 s timeout
+    try {
+      const co = await http(base, 'POST', '/api/checkout', { json: { service_id: serviceId('ig-followers-50'), target: 'https://instagram.com/slowprovider_' + port }, headers: { 'idempotency-key': randomUUID() } });
+      t.eq(co.status, 200, co.text); const ref = JSON.parse(co.text).url.match(/pay\/([a-f0-9]{32})/)[1];
+      const gw = sql(`SELECT gateway_order_id FROM payments WHERE ref = '${ref}'`);
+      const t0 = Date.now(); const paid = await alpha(`/__pay/${gw}/success`, {}); const ms = Date.now() - t0;
+      t.eq(paid.webhook?.status, 200, JSON.stringify(paid)); t.ok(ms < 5000, `the webhook was answered in ${ms} ms while the provider hangs for 30 s`);
+      t.eq(sql(`SELECT status FROM payments WHERE ref = '${ref}'`), 'success', 'and the payment is recorded');
+    } finally { await smm('/__control', { hang: false }); }
+  });
+
   await t.step(`layout ${label}: writes land where they should (logs/cache owned by the web user; no stray files in the web root)`, async () => {
     const dir = port === PORT_A ? `${W}/siteA` : `${W}/siteB/smb`;
     const logs = sh(`ls ${dir}/storage/logs | head -3`); t.ok(logs.trim().length >= 0);
     const pub = port === PORT_A ? `${W}/siteA/public` : `${W}/siteB/public_html`;
-    const strays = sh(`find ${pub} -maxdepth 1 -newer ${W}/apache2.conf -type f | head`).trim(); t.eq(strays, '', 'nothing is written into the web root: ' + strays);
+    const strays = sh(`find ${pub} -maxdepth 1 -newer ${W}/apache2.conf -type f ! -name stray.php | head`).trim(); t.eq(strays, '', 'nothing is written into the web root: ' + strays);
   });
 }
 

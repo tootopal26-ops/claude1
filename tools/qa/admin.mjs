@@ -50,4 +50,36 @@ export async function layoutReport(page) {
   });
 }
 
+/**
+ * "Unreachable buttons / incorrect z-index": every visible control that is inside the viewport must be what the user actually hits when they
+ * press at its centre (nothing — a sticky bar, a toast, a stray overlay — may sit on top of it). Controls under the sticky header while
+ * scrolling, and the page behind an open modal, are exempt.
+ */
+export async function coveredControls(page) {
+  return page.evaluate(() => {
+    const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    const name = (el) => el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '');
+    const open = document.querySelector('dialog[open]');
+    // any sticky/fixed bar pinned to the top edge (storefront header, admin mobile bar …): content scrolling underneath it is normal
+    let headerBottom = 0;
+    for (const e of document.querySelectorAll('header, nav, [role=banner], body > *')) {
+      const c = getComputedStyle(e); const b = e.getBoundingClientRect();
+      if (['sticky', 'fixed'].includes(c.position) && b.top <= 1 && b.width >= vw * 0.9 && b.height < 160 && b.height > 0) headerBottom = Math.max(headerBottom, b.bottom);
+    }
+    const out = [];
+    for (const el of document.querySelectorAll('a[href], button, input:not([type=hidden]), select, textarea, [role=tab], summary')) {
+      if (el.disabled || el.closest('[inert], [hidden], .sr-only, .skip-link') || (open && !open.contains(el))) continue;
+      const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
+      if (cs.display === 'none' || cs.visibility === 'hidden' || r.width === 0 || r.height === 0 || parseFloat(cs.opacity) === 0) continue;
+      if (r.bottom <= headerBottom + 1 || r.top >= vh || r.right <= 0 || r.left >= vw) continue;
+      const x = r.left + r.width / 2, y = r.top + r.height / 2;
+      if (x < 0 || x >= vw || y <= headerBottom + 1 || y >= vh) continue;
+      const top = document.elementFromPoint(x, y);
+      if (!top || el === top || el.contains(top) || top.contains(el) || (el.labels && [...el.labels].some((l) => l.contains(top)))) continue;
+      out.push(`${name(el)} "${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 24)}" is covered by ${name(top)}`);
+    }
+    return [...new Set(out)].slice(0, 12);
+  });
+}
+
 export { launch };

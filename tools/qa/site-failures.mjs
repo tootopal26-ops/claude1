@@ -5,7 +5,7 @@
 import { spawn } from 'node:child_process';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { launch, newPage, DESKTOP_UA, BASE, ROOT, sql, rows, alpha, smm, mocksReset, resetLimits, payment, payOk, placeOrder, openCard, serviceId, sleep, php, useMockProviderIds } from './site.mjs';
+import { launch, newPage, DESKTOP_UA, BASE, ROOT, sql, rows, alpha, smm, mocksReset, resetLimits, payment, payOk, waitSubmission, placeOrder, openCard, serviceId, sleep, php, useMockProviderIds } from './site.mjs';
 import { suite } from './harness.mjs';
 
 const t = suite('site-failures');
@@ -38,8 +38,8 @@ const paidAuto = async (code = 'ig-followers-50', target = 'https://instagram.co
   resetLimits();
   const c = await checkoutApi(code, target); t.eq(c.status, 200, JSON.stringify(c.body));
   const ref = c.body.url.match(/pay\/([a-f0-9]{32})/)[1];
-  const res = await payOk(ref); t.eq(res.webhook?.status, 200, JSON.stringify(res));
-  return { ref, token: c.body.token, order: () => payment(ref) };
+  const t0 = Date.now(); const res = await payOk(ref); const webhookMs = Date.now() - t0; t.eq(res.webhook?.status, 200, JSON.stringify(res));
+  return { ref, token: c.body.token, order: () => payment(ref), webhookMs };
 };
 
 // ═════════════════════════ duplicate protection ═════════════════════════
@@ -130,11 +130,18 @@ const gatewayCase = async (label, setup, { expect, ms = 20000 }) => t.step(`gate
   const card = await openCard(page, 'ig-likes-100');
   await card.locator('input[name=target]').fill(target);
   await page.waitForFunction((el) => !el.querySelector('[data-action=proceed]').disabled, await card.elementHandle());
+  // fast failures (a refused connection answers in ~0.5 s) can be over before a test could look, so WATCH the card instead of sampling it
+  await card.evaluate((el) => {
+    window.__seen = { progress: false, disabled: false };
+    const msg = el.querySelector('.field-msg'), btn = el.querySelector('[data-action=proceed]');
+    new MutationObserver(() => { if (msg.textContent.includes('Creating secure payment')) window.__seen.progress = true; if (btn.disabled && msg.dataset.state === 'idle') window.__seen.disabled = true; })
+      .observe(el, { childList: true, subtree: true, attributes: true, characterData: true });
+  });
   const t0 = Date.now();
   await card.locator('[data-action=proceed]').click();
-  t.has(await t.text(card.locator('.field-msg')), 'Creating secure payment', 'progress is shown while waiting');
-  t.eq(await card.locator('[data-action=proceed]').isDisabled(), true, 'button disabled during the critical request');
   await page.waitForFunction((el) => el.querySelector('.field-msg').dataset.state === 'invalid', await card.elementHandle(), { timeout: ms + 15000 });
+  const seen = await page.evaluate(() => window.__seen);
+  t.eq(seen, { progress: true, disabled: true }, 'while waiting: "Creating secure payment…" was shown and the button was disabled (double-click protection)');
   const msg = await t.text(card.locator('.field-msg'));
   expect.test(msg) || t.ok(false, `unexpected message: ${msg}`);
   noLeak(msg, 'checkout message');
@@ -209,7 +216,9 @@ await t.step('payment PENDING: the page keeps waiting (never success, never expi
 const smmCase = async (label, arrange, { status, kind, retry = false, expectError }) => t.step(`SMM ${label}: customer sees a calm status, admin gets the real reason, no duplicate provider order`, async () => {
   await healthy(); await arrange();
   const o = await paidAuto();
-  await sleep(label === 'hang (timeout)' ? 0 : 1500);
+  // the payment gateway must never be kept waiting for the provider: the webhook is answered first, the provider call happens after it
+  t.ok(o.webhookMs < 5000, `${label}: the webhook was answered in ${o.webhookMs} ms (a hanging provider takes 30 s to give up)`);
+  await waitSubmission(o.ref, label === 'hang (timeout)' ? 70000 : 20000);
   const row = o.order();
   t.eq(row.oStatus, status, `${label}: order status`);
   if (kind) t.eq(row.failureKind, kind, 'failure kind');
@@ -235,7 +244,7 @@ await smmCase('unreachable (connection refused)', () => php('tools/qa/smm-provid
 await t.step('SMM unreachable → back online: cron retries after the back-off and the order is submitted exactly once', async () => {
   await healthy(); php('tools/qa/smm-provider.php', `--url=${DEAD}`);
   const p = await paidAuto('ig-followers-50', 'https://instagram.com/outage_user');
-  await sleep(1200);
+  await waitSubmission(p.ref);
   t.eq(p.order().oStatus, 'PAID'); t.ok(sql(`SELECT next_attempt_at FROM orders WHERE id = ${p.order().id}`) !== 'NULL', 'a retry is scheduled');
   cron(); t.eq(p.order().oStatus, 'PAID', 'not due yet → untouched');
   t.eq(Number(sql(`SELECT provider_attempts FROM orders WHERE id = ${p.order().id}`)), 1);
@@ -259,6 +268,7 @@ await smmCase('hang (timeout)', () => smm('/__control', { hang: true }), { statu
 await t.step('after the provider problem is fixed, an admin retry delivers the order (no duplicate)', async () => {
   await healthy();
   const o = await paidAuto();
+  await waitSubmission(o.ref);
   sql(`UPDATE orders SET status = 'FAILED', last_error = 'Provider rejected the order: Incorrect service ID', failure_kind = 'rejected', provider_order_id = NULL WHERE id = ${o.order().id}`);
   const out = php('tools/qa/admin-retry.php', String(o.order().id));
   t.has(out, 'submitted');
