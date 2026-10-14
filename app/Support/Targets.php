@@ -91,7 +91,7 @@ final class Targets
             foreach ([0, 1] as $i) {   // /p/CODE  or  /username/p/CODE
                 $type = strtolower($segs[$i] ?? '');
                 $code = $segs[$i + 1] ?? '';
-                if (in_array($type, ['p', 'reel', 'reels', 'tv'], true) && preg_match('/^[A-Za-z0-9_-]{5,40}$/', $code)) {
+                if (in_array($type, ['p', 'reel', 'reels', 'tv'], true) && preg_match('/^[A-Za-z0-9_-]{5,40}$/D', $code)) {
                     $path = $type === 'reels' ? 'reel' : $type;
                     return self::ok('https://www.instagram.com/' . $path . '/' . $code . '/', $path . '/' . $code);
                 }
@@ -123,7 +123,7 @@ final class Targets
 
     private static function validIgUsername(string $n): bool
     {
-        return (bool) preg_match('/^[A-Za-z0-9._]{1,30}$/', $n) && (bool) preg_match('/[A-Za-z0-9_]/', $n);
+        return (bool) preg_match('/^[A-Za-z0-9._]{1,30}$/D', $n) && (bool) preg_match('/[A-Za-z0-9_]/', $n);
     }
 
     // ───────────────────────────── YouTube ──────────────────────────────────
@@ -153,7 +153,7 @@ final class Targets
                     $shorts = $first === 'shorts';
                 }
             }
-            if (is_string($id) && preg_match('/^[A-Za-z0-9_-]{11}$/', $id)) {
+            if (is_string($id) && preg_match('/^[A-Za-z0-9_-]{11}$/D', $id)) {
                 return $shorts
                     ? self::ok('https://www.youtube.com/shorts/' . $id, 'shorts/' . $id)
                     : self::ok('https://www.youtube.com/watch?v=' . $id, 'video ' . $id);
@@ -167,7 +167,7 @@ final class Targets
         // channel
         if ($u === null) {
             $handle = ltrim($raw, '@');
-            if (!preg_match('/^[A-Za-z0-9._-]{3,30}$/', $handle)) {
+            if (!preg_match('/^[A-Za-z0-9._-]{3,30}$/D', $handle)) {
                 return self::fail('Enter a valid channel @handle or paste your channel link.');
             }
             return self::ok('https://www.youtube.com/@' . $handle, '@' . $handle);
@@ -179,14 +179,14 @@ final class Targets
         }
         if (isset($first[0]) && $first[0] === '@') {
             $h = substr($first, 1);
-            if (preg_match('/^[A-Za-z0-9._-]{3,30}$/', $h)) {
+            if (preg_match('/^[A-Za-z0-9._-]{3,30}$/D', $h)) {
                 return self::ok('https://www.youtube.com/@' . $h, '@' . $h);
             }
-        } elseif (strtolower($first) === 'channel' && preg_match('/^UC[A-Za-z0-9_-]{22}$/', $segs[1] ?? '')) {
+        } elseif (strtolower($first) === 'channel' && preg_match('/^UC[A-Za-z0-9_-]{22}$/D', $segs[1] ?? '')) {
             return self::ok('https://www.youtube.com/channel/' . $segs[1], 'channel/' . $segs[1]);
-        } elseif (in_array(strtolower($first), ['c', 'user'], true) && preg_match('/^[A-Za-z0-9._-]{1,100}$/', $segs[1] ?? '')) {
+        } elseif (in_array(strtolower($first), ['c', 'user'], true) && preg_match('/^[A-Za-z0-9._-]{1,100}$/D', $segs[1] ?? '')) {
             return self::ok('https://www.youtube.com/' . strtolower($first) . '/' . $segs[1], strtolower($first) . '/' . $segs[1]);
-        } elseif ($first !== '' && !in_array(strtolower($first), self::YT_RESERVED, true) && preg_match('/^[A-Za-z0-9._-]{3,100}$/', $first)) {
+        } elseif ($first !== '' && !in_array(strtolower($first), self::YT_RESERVED, true) && preg_match('/^[A-Za-z0-9._-]{3,100}$/D', $first)) {
             return self::ok('https://www.youtube.com/' . $first, $first);   // legacy custom URL
         }
         return self::fail('That link does not look like a YouTube channel. Use youtube.com/@yourchannel');
@@ -249,7 +249,7 @@ final class Targets
 
     private static function looksLikeUsername(string $s, int $max): bool
     {
-        return (bool) preg_match('/^@?[A-Za-z0-9._]{1,' . $max . '}$/', $s);
+        return (bool) preg_match('/^@?[A-Za-z0-9._]{1,' . $max . '}$/D', $s);
     }
 
     private static function clean(string $s): string

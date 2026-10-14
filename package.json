@@ -1,0 +1,23 @@
+{
+  "name": "social-media-booster",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Build tooling for SOCIAL MEDIA BOOSTER. The site itself is plain PHP + MySQL; Node is only needed to REBUILD the compiled CSS/JS in public/assets (the built files are committed, so cPanel needs no build step).",
+  "scripts": {
+    "build:css": "tailwindcss -i resources/css/app.css -o public/assets/css/app.css --minify",
+    "build:js": "node tools/build-js.mjs",
+    "build:icons": "node tools/build-icons.mjs",
+    "build": "npm run build:icons && npm run build:css && npm run build:js",
+    "watch:css": "tailwindcss -i resources/css/app.css -o public/assets/css/app.css --watch",
+    "test": "php tests/run.php",
+    "test:js": "node tools/qa/targets-parity.mjs"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
+    "@tailwindcss/cli": "^4.3.3",
+    "esbuild": "^0.25.12",
+    "lucide-static": "^0.552.0",
+    "playwright": "^1.64.1",
+    "tailwindcss": "^4.3.3"
+  }
+}

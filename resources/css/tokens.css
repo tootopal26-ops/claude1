@@ -1,0 +1,128 @@
+/* ── Fonts (self-hosted; ₹ comes from a tiny dedicated subset) ─────────────── */
+@font-face {
+  font-family: "Inter";
+  src: url("../fonts/inter-latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("../fonts/inter-rupee.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+20B9;
+}
+
+/* ═══════════════════════════ DESIGN TOKENS ═══════════════════════════════
+   Scales (spacing uses Tailwind's 4px grid):
+   type    12 · 13 · 14 · 15 · 16 · 18 · 20 · 24 · 30 · 36 · 44
+   radius  6 · 10 · 14 (controls) · 18 (cards) · 24 (panels) · 32 (hero)
+   shadow  xs · sm · md · lg · glow
+   Accent: pink → red.  Everything else is neutral so the accent stays premium.  */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+
+  --color-canvas: #f6f6fa;
+  --color-surface: #ffffff;
+  --color-ink: #0f1020;
+  --color-ink-soft: #2b2d44;
+  --color-muted: #5b5f78;           /* 6.6:1 on white */
+  --color-faint: #8a8ea6;           /* decorative only */
+  --color-line: #e8e9f0;
+  --color-line-strong: #d4d6e2;
+
+  --color-brand-50: #fff1f7;
+  --color-brand-100: #ffe1ee;
+  --color-brand-200: #ffc2da;
+  --color-brand-300: #ff95bd;
+  --color-brand-400: #ff5c99;
+  --color-brand-500: var(--accent-from, #ff2d87);
+  --color-brand-600: #ee1170;
+  --color-brand-700: #c40d5b;
+  --color-brand-red: var(--accent-to, #ff3b3b);
+
+  --color-ok-50: #effdf3;
+  --color-ok-100: #d8f8e2;
+  --color-ok-600: #16a34a;
+  --color-ok-700: #15803d;          /* white text 5.0:1 */
+  --color-ok-800: #166534;
+
+  --color-warn-50: #fff8eb;
+  --color-warn-100: #feeccb;
+  --color-warn-600: #d97706;
+  --color-warn-700: #b45309;
+
+  --color-bad-50: #fff0f0;
+  --color-bad-100: #ffdede;
+  --color-bad-600: #dc2626;
+  --color-bad-700: #b91c1c;
+
+  --color-info-50: #eef6ff;
+  --color-info-600: #2563eb;
+
+  --radius-*: initial;
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
+
+  --shadow-*: initial;
+  --shadow-xs: 0 1px 2px rgb(15 16 32 / 0.06);
+  --shadow-sm: 0 2px 8px -2px rgb(15 16 32 / 0.08), 0 1px 2px rgb(15 16 32 / 0.05);
+  --shadow-md: 0 10px 28px -10px rgb(15 16 32 / 0.16), 0 2px 6px -2px rgb(15 16 32 / 0.06);
+  --shadow-lg: 0 28px 64px -24px rgb(15 16 32 / 0.28), 0 8px 20px -8px rgb(15 16 32 / 0.10);
+  --shadow-glow: 0 0 0 1px rgb(255 45 135 / 0.22), 0 12px 40px -10px rgb(255 45 135 / 0.5);
+
+  --breakpoint-xs: 30rem;
+
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-fade-up: fade-up 0.5s var(--ease-soft) both;
+  --animate-shake: shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  --animate-spin-slow: spin 1.1s linear infinite;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(3px); }
+    30%, 50%, 70% { transform: translateX(-5px); }
+    40%, 60% { transform: translateX(5px); }
+  }
+}
+
+:root { --accent-from: #ff2d87; --accent-to: #ff3b3b; }
+
+/* Animated gradient angle for the RGB lighting ring. */
+@property --ring-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@property --glow {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: rgb(255 45 135 / 0.5);
+}
+@keyframes ring-spin { to { --ring-angle: 360deg; } }
+@keyframes glow-hue {
+  0%, 100% { --glow: rgb(255 45 135 / 0.5); }
+  33% { --glow: rgb(255 59 59 / 0.48); }
+  66% { --glow: rgb(217 70 239 / 0.42); }
+}
+@keyframes bg-pan { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+@keyframes shimmer { to { transform: translateX(100%); } }
+@keyframes pop { 0% { transform: scale(0.2); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(0.8); } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(8px) scale(0.98); } }

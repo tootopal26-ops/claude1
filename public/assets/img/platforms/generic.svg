@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Platform">
+  <defs>
+    <linearGradient id="g-bg" x1="40" y1="40" x2="472" y2="472" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF2D87"/><stop offset="1" stop-color="#FF3B3B"/>
+    </linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="256" fill="url(#g-bg)"/>
+  <path d="M256 120l34 84 90 8-69 59 22 88-77-48-77 48 22-88-69-59 90-8z" fill="#fff"/>
+</svg>

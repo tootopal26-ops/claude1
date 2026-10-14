@@ -18,15 +18,53 @@ final class Router
     /** @param list<callable> $middleware */
     public function add(string $method, string $pattern, callable|array $handler, array $middleware = []): void
     {
-        $regex = preg_replace_callback('/\{(\w+)(?::([^}]+))?\}/', static function (array $m): string {
-            return '(?P<' . $m[1] . '>' . ($m[2] ?? '[^/]+') . ')';
-        }, $pattern);
         $this->routes[] = [
             'method'     => strtoupper($method),
-            'regex'      => '#^' . $regex . '$#',
+            'regex'      => '#^' . self::compile($pattern) . '$#',
             'handler'    => $handler,
             'middleware' => $middleware,
         ];
+    }
+
+    /**
+     * Turn "/pay/{ref:[a-f0-9]{32}}/qr.png" into a regex. Placeholders are {name} (one path
+     * segment) or {name:regex}; the regex may itself contain braces, so braces are matched
+     * by depth rather than with a naive pattern.
+     */
+    public static function compile(string $pattern): string
+    {
+        $out = '';
+        $len = strlen($pattern);
+        for ($i = 0; $i < $len; $i++) {
+            $c = $pattern[$i];
+            if ($c !== '{') {
+                $out .= preg_quote($c, '#');
+                continue;
+            }
+            $depth = 1;
+            $j = $i + 1;
+            while ($j < $len && $depth > 0) {
+                if ($pattern[$j] === '{') {
+                    $depth++;
+                } elseif ($pattern[$j] === '}') {
+                    $depth--;
+                }
+                $j++;
+            }
+            if ($depth !== 0) {
+                throw new \InvalidArgumentException("Unbalanced braces in route pattern: {$pattern}");
+            }
+            $inner = substr($pattern, $i + 1, $j - $i - 2);
+            $colon = strpos($inner, ':');
+            $name = $colon === false ? $inner : substr($inner, 0, $colon);
+            $rx = $colon === false ? '[^/]+' : substr($inner, $colon + 1);
+            if (!preg_match('/^\w+$/D', $name)) {
+                throw new \InvalidArgumentException("Bad placeholder name in route pattern: {$pattern}");
+            }
+            $out .= '(?P<' . $name . '>' . $rx . ')';
+            $i = $j - 1;
+        }
+        return $out;
     }
 
     public function get(string $p, callable|array $h, array $mw = []): void { $this->add('GET', $p, $h, $mw); }

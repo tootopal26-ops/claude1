@@ -80,9 +80,9 @@ if (!function_exists('upload_url')) {
 
 if (!function_exists('icon')) {
     /** Inline SVG icon from the sprite. */
-    function icon(string $name, string $class = 'size-5'): string
+    function icon(string $name, string $class = ''): string
     {
-        return '<svg class="' . e($class) . '" aria-hidden="true" focusable="false"><use href="'
+        return '<svg class="icon ' . e($class) . '" aria-hidden="true" focusable="false"><use href="'
             . e(url('assets/img/icons.svg')) . '?v=' . e((string) (@filemtime(SMB_PUBLIC . '/assets/img/icons.svg') ?: 0))
             . '#i-' . e($name) . '"/></svg>';
     }

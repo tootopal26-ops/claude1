@@ -298,6 +298,54 @@
     {
         "platform": "instagram",
         "kind": "profile",
+        "input": "https://instagram.com/john%0A",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com/john%0D%0A",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com/john%20",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com/jo%68n/",
+        "ok": true,
+        "url": "https://www.instagram.com/john/",
+        "display": "@john"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com/a/../john",
+        "ok": true,
+        "url": "https://www.instagram.com/a/",
+        "display": "@a"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com//john",
+        "ok": true,
+        "url": "https://www.instagram.com/john/",
+        "display": "@john"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com/%E0%A4%A",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
         "input": "https://www.instagram.com/john.doe_99/",
         "ok": true,
         "url": "https://www.instagram.com/john.doe_99/",
@@ -637,6 +685,34 @@
         "platform": "youtube",
         "kind": "video",
         "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1&t=30s",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQ%0A",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/watch?v=dQw4w9Wg%58cQ",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/watch?x=1&v=dQw4w9WgXcQ&v=other",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQ#t=1",
         "ok": true,
         "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         "display": "video dQw4w9WgXcQ"

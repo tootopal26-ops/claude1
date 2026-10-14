@@ -1,0 +1,15 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SOCIAL MEDIA BOOSTER — stylesheet entry (Tailwind CSS v4).
+   Built with:  npm run build:css   →   public/assets/css/app.css  (committed)
+   ═══════════════════════════════════════════════════════════════════════════ */
+@import "tailwindcss";
+
+@source "../../app/Views";
+@source "../js";
+@source not "../../node_modules";
+
+@import "./tokens.css";
+@import "./base.css";
+@import "./components.css";
+@import "./site.css";
+@import "./admin.css";
