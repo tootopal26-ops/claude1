@@ -22,7 +22,7 @@ final class ErrorHandler
             if (!(error_reporting() & $no)) {
                 return false;
             }
-            $soft = in_array($no, [E_NOTICE, E_USER_NOTICE, E_DEPRECATED, E_USER_DEPRECATED, E_STRICT], true);
+            $soft = in_array($no, [E_NOTICE, E_USER_NOTICE, E_DEPRECATED, E_USER_DEPRECATED], true);
             if ($soft && !Env::isLocal()) {
                 Log::warning('PHP notice: ' . $str, ['file' => str_replace(SMB_ROOT . '/', '', $file) . ':' . $line]);
                 return true;

@@ -90,9 +90,25 @@ final class Response
         }
     }
 
-    /** Flush to the client, then keep running (webhook → SMM submission, etc). */
+    /**
+     * Flush the answer to the client, then keep running (webhook → SMM submission, etc).
+     * PHP-FPM and LiteSpeed can close the connection early. Plain mod_php / CGI cannot, so there the answer carries an exact
+     * Content-Length: the client has read everything it will ever get and moves on while the follow-up work finishes — otherwise
+     * a slow provider would keep the payment gateway's webhook request open until it gives up and retries.
+     */
     public function sendAndContinue(): void
     {
+        @ignore_user_abort(true);
+        @set_time_limit(90);
+        $canFinish = function_exists('fastcgi_finish_request') || function_exists('litespeed_finish_request');
+        if (!$canFinish && !headers_sent() && $this->status >= 200 && $this->status !== 204 && $this->status !== 304) {
+            $this->headers['Content-Length'] = (string) strlen($this->body);
+            $this->headers['Connection'] = 'close';
+            if (function_exists('apache_setenv')) {
+                @apache_setenv('no-gzip', '1');   // mod_deflate would hold the last bytes back until the script ends
+            }
+            @ini_set('zlib.output_compression', '0');
+        }
         $this->send();
         if (function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
@@ -104,8 +120,6 @@ final class Response
             }
             flush();
         }
-        ignore_user_abort(true);
-        @set_time_limit(90);
         foreach ($this->after as $fn) {
             try {
                 $fn();

@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use App\Core\Crypto;
+use App\Core\Db;
 use App\Services\Password;
 use App\Support\Money;
 use App\Support\NetGuard;
@@ -195,17 +196,72 @@ T::test('qr: matrix structure (finder patterns, size by version)', function () {
     T::throws(InvalidArgumentException::class, fn() => Qr::matrix(''));
     T::throws(InvalidArgumentException::class, fn() => Qr::matrix(str_repeat('x', 5000)));
 });
-T::test('qr: PNG decodes back to the payload (independent decoder)', function () {
-    $py = trim((string) shell_exec('python3 -c "import zxingcpp; print(1)" 2>/dev/null'));
-    if ($py !== '1') {
-        echo "      (skipped: python zxingcpp not installed)\n";
+T::test('qr: PNG decodes back to the payload (independent decoders: jsQR via node, ZXing via python when installed)', function () {
+    $root = dirname(__DIR__, 2);
+    $haveNode = is_file($root . '/node_modules/jsqr/package.json') && trim((string) shell_exec('node -v 2>/dev/null')) !== '';
+    $haveZxing = trim((string) shell_exec('python3 -c "import zxingcpp; print(1)" 2>/dev/null')) === '1';
+    if (!$haveNode && !$haveZxing) {
+        echo "      (skipped: neither node + jsqr (npm install) nor python zxingcpp is available)\n";
         return;
+    }
+    // sizes chosen to cover small versions, the multi-block layouts, the version-info blocks (v7+) and the largest versions
+    // jsQR is reliable up to roughly version 22 (it fails on some huge symbols that ZXing reads fine), so the big ones need ZXing
+    $payloads = ['A', 'https://pay.example.com/pay/ABCDEF123456', str_repeat('Alpha UPI ', 20), 'upi://pay?pa=a@b&am=5.00&cu=INR&tn=Order%20SMB-ABCDEFGH', str_repeat('x', 300), random_bytes_ascii(700)];
+    if ($haveZxing) {
+        array_push($payloads, random_bytes_ascii(1091), random_bytes_ascii(1400), random_bytes_ascii(2200));
     }
     $dir = sys_get_temp_dir() . '/smb-qr-' . getmypid();
     @mkdir($dir);
-    foreach (['https://pay.example.com/pay/ABCDEF123456', str_repeat('Alpha UPI ', 20), 'upi://pay?pa=a@b&am=5.00&cu=INR'] as $i => $payload) {
-        file_put_contents("$dir/$i.png", Qr::png($payload, 8, 4, 'M'));
-        $out = shell_exec('python3 -c "import zxingcpp,sys; from PIL import Image; r=zxingcpp.read_barcodes(Image.open(sys.argv[1]).convert(\'L\')); print(r[0].text if r else \'NONE\')" ' . escapeshellarg("$dir/$i.png"));
-        T::same($payload, rtrim((string) $out, "\r\n"));
+    $files = [];
+    $cases = [];
+    foreach ($payloads as $i => $payload) {
+        foreach (['L', 'M', 'Q', 'H'] as $ecc) {
+            if (strlen($payload) > 1200 && in_array($ecc, ['Q', 'H'], true)) {
+                continue;                      // beyond the capacity of version 40 at that level
+            }
+            $f = "$dir/$i-$ecc.png";
+            file_put_contents($f, Qr::png($payload, 6, 4, $ecc));
+            $files[] = $f;
+            $cases[] = $payload;
+        }
     }
+    if ($haveNode) {
+        $out = json_decode((string) shell_exec('node ' . escapeshellarg($root . '/tools/qa/qr-decode.mjs') . ' ' . implode(' ', array_map('escapeshellarg', $files))), true);
+        T::same(count($cases), is_array($out) ? count($out) : -1, 'decoder answered for every image');
+        foreach ($cases as $i => $payload) {
+            if (strlen($payload) <= 800) {
+                T::same($payload, $out[$i] ?? null, 'jsQR decodes ' . basename($files[$i]) . ' (' . strlen($payload) . ' bytes)');
+            }
+        }
+    }
+    if ($haveZxing) {
+        foreach ($cases as $i => $payload) {
+            $out = shell_exec('python3 -c "import zxingcpp,sys; from PIL import Image; r=zxingcpp.read_barcodes(Image.open(sys.argv[1]).convert(\'L\')); print(r[0].text if r else \'NONE\')" ' . escapeshellarg($files[$i]));
+            T::same($payload, rtrim((string) $out, "\r\n"), 'zxing decodes ' . basename($files[$i]));
+        }
+    }
+});
+function random_bytes_ascii(int $n): string
+{
+    $s = '';
+    $alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/?#[]@!$&\'()*+,;=%';
+    for ($i = 0; $i < $n; $i++) {
+        $s .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+    }
+    return $s;
+}
+
+// ───────────────────────────── database session ─────────────────────────────
+T::test('db: UNSIGNED money columns subtract to a NEGATIVE number (a loss) instead of an "out of range" error — on MySQL 8 and MariaDB alike', function () {
+    T::same(-1, (int) Db::val('SELECT CAST(1 AS UNSIGNED) - CAST(2 AS UNSIGNED)'));
+    Db::exec('DROP TEMPORARY TABLE IF EXISTS qa_unsigned_money');
+    Db::exec('CREATE TEMPORARY TABLE qa_unsigned_money (amount_paise INT UNSIGNED NOT NULL, refunded_paise INT UNSIGNED NOT NULL, provider_cost_paise INT UNSIGNED NOT NULL, mode VARCHAR(8) NOT NULL)');
+    Db::exec("INSERT INTO qa_unsigned_money VALUES (500, 500, 100, 'AUTO'), (500, 0, 700, 'AUTO'), (500, 0, 700, 'MANUAL')");
+    // the exact expressions the dashboard sums: a refunded AUTO order still carries its provider cost, a pack sold below cost loses money
+    $gross = Db::col('SELECT ' . Profit::SQL_GROSS . ' FROM qa_unsigned_money o ORDER BY o.refunded_paise DESC, o.mode');
+    T::same([-100, -200, 500], array_map('intval', $gross));
+    T::same(200, (int) Db::val('SELECT SUM(' . Profit::SQL_GROSS . ') FROM qa_unsigned_money o'));       // -100 - 200 + 500
+    // …while the columns themselves still refuse a negative value
+    T::throws(PDOException::class, fn() => Db::exec('UPDATE qa_unsigned_money SET amount_paise = amount_paise - 600 WHERE provider_cost_paise = 100'));
+    Db::exec('DROP TEMPORARY TABLE qa_unsigned_money');
 });

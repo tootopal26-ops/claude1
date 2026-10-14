@@ -73,21 +73,34 @@ final class Fulfilment
             return self::fail($o, 'This AUTO service has no active SMM provider or SMM service ID. Fix it in Admin → Services, then retry — or move the order to the manual queue.', 'misconfigured', $admin);
         }
 
-        $res = SmmProviders::client($provider)->add((string) $o['smm_service_id'], (string) $o['target_url'], (int) $o['quantity']);
+        try {
+            $res = SmmProviders::client($provider)->add((string) $o['smm_service_id'], (string) $o['target_url'], (int) $o['quantity']);
+        } catch (\Throwable $e) {
+            // The order is already claimed: whatever went wrong (a PHP error, a DNS hiccup…), never leave it half-way in PROCESSING.
+            Log::exception($e, 'Provider call crashed', ['order' => $o['public_id']]);
+            return self::fail($o, 'The order could not be sent to the provider because of an internal error (details are in the server log). Check the provider panel for this link before retrying — or move the order to the manual queue.', 'ambiguous', $admin);
+        }
         $providerOrderId = $res->ok() && isset($res->data['order']) && is_scalar($res->data['order']) ? (string) $res->data['order'] : null;
         self::logTransaction($o, $provider, 'add', [
             'service' => $o['smm_service_id'], 'link' => $o['target_url'], 'quantity' => (int) $o['quantity'],
         ], $res, $providerOrderId);
 
         if ($providerOrderId !== null) {
-            Orders::transition($orderId, Status::SUBMITTED, [
-                'actor' => 'provider', 'note' => 'Provider accepted the order (id ' . $providerOrderId . ')',
-                'set' => [
-                    'provider_order_id' => mb_substr($providerOrderId, 0, 64), 'provider_status' => 'Pending', 'smm_provider_id' => $provider['id'],
-                    'provider_cost_paise' => (int) $o['estimated_cost_paise'], 'provider_cost_final' => 0,
-                    'submitted_at' => Clock::sql(), 'last_error' => null, 'failure_kind' => null, 'next_attempt_at' => null,
-                ],
-            ]);
+            try {
+                Orders::transition($orderId, Status::SUBMITTED, [
+                    'actor' => 'provider', 'note' => 'Provider accepted the order (id ' . $providerOrderId . ')',
+                    'set' => [
+                        'provider_order_id' => mb_substr($providerOrderId, 0, 64), 'provider_status' => 'Pending', 'smm_provider_id' => $provider['id'],
+                        'provider_cost_paise' => (int) $o['estimated_cost_paise'], 'provider_cost_final' => 0,
+                        'submitted_at' => Clock::sql(), 'last_error' => null, 'failure_kind' => null, 'next_attempt_at' => null,
+                    ],
+                ]);
+            } catch (\Throwable $e) {
+                // The provider HAS the order but the database would not take the note (lock timeout, disconnect…). The order is
+                // picked up by releaseStuck() and handed to a human; this log line says exactly which provider order to match.
+                Log::error('Provider accepted the order but it could not be recorded', ['order' => $o['public_id'], 'provider_order_id' => $providerOrderId, 'provider_id' => $provider['id']]);
+                throw $e;
+            }
             return ['status' => 'submitted'];
         }
 
@@ -235,13 +248,42 @@ final class Fulfilment
     }
 
     /**
+     * Cron watchdog. A process that dies right after claiming an order (the host killed it, the server restarted…) leaves it in
+     * PROCESSING for ever. The provider may or may not have received it, so it is never resubmitted automatically: it is handed to
+     * a human like every other unclear outcome. (A live submission is bounded by the 30 s provider timeout, so 10 min is far beyond it.)
+     *
+     * @return int number of orders handed over
+     */
+    public static function releaseStuck(int $olderThanSeconds = 600, int $limit = 20): int
+    {
+        $ids = Db::col(
+            "SELECT id FROM orders WHERE status = 'PROCESSING' AND provider_order_id IS NULL AND updated_at <= ? ORDER BY id LIMIT ?",
+            [Clock::sql(Clock::now() - $olderThanSeconds), $limit]
+        );
+        $n = 0;
+        foreach ($ids as $id) {
+            $message = 'The submission was interrupted before the provider\'s answer was recorded. The provider may already have this order — check its panel (and the transaction log) for this link before retrying.';
+            $moved = Orders::transition((int) $id, Status::FAILED, [
+                'actor' => 'system', 'note' => $message, 'expect' => [Status::PROCESSING], 'soft' => true,
+                'set' => ['last_error' => $message, 'failure_kind' => 'ambiguous', 'next_attempt_at' => null],
+            ]);
+            if ($moved) {
+                Log::warning('Order was stuck in PROCESSING and has been handed to an admin', ['order_id' => $id]);
+                $n++;
+            }
+        }
+        return $n;
+    }
+
+    /**
      * Cron safety net: AUTO orders that are PAID but not yet sent (the request
      * that settled them died, or a scheduled retry is due).
      *
-     * @return array{attempted:int}
+     * @return array{attempted:int,released:int}
      */
     public static function submitDue(int $limit = 20): array
     {
+        $released = self::releaseStuck();
         $rows = Db::all(
             "SELECT id FROM orders WHERE status = 'PAID' AND mode = 'AUTO' AND provider_order_id IS NULL AND paid_at <= ? AND (next_attempt_at IS NULL OR next_attempt_at <= ?) ORDER BY id LIMIT ?",
             [Clock::sql(Clock::now() - 20), Clock::sql(), $limit]
@@ -253,7 +295,7 @@ final class Fulfilment
                 Log::exception($e, 'Scheduled submission failed', ['order_id' => $r['id']]);
             }
         }
-        return ['attempted' => count($rows)];
+        return ['attempted' => count($rows), 'released' => $released];
     }
 
     // ═════════════════════════ MANUAL queue ═════════════════════════════════

@@ -169,7 +169,7 @@ final class T
         curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CUSTOMREQUEST => $method, CURLOPT_TIMEOUT => 20,
             CURLOPT_POSTFIELDS => $method === 'GET' ? null : json_encode($body), CURLOPT_HTTPHEADER => ['Content-Type: application/json']]);
         $out = curl_exec($ch);
-        curl_close($ch);
+        unset($ch);
         return is_string($out) ? (json_decode($out, true) ?? ['raw' => $out]) : [];
     }
 

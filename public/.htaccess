@@ -3,13 +3,18 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 Options -Indexes -MultiViews
-DirectoryIndex index.php
+# index.php first; the others only matter when other sites share this web root (e.g. an old static site in a sub-folder).
+DirectoryIndex index.php index.html index.htm
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
     # Never serve dot-files (.env, .git, .htaccess …) even if they ended up here.
     RewriteRule (^|/)\.(?!well-known/) - [F,L]
+
+    # Only index.php may execute at the top of this folder, so a stray test script or an uploaded shell can never run.
+    # Anchored to this folder on purpose: other PHP applications living in sub-folders of the same web root keep working.
+    RewriteRule ^(?!index\.php$)[^/]+\.(?:php[0-9]?|phtml|phar)$ - [F,L,NC]
 
     # Pass the Authorization header through (some hosts strip it).
     RewriteCond %{HTTP:Authorization} .
@@ -32,26 +37,6 @@ DirectoryIndex index.php
     </FilesMatch>
     Header always unset X-Powered-By
 </IfModule>
-
-# Only index.php may execute in this folder.
-<FilesMatch "\.(php[0-9]?|phtml|phar)$">
-    <IfModule mod_authz_core.c>
-        Require all denied
-    </IfModule>
-    <IfModule !mod_authz_core.c>
-        Order allow,deny
-        Deny from all
-    </IfModule>
-</FilesMatch>
-<Files "index.php">
-    <IfModule mod_authz_core.c>
-        Require all granted
-    </IfModule>
-    <IfModule !mod_authz_core.c>
-        Order allow,deny
-        Allow from all
-    </IfModule>
-</Files>
 
 # ── performance ─────────────────────────────────────────────────────────────
 <IfModule mod_deflate.c>

@@ -77,6 +77,15 @@ final class Assets
         if ($info[0] * $info[1] > self::MAX_PIXELS) {
             throw new HttpException(422, 'That image has too many pixels. Please use one under 4000×4000.', 'too_large');
         }
+        // GD keeps the decoded bitmap at 4 bytes per pixel (twice while a phone photo is rotated). Refuse politely instead of dying
+        // with "Allowed memory size exhausted" on hosts with a small memory_limit.
+        $factor = $mime === 'image/jpeg' ? 2.2 : 1.3;
+        $headroom = 6 * 1024 * 1024;
+        $limit = self::memoryLimit();
+        if ($limit > 0 && memory_get_usage(true) + (int) ($info[0] * $info[1] * 4 * $factor) + $headroom > $limit) {
+            $side = (int) (floor(sqrt(max(0, $limit - memory_get_usage(true) - $headroom) / 4 / $factor) / 100) * 100);
+            throw new HttpException(422, 'That image is too large for this server to process' . ($side >= 300 ? ". Please use one under about {$side}×{$side} pixels." : '. Please use a smaller image.'), 'too_large');
+        }
 
         $src = @imagecreatefromstring($bytes);
         if ($src === false) {
@@ -124,6 +133,17 @@ final class Assets
         @chmod($dir . '/' . $name, 0644);
         $rel = $folder . '/' . $name;
         return ['path' => $rel, 'url' => (string) upload_url($rel), 'width' => $nw, 'height' => $nh, 'bytes' => strlen($out), 'format' => $webp ? 'webp' : 'png'];
+    }
+
+    /** PHP's memory_limit in bytes; -1 when unlimited. */
+    private static function memoryLimit(): int
+    {
+        $v = trim((string) ini_get('memory_limit'));
+        $n = (int) $v;
+        if ($v === '' || $n <= 0) {
+            return -1;
+        }
+        return match (strtolower(substr($v, -1))) { 'g' => $n * 1024 ** 3, 'm' => $n * 1024 ** 2, 'k' => $n * 1024, default => $n };
     }
 
     /** Only files this class created can be deleted (no path traversal). */

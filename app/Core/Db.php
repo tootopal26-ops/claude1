@@ -45,9 +45,11 @@ final class Db
             PDO::ATTR_STRINGIFY_FETCHES  => false,
             PDO::ATTR_TIMEOUT            => 8,
         ]);
-        // Deterministic behaviour on every host: UTC, strict mode, ONLY_FULL_GROUP_BY.
+        // Deterministic behaviour on every host: UTC, strict mode, ONLY_FULL_GROUP_BY. NO_UNSIGNED_SUBTRACTION makes `revenue - cost`
+        // negative instead of an "out of range" error when the money columns (UNSIGNED, so they can never be stored negative) are
+        // subtracted: a loss-making order must show a loss, and MySQL 8 and MariaDB type CASE expressions differently.
         $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci, time_zone = '+00:00', "
-            . "sql_mode = 'STRICT_TRANS_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
+            . "sql_mode = 'STRICT_TRANS_TABLES,ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION,NO_UNSIGNED_SUBTRACTION'");
         // A stuck lock must become a clean (retried, then reported) error instead of tying a PHP worker up for minutes.
         // Both variables exist on MySQL and MariaDB; max_statement_time is MariaDB-only, so it is best effort.
         foreach (['SET SESSION lock_wait_timeout = 10, innodb_lock_wait_timeout = 8', ...(PHP_SAPI === 'cli' ? [] : ['SET SESSION max_statement_time = 25'])] as $guard) {

@@ -82,7 +82,16 @@ final class SmmClient
         ];
         // Pin the connection to an address we have just verified is public (defeats DNS rebinding).
         if (!Env::bool('ALLOW_PRIVATE_API_HOSTS', false) && !filter_var(trim($host, '[]'), FILTER_VALIDATE_IP)) {
-            $ips = NetGuard::resolve($host);
+            try {
+                $ips = NetGuard::resolve($host);
+                foreach ($ips as $ip) {
+                    if (!NetGuard::isPublicIp($ip)) {   // the answer may differ from the one assertSafeUrl() just checked
+                        throw new \InvalidArgumentException('The SMM API URL points to a private or internal address, which is not allowed.');
+                    }
+                }
+            } catch (\InvalidArgumentException $e) {
+                return new SmmResponse(SmmResponse::UNREACHABLE, error: $e->getMessage(), durationMs: $ms());
+            }
             $opts[CURLOPT_RESOLVE] = ["{$host}:{$port}:" . $ips[0]];
         }
         // Cap how much we are willing to read.
@@ -98,7 +107,7 @@ final class SmmClient
         $errno = curl_errno($ch);
         $error = curl_error($ch);
         $http = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
+        unset($ch); // frees the handle (curl_close() is a no-op since PHP 8.0 and deprecated in 8.5)
 
         if ($errno !== 0) {
             // Failures before a byte reached the provider are safe to retry; anything later is ambiguous.

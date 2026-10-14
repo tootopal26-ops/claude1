@@ -292,6 +292,59 @@ T::test('auto: 6 parallel processes try to submit one PAID order — the provide
     T::same('SUBMITTED', pf_order((int) $p['order']['id'])['status']);
 });
 
+T::test('auto failure: a process that dies right after claiming the order leaves it PROCESSING — the cron watchdog hands it to a human, it is NEVER resubmitted', function () {
+    ['gid' => $gid] = ff_setup();
+    Clock::setFixed(1_800_000_000);
+    $stuck = ff_paid($gid, 'ig-followers-50', '@stuck_one');
+    $fresh = ff_paid($gid, 'ig-followers-50', '@fresh_one');
+    $adds = count(ff_smm_adds());
+    // simulate "claimed, then the PHP process was killed before the provider's answer was recorded"
+    Db::exec("UPDATE orders SET status = 'PROCESSING', provider_order_id = NULL, provider_status = NULL, submitted_at = NULL, updated_at = ? WHERE id = ?", [Clock::sql(1_800_000_000 - 700), $stuck['id']]);
+    Db::exec("UPDATE orders SET status = 'PROCESSING', provider_order_id = NULL, provider_status = NULL, submitted_at = NULL, updated_at = ? WHERE id = ?", [Clock::sql(1_800_000_000 - 120), $fresh['id']]);
+
+    $out = Fulfilment::submitDue();
+    T::same(1, $out['released'], 'only the order stuck for more than 10 minutes is handed over');
+    $s = pf_order((int) $stuck['id']);
+    T::same('FAILED', $s['status']);
+    T::same('ambiguous', $s['failure_kind']);
+    T::contains('may already have this order', (string) $s['last_error']);
+    T::same('PROCESSING', pf_order((int) $fresh['id'])['status'], 'a submission that may still be running is left alone');
+    T::same($adds, count(ff_smm_adds()), 'the watchdog never calls the provider');
+    T::same(0, Fulfilment::releaseStuck(), 'nothing left to release → idempotent');
+    Clock::setFixed(1_800_000_000 + 86_400);
+    Fulfilment::submitDue();
+    T::same($adds, count(ff_smm_adds()), 'FAILED + ambiguous orders are never resubmitted automatically');
+    T::contains('interrupted', (string) Db::val("SELECT note FROM order_status_history WHERE order_id = ? AND to_status = 'FAILED' ORDER BY id DESC LIMIT 1", [$stuck['id']]));
+});
+
+T::test('auto failure: the provider ACCEPTED the order but the database refuses to record it → the exact provider order id is logged, the order is not lost and the watchdog hands it over', function () {
+    ['gid' => $gid] = ff_setup();
+    Clock::setFixed(1_800_000_000);
+    Db::exec('DROP TRIGGER IF EXISTS qa_block_submitted');
+    Db::exec("CREATE TRIGGER qa_block_submitted BEFORE UPDATE ON orders FOR EACH ROW BEGIN IF NEW.status = 'SUBMITTED' THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'simulated database failure'; END IF; END");
+    try {
+        $crashed = null;
+        try {
+            ff_paid($gid, 'ig-followers-50', '@trigger_victim');
+        } catch (\Throwable $e) {
+            $crashed = $e;
+        }
+        T::true($crashed !== null, 'the failure is not swallowed silently');
+    } finally {
+        Db::exec('DROP TRIGGER IF EXISTS qa_block_submitted');
+    }
+    $o = Db::one("SELECT * FROM orders WHERE target LIKE '%trigger_victim%'");
+    T::same('PROCESSING', $o['status'], 'still claimed, never half-written');
+    T::same(1, count(ff_smm_adds()), 'the provider received exactly one order');
+    $tx = Db::one("SELECT provider_order_id, ok FROM smm_transactions WHERE order_id = ? AND action = 'add'", [$o['id']]);
+    T::same(1, (int) $tx['ok']);
+    T::true($tx['provider_order_id'] !== null && $tx['provider_order_id'] !== '', 'the transaction log still carries the provider order id for reconciliation');
+    Clock::setFixed(1_800_000_000 + 1200);
+    T::same(1, Fulfilment::releaseStuck(), 'handed to an admin');
+    T::same('FAILED', pf_order((int) $o['id'])['status']);
+    T::same(1, count(ff_smm_adds()), 'and never resubmitted');
+});
+
 // ═════════════════════════════ MANUAL queue ═════════════════════════════
 
 T::test('manual: approve one order; approving twice or an unpaid order is refused', function () use ($ADMIN) {
