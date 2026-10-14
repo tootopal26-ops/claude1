@@ -182,7 +182,8 @@
   dialog.dlg.is-open::backdrop { opacity: 1; }
   .dlg-panel { background: #fff; box-shadow: var(--shadow-lg); }
   dialog.dlg-modal { margin: auto; width: min(32rem, calc(100vw - 1.5rem)); }
-  dialog.dlg-modal .dlg-panel { border-radius: var(--radius-xl); transform: translateY(18px) scale(0.97); opacity: 0; transition: transform 0.32s var(--ease-spring), opacity 0.2s; }
+  dialog.dlg-modal .dlg-panel { display: flex; flex-direction: column; max-height: calc(100dvh - 1.5rem); border-radius: var(--radius-xl); transform: translateY(18px) scale(0.97); opacity: 0; transition: transform 0.32s var(--ease-spring), opacity 0.2s; }
+  dialog.dlg-form { width: min(36rem, calc(100vw - 1.5rem)); }
   dialog.dlg-modal.is-open .dlg-panel { transform: none; opacity: 1; }
   dialog.dlg-drawer { margin: 0 0 0 auto; height: 100dvh; max-height: 100dvh; width: min(34rem, 100vw); }
   dialog.dlg-drawer .dlg-panel { height: 100%; display: flex; flex-direction: column; border-radius: var(--radius-xl) 0 0 var(--radius-xl); transform: translateX(100%); transition: transform 0.36s var(--ease-soft); }

@@ -72,7 +72,8 @@ final class Dashboard
                 'generated_at' => gmdate('c'), 'today' => $today, 'timezone' => Tz::name(), 'timezone_label' => Tz::label(),
                 'range' => ['key' => $rangeKey, 'from' => $from, 'to' => $to, 'bucket' => $bucket, 'days' => Tz::daysBetween($from, $to) + 1],
                 'filters' => ['platform' => $platformSlug, 'mode' => $mode ?? '', 'payment' => $payment], 'filtered' => $filtered,
-                'ads_attributable' => $adsAttributable, 'cpc_paise' => Ads::cpcPaise(), 'first_day' => Analytics::firstDay(),
+                'ads_attributable' => $adsAttributable, 'cpc_paise' => Ads::cpcPaise(), 'qualify_seconds' => Ads::current()['qualify_seconds'], 'first_day' => Analytics::firstDay(),
+                'platforms' => array_map(static fn(array $p): array => ['slug' => $p['slug'], 'name' => $p['name']], Catalog::platforms(false)),
             ],
             'kpis' => self::kpis($today),
             'totals' => $totals + ['conv_order_tenths' => self::rate($totals['order_visitors'], $totals['visitors']), 'conv_paid_tenths' => self::rate($totals['paid_visitors'], $totals['visitors'])],
@@ -330,10 +331,10 @@ final class Dashboard
             array_merge([$from, $to], $op)
         );
         $byService = Db::all(
-            'SELECT o.service_id AS id, MAX(o.service_title) AS name, COUNT(*) AS orders, SUM(o.provider_cost_paise) AS spend FROM orders o WHERE ' . $base . ' GROUP BY o.service_id ORDER BY spend DESC LIMIT 8',
+            'SELECT o.service_id AS id, MAX(o.service_title) AS name, MAX(o.platform_slug) AS platform, COUNT(*) AS orders, SUM(o.provider_cost_paise) AS spend FROM orders o WHERE ' . $base . ' GROUP BY o.service_id ORDER BY spend DESC LIMIT 8',
             array_merge([$from, $to], $op)
         );
-        $cast = static fn(array $r): array => ['id' => $r['id'] !== null ? (int) $r['id'] : null, 'name' => (string) $r['name'], 'orders' => (int) $r['orders'], 'spend' => (int) $r['spend']];
+        $cast = static fn(array $r): array => ['id' => $r['id'] !== null ? (int) $r['id'] : null, 'name' => (string) $r['name'], 'platform' => isset($r['platform']) ? (string) $r['platform'] : null, 'orders' => (int) $r['orders'], 'spend' => (int) $r['spend']];
         return ['by_provider' => array_map($cast, $byProvider), 'by_service' => array_map($cast, $byService)];
     }
 

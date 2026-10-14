@@ -40,7 +40,7 @@ export function compact(n) {
   return String(Math.trunc(n));
 }
 /** Compact rupees for chart axes. */
-export const inrCompact = (paise) => '₹' + compact(Math.trunc(paise / 100));
+export const inrCompact = (paise) => (paise < 0 ? '-' : '') + '₹' + compact(Math.abs(Math.trunc(paise / 100)));
 
 const TZ = () => document.body.dataset.tz || undefined;
 export function fmtDateTime(iso) {

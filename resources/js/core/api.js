@@ -29,7 +29,8 @@ export async function api(path, { method = 'GET', body, headers = {}, timeout = 
 
   const h = { Accept: 'application/json', 'X-Requested-With': 'smb', ...headers };
   let payload;
-  if (body !== undefined) { h['Content-Type'] = 'application/json'; payload = JSON.stringify(body); }
+  if (body instanceof FormData) payload = body;                 // multipart: the browser sets the boundary
+  else if (body !== undefined) { h['Content-Type'] = 'application/json'; payload = JSON.stringify(body); }
   if (csrfToken && method !== 'GET') h['X-CSRF-Token'] = csrfToken;
   if (idempotency) h['Idempotency-Key'] = typeof idempotency === 'string' ? idempotency : uuid();
 

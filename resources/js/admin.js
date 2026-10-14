@@ -1,0 +1,27 @@
+import './core/dialog.js';
+import { initShell } from './admin/shell.js';
+
+initShell();
+
+const pages = {
+  dashboard: () => import('./admin/dashboard.js'),
+  orders: () => import('./admin/orders.js'),
+  payments: () => import('./admin/payments.js'),
+  services: () => import('./admin/services.js'),
+  website: () => import('./admin/website.js'),
+  gateway: () => import('./admin/gateway.js'),
+  smm: () => import('./admin/smm.js'),
+  advertising: () => import('./admin/advertising.js'),
+  security: () => import('./admin/security.js'),
+  audit: () => import('./admin/audit.js'),
+  system: () => import('./admin/system.js'),
+};
+
+const load = pages[document.body.dataset.page];
+if (load) {
+  load().then((m) => m.default()).catch((e) => {
+    console.error(e);
+    const root = document.querySelector('[id$="-root"]');
+    if (root) root.innerHTML = '<div class="callout callout-error">This page failed to load. Please reload; if it keeps happening, check your connection.</div>';
+  });
+}

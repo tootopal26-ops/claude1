@@ -22,8 +22,8 @@ final class Middleware
         $req->attributes['admin'] = $auth['admin'];
         $req->attributes['auth'] = $auth;
 
-        if ($auth['admin']['must_change_password'] && !str_starts_with($req->path, '/admin/settings/security') && $req->method === 'GET') {
-            return Response::redirect(url('/admin/settings/security') . '?force=1');
+        if ($auth['admin']['must_change_password'] && !str_starts_with($req->path, '/admin/security') && $req->method === 'GET') {
+            return Response::redirect(url('/admin/security') . '?force=1');
         }
         $res = $next($req);
         $res->headers['Cache-Control'] = 'no-store';
@@ -45,6 +45,10 @@ final class Middleware
             if (!Csrf::verifySession($req, $auth['session']['csrf_secret'])) {
                 throw new HttpException(403, 'Security token missing or expired. Reload the page and try again.', 'bad_csrf');
             }
+        }
+        // A temporary password must be replaced before anything else works.
+        if ($auth['admin']['must_change_password'] && !in_array($req->path, ['/admin/api/account/password', '/admin/api/account/sessions', '/admin/api/status', '/admin/logout'], true)) {
+            throw new HttpException(403, 'Please change your temporary password first.', 'password_change_required');
         }
         $req->attributes['admin'] = $auth['admin'];
         $req->attributes['auth'] = $auth;
