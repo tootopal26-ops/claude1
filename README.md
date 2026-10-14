@@ -130,7 +130,7 @@ Everything lives in `.env` (see [.env.example](.env.example)) plus the admin pan
 | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | licences of bundled third-party code |
 
 ## Honest notes
-* **What was run:** PHP 8.3, MariaDB 10.11 and MySQL 8.0, Apache + mod_php (three folder layouts) and Chromium. PHP 8.1/8.2/8.4, MySQL 5.7, LiteSpeed, NGINX, PHP-FPM, Firefox and Safari are supported by design but were not run — see [docs/QA-REPORT.md](docs/QA-REPORT.md) §5.
+* **What was run:** PHP 8.3, MariaDB 10.11 and MySQL 8.0 (the whole QA battery on each), Apache + mod_php (three folder layouts) and Chromium. PHP 8.1/8.2/8.4, MySQL 5.7, LiteSpeed, NGINX, PHP-FPM, Firefox and Safari are supported by design but were not run — see [docs/QA-REPORT.md](docs/QA-REPORT.md) §5.
 * The Alpha UPI and SMM integrations were verified against **faithful mock servers** that speak the real protocols (the QA suites use them); they were not run against live credentials — do a ₹5 test order in **test mode** first.
 * The Instagram / YouTube / site logos supplied for this project arrived as images in the chat, not as files, so clean **SVG recreations** are bundled; upload your originals in **Admin → Website** (logos) and **Admin → Services** (platform logos) at any time — no code change needed.
 * Alpha UPI exposes no refund API, so refunds are *recorded* in the panel (you refund through your gateway/bank); the books stay correct.

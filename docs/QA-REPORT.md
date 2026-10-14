@@ -1,7 +1,7 @@
 # Final QA report
 
 > **Result: every automated suite passes** (table in §2). This report says what was tested, how, what the QA found and fixed, and — just as important — what was **not** tested.
-> Re-run everything yourself: `bash tools/qa/run-all.sh` (≈ 20 min; add `--long` for the real-time 5:00 countdown test — the complete run took 24 min). Last complete run: **18 of 18 suites passed** (table below).
+> Re-run everything yourself: `bash tools/qa/run-all.sh` (≈ 20 min; add `--long` for the real-time 5:00 countdown test — the complete run took 24 min). Last complete run on MariaDB 10.11: **18 of 18 suites passed** (table below). The same battery (everything except the 5-minute real-time countdown test) was then run against a real **MySQL 8.0.46** server: **17 of 17 passed** — the one first-run failure there was a timing-sensitive animation check that sampled a single instant; it now samples every frame and passes on both engines.
 
 ## 1. Method
 
@@ -12,7 +12,7 @@ QA was done by **attacking and driving the running application** rather than rea
 * **Independent oracles** — ZXing and jsQR decode every QR we generate; axe-core audits accessibility; the dashboard is reconciled to raw SQL rows; the JS and PHP link validators are checked against the same 124-case fixture.
 * **Adversarial** — a 13-point security audit written as an attacker (see [SECURITY.md](SECURITY.md)), including concurrency (12–20 simultaneous requests), tampered/replayed webhooks, path tricks and hostile inputs.
 
-Environment: PHP 8.3.6 · **MariaDB 10.11** and **MySQL 8.0.46** (the PHP suite runs on both; see §2) · Apache 2.4.58 + mod_php · Chromium (Playwright 1.64) · Linux. Local dev data: ≈ 480 orders, 75 days of demo history, ≈ 10,000 visitors.
+Environment: PHP 8.3.6 · **MariaDB 10.11** and **MySQL 8.0.46** (the whole battery was run on both) · Apache 2.4.58 + mod_php · Chromium (Playwright 1.64) · Linux. Local dev data: ≈ 480 orders, 75 days of demo history, ≈ 10,000 visitors.
 
 ## 2. Results
 
@@ -122,7 +122,7 @@ All 13 questions answered **No** — see the table in [SECURITY.md](SECURITY.md#
 * **Browsers:** all browser QA ran in **Chromium**. Firefox and Safari were not run (the code uses standard features — CSS `@property`, `color-mix`, `<dialog>`, `inert` — supported by current versions; older browsers degrade gracefully but were not verified). No real phones or screen readers were used; accessibility was audited with axe-core plus keyboard/focus tests.
 * **Servers:** verified on Apache + mod_php (3 layouts) and PHP's built-in server. **LiteSpeed, PHP-FPM and NGINX were not run** (the PHP-FPM / LiteSpeed code path — `fastcgi_finish_request()` / `litespeed_finish_request()` — is the standard PHP function, but unexercised here; the `.htaccess` is plain Apache 2.2/2.4 syntax).
 * **PHP versions:** everything ran on **PHP 8.3**. The code targets 8.1+, and a static scan for syntax and functions introduced after 8.1 (readonly classes, typed constants, DNF types, `json_validate`, `array_find`…) found none — but PHP 8.1, 8.2 and 8.4 were not run.
-* **Databases:** the PHP suite (107 tests) passes on **MariaDB 10.11 and MySQL 8.0.46** (this is how finding 17 was caught). **MySQL 5.7 and MariaDB 10.3–10.6** were not run; no CTEs, window functions, JSON columns or `CONVERT_TZ()` are used.
+* **Databases:** the whole battery — the 107 PHP tests, the installer, the admin and storefront browser suites, the failure injections (including a database lock timeout) and the security audit — passes on **both MariaDB 10.11 and MySQL 8.0.46** (running it on MySQL 8 is how finding 17 was caught). **MySQL 5.7 and MariaDB 10.3–10.6** were not run; no CTEs, window functions, JSON columns or `CONVERT_TZ()` are used.
 * **Scale:** no load test beyond concurrency tests (12–20 parallel requests). The design (indexed queries, 3 queries per storefront hit, MySQL-backed limits) is built for small-to-medium shops on shared hosting, not for thousands of requests per second.
 * **Alpha UPI has no refund API**, so refunds are recorded, not executed.
 * **Email / SMS notifications** are not part of the brief and are not implemented; admins see everything in the panel.

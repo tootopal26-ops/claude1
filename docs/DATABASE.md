@@ -1,6 +1,6 @@
 # Database
 
-MySQL 5.7+ / MariaDB 10.3+, InnoDB, `utf8mb4`. No CTEs, window functions, `CONVERT_TZ()` or JSON column types are used, so it runs on ordinary cPanel shared hosting. The test suite has been run on **MariaDB 10.11 and MySQL 8.0**; 5.7 and the older MariaDB series are supported by design (nothing newer is used) but were not run. The authoritative definition is **[`database/schema.sql`](../database/schema.sql)** (generated from the migrations by `tools/build-schema.php`; import it into an empty database, or let the installer create the tables).
+MySQL 5.7+ / MariaDB 10.3+, InnoDB, `utf8mb4`. No CTEs, window functions, `CONVERT_TZ()` or JSON column types are used, so it runs on ordinary cPanel shared hosting. The whole QA battery (PHP tests, installer, browser suites, failure injection, security audit) has been run on **MariaDB 10.11 and MySQL 8.0**; 5.7 and the older MariaDB series are supported by design (nothing newer is used) but were not run. The authoritative definition is **[`database/schema.sql`](../database/schema.sql)** (generated from the migrations by `tools/build-schema.php`; import it into an empty database, or let the installer create the tables).
 
 ## Conventions (read these first)
 
