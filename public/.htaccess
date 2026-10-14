@@ -1,0 +1,72 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# SOCIAL MEDIA BOOSTER — public/.htaccess  (Apache / LiteSpeed, cPanel-ready)
+# ─────────────────────────────────────────────────────────────────────────────
+
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Never serve dot-files (.env, .git, .htaccess …) even if they ended up here.
+    RewriteRule (^|/)\.(?!well-known/) - [F,L]
+
+    # Pass the Authorization header through (some hosts strip it).
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Real files and folders are served directly (assets, uploads) …
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # … everything else goes to the front controller.
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# ── security ────────────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# Only index.php may execute in this folder.
+<FilesMatch "\.(php[0-9]?|phtml|phar)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+<Files "index.php">
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Allow from all
+    </IfModule>
+</Files>
+
+# ── performance ─────────────────────────────────────────────────────────────
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/plain text/xml application/javascript application/json image/svg+xml
+</IfModule>
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/svg+xml  "access plus 30 days"
+    ExpiresByType image/webp     "access plus 30 days"
+    ExpiresByType image/png      "access plus 30 days"
+    ExpiresByType image/jpeg     "access plus 30 days"
+    ExpiresByType font/woff2     "access plus 1 year"
+    # CSS/JS are versioned with ?v=<mtime> by the templates
+    ExpiresByType text/css       "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType text/javascript "access plus 1 year"
+</IfModule>
+
+AddType font/woff2 .woff2
+AddType application/javascript .js
+AddType image/webp .webp

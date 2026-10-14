@@ -1,0 +1,141 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services;
+
+use App\Core\Db;
+use App\Support\Money;
+use App\Support\Status;
+use App\Support\Targets;
+
+/**
+ * Read model for the public storefront. Nothing returned from here ever
+ * contains provider cost, provider IDs or any other internal field.
+ */
+final class Catalog
+{
+    /** Section order on the page. */
+    private const TYPE_ORDER = ['followers', 'subscribers', 'likes', 'views', 'verification', 'watch_time'];
+
+    /** @return list<array<string,mixed>> */
+    public static function platforms(bool $onlyActive = true): array
+    {
+        $rows = Db::all('SELECT * FROM platforms ' . ($onlyActive ? 'WHERE is_active = 1 ' : '') . 'ORDER BY sort_order, id');
+        return array_map(static fn(array $r): array => self::platformView($r), $rows);
+    }
+
+    /** @return array<string,mixed> */
+    public static function platformView(array $r): array
+    {
+        $slug = (string) $r['slug'];
+        $custom = upload_url($r['logo_path'] ?? null);
+        $builtin = in_array($slug, ['instagram', 'youtube'], true) ? asset('img/platforms/' . $slug . '.svg') : asset('img/platforms/generic.svg');
+        return [
+            'id'         => (int) $r['id'],
+            'slug'       => $slug,
+            'name'       => (string) $r['name'],
+            'tagline'    => (string) ($r['tagline'] ?? ''),
+            'logo_url'   => $custom ?? $builtin,
+            'has_custom_logo' => $custom !== null,
+            'is_active'  => (bool) $r['is_active'],
+            'sort_order' => (int) $r['sort_order'],
+        ];
+    }
+
+    /**
+     * Everything the home page needs: platforms → sections → service cards.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public static function storefront(): array
+    {
+        $platforms = self::platforms(true);
+        $byId = [];
+        foreach ($platforms as $i => $p) {
+            $platforms[$i]['sections'] = [];
+            $byId[$p['id']] = $i;
+        }
+        $rows = Db::all(
+            "SELECT s.* FROM services s JOIN platforms p ON p.id = s.platform_id "
+            . "WHERE s.status = 'active' AND s.deleted_at IS NULL AND p.is_active = 1 ORDER BY s.sort_order, s.id"
+        );
+        $sections = [];
+        foreach ($rows as $r) {
+            $pid = (int) $r['platform_id'];
+            if (!isset($byId[$pid])) {
+                continue;
+            }
+            $slug = $platforms[$byId[$pid]]['slug'];
+            $sections[$pid][(string) $r['type']][] = self::card($r, $slug);
+        }
+        foreach ($platforms as $i => $p) {
+            $secs = [];
+            $types = array_keys($sections[$p['id']] ?? []);
+            usort($types, static fn(string $a, string $b): int => self::typeRank($a) <=> self::typeRank($b));
+            foreach ($types as $type) {
+                $secs[] = ['type' => $type, 'label' => Status::serviceTypeLabel($type), 'services' => $sections[$p['id']][$type]];
+            }
+            $platforms[$i]['sections'] = $secs;
+        }
+        return $platforms;
+    }
+
+    private static function typeRank(string $t): int
+    {
+        $i = array_search($t, self::TYPE_ORDER, true);
+        return $i === false ? 99 : $i;
+    }
+
+    /** @return array<string,mixed> one storefront card (public fields only) */
+    public static function card(array $r, string $platformSlug): array
+    {
+        return [
+            'id'          => (int) $r['id'],
+            'type'        => (string) $r['type'],
+            'target_kind' => (string) $r['target_kind'],
+            'title'       => (string) $r['title'],
+            'subtitle'    => (string) ($r['subtitle'] ?? ''),
+            'description' => (string) ($r['description'] ?? ''),
+            'price_paise' => (int) $r['price_paise'],
+            'price'       => Money::inr((int) $r['price_paise']),
+            'quantity'    => (int) $r['quantity'],
+            'badge'       => $r['badge'] !== null && $r['badge'] !== '' ? (string) $r['badge'] : null,
+            'badge_color' => (string) ($r['badge_color'] ?: 'red'),
+            'is_premium'  => (bool) $r['is_premium'],
+            'icon_url'    => upload_url($r['icon_path'] ?? null),
+            'placeholder' => Targets::placeholder($platformSlug, (string) $r['target_kind']),
+            'hint'        => Targets::hint($platformSlug, (string) $r['target_kind']),
+            'platform'    => $platformSlug,
+        ];
+    }
+
+    /**
+     * Service that can be ordered RIGHT NOW (active, not deleted, platform active,
+     * sane price/quantity). Joined with its platform slug.
+     *
+     * @return array<string,mixed>|null
+     */
+    public static function orderable(int $serviceId): ?array
+    {
+        $r = Db::one(
+            "SELECT s.*, p.slug AS platform_slug, p.name AS platform_name FROM services s JOIN platforms p ON p.id = s.platform_id "
+            . "WHERE s.id = ? AND s.status = 'active' AND s.deleted_at IS NULL AND p.is_active = 1",
+            [$serviceId]
+        );
+        if ($r === null) {
+            return null;
+        }
+        $price = (int) $r['price_paise'];
+        $qty = (int) $r['quantity'];
+        if ($price < 100 || $qty < 1 || $qty < (int) $r['min_quantity'] || $qty > (int) $r['max_quantity']) {
+            return null;   // misconfigured → never sellable (also guards against absurd values)
+        }
+        return $r;
+    }
+
+    public static function version(): string
+    {
+        return (string) Db::val("SELECT CONCAT(COALESCE(MAX(updated_at),''), '|', COUNT(*)) FROM services");
+    }
+}

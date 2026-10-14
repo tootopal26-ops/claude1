@@ -1,0 +1,34 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Root .htaccess — used when the WHOLE project is uploaded into public_html
+# (layout A). It sends web traffic into /public and makes everything else
+# (app code, .env, database dumps, logs, tools) unreachable from the browser.
+#
+# If you instead place only the contents of /public in public_html and keep the
+# rest above it (layout B, recommended), this file is not needed.
+# ─────────────────────────────────────────────────────────────────────────────
+
+Options -Indexes -MultiViews
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block private folders and files outright.
+    RewriteRule ^(app|bin|config|database|storage|resources|tests|tools|docs|node_modules|vendor)(/|$) - [F,L,NC]
+    RewriteRule ^(\.env|\.git|composer\.(json|lock)|package(-lock)?\.json|README\.md|\.gitignore)(/|$)? - [F,L,NC]
+    RewriteRule (^|/)\.(?!well-known/) - [F,L]
+
+    # Everything else is served from /public.
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Fallback for hosts without mod_rewrite: deny directly.
+<FilesMatch "^(\.env.*|.*\.(sql|log|md|lock|sh))$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

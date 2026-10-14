@@ -1,0 +1,548 @@
+-- ============================================================================
+-- SOCIAL MEDIA BOOSTER — initial schema
+-- Target: MySQL 5.7+ / MariaDB 10.3+ (InnoDB, utf8mb4). No CTEs, window
+-- functions, CONVERT_TZ() or JSON column types are used, so it runs on
+-- typical cPanel shared hosting.
+--
+-- Conventions
+--   * All money is stored as INTEGER PAISE (1 INR = 100 paise). Never floats.
+--   * All DATETIME values are UTC. "*_day" DATE columns hold the BUSINESS-timezone
+--     calendar day computed by the application when the row is written, so
+--     reports never depend on MySQL timezone tables.
+--   * Statuses are VARCHAR (not ENUM) so they can evolve without ALTER TABLE;
+--     the allowed values live in app/Support/Status.php.
+--   * Indexed VARCHARs are <= 191 chars (safe for old InnoDB row formats).
+-- ============================================================================
+
+SET NAMES utf8mb4;
+
+-- ───────────────────────────── admins & sessions ────────────────────────────
+
+CREATE TABLE IF NOT EXISTS `admins` (
+  `id`                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `username`            VARCHAR(64)  NOT NULL,
+  `email`               VARCHAR(190) NOT NULL,
+  `password_hash`       VARCHAR(255) NOT NULL,
+  `role`                VARCHAR(16)  NOT NULL DEFAULT 'owner',
+  `is_active`           TINYINT(1)   NOT NULL DEFAULT 1,
+  `must_change_password` TINYINT(1)  NOT NULL DEFAULT 0,
+  `failed_logins`       SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  `locked_until`        DATETIME NULL,
+  `last_login_at`       DATETIME NULL,
+  `last_login_ip`       VARCHAR(45) NULL,
+  `password_changed_at` DATETIME NULL,
+  `created_at`          DATETIME NOT NULL,
+  `updated_at`          DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_admins_username` (`username`),
+  UNIQUE KEY `uq_admins_email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Admin login sessions. Only a SHA-256 of the cookie token is stored.
+CREATE TABLE IF NOT EXISTS `sessions` (
+  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `admin_id`        INT UNSIGNED NOT NULL,
+  `token_hash`      CHAR(64) NOT NULL,
+  `csrf_secret`     CHAR(32) NOT NULL,
+  `ip`              VARCHAR(45) NULL,
+  `user_agent`      VARCHAR(255) NULL,
+  `remember`        TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at`      DATETIME NOT NULL,
+  `last_seen_at`    DATETIME NOT NULL,
+  `expires_at`      DATETIME NOT NULL,
+  `idle_expires_at` DATETIME NOT NULL,
+  `revoked_at`      DATETIME NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_sessions_token` (`token_hash`),
+  KEY `idx_sessions_admin` (`admin_id`, `revoked_at`),
+  KEY `idx_sessions_expires` (`expires_at`),
+  CONSTRAINT `fk_sessions_admin` FOREIGN KEY (`admin_id`) REFERENCES `admins` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ───────────────────────────── catalogue ────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS `platforms` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `slug`       VARCHAR(32)  NOT NULL,
+  `name`       VARCHAR(60)  NOT NULL,
+  `tagline`    VARCHAR(120) NULL,
+  `logo_path`  VARCHAR(255) NULL,           -- uploaded logo (relative to /uploads); NULL = built-in SVG
+  `is_active`  TINYINT(1) NOT NULL DEFAULT 1,
+  `sort_order` INT NOT NULL DEFAULT 0,
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_platforms_slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- SMM providers (the supplier panels that deliver AUTO orders).
+CREATE TABLE IF NOT EXISTS `smm_providers` (
+  `id`                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name`                 VARCHAR(80)  NOT NULL,
+  `api_url`              VARCHAR(255) NOT NULL,
+  `api_key_enc`          TEXT NULL,            -- AES-256-GCM, see app/Core/Crypto.php
+  `currency`             VARCHAR(8) NOT NULL DEFAULT 'INR',
+  `rate_to_inr_micros`   BIGINT UNSIGNED NOT NULL DEFAULT 1000000,  -- 1 provider-currency unit in INR * 1e6
+  `is_active`            TINYINT(1) NOT NULL DEFAULT 1,
+  `is_default`           TINYINT(1) NOT NULL DEFAULT 0,
+  `last_tested_at`       DATETIME NULL,
+  `last_test_ok`         TINYINT(1) NULL,
+  `last_test_message`    VARCHAR(255) NULL,
+  `last_balance`         VARCHAR(64) NULL,
+  `created_at`           DATETIME NOT NULL,
+  `updated_at`           DATETIME NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `services` (
+  `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `code`            VARCHAR(64)  NOT NULL,           -- the admin-visible "Service ID", e.g. ig-followers-50
+  `platform_id`     INT UNSIGNED NOT NULL,
+  `type`            VARCHAR(24)  NOT NULL,           -- followers|likes|views|verification|subscribers|watch_time
+  `target_kind`     VARCHAR(16)  NOT NULL,           -- profile|post|video|channel (what the customer must enter)
+  `title`           VARCHAR(120) NOT NULL,
+  `subtitle`        VARCHAR(160) NULL,
+  `description`     TEXT NULL,
+  `price_paise`     INT UNSIGNED NOT NULL,
+  `quantity`        INT UNSIGNED NOT NULL,           -- units delivered per purchase
+  `min_quantity`    INT UNSIGNED NOT NULL DEFAULT 1,
+  `max_quantity`    INT UNSIGNED NOT NULL DEFAULT 100000000,
+  `mode`            VARCHAR(8)   NOT NULL DEFAULT 'MANUAL',   -- AUTO | MANUAL
+  `smm_provider_id` INT UNSIGNED NULL,
+  `smm_service_id`  VARCHAR(64) NULL,
+  `smm_cost_paise`  INT UNSIGNED NOT NULL DEFAULT 0, -- what the provider charges us for ONE purchase of this pack
+  `badge`           VARCHAR(40) NULL,
+  `badge_color`     VARCHAR(16) NULL,                -- red|green|blue|amber|pink|purple|gray
+  `icon_path`       VARCHAR(255) NULL,               -- uploaded icon override
+  `is_premium`      TINYINT(1) NOT NULL DEFAULT 0,
+  `status`          VARCHAR(12) NOT NULL DEFAULT 'active',    -- active | inactive
+  `sort_order`      INT NOT NULL DEFAULT 0,
+  `deleted_at`      DATETIME NULL,
+  `created_at`      DATETIME NOT NULL,
+  `updated_at`      DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_services_code` (`code`),
+  KEY `idx_services_list` (`platform_id`, `status`, `deleted_at`, `sort_order`),
+  CONSTRAINT `fk_services_platform` FOREIGN KEY (`platform_id`) REFERENCES `platforms` (`id`),
+  CONSTRAINT `fk_services_provider` FOREIGN KEY (`smm_provider_id`) REFERENCES `smm_providers` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Append-only history of price / provider-cost changes.
+CREATE TABLE IF NOT EXISTS `service_pricing` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `service_id`    INT UNSIGNED NOT NULL,
+  `price_paise`   INT UNSIGNED NOT NULL,
+  `cost_paise`    INT UNSIGNED NOT NULL,
+  `changed_by`    INT UNSIGNED NULL,
+  `note`          VARCHAR(255) NULL,
+  `created_at`    DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_pricing_service` (`service_id`, `created_at`),
+  CONSTRAINT `fk_pricing_service` FOREIGN KEY (`service_id`) REFERENCES `services` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ───────────────────────────── payment gateways ─────────────────────────────
+
+CREATE TABLE IF NOT EXISTS `payment_gateways` (
+  `id`                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `provider`          VARCHAR(24)  NOT NULL,            -- alpha_upi
+  `name`              VARCHAR(80)  NOT NULL,
+  `is_active`         TINYINT(1)   NOT NULL DEFAULT 0,
+  `environment`       VARCHAR(12)  NOT NULL DEFAULT 'test',   -- test | production
+  `config_json`       TEXT NULL,                        -- non-secret settings (base_url, preferred provider, ...)
+  `secrets_enc`       TEXT NULL,                        -- encrypted JSON: api_key, webhook_secret
+  `last_tested_at`    DATETIME NULL,
+  `last_test_ok`      TINYINT(1) NULL,
+  `last_test_message` VARCHAR(255) NULL,
+  `created_at`        DATETIME NOT NULL,
+  `updated_at`        DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_gateways_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ───────────────────────────── visitors / analytics ─────────────────────────
+
+CREATE TABLE IF NOT EXISTS `visitors` (
+  `id`                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `anon_id`             CHAR(32) NOT NULL,              -- random, first-party cookie; no IP / fingerprint stored
+  `first_seen_at`       DATETIME NOT NULL,
+  `last_seen_at`        DATETIME NOT NULL,
+  `first_landing_path`  VARCHAR(255) NULL,
+  `first_referrer_host` VARCHAR(190) NULL,
+  `first_source`        VARCHAR(16) NOT NULL DEFAULT 'direct',
+  `device_type`         VARCHAR(12) NOT NULL DEFAULT 'desktop',
+  `browser`             VARCHAR(32) NULL,
+  `os`                  VARCHAR(32) NULL,
+  `sessions_count`      INT UNSIGNED NOT NULL DEFAULT 0,
+  `has_order`           TINYINT(1) NOT NULL DEFAULT 0,
+  `has_paid`            TINYINT(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_visitors_anon` (`anon_id`),
+  KEY `idx_visitors_first_seen` (`first_seen_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `visitor_sessions` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `visitor_id`        BIGINT UNSIGNED NOT NULL,
+  `session_key`       CHAR(32) NOT NULL,
+  `day`               DATE NOT NULL,                    -- business-timezone day the session started
+  `started_at`        DATETIME NOT NULL,
+  `last_hit_at`       DATETIME NOT NULL,               -- last page load; "qualified" requires N seconds after it
+  `last_seen_at`      DATETIME NOT NULL,
+  `active_seconds`    INT UNSIGNED NOT NULL DEFAULT 0,
+  `qualified_at`      DATETIME NULL,
+  `landing_path`      VARCHAR(255) NULL,
+  `referrer_host`     VARCHAR(190) NULL,
+  `source`            VARCHAR(16) NOT NULL DEFAULT 'direct',   -- instagram|youtube|direct|other
+  `utm_source`        VARCHAR(80) NULL,
+  `utm_medium`        VARCHAR(80) NULL,
+  `utm_campaign`      VARCHAR(80) NULL,
+  `platform_viewed`   VARCHAR(16) NULL,
+  `device_type`       VARCHAR(12) NOT NULL DEFAULT 'desktop',
+  `browser`           VARCHAR(32) NULL,
+  `os`                VARCHAR(32) NULL,
+  `order_created`     TINYINT(1) NOT NULL DEFAULT 0,
+  `payment_succeeded` TINYINT(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_vsessions_key` (`session_key`),
+  KEY `idx_vsessions_visitor` (`visitor_id`),
+  KEY `idx_vsessions_day` (`day`),
+  KEY `idx_vsessions_started` (`started_at`),
+  CONSTRAINT `fk_vsessions_visitor` FOREIGN KEY (`visitor_id`) REFERENCES `visitors` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- One row per visitor per business day. This is the billing unit for ads:
+-- a visitor who stays >= the qualifying time is charged ONE click at the CPC in
+-- force at that moment, no matter how many times they refresh or return that day.
+CREATE TABLE IF NOT EXISTS `visitor_days` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `visitor_id`        BIGINT UNSIGNED NOT NULL,
+  `day`               DATE NOT NULL,
+  `qualified`         TINYINT(1) NOT NULL DEFAULT 0,
+  `qualified_at`      DATETIME NULL,
+  `cpc_paise`         INT UNSIGNED NOT NULL DEFAULT 0,  -- snapshot of the CPC charged (0 until qualified)
+  `source`            VARCHAR(16) NOT NULL DEFAULT 'direct',
+  `device_type`       VARCHAR(12) NOT NULL DEFAULT 'desktop',
+  `order_created`     TINYINT(1) NOT NULL DEFAULT 0,
+  `payment_succeeded` TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at`        DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_vdays_visitor_day` (`visitor_id`, `day`),
+  KEY `idx_vdays_day` (`day`, `qualified`),
+  CONSTRAINT `fk_vdays_visitor` FOREIGN KEY (`visitor_id`) REFERENCES `visitors` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Customers (anonymous: one per visitor that ever placed an order).
+CREATE TABLE IF NOT EXISTS `users` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `visitor_id`        BIGINT UNSIGNED NULL,
+  `orders_count`      INT UNSIGNED NOT NULL DEFAULT 0,
+  `paid_orders_count` INT UNSIGNED NOT NULL DEFAULT 0,
+  `total_spent_paise` BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  `first_order_at`    DATETIME NULL,
+  `last_order_at`     DATETIME NULL,
+  `created_at`        DATETIME NOT NULL,
+  `updated_at`        DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_users_visitor` (`visitor_id`),
+  CONSTRAINT `fk_users_visitor` FOREIGN KEY (`visitor_id`) REFERENCES `visitors` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ───────────────────────────── orders & payments ────────────────────────────
+
+CREATE TABLE IF NOT EXISTS `orders` (
+  `id`                     BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `public_id`              VARCHAR(20)  NOT NULL,           -- shown to the customer, e.g. SMB-7K2M9QXD
+  `access_token`           CHAR(32)     NOT NULL,           -- unguessable capability for /order/{token}
+  `user_id`                BIGINT UNSIGNED NULL,
+  `visitor_id`             BIGINT UNSIGNED NULL,
+  `visitor_session_id`     BIGINT UNSIGNED NULL,
+  `service_id`             INT UNSIGNED NOT NULL,
+  `platform_id`            INT UNSIGNED NOT NULL,
+  -- snapshots (so later edits to a service never rewrite history)
+  `platform_slug`          VARCHAR(32)  NOT NULL,
+  `service_code`           VARCHAR(64)  NOT NULL,
+  `service_title`          VARCHAR(120) NOT NULL,
+  `service_type`           VARCHAR(24)  NOT NULL,
+  `mode`                   VARCHAR(8)   NOT NULL,           -- AUTO | MANUAL
+  `quantity`               INT UNSIGNED NOT NULL,
+  `amount_paise`           INT UNSIGNED NOT NULL,
+  `target`                 VARCHAR(500) NOT NULL,           -- exactly what the customer typed
+  `target_url`             VARCHAR(500) NOT NULL,           -- validated + normalised, what the provider receives
+  `status`                 VARCHAR(20)  NOT NULL DEFAULT 'PENDING_PAYMENT',
+  `payment_status`         VARCHAR(20)  NOT NULL DEFAULT 'pending',
+  `refunded_paise`         INT UNSIGNED NOT NULL DEFAULT 0,
+  `late_payment`           TINYINT(1)   NOT NULL DEFAULT 0,
+  -- provider / fulfilment
+  `smm_provider_id`        INT UNSIGNED NULL,
+  `smm_service_id`         VARCHAR(64)  NULL,               -- snapshot
+  `provider_order_id`      VARCHAR(64)  NULL,
+  `provider_status`        VARCHAR(32)  NULL,
+  `estimated_cost_paise`   INT UNSIGNED NOT NULL DEFAULT 0, -- snapshot of services.smm_cost_paise (AUTO only)
+  `provider_cost_paise`    INT UNSIGNED NOT NULL DEFAULT 0, -- effective cost counted in profit
+  `provider_cost_final`    TINYINT(1)   NOT NULL DEFAULT 0, -- 1 once the provider's actual charge is known
+  `start_count`            BIGINT NULL,
+  `remains`                BIGINT NULL,
+  `provider_attempts`      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  `next_attempt_at`        DATETIME NULL,
+  `last_error`             VARCHAR(500) NULL,
+  `failure_kind`           VARCHAR(24) NULL,                -- rejected | unreachable | ambiguous | misconfigured
+  `last_sync_at`           DATETIME NULL,
+  `idempotency_key`        VARCHAR(64) NULL,
+  `admin_note`             TEXT NULL,
+  -- timeline
+  `created_day`            DATE NOT NULL,
+  `paid_day`               DATE NULL,
+  `paid_at`                DATETIME NULL,
+  `submitted_at`           DATETIME NULL,
+  `completed_at`           DATETIME NULL,
+  `created_at`             DATETIME NOT NULL,
+  `updated_at`             DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_orders_public` (`public_id`),
+  UNIQUE KEY `uq_orders_token` (`access_token`),
+  UNIQUE KEY `uq_orders_idem` (`idempotency_key`),
+  KEY `idx_orders_status` (`status`, `created_at`),
+  KEY `idx_orders_payment_status` (`payment_status`),
+  KEY `idx_orders_created` (`created_at`),
+  KEY `idx_orders_created_day` (`created_day`),
+  KEY `idx_orders_paid_day` (`paid_day`, `mode`, `platform_id`),
+  KEY `idx_orders_paid_at` (`paid_at`),
+  KEY `idx_orders_service` (`service_id`),
+  KEY `idx_orders_platform` (`platform_id`),
+  KEY `idx_orders_mode_status` (`mode`, `status`),
+  KEY `idx_orders_provider_order` (`provider_order_id`),
+  KEY `idx_orders_visitor` (`visitor_id`),
+  KEY `idx_orders_retry` (`status`, `next_attempt_at`),
+  CONSTRAINT `fk_orders_service`  FOREIGN KEY (`service_id`)  REFERENCES `services` (`id`),
+  CONSTRAINT `fk_orders_platform` FOREIGN KEY (`platform_id`) REFERENCES `platforms` (`id`),
+  CONSTRAINT `fk_orders_user`     FOREIGN KEY (`user_id`)     REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_orders_provider` FOREIGN KEY (`smm_provider_id`) REFERENCES `smm_providers` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_orders_vsession` FOREIGN KEY (`visitor_session_id`) REFERENCES `visitor_sessions` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `payments` (
+  `id`                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `ref`                CHAR(32) NOT NULL,                 -- unguessable, used in /pay/{ref}
+  `order_id`           BIGINT UNSIGNED NOT NULL,
+  `gateway_id`         INT UNSIGNED NULL,
+  `provider`           VARCHAR(24) NOT NULL,
+  `gateway_order_id`   VARCHAR(64) NOT NULL,              -- the order_id we send to the gateway
+  `provider_txn_id`    VARCHAR(100) NULL,                 -- UTR / bank reference reported by the gateway
+  `gateway_method`     VARCHAR(24) NULL,                  -- bharatpe | paytm (as reported)
+  `amount_paise`       INT UNSIGNED NOT NULL,
+  `currency`           CHAR(3) NOT NULL DEFAULT 'INR',
+  `status`             VARCHAR(20) NOT NULL DEFAULT 'creating',
+  `payment_url`        VARCHAR(1000) NULL,                -- gateway-hosted payment page
+  `qr_payload`         VARCHAR(1000) NULL,                -- exactly what the QR encodes
+  `expires_at`         DATETIME NOT NULL,
+  `paid_at`            DATETIME NULL,
+  `paid_day`           DATE NULL,
+  `paid_amount_paise`  INT UNSIGNED NULL,
+  `verified_via`       VARCHAR(16) NULL,                  -- webhook | poll | admin
+  `late`               TINYINT(1) NOT NULL DEFAULT 0,     -- confirmed after the 5-minute session ended
+  `failure_reason`     VARCHAR(255) NULL,
+  `refunded_paise`     INT UNSIGNED NOT NULL DEFAULT 0,
+  `refund_reference`   VARCHAR(190) NULL,
+  `last_polled_at`     DATETIME NULL,
+  `poll_count`         INT UNSIGNED NOT NULL DEFAULT 0,
+  `create_response`    TEXT NULL,                         -- sanitised gateway response (no secrets)
+  `created_day`        DATE NOT NULL,
+  `created_at`         DATETIME NOT NULL,
+  `updated_at`         DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_payments_ref` (`ref`),
+  UNIQUE KEY `uq_payments_gateway_order` (`gateway_order_id`),
+  UNIQUE KEY `uq_payments_txn` (`gateway_id`, `provider_txn_id`),
+  KEY `idx_payments_order` (`order_id`),
+  KEY `idx_payments_status_exp` (`status`, `expires_at`),
+  KEY `idx_payments_created` (`created_at`),
+  KEY `idx_payments_paid_day` (`paid_day`),
+  KEY `idx_payments_created_day` (`created_day`, `status`),
+  CONSTRAINT `fk_payments_order`   FOREIGN KEY (`order_id`)   REFERENCES `orders` (`id`),
+  CONSTRAINT `fk_payments_gateway` FOREIGN KEY (`gateway_id`) REFERENCES `payment_gateways` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `order_status_history` (
+  `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `order_id`    BIGINT UNSIGNED NOT NULL,
+  `from_status` VARCHAR(20) NULL,
+  `to_status`   VARCHAR(20) NOT NULL,
+  `actor_type`  VARCHAR(16) NOT NULL,                    -- system|customer|admin|webhook|provider|cron
+  `actor_id`    INT UNSIGNED NULL,
+  `actor_label` VARCHAR(120) NULL,
+  `note`        VARCHAR(500) NULL,
+  `meta_json`   TEXT NULL,
+  `created_at`  DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_history_order` (`order_id`, `id`),
+  KEY `idx_history_created` (`created_at`),
+  CONSTRAINT `fk_history_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Every call made to an SMM provider (the API key is never stored here).
+CREATE TABLE IF NOT EXISTS `smm_transactions` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `order_id`          BIGINT UNSIGNED NULL,
+  `provider_id`       INT UNSIGNED NULL,
+  `action`            VARCHAR(16) NOT NULL,              -- add|status|balance|services
+  `request_json`      TEXT NULL,
+  `response_body`     TEXT NULL,
+  `http_status`       SMALLINT UNSIGNED NULL,
+  `ok`                TINYINT(1) NOT NULL DEFAULT 0,
+  `error`             VARCHAR(500) NULL,
+  `provider_order_id` VARCHAR(64) NULL,
+  `cost_paise`        INT UNSIGNED NULL,
+  `duration_ms`       INT UNSIGNED NULL,
+  `created_at`        DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_smmtx_order` (`order_id`, `id`),
+  KEY `idx_smmtx_provider` (`provider_id`, `created_at`),
+  KEY `idx_smmtx_provider_order` (`provider_order_id`),
+  CONSTRAINT `fk_smmtx_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_smmtx_provider` FOREIGN KEY (`provider_id`) REFERENCES `smm_providers` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Queue of paid MANUAL orders waiting for an admin.
+CREATE TABLE IF NOT EXISTS `manual_orders` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `order_id`      BIGINT UNSIGNED NOT NULL,
+  `state`         VARCHAR(12) NOT NULL DEFAULT 'pending',   -- pending | approved | rejected
+  `approved_by`   INT UNSIGNED NULL,
+  `approved_at`   DATETIME NULL,
+  `admin_note`    TEXT NULL,
+  `created_at`    DATETIME NOT NULL,
+  `updated_at`    DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_manual_order` (`order_id`),
+  KEY `idx_manual_state` (`state`, `created_at`),
+  CONSTRAINT `fk_manual_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Every inbound payment webhook, for idempotency and forensics.
+-- dedupe_key is set ONLY for signature-verified events, so a forged event can
+-- never "use up" the id of a real one.
+CREATE TABLE IF NOT EXISTS `webhook_events` (
+  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `gateway_id`      INT UNSIGNED NULL,
+  `provider`        VARCHAR(24) NOT NULL,
+  `event_id`        VARCHAR(120) NULL,
+  `event_type`      VARCHAR(40) NULL,
+  `dedupe_key`      VARCHAR(191) NULL,
+  `signature_valid` TINYINT(1) NOT NULL DEFAULT 0,
+  `payload_hash`    CHAR(64) NOT NULL,
+  `payload`         TEXT NULL,
+  `status`          VARCHAR(16) NOT NULL DEFAULT 'received',  -- received|processed|ignored|duplicate|invalid|error|mismatch
+  `error`           VARCHAR(500) NULL,
+  `payment_id`      BIGINT UNSIGNED NULL,
+  `order_id`        BIGINT UNSIGNED NULL,
+  `ip`              VARCHAR(45) NULL,
+  `attempts`        SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+  `received_at`     DATETIME NOT NULL,
+  `processed_at`    DATETIME NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_webhook_dedupe` (`dedupe_key`),
+  KEY `idx_webhook_received` (`received_at`),
+  KEY `idx_webhook_payment` (`payment_id`),
+  KEY `idx_webhook_status` (`status`, `received_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ───────────────────────────── analytics & settings ─────────────────────────
+
+CREATE TABLE IF NOT EXISTS `analytics_daily` (
+  `day`                 DATE NOT NULL,
+  `orders_created`      INT UNSIGNED NOT NULL DEFAULT 0,
+  `orders_paid`         INT UNSIGNED NOT NULL DEFAULT 0,
+  `orders_completed`    INT UNSIGNED NOT NULL DEFAULT 0,
+  `revenue_paise`       BIGINT NOT NULL DEFAULT 0,
+  `refunds_paise`       BIGINT NOT NULL DEFAULT 0,
+  `smm_spend_paise`     BIGINT NOT NULL DEFAULT 0,
+  `gross_profit_paise`  BIGINT NOT NULL DEFAULT 0,
+  `ads_spend_paise`     BIGINT NOT NULL DEFAULT 0,
+  `net_profit_paise`    BIGINT NOT NULL DEFAULT 0,
+  `auto_orders`         INT UNSIGNED NOT NULL DEFAULT 0,
+  `manual_orders`       INT UNSIGNED NOT NULL DEFAULT 0,
+  `auto_revenue_paise`  BIGINT NOT NULL DEFAULT 0,
+  `manual_revenue_paise` BIGINT NOT NULL DEFAULT 0,
+  `auto_profit_paise`   BIGINT NOT NULL DEFAULT 0,
+  `manual_profit_paise` BIGINT NOT NULL DEFAULT 0,
+  `payments_success`    INT UNSIGNED NOT NULL DEFAULT 0,
+  `payments_failed`     INT UNSIGNED NOT NULL DEFAULT 0,
+  `payments_expired`    INT UNSIGNED NOT NULL DEFAULT 0,
+  `visitors`            INT UNSIGNED NOT NULL DEFAULT 0,
+  `qualified_visitors`  INT UNSIGNED NOT NULL DEFAULT 0,
+  `order_visitors`      INT UNSIGNED NOT NULL DEFAULT 0,
+  `paid_visitors`       INT UNSIGNED NOT NULL DEFAULT 0,
+  `desktop_visitors`    INT UNSIGNED NOT NULL DEFAULT 0,
+  `mobile_visitors`     INT UNSIGNED NOT NULL DEFAULT 0,
+  `tablet_visitors`     INT UNSIGNED NOT NULL DEFAULT 0,
+  `src_instagram`       INT UNSIGNED NOT NULL DEFAULT 0,
+  `src_youtube`         INT UNSIGNED NOT NULL DEFAULT 0,
+  `src_direct`          INT UNSIGNED NOT NULL DEFAULT 0,
+  `src_other`           INT UNSIGNED NOT NULL DEFAULT 0,
+  `dirty`               TINYINT(1) NOT NULL DEFAULT 0,
+  `computed_at`         DATETIME NOT NULL,
+  PRIMARY KEY (`day`),
+  KEY `idx_analytics_dirty` (`dirty`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Append-only history; the CURRENT value is the newest row.
+CREATE TABLE IF NOT EXISTS `advertisement_settings` (
+  `id`                    INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `cpc_paise`             INT UNSIGNED NOT NULL,         -- 108 = INR 1.08 per qualified visitor
+  `qualify_seconds`       TINYINT UNSIGNED NOT NULL DEFAULT 3,
+  `assumed_conversion_bps` SMALLINT UNSIGNED NOT NULL DEFAULT 400,  -- 400 = 4.00 % (for profit previews with no history)
+  `set_by`                INT UNSIGNED NULL,
+  `created_at`            DATETIME NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `admin_settings` (
+  `k`          VARCHAR(64) NOT NULL,
+  `v`          MEDIUMTEXT NULL,                          -- JSON-encoded value
+  `updated_by` INT UNSIGNED NULL,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`k`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `audit_logs` (
+  `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `admin_id`    INT UNSIGNED NULL,
+  `admin_label` VARCHAR(120) NULL,
+  `action`      VARCHAR(64) NOT NULL,
+  `entity_type` VARCHAR(40) NULL,
+  `entity_id`   VARCHAR(40) NULL,
+  `ip`          VARCHAR(45) NULL,
+  `user_agent`  VARCHAR(255) NULL,
+  `meta_json`   TEXT NULL,
+  `created_at`  DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_audit_created` (`created_at`),
+  KEY `idx_audit_action` (`action`, `created_at`),
+  KEY `idx_audit_admin` (`admin_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ───────────────────────────── infrastructure ───────────────────────────────
+
+-- Double-submit protection for important actions (checkout, approve-all, saves).
+CREATE TABLE IF NOT EXISTS `idempotency_keys` (
+  `k`             CHAR(64) NOT NULL,                      -- sha256(scope | key)
+  `scope`         VARCHAR(40) NOT NULL,
+  `request_hash`  CHAR(64) NOT NULL,
+  `state`         VARCHAR(12) NOT NULL DEFAULT 'processing',   -- processing | done
+  `response_code` SMALLINT UNSIGNED NULL,
+  `response_body` MEDIUMTEXT NULL,
+  `created_at`    DATETIME NOT NULL,
+  `expires_at`    DATETIME NOT NULL,
+  PRIMARY KEY (`k`),
+  KEY `idx_idem_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Fixed-window rate limiter (k = sha1(bucket | identity | window number)).
+CREATE TABLE IF NOT EXISTS `rate_limits` (
+  `k`          CHAR(40) NOT NULL,
+  `hits`       INT UNSIGNED NOT NULL DEFAULT 0,
+  `expires_at` INT UNSIGNED NOT NULL,                     -- unix seconds
+  PRIMARY KEY (`k`),
+  KEY `idx_rate_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

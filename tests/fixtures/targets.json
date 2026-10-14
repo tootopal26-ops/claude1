@@ -1,0 +1,792 @@
+[
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "@john.doe",
+        "ok": true,
+        "url": "https://www.instagram.com/john.doe/",
+        "display": "@john.doe"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "john_doe",
+        "ok": true,
+        "url": "https://www.instagram.com/john_doe/",
+        "display": "@john_doe"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "JOHN",
+        "ok": true,
+        "url": "https://www.instagram.com/JOHN/",
+        "display": "@JOHN"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "_x_",
+        "ok": true,
+        "url": "https://www.instagram.com/_x_/",
+        "display": "@_x_"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "a",
+        "ok": true,
+        "url": "https://www.instagram.com/a/",
+        "display": "@a"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "a.b.c",
+        "ok": true,
+        "url": "https://www.instagram.com/a.b.c/",
+        "display": "@a.b.c"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "..",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "...",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "@",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "@@john",
+        "ok": true,
+        "url": "https://www.instagram.com/john/",
+        "display": "@john"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "john doe",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "john!",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok": true,
+        "url": "https://www.instagram.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/",
+        "display": "@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "999999999999999999999999999999",
+        "ok": true,
+        "url": "https://www.instagram.com/999999999999999999999999999999/",
+        "display": "@999999999999999999999999999999"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "a.",
+        "ok": true,
+        "url": "https://www.instagram.com/a./",
+        "display": "@a."
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "instagram.com/john",
+        "ok": true,
+        "url": "https://www.instagram.com/john/",
+        "display": "@john"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "www.instagram.com/john",
+        "ok": true,
+        "url": "https://www.instagram.com/john/",
+        "display": "@john"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "m.instagram.com/john/",
+        "ok": true,
+        "url": "https://www.instagram.com/john/",
+        "display": "@john"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com/john",
+        "ok": true,
+        "url": "https://www.instagram.com/john/",
+        "display": "@john"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "http://instagram.com/john",
+        "ok": true,
+        "url": "https://www.instagram.com/john/",
+        "display": "@john"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/john/?igsh=abc&utm_source=x",
+        "ok": true,
+        "url": "https://www.instagram.com/john/",
+        "display": "@john"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/john#top",
+        "ok": true,
+        "url": "https://www.instagram.com/john/",
+        "display": "@john"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "HTTPS://WWW.INSTAGRAM.COM/John",
+        "ok": true,
+        "url": "https://www.instagram.com/John/",
+        "display": "@John"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagr.am/john",
+        "ok": true,
+        "url": "https://www.instagram.com/john/",
+        "display": "@john"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com/",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com/p/ABCDEFG/",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com/reel/ABCDEFG/",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com/explore/",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com/accounts/login",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com.evil.com/john",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://evil.com/instagram.com/john",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://notinstagram.com/john",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com:8443/john",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://user:pw@instagram.com/john",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "javascript:alert(1)",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "data:text/html,x",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "file:///etc/passwd",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "ftp://instagram.com/john",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "//instagram.com/john",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com/john%00",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/john.doe_99/",
+        "ok": true,
+        "url": "https://www.instagram.com/john.doe_99/",
+        "display": "@john.doe_99"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "  @spaced  ",
+        "ok": true,
+        "url": "https://www.instagram.com/spaced/",
+        "display": "@spaced"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "   ",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "john​doe",
+        "ok": true,
+        "url": "https://www.instagram.com/johndoe/",
+        "display": "@johndoe"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://www.instagram.com/p/C1a2B3c4D5e/",
+        "ok": true,
+        "url": "https://www.instagram.com/p/C1a2B3c4D5e/",
+        "display": "p/C1a2B3c4D5e"
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://www.instagram.com/reel/C1a2B3c4D5e/",
+        "ok": true,
+        "url": "https://www.instagram.com/reel/C1a2B3c4D5e/",
+        "display": "reel/C1a2B3c4D5e"
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://www.instagram.com/reels/C1a2B3c4D5e/",
+        "ok": true,
+        "url": "https://www.instagram.com/reel/C1a2B3c4D5e/",
+        "display": "reel/C1a2B3c4D5e"
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://www.instagram.com/tv/C1a2B3c4D5e/",
+        "ok": true,
+        "url": "https://www.instagram.com/tv/C1a2B3c4D5e/",
+        "display": "tv/C1a2B3c4D5e"
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://instagram.com/john/p/Cabc123_-x/?utm=1",
+        "ok": true,
+        "url": "https://www.instagram.com/p/Cabc123_-x/",
+        "display": "p/Cabc123_-x"
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://instagram.com/john/reel/Cabc123_-x",
+        "ok": true,
+        "url": "https://www.instagram.com/reel/Cabc123_-x/",
+        "display": "reel/Cabc123_-x"
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "instagram.com/p/ABCDE",
+        "ok": true,
+        "url": "https://www.instagram.com/p/ABCDE/",
+        "display": "p/ABCDE"
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://instagram.com/p/ABCD/",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://instagram.com/p/",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://instagram.com/john",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "@john",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "john",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://instagram.com/stories/john/123",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://evil.com/p/ABCDEFG",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://instagram.com/p/AB CDEFG/",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://instagram.com/p/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "post",
+        "input": "https://instagr.am/p/ABCDEFGH",
+        "ok": true,
+        "url": "https://www.instagram.com/p/ABCDEFGH/",
+        "display": "p/ABCDEFGH"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "@mrbeast",
+        "ok": true,
+        "url": "https://www.youtube.com/@mrbeast",
+        "display": "@mrbeast"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "mrbeast",
+        "ok": true,
+        "url": "https://www.youtube.com/@mrbeast",
+        "display": "@mrbeast"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "@ab",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "ab",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "@a.b-c_d",
+        "ok": true,
+        "url": "https://www.youtube.com/@a.b-c_d",
+        "display": "@a.b-c_d"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "@bad name",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com/@mrbeast",
+        "ok": true,
+        "url": "https://www.youtube.com/@mrbeast",
+        "display": "@mrbeast"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/@mrbeast/videos",
+        "ok": true,
+        "url": "https://www.youtube.com/@mrbeast",
+        "display": "@mrbeast"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://m.youtube.com/@mrbeast",
+        "ok": true,
+        "url": "https://www.youtube.com/@mrbeast",
+        "display": "@mrbeast"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "youtube.com/@mrbeast",
+        "ok": true,
+        "url": "https://www.youtube.com/@mrbeast",
+        "display": "@mrbeast"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA",
+        "ok": true,
+        "url": "https://www.youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA",
+        "display": "channel/UCX6OQ3DkcsbYNE6H8uQQuVA"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com/channel/UCshort",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com/c/GoogleDevelopers",
+        "ok": true,
+        "url": "https://www.youtube.com/c/GoogleDevelopers",
+        "display": "c/GoogleDevelopers"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com/user/google",
+        "ok": true,
+        "url": "https://www.youtube.com/user/google",
+        "display": "user/google"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com/mrbeast",
+        "ok": true,
+        "url": "https://www.youtube.com/mrbeast",
+        "display": "mrbeast"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com/watch?v=dQw4w9WgXcQ",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtu.be/dQw4w9WgXcQ",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com/shorts/dQw4w9WgXcQ",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com/playlist?list=PL123",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com/",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com.evil.com/@mrbeast",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com:444/@mrbeast",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "http://youtube.com/@mrbeast",
+        "ok": true,
+        "url": "https://www.youtube.com/@mrbeast",
+        "display": "@mrbeast"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://music.youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA",
+        "ok": true,
+        "url": "https://www.youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA",
+        "display": "channel/UCX6OQ3DkcsbYNE6H8uQQuVA"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1&t=30s",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://youtube.com/watch?feature=share&v=dQw4w9WgXcQ",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://m.youtube.com/watch?v=dQw4w9WgXcQ",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://music.youtube.com/watch?v=dQw4w9WgXcQ",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "youtube.com/watch?v=dQw4w9WgXcQ",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://youtu.be/dQw4w9WgXcQ",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://youtu.be/dQw4w9WgXcQ?si=abc&t=5",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+        "ok": true,
+        "url": "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+        "display": "shorts/dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/live/dQw4w9WgXcQ",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/v/dQw4w9WgXcQ",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/watch?v=short",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQtoolong",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/watch",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/@mrbeast",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "@mrbeast",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "dQw4w9WgXcQ",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://evil.com/watch?v=dQw4w9WgXcQ",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://youtube.com.evil.com/watch?v=dQw4w9WgXcQ",
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "http://youtube.com/watch?v=dQw4w9WgXcQ",
+        "ok": true,
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "display": "video dQw4w9WgXcQ"
+    },
+    {
+        "platform": "youtube",
+        "kind": "video",
+        "input": "https://www.youtube.com/watch?v[]=dQw4w9WgXcQ",
+        "ok": false
+    }
+]

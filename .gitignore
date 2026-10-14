@@ -1,0 +1,25 @@
+# secrets / local config
+.env
+.env.*
+!.env.example
+
+# runtime data
+storage/logs/*
+storage/cache/*
+storage/*.lock
+storage/install-token.txt
+!storage/logs/.gitkeep
+!storage/cache/.gitkeep
+public/uploads/*
+!public/uploads/.gitkeep
+!public/uploads/.htaccess
+
+# dev tooling
+node_modules/
+tools/qa/output/
+tools/**/state.json
+*.log
+.DS_Store
+.idea/
+.vscode/
+/vendor/
