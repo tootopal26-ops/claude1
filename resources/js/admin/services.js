@@ -36,9 +36,9 @@ function row(s) {
   const img = s.icon_url || meta.platforms.find((p) => p.id === s.platform_id)?.logo_url || '';
   return html`<tr data-id="${s.id}" class="${s.status === 'inactive' ? 'opacity-60' : ''}">
     <td data-label="Service" class="span2"><span class="cell-svc">${img ? html`<img src="${img}" alt="" width="30" height="30" loading="lazy">` : ''}<span class="cell-main"><b>${s.title}${s.badge ? html` <span class="badge badge-${s.badge_color || 'red'} align-middle">${s.badge}</span>` : ''}${s.is_premium ? html` <span class="chip chip-purple align-middle">premium</span>` : ''}</b><small class="mono" title="${s.type_label}">${s.code}</small></span></span></td>
-    <td data-label="Price" class="num"><b>${inr(s.price_paise)}</b><br><small class="text-muted">${num(s.quantity)} ${s.quantity === 1 ? 'unit' : 'units'}</small></td>
-    <td data-label="Mode">${modeChip(s.mode)}${s.mode === 'AUTO' && !s.provider_name ? html`<br><small class="text-bad-700">no provider</small>` : ''}</td>
-    <td data-label="Provider cost" class="num">${s.mode === 'AUTO' ? html`<b>${inr(s.smm_cost_paise)}</b><br><small class="text-muted">${s.provider_name || ''}</small>` : html`<span class="amt-mute">—</span>`}</td>
+    <td data-label="Price" class="num"><span class="cell-main"><b>${inr(s.price_paise)}</b><small>${num(s.quantity)} ${s.quantity === 1 ? 'unit' : 'units'}</small></span></td>
+    <td data-label="Mode"><span class="stackcell">${modeChip(s.mode)}${s.mode === 'AUTO' && !s.provider_name ? html`<small class="text-bad-700">no provider</small>` : ''}</span></td>
+    <td data-label="Provider cost" class="num">${s.mode === 'AUTO' ? html`<span class="cell-main"><b>${inr(s.smm_cost_paise)}</b><small>${s.provider_name || ''}</small></span>` : html`<span class="amt-mute">—</span>`}</td>
     <td data-label="Profit / order" class="num">${marginCell(s)}</td>
     <td data-label="Paid orders" class="num">${num(s.paid_orders)}</td>
     <td data-label="Active"><label class="switch" title="${s.status === 'active' ? 'Visible on the store' : 'Hidden from the store'}"><input type="checkbox" data-toggle="${s.id}" ${s.status === 'active' ? 'checked' : ''} aria-label="${s.title} active on the store"><span></span></label></td>

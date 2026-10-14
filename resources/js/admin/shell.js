@@ -1,4 +1,4 @@
-import { $, $$, html, icon, on, url } from '../core/dom.js';
+import { $, $$, html, icon, on, url, store } from '../core/dom.js';
 import { openDialog } from '../core/dialog.js';
 import { confirmDialog } from '../core/dialog.js';
 import { fail } from '../core/toast.js';
@@ -19,29 +19,27 @@ function paintBadges(s) {
   });
 }
 
+const DISMISS_KEY = 'smb.admin.dismissed.v1';
+const DISMISS_MS = 12 * 3600 * 1000;
+const isDismissed = (id) => { const m = store.get(DISMISS_KEY, {}) || {}; return !!m[id] && Date.now() - m[id] < DISMISS_MS; };
+const dismiss = (id) => { const m = store.get(DISMISS_KEY, {}) || {}; m[id] = Date.now(); store.set(DISMISS_KEY, m); };
+
+/** One notice. Errors (payments cannot work) stay; everything else can be dismissed for 12 hours. */
+function banner(id, tone, ico, body, action, canDismiss = true) {
+  return html`<div class="callout callout-${tone}" role="status" data-banner="${id}">${icon(ico)}<div class="min-w-0 flex-1">${body}</div>
+    <span class="callout-actions">${action}${canDismiss ? html`<button type="button" class="btn btn-ghost btn-icon btn-sm" data-dismiss="${id}" aria-label="Dismiss this notice">${icon('x', 'icon-sm')}</button>` : ''}</span></div>`;
+}
+
 function bannerHtml(s) {
   const out = [];
-  if (s.maintenance) {
-    out.push(html`<div class="callout callout-warning" role="status">${icon('triangle-alert')}<div><strong>Maintenance mode is ON.</strong> Customers see a maintenance page instead of the store.</div>
-      <span class="callout-actions"><a class="btn btn-sm" href="${url('/admin/website')}">Turn off</a></span></div>`);
-  }
+  const link = (href, text) => html`<a class="btn btn-sm" href="${url(href)}">${text}</a>`;
+  if (s.maintenance) out.push(banner('maintenance', 'warning', 'triangle-alert', html`<strong>Maintenance mode is ON.</strong> Customers see a maintenance page instead of the store.`, link('/admin/website', 'Turn off'), false));
   const gw = s.setup.find((i) => i.key === 'gateway');
-  if (gw && !gw.ok) {
-    out.push(html`<div class="callout callout-error" role="status">${icon('circle-alert')}<div><strong>Payments are not set up.</strong> Customers cannot pay until a payment gateway is active.</div>
-      <span class="callout-actions"><a class="btn btn-sm" href="${url('/admin/gateway')}">Set up gateway</a></span></div>`);
-  } else if (s.gateway_env === 'test') {
-    out.push(html`<div class="callout callout-info" role="status">${icon('info')}<div><strong>Payment gateway is in test mode.</strong> Switch it to production before you take real orders.</div>
-      <span class="callout-actions"><a class="btn btn-sm" href="${url('/admin/gateway')}">Review</a></span></div>`);
-  }
-  if (s.auto_services > 0 && !s.smm_ok) {
-    out.push(html`<div class="callout callout-warning" role="status">${icon('triangle-alert')}<div><strong>${s.auto_services} AUTO service${s.auto_services === 1 ? '' : 's'} need an SMM provider.</strong> Paid orders cannot be sent to a provider until one is connected.</div>
-      <span class="callout-actions"><a class="btn btn-sm" href="${url('/admin/smm')}">Connect provider</a></span></div>`);
-  }
-  if (!s.cron.ok) {
-    out.push(html`<div class="callout callout-warning" role="status">${icon('clock')}<div><strong>Background tasks are not running.</strong> Pending payments will not expire, provider orders will not sync and reports will lag until the cron job runs.</div>
-      <span class="callout-actions"><a class="btn btn-sm" href="${url('/admin/system')}">How to fix</a></span></div>`);
-  }
-  return out.map(String).join('');
+  if (gw && !gw.ok) out.push(banner('gateway-missing', 'error', 'circle-alert', html`<strong>Payments are not set up.</strong> Customers cannot pay until a payment gateway is active.`, link('/admin/gateway', 'Set up gateway'), false));
+  else if (s.gateway_env === 'test') out.push(banner('gateway-test', 'info', 'info', html`<strong>Payment gateway is in test mode.</strong> Switch it to production before you take real orders.`, link('/admin/gateway', 'Review')));
+  if (s.auto_services > 0 && !s.smm_ok) out.push(banner('smm-missing', 'warning', 'triangle-alert', html`<strong>${s.auto_services} AUTO service${s.auto_services === 1 ? '' : 's'} need an SMM provider.</strong> Paid orders cannot be sent to a provider until one is connected.`, link('/admin/smm', 'Connect provider')));
+  if (!s.cron.ok) out.push(banner('cron', 'warning', 'clock', html`<strong>Background tasks are not running.</strong> Pending payments will not expire, provider orders will not sync and reports will lag until the cron job runs.`, link('/admin/system', 'How to fix')));
+  return out.filter((h) => { const id = /data-banner="([^"]+)"/.exec(String(h))?.[1]; return !id || !isDismissed(id); }).map(String).join('');
 }
 
 async function refreshStatus() {
@@ -57,6 +55,8 @@ async function refreshStatus() {
 export const reloadStatus = refreshStatus;
 
 export function initShell() {
+  // dismiss a notice (remembered for 12 hours in this browser)
+  on(document, 'click', '[data-dismiss]', (e, b) => { dismiss(b.dataset.dismiss); b.closest('[data-banner]')?.remove(); });
   // mobile navigation drawer
   on(document, 'click', '[data-action="open-nav"]', (e, btn) => openDialog($('#nav-dialog'), btn));
 

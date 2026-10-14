@@ -50,7 +50,7 @@ function rowHtml(o) {
   return html`<tr data-open="${o.id}" tabindex="0" role="button" aria-label="Open order ${o.public_id}">
     <td data-label="Order"><span class="cell-main"><b class="mono">${o.public_id}</b><small>${fmtDateTime(o.created_at)}</small></span></td>
     <td data-label="Service" class="span2"><span class="cell-svc">${platformIcon(o.platform) ? html`<img src="${platformIcon(o.platform)}" alt="" width="30" height="30" loading="lazy">` : ''}<span class="cell-main"><b>${o.service}</b><small title="${o.target}">${o.target}</small></span></span></td>
-    <td data-label="Amount" class="num"><b>${inr(o.amount_paise)}</b>${o.refunded_paise ? html`<br><small class="amt-neg">−${inr(o.refunded_paise)} refunded</small>` : ''}</td>
+    <td data-label="Amount" class="num"><span class="cell-main"><b>${inr(o.amount_paise)}</b>${o.refunded_paise ? html`<small class="amt-neg">−${inr(o.refunded_paise)} refunded</small>` : ''}</span></td>
     <td data-label="Payment · mode"><span class="stackcell">${payChip(o.payment_status)}${modeChip(o.mode)}</span></td>
     <td data-label="Profit" class="num">${profitCell(o)}</td>
     <td data-label="Status"><span class="stackcell">${orderChip(o.status, o.status_label)}${o.late ? html`<span class="chip chip-warn" title="Payment arrived after the 5-minute session ended">late payment</span>` : ''}</span>${o.last_error && o.status === 'FAILED' ? html`<small class="block mt-1 text-bad-700 truncate max-w-[14rem]" title="${o.last_error}">${o.last_error}</small>` : ''}</td>
@@ -58,17 +58,22 @@ function rowHtml(o) {
   </tr>`;
 }
 
+function syncApprove(n) {
+  const ab = $('#approve-all');
+  ab.disabled = n === 0;
+  ab.title = n === 0 ? 'No paid manual orders are waiting for approval' : `${n} paid manual order${n === 1 ? '' : 's'} waiting`;
+}
+
 function renderList(d) {
   listData = d;
   const chips = $('#order-chips');
   chips.innerHTML = CHIPS.map(([k, label]) => `<button type="button" class="fchip" data-filter="${k}" aria-pressed="${state.filter === k}">${esc(label)} <b>${num(d.chips[k] ?? 0)}</b></button>`).join('');
 
+  syncApprove(d.approvable);
   const ab = $('#approve-all');
-  ab.disabled = d.approvable === 0;
   const badge = $('#approve-all-count');
   badge.hidden = d.approvable === 0;
   badge.textContent = String(d.approvable);
-  ab.title = d.approvable === 0 ? 'No paid manual orders are waiting for approval' : `${d.approvable} paid manual order${d.approvable === 1 ? '' : 's'} waiting`;
 
   $('#o-reset').hidden = !hasFilters();
   if (!d.rows.length) {
@@ -303,9 +308,10 @@ async function approveAll(btn) {
       reloadStatus();
     } catch (e) {
       fail('Approve All failed', e.message);
-      load({ silent: true });
+      await load({ silent: true });
     }
   });
+  if (listData) syncApprove(listData.approvable);   // withBusy re-enables the button; the fresh count decides
 }
 
 export default async function init() {

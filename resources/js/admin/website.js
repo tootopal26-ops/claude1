@@ -214,7 +214,7 @@ export default async function init() {
           const map = { p_name: err.fields.name, p_tagline: err.fields.tagline, p_active: err.fields.is_active };
           showFieldErrors(card, Object.fromEntries(Object.entries(map).filter(([, v]) => v)));
         }
-        fail('Could not save platform', err.message);
+        fail('Could not save platform', Object.values(err.fields || {})[0] || err.message);
       }
     });
   });

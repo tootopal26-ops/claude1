@@ -1,4 +1,4 @@
-import{b as v}from"./chunk-K6YWPFPE.js";import{f as i,j as h,q as y,r as g,v as $}from"./chunk-O6CLEF34.js";import{b as d,c as b}from"./chunk-3M4BCHGM.js";import"./chunk-F5XV67FX.js";import{b as u,c as m}from"./chunk-LLJUBRQ3.js";import"./chunk-F47YFC3V.js";import{a as p,e as r,h as l,m as n}from"./chunk-3IHOMMDJ.js";var k=null,c=()=>p("#system-root"),o=(e,t,a="")=>r`<div class="health-item ${e?"ok":"bad"}">${n(e?"circle-check":"circle-alert")}<span><b>${t}</b>${a?r`<br><small class="text-muted">${a}</small>`:""}</span></div>`;function f(e){k=e;let t=e.cron.age_seconds,a=t!==null&&t<=900;c().innerHTML=String(r`
+import{b as v}from"./chunk-HYLNTU7X.js";import{f as i,j as h,q as y,r as g,v as $}from"./chunk-ZZ2LXP5P.js";import{b as d,c as b}from"./chunk-QZ2EVAVG.js";import"./chunk-F5XV67FX.js";import{b as u,c as m}from"./chunk-ZPOCOIRG.js";import"./chunk-F47YFC3V.js";import{a as p,e as r,h as l,m as n}from"./chunk-3IHOMMDJ.js";var k=null,c=()=>p("#system-root"),o=(e,t,a="")=>r`<div class="health-item ${e?"ok":"bad"}">${n(e?"circle-check":"circle-alert")}<span><b>${t}</b>${a?r`<br><small class="text-muted">${a}</small>`:""}</span></div>`;function f(e){k=e;let t=e.cron.age_seconds,a=t!==null&&t<=900;c().innerHTML=String(r`
   <div class="stack-lg">
     <section class="card" aria-labelledby="h-env"><div class="card-head"><h2 class="card-title" id="h-env">${n("server")}Server</h2></div>
       <div class="health">
@@ -22,7 +22,7 @@ import{b as v}from"./chunk-K6YWPFPE.js";import{f as i,j as h,q as y,r as g,v as 
       <div class="form-actions"><button type="button" class="btn" id="run-cron">${n("refresh-cw","icon-sm")}<span>Run background tasks now</span></button></div></section>
 
     <section class="card" aria-labelledby="h-q"><div class="card-head"><h2 class="card-title" id="h-q">${n("activity")}Queues</h2></div>
-      <div class="stat-grid">
+      <div class="stat-grid-4">
         <div class="stat"><small>Open payment sessions</small><strong>${i(e.queue.payments_open)}</strong><span>waiting for the customer</span></div>
         <div class="stat"><small>AUTO orders to submit</small><strong>${i(e.queue.orders_submit_due)}</strong><span>paid, not yet at the provider</span></div>
         <div class="stat"><small>Orders at the provider</small><strong>${i(e.queue.orders_in_flight)}</strong><span>being status-checked</span></div>

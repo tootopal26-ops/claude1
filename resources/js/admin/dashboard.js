@@ -149,7 +149,7 @@ function visitorsCard(d) {
     <div class="stat-grid">
       <div class="stat"><small>Visitors today</small><strong>${num(v.today.visitors)}</strong><span>${num(v.today.qualified)} qualified</span></div>
       <div class="stat"><small>Lifetime visitors</small><strong>${num(v.lifetime_visitors)}</strong><span>unique browsers</span></div>
-      <div class="stat"><small>Cost per click</small><strong>${inr(m.cpc_paise, true)}</strong><span><a class="underline" href="${url('/admin/advertising')}">change</a></span></div>
+      <div class="stat"><small>Cost per click</small><strong>${inr(m.cpc_paise, true)}</strong><span><a class="inline-link" href="${url('/admin/advertising')}">change</a></span></div>
       <div class="stat"><small>Ads spend (range)</small><strong>${inr(t.ads_spend_paise)}</strong><span>${num(t.qualified_visitors)} × CPC</span></div>
       <div class="stat"><small>Visitor → order</small><strong>${pct(d.totals.conv_order_tenths)}</strong><span>${num(t.order_visitors)} of ${num(t.visitors)}</span></div>
       <div class="stat"><small>Visitor → paid</small><strong>${pct(d.totals.conv_paid_tenths)}</strong><span>${num(t.paid_visitors)} of ${num(t.visitors)}</span></div>

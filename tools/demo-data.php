@@ -24,7 +24,7 @@ use App\Services\Orders;
 use App\Support\Clock;
 use App\Support\Tz;
 
-$days = max(7, min(400, (int) ($argv[1] ?? 75)));
+$days = max(7, min(400, is_numeric($argv[1] ?? null) ? (int) $argv[1] : 75));
 mt_srand(20261014);
 $pick = static function (array $weights): string {
     $total = array_sum($weights);

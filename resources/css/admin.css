@@ -91,12 +91,17 @@
   .callout-info { background: var(--color-info-50); border-color: #dbeafe; color: #1e40af; }
   .callout strong { font-weight: 700; }
   .callout a { text-decoration: underline; font-weight: 600; }
-  .callout-actions { margin-left: auto; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .callout-actions { margin-left: auto; display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; }
+  @media (max-width: 639px) {
+    .adm-banners .callout { flex-wrap: wrap; font-size: 0.8125rem; padding: 0.65rem 0.8rem; }
+    .adm-banners .callout > .callout-actions { width: 100%; margin-left: 1.7rem; }
+  }
 
   /* ───────────── toolbar & filter chips ───────────── */
   .toolbar { padding: 0.9rem; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.75rem; background: rgb(255 255 255 / 0.82); }
   .toolbar-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
   .toolbar-row .select-sm, .toolbar-row .input-sm[type="date"] { width: auto; min-width: 8.5rem; flex: 0 1 auto; }
+  @media (max-width: 639px) { .toolbar-row .select-sm, .toolbar-row .input-sm[type="date"] { flex: 1 1 9rem; } }
   .search { position: relative; flex: 1 1 16rem; min-width: 12rem; }
   .search .icon { position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); color: var(--color-muted); pointer-events: none; }
   .search .input { padding-left: 2.4rem; }
@@ -122,6 +127,7 @@
   @media (max-width: 639px) { .dash-selects { margin-left: 0; width: 100%; } .dash-selects .select-sm { flex: 1 1 8rem; } }
 
   /* ───────────── KPI cards ───────────── */
+  .inline-link { display: inline-block; padding: 0.35rem 0; text-decoration: underline; font-weight: 600; }
   .sec-title { display: flex; align-items: center; gap: 0.6rem; margin: 1.5rem 0 0.75rem; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-ink-soft); }
   .sec-title:first-child { margin-top: 0; }
   .sec-title::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--color-line-strong), transparent); }
@@ -270,7 +276,7 @@
     .tbl-resp, .tbl-resp tbody { display: block; }
     .tbl-resp tr { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 0.75rem; padding: 0.85rem 0.9rem; border-bottom: 1px solid var(--color-line); }
     .tbl-resp tbody tr:last-child { border-bottom: 0; }
-    .tbl-resp td { display: flex; flex-direction: column; gap: 0.15rem; padding: 0; border: 0; min-width: 0; text-align: left !important; }
+    .tbl-resp td { display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; padding: 0; border: 0; min-width: 0; text-align: left !important; }
     .tbl-resp td[data-label]::before { content: attr(data-label); font-size: 0.625rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--color-muted); }
     .tbl-resp td.span2 { grid-column: 1 / -1; }
     .tbl-resp td.row-actions-cell { grid-column: 1 / -1; }
@@ -334,7 +340,7 @@
   .input-affix .input { padding-left: 1.9rem; }
   .input-affix .affix-r { position: absolute; right: 0.85rem; top: 50%; transform: translateY(-50%); font-weight: 600; font-size: 0.8125rem; color: var(--color-muted); pointer-events: none; }
   .pw-input { padding-right: 3rem !important; }
-  .pw-toggle { position: absolute; right: 0.35rem; top: 50%; transform: translateY(-50%); width: 2.4rem; height: 2.4rem; display: grid; place-items: center; border-radius: var(--radius-sm); color: var(--color-muted); transition: background-color 0.15s, color 0.15s; }
+  .pw-toggle { position: absolute; right: 0.15rem; top: 50%; transform: translateY(-50%); width: 2.75rem; height: 2.75rem; display: grid; place-items: center; border-radius: var(--radius-sm); color: var(--color-muted); transition: background-color 0.15s, color 0.15s; }
   .pw-toggle:hover { background: rgb(15 16 32 / 0.06); color: var(--color-ink); }
   .secret-set { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; padding: 0.6rem 0.8rem; border-radius: var(--radius-md); background: var(--color-ok-50); border: 1px solid var(--color-ok-100); font-size: 0.875rem; color: var(--color-ok-800); }
   .secret-set code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8125rem; letter-spacing: 0.05em; }

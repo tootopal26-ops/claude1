@@ -25,8 +25,8 @@ function render(d) {
     <tbody>${d.rows.map((p) => html`<tr>
       <td data-label="Order"><span class="cell-main"><b class="mono">${p.order}</b><small class="mono" title="Gateway order id">${p.gateway_order_id}</small></span></td>
       <td data-label="Service">${p.service}</td>
-      <td data-label="Amount" class="num"><b>${inr(p.amount_paise)}</b>${p.refunded_paise ? html`<br><small class="amt-neg">−${inr(p.refunded_paise)}</small>` : ''}</td>
-      <td data-label="Status">${payChip(p.status)}${p.late ? html` <span class="chip chip-warn" title="Confirmed after the 5-minute session ended">late</span>` : ''}${p.reason ? html`<br><small class="text-bad-700" title="${p.reason}">${p.reason}</small>` : ''}</td>
+      <td data-label="Amount" class="num"><span class="cell-main"><b>${inr(p.amount_paise)}</b>${p.refunded_paise ? html`<small class="amt-neg">−${inr(p.refunded_paise)}</small>` : ''}</span></td>
+      <td data-label="Status"><span class="stackcell">${payChip(p.status)}${p.late ? html`<span class="chip chip-warn" title="Confirmed after the 5-minute session ended">late</span>` : ''}</span>${p.reason ? html`<small class="block mt-1 text-bad-700 truncate max-w-[14rem]" title="${p.reason}">${p.reason}</small>` : ''}</td>
       <td data-label="UTR" class="mono">${p.utr || '—'}</td>
       <td data-label="Verified via">${p.via || '—'}</td>
       <td data-label="Time"><span class="cell-main"><b>${fmtDateTime(p.paid_at || p.created_at)}</b><small>${p.paid_at ? 'paid' : 'created'}</small></span></td>

@@ -1,7 +1,7 @@
 import { $, html, icon, on, url } from '../core/dom.js';
 import { fmtDateTime, timeAgo } from '../core/format.js';
 import { get, put, post } from './net.js';
-import { ok, fail, errorState, showFieldErrors, clearFieldErrors, autoClearErrors, withBusy, copyText } from './ui.js';
+import { ok, fail, warn, errorState, showFieldErrors, clearFieldErrors, autoClearErrors, withBusy, copyText } from './ui.js';
 import { secretField, wireSecrets } from './secret.js';
 import { reloadStatus } from './shell.js';
 
@@ -9,8 +9,9 @@ let g = null;
 const root = () => $('#gateway-root');
 
 function resultBox(r) {
-  const tone = r.level === 'ok' ? 'success' : r.level === 'warn' ? 'warning' : 'error';
-  const ico = r.level === 'ok' ? 'circle-check' : r.level === 'warn' ? 'triangle-alert' : 'circle-alert';
+  const warn = r.level === 'warning' || r.level === 'warn';
+  const tone = r.level === 'ok' ? 'success' : warn ? 'warning' : 'error';
+  const ico = r.level === 'ok' ? 'circle-check' : warn ? 'triangle-alert' : 'circle-alert';
   return html`<div class="callout callout-${tone}" role="status">${icon(ico)}<div>${r.message}${r.duration_ms ? html`<br><small>${r.duration_ms} ms</small>` : ''}</div></div>`;
 }
 
@@ -105,7 +106,7 @@ export default async function init() {
         const res = await post(`gateway/${g.id}/test`);
         render(res.gateway, res.result);
         reloadStatus();
-        (res.result.ok ? ok : fail)(res.result.ok ? 'Connection test passed' : 'Connection test failed', res.result.message);
+        (res.result.ok ? (res.result.level === 'ok' ? ok : warn) : fail)(res.result.ok ? (res.result.level === 'ok' ? 'Connection test passed' : 'Gateway reachable') : 'Connection test failed', res.result.message);
       } catch (err) {
         if (err.fields) { showFieldErrors(r, err.fields); fail('Please check the highlighted fields', err.message); } else fail('Test failed', err.message);
       }
