@@ -123,6 +123,7 @@ final class AdminAccount
             'auto_services' => $autoServices,
             'smm_ok' => $provider !== null,
             'must_change_password' => $mustChange,
+            'pending_migrations' => count(\App\Support\Migrator::pending()),
             'ready' => $gwOk,
             'cron' => ['last_run_at' => $cronLast > 0 ? gmdate('c', $cronLast) : null, 'ok' => $cronOk],
             'maintenance' => (bool) Settings::get('site.maintenance', false),

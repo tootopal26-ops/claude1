@@ -12,9 +12,11 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Services\AdminAccount;
 use App\Services\AdminAuth;
+use App\Services\Audit;
 use App\Services\Cron;
 use App\Services\Settings;
 use App\Support\Clock;
+use App\Support\Migrator;
 use App\Support\Tz;
 
 /** Password, sessions, audit trail and system health. */
@@ -93,11 +95,39 @@ final class AccountController extends BaseController
             'timezone' => Tz::name(), 'extensions' => $exts, 'paths' => $paths,
             'cron' => [
                 'last_run_at' => $cronLast > 0 ? gmdate('c', $cronLast) : null, 'age_seconds' => $cronLast > 0 ? Clock::now() - $cronLast : null,
-                'http_enabled' => (string) Env::get('CRON_KEY', '') !== '', 'command' => 'php ' . SMB_ROOT . '/bin/cron.php',
+                'http_enabled' => (string) Env::get('CRON_KEY', '') !== '',
+                // cPanel maps /usr/local/bin/php to the PHP version selected for the account; a bare `php` in cron may be an older system PHP
+                'command' => (@is_file('/usr/local/bin/php') ? '/usr/local/bin/php' : 'php') . ' ' . SMB_ROOT . '/bin/cron.php',
                 'url' => (string) Env::get('CRON_KEY', '') !== '' ? absolute_url('/cron/run') . '?key=YOUR_CRON_KEY' : null,
             ],
             'queue' => $queue,
+            'migrations' => ['pending' => Migrator::pending(), 'applied' => (int) Db::val('SELECT COUNT(*) FROM schema_migrations')],
         ]]);
+    }
+
+    /**
+     * POST /admin/api/system/migrate — apply pending database updates (after uploading a newer release; same as `php bin/migrate.php`).
+     * Idempotent and serialised: a second click, or a cron/CLI run at the same moment, applies nothing twice.
+     */
+    public function migrate(Request $req, array $p): Response
+    {
+        $admin = $this->admin($req);
+        RateLimiter::enforce('admin-migrate', (string) $admin['id'], 6, 300, 'Database updates were started a moment ago. Please wait a little.');
+        if (!Db::tryLock('migrate', 5)) {
+            throw new HttpException(409, 'Another database update is running. Please try again in a moment.', 'in_progress');
+        }
+        try {
+            $applied = Migrator::run();
+        } finally {
+            Db::unlock('migrate');
+        }
+        if ($applied) {
+            Audit::log('system.migrated', 'system', null, ['applied' => $applied], $req, $admin);
+        }
+        return $this->ok([
+            'applied' => $applied, 'pending' => Migrator::pending(),
+            'message' => $applied ? 'Database updated: ' . implode(', ', $applied) . '.' : 'The database is already up to date.',
+        ]);
     }
 
     /** POST /admin/api/system/cron — run the background tasks right now. */

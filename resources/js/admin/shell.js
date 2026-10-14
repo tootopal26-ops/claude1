@@ -34,6 +34,7 @@ function bannerHtml(s) {
   const out = [];
   const link = (href, text) => html`<a class="btn btn-sm" href="${url(href)}">${text}</a>`;
   if (s.maintenance) out.push(banner('maintenance', 'warning', 'triangle-alert', html`<strong>Maintenance mode is ON.</strong> Customers see a maintenance page instead of the store.`, link('/admin/website', 'Turn off'), false));
+  if (s.pending_migrations > 0) out.push(banner('migrations', 'warning', 'database', html`<strong>A database update is waiting.</strong> New files were uploaded that need ${s.pending_migrations === 1 ? 'one database change' : s.pending_migrations + ' database changes'}; parts of the site may misbehave until it is applied.`, link('/admin/system', 'Apply update'), false));
   const gw = s.setup.find((i) => i.key === 'gateway');
   if (gw && !gw.ok) out.push(banner('gateway-missing', 'error', 'circle-alert', html`<strong>Payments are not set up.</strong> Customers cannot pay until a payment gateway is active.`, link('/admin/gateway', 'Set up gateway'), false));
   else if (s.gateway_env === 'test') out.push(banner('gateway-test', 'info', 'info', html`<strong>Payment gateway is in test mode.</strong> Switch it to production before you take real orders.`, link('/admin/gateway', 'Review')));

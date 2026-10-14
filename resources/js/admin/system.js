@@ -36,6 +36,13 @@ function render(s) {
       ${s.cron.http_enabled ? html`<div class="field"><span class="label">Or ping this URL every minute (cron-job.org, UptimeRobot…)</span><div class="copy-field"><input class="input" readonly value="${s.cron.url}" aria-label="Cron URL"><button type="button" class="btn" data-copy="${s.cron.url}">${icon('copy', 'icon-sm')}<span>Copy</span></button></div></div>` : html`<p class="field-hint">No HTTP cron key is set. Add <span class="kbd">CRON_KEY=some-long-random-text</span> to <span class="kbd">.env</span> to enable the URL variant.</p>`}
       <div class="form-actions"><button type="button" class="btn" id="run-cron">${icon('refresh-cw', 'icon-sm')}<span>Run background tasks now</span></button></div></section>
 
+    <section class="card" aria-labelledby="h-db"><div class="card-head"><h2 class="card-title" id="h-db">${icon('database')}Database updates</h2>
+      <span class="chip ${s.migrations.pending.length ? 'chip-warn' : 'chip-ok'}">${s.migrations.pending.length ? s.migrations.pending.length + ' pending' : 'Up to date'}</span></div>
+      <p class="text-sm text-ink-soft mb-3">${s.migrations.pending.length
+        ? html`A newer release needs these changes: <span class="mono">${s.migrations.pending.join(', ')}</span>. Take a backup, then apply them.`
+        : html`${s.migrations.applied} update${s.migrations.applied === 1 ? ' has' : 's have'} been applied. After uploading a newer release, come back here (or run <span class="kbd">php bin/migrate.php</span>) if it ships new files in <span class="kbd">database/migrations/</span>.`}</p>
+      <div class="form-actions"><button type="button" class="btn ${s.migrations.pending.length ? 'btn-primary' : ''}" id="run-migrate" ${s.migrations.pending.length ? '' : 'disabled'}>${icon('database', 'icon-sm')}<span>Apply database updates</span></button></div></section>
+
     <section class="card" aria-labelledby="h-q"><div class="card-head"><h2 class="card-title" id="h-q">${icon('activity')}Queues</h2></div>
       <div class="stat-grid-4">
         <div class="stat"><small>Open payment sessions</small><strong>${num(s.queue.payments_open)}</strong><span>waiting for the customer</span></div>
@@ -51,6 +58,11 @@ export default async function init() {
   const r = root();
   on(r, 'click', '[data-copy]', (e, b) => copyText(b.dataset.copy, 'Copied'));
   on(r, 'click', '[data-retry]', () => location.reload());
+  on(r, 'click', '#run-migrate', async (e, b) => {
+    await withBusy(b, async () => {
+      try { const res = await post('system/migrate'); ok(res.message); render((await get('system')).system); reloadStatus(); } catch (err) { fail('Could not apply the update', err.message); }
+    });
+  });
   on(r, 'click', '#run-cron', async (e, b) => {
     await withBusy(b, async () => {
       try { const res = await post('system/cron'); ok(res.message); render((await get('system')).system); reloadStatus(); } catch (err) { fail('Could not run tasks', err.message); }

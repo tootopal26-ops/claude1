@@ -155,3 +155,31 @@ T::test('advertising: CPC edits are validated, versioned (history), and the prev
     T::same(125, Ads::cpcPaise());
     T::same(2, count(Ads::history()));
 });
+
+// ───────────────────────────── database updates (Admin → System) ─────────────────────────────
+T::test('admin system: "Apply database updates" applies a pending migration once, audits it, and is a harmless no-op when repeated', function () {
+    T::freshDb();
+    $ctl = new App\Controllers\Admin\AccountController();
+    $req = Request::fake('POST', '/admin/api/system/migrate');
+    $req->attributes['admin'] = AC_ADMIN;
+    $file = SMB_ROOT . '/database/migrations/999_qa_tmp.sql';
+    file_put_contents($file, "CREATE TABLE IF NOT EXISTS qa_tmp_migration (id INT NOT NULL PRIMARY KEY) ENGINE=InnoDB;\n");
+    try {
+        T::same(['999_qa_tmp'], App\Support\Migrator::pending());
+        T::same(1, App\Services\AdminAccount::status()['pending_migrations'], 'the admin banner flag');
+        $res = $ctl->migrate($req, []);
+        $body = json_decode($res->body, true);
+        T::same(['999_qa_tmp'], $body['applied']);
+        T::same([], $body['pending']);
+        T::same(1, (int) Db::val("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'qa_tmp_migration'"));
+        T::same(1, (int) Db::val("SELECT COUNT(*) FROM audit_logs WHERE action = 'system.migrated'"));
+        $again = json_decode($ctl->migrate($req, [])->body, true);
+        T::same([], $again['applied']);
+        T::same(1, (int) Db::val("SELECT COUNT(*) FROM audit_logs WHERE action = 'system.migrated'"), 'nothing applied → nothing audited');
+        T::same(0, App\Services\AdminAccount::status()['pending_migrations']);
+    } finally {
+        @unlink($file);
+        Db::exec('DROP TABLE IF EXISTS qa_tmp_migration');
+        Db::exec("DELETE FROM schema_migrations WHERE version = '999_qa_tmp'");
+    }
+});

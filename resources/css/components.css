@@ -190,6 +190,7 @@
   dialog.dlg-drawer.is-open .dlg-panel { transform: none; }
   @media (max-width: 639px) { dialog.dlg-drawer .dlg-panel { border-radius: 0; } }
   .dlg-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--color-line); }
+  .dlg-head .btn-icon { min-width: 2.75rem; min-height: 2.75rem; }                       /* 44 px touch target for the close button */
   .dlg-body { padding: 1.25rem; overflow-y: auto; overscroll-behavior: contain; flex: 1 1 auto; }
   .dlg-foot { padding: 1rem 1.25rem; border-top: 1px solid var(--color-line); display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap; background: #fafafd; }
   body.has-dialog { overflow: hidden; }

@@ -78,4 +78,5 @@ return static function (Router $r): void {
     $r->get('/admin/api/audit', [AccountController::class, 'audit'], $api);
     $r->get('/admin/api/system', [AccountController::class, 'system'], $api);
     $r->post('/admin/api/system/cron', [AccountController::class, 'runCron'], $api);
+    $r->post('/admin/api/system/migrate', [AccountController::class, 'migrate'], $api);
 };
