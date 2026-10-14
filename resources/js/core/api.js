@@ -1,13 +1,14 @@
 import { base, uuid } from './dom.js';
 
 export class ApiError extends Error {
-  constructor(message, { status = 0, code = '', fields = null, retryAfter = 0 } = {}) {
+  constructor(message, { status = 0, code = '', fields = null, retryAfter = 0, detail = null } = {}) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.fields = fields;
     this.retryAfter = retryAfter;
+    this.detail = detail;          // the full error object from the server (extra keys, e.g. env text)
   }
 }
 
@@ -55,7 +56,7 @@ export async function api(path, { method = 'GET', body, headers = {}, timeout = 
     const generic = res.status >= 500 ? 'Something went wrong. Please try again.' : 'That did not work. Please try again.';
     throw new ApiError(err.message || generic, {
       status: res.status, code: err.code || '', fields: err.fields || null,
-      retryAfter: Number(err.retry_after || res.headers.get('Retry-After') || 0),
+      retryAfter: Number(err.retry_after || res.headers.get('Retry-After') || 0), detail: err,
     });
   }
   return data ?? {};

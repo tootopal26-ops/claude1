@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-use App\Controllers\{CheckoutController, CronController, OrderController, PayController, SiteController, TrackController, WebhookController};
+use App\Controllers\{CheckoutController, CronController, InstallController, OrderController, PayController, SiteController, TrackController, WebhookController};
 use App\Core\Middleware;
 use App\Core\Router;
 
@@ -39,6 +39,12 @@ return static function (Router $r): void {
     $r->post('/api/track/hit', [TrackController::class, 'hit'], $beacon);
     $r->post('/api/track/qualify', [TrackController::class, 'qualify'], $beacon);
     $r->post('/api/track/ping', [TrackController::class, 'ping'], $beacon);
+
+    // ── web installer (404 once installed) ──
+    $r->get('/install', [InstallController::class, 'show']);
+    $r->post('/install/unlock', [InstallController::class, 'unlock']);
+    $r->post('/install/test-db', [InstallController::class, 'testDb']);
+    $r->post('/install/run', [InstallController::class, 'run']);
 
     // ── machine endpoints ──
     $r->post('/webhooks/payments/{id:\d+}', [WebhookController::class, 'payments']);

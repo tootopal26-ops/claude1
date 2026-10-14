@@ -49,6 +49,32 @@ final class Password
         return password_needs_rehash($hash, PASSWORD_BCRYPT, ['cost' => 12]);
     }
 
+    /**
+     * A random password that satisfies the policy (no look-alike characters). Shown once to the person who asked for it.
+     */
+    public static function generate(int $length = 20): string
+    {
+        $sets = ['abcdefghijkmnpqrstuvwxyz', 'ABCDEFGHJKLMNPQRSTUVWXYZ', '23456789', '!@#$%^&*-_=+?'];
+        do {
+            $chars = [];
+            foreach ($sets as $set) {
+                for ($i = 0; $i < 3; $i++) {
+                    $chars[] = $set[random_int(0, strlen($set) - 1)];
+                }
+            }
+            $all = implode('', $sets);
+            while (count($chars) < $length) {
+                $chars[] = $all[random_int(0, strlen($all) - 1)];
+            }
+            for ($i = count($chars) - 1; $i > 0; $i--) {          // Fisher–Yates with a CSPRNG
+                $j = random_int(0, $i);
+                [$chars[$i], $chars[$j]] = [$chars[$j], $chars[$i]];
+            }
+            $pw = implode('', $chars);
+        } while (self::problems($pw) !== []);
+        return $pw;
+    }
+
     /** A hash of a random value, used to keep login timing equal for unknown users. */
     public static function dummyHash(): string
     {

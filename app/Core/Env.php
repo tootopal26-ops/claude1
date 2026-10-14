@@ -39,7 +39,8 @@ final class Env
                 $quote = $value[0];
                 $value = substr($value, 1, -1);
                 if ($quote === '"') {
-                    $value = str_replace(['\\n', '\\"', '\\\\'], ["\n", '"', '\\'], $value);
+                    // one pass: \\ → \, \" → ", \n → newline (sequential str_replace would mis-decode "\\n")
+                    $value = strtr($value, ['\\\\' => '\\', '\\"' => '"', '\\n' => "\n"]);
                 }
             } else {
                 // strip trailing inline comment:  KEY=value # comment

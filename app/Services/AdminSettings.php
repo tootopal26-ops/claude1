@@ -20,7 +20,7 @@ final class AdminSettings
     public const DEFAULT_ACCENT = ['#ff2d87', '#ff3b3b'];
 
     /** Short list shown in the time-zone picker. */
-    private const ZONES = [
+    public const ZONES = [
         'Asia/Kolkata', 'Asia/Dhaka', 'Asia/Colombo', 'Asia/Kathmandu', 'Asia/Karachi', 'Asia/Dubai', 'Asia/Singapore', 'Asia/Jakarta',
         'Europe/London', 'Europe/Berlin', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'Australia/Sydney', 'UTC',
     ];

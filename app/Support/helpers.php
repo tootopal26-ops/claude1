@@ -29,7 +29,14 @@ if (!function_exists('base_path')) {
     {
         static $base = null;
         if ($base === null) {
-            $path = (string) (parse_url((string) env('APP_URL', ''), PHP_URL_PATH) ?? '');
+            $configured = (string) env('APP_URL', '');
+            if ($configured === '' && PHP_SAPI !== 'cli') {
+                // Fresh upload (no .env yet): the installer URL tells us where the app lives, e.g. /shop/install → /shop
+                $uri = (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?? '');
+                $path = preg_match('#^(.*?)/install(?:/|$)#', $uri, $m) ? $m[1] : '';
+            } else {
+                $path = (string) (parse_url($configured, PHP_URL_PATH) ?? '');
+            }
             $base = rtrim($path, '/');
         }
         return $base;

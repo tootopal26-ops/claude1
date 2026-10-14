@@ -1,4 +1,4 @@
-import{a as l,e as b,i as m,q as y,r as g,s as o,t as C,u as w}from"./chunk-ZZ2LXP5P.js";import{b as f,d as h}from"./chunk-QZ2EVAVG.js";import"./chunk-F5XV67FX.js";import{b as v,c as n}from"./chunk-ZPOCOIRG.js";import"./chunk-F47YFC3V.js";import{a as r,e as c,h as u,m as d}from"./chunk-3IHOMMDJ.js";var _=null,i=()=>r("#advertising-root");function $(s){_=s,i().innerHTML=String(c`
+import{a as l,e as b,i as m,q as y,r as g,s as o,t as C,u as w}from"./chunk-ZZ2LXP5P.js";import{b as f,d as h}from"./chunk-OGGRQBAA.js";import"./chunk-F5XV67FX.js";import{b as v,c as n}from"./chunk-ZPOCOIRG.js";import"./chunk-UADDT5XU.js";import{a as r,e as c,h as u,m as d}from"./chunk-3IHOMMDJ.js";var _=null,i=()=>r("#advertising-root");function $(s){_=s,i().innerHTML=String(c`
   <div class="grid-2">
     <form id="ads-form" class="card" novalidate autocomplete="off" aria-labelledby="h-cpc">
       <div class="card-head"><h2 class="card-title" id="h-cpc">${d("megaphone")}Advertising cost</h2></div>
