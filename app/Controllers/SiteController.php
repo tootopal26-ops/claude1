@@ -69,6 +69,19 @@ final class SiteController
         return Response::text($css, 200, 'text/css')->header('Cache-Control', 'public, max-age=86400')->header('X-Content-Type-Options', 'nosniff');
     }
 
+    /** Web app manifest (installable shortcut): name and description follow the admin's website settings. */
+    public function manifest(Request $req, array $p): Response
+    {
+        $s = Settings::site();
+        $png = static fn(string $file, string $size, string $purpose = 'any'): array => ['src' => asset('img/' . $file), 'sizes' => $size, 'type' => 'image/png', 'purpose' => $purpose];
+        $json = [
+            'name' => $s['name'], 'short_name' => mb_substr($s['name'], 0, 12), 'description' => $s['tagline'],
+            'start_url' => url('/'), 'scope' => url('/'), 'display' => 'standalone', 'background_color' => '#ffffff', 'theme_color' => '#ffffff',
+            'icons' => [$png('icon-192.png', '192x192'), $png('icon-512.png', '512x512'), $png('icon-maskable-512.png', '512x512', 'maskable')],
+        ];
+        return Response::json($json)->header('Content-Type', 'application/manifest+json; charset=utf-8')->header('Cache-Control', 'public, max-age=3600');
+    }
+
     public function robots(Request $req, array $p): Response
     {
         $body = "User-agent: *\nDisallow: /admin\nDisallow: /pay/\nDisallow: /order/\nDisallow: /api/\nDisallow: /webhooks/\nDisallow: /cron/\nDisallow: /install\n\nSitemap: " . absolute_url('/sitemap.xml') . "\n";
