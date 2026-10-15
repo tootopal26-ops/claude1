@@ -438,6 +438,8 @@ await t.step('webhook success flips the page to "Payment successful" (no reload)
   const smmState = await (await fetch('http://127.0.0.1:4020/__state')).json();
   const sent = smmState.requests.filter((r) => r.action === 'add');
   t.ok(sent.length <= 1, 'at most one provider order');
+  t.ok(sent.length === 0 || sent.every((r) => r.link === 'https://www.instagram.com/Valid_User/'), 'the SMM panel received the validated account link: ' + sent.map((r) => r.link).join(','));
+  t.eq(sent.length, 1, 'the AUTO Followers order was sent to the panel');
   t.ok(smmState.requests.every((r) => r.keySeen), 'key is server side only');
 });
 
