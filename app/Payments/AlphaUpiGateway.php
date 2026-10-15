@@ -22,8 +22,12 @@ use App\Support\NetGuard;
  *              /api/create-order and /api/check-order-status, {status:true, result:{…}}.
  *
  * Both give us ONE thing to pay with: a hosted checkout page URL (`payment_url`). Neither API documents a UPI intent (`upi://pay?…`),
- * a QR image or a QR string, so this adapter never reports one — the payment page sends the customer to the hosted page instead of
- * drawing a QR for it (a QR of an https page opens that page, which draws a second QR). See CreatePaymentResult::$upiIntent.
+ * a QR image or a QR string. The QR a customer scans is drawn by that checkout page, so after create-order this adapter asks
+ * HostedCheckout to read the UPI request out of the page (the same request its QR encodes). When one is found for exactly this
+ * amount it is returned as `upiIntent` and the payment page draws the QR itself; when not, there is no QR and the customer is sent to the
+ * hosted page — an https URL is never turned into a QR (a UPI app cannot pay it, a camera opens it as a web page that draws another QR).
+ * That reading is NOT a documented API of the gateway (see HostedCheckout); it can be turned off with the config flag
+ * `qr_from_checkout_page` = false.
  *
  * Webhooks are the same in both: HMAC-SHA256(rawBody, webhookSecret) as a hex digest in a signature header, JSON body. The header
  * name differs between gateway versions (X-Alpha-Signature, X-PayIndia-Signature, …) and so does the payload
@@ -134,7 +138,7 @@ final class AlphaUpiGateway implements PaymentGateway
             Log::error('Alpha UPI created the order in a currency other than INR', ['currency' => $currency]);
             return new CreatePaymentResult(false, message: 'The gateway created the order in ' . $currency . ', but this shop charges in INR only. Check the currency setting of your gateway account.', code: 'gateway_currency', raw: $raw);
         }
-        return $this->paymentUrlResult((string) ($data['payment_url'] ?? ''), (string) ($j['message'] ?? ''), $raw);
+        return $this->paymentUrlResult((string) ($data['payment_url'] ?? ''), (string) ($j['message'] ?? ''), $raw, $request);
     }
 
     private function createViaSdk(CreatePaymentRequest $request): CreatePaymentResult
@@ -165,11 +169,14 @@ final class AlphaUpiGateway implements PaymentGateway
             Log::error('Alpha UPI refused to create an order', ['code' => $r['code'] ?? null, 'message' => $r['message'] ?? '', 'quota' => $quota]);
             return new CreatePaymentResult(false, message: (string) ($r['message'] ?? 'The gateway refused the order.'), code: (string) ($r['code'] ?? 'gateway_refused'), retryable: false, raw: $raw);
         }
-        return $this->paymentUrlResult((string) ($r['payment_url'] ?? ''), (string) ($r['message'] ?? ''), $raw);
+        return $this->paymentUrlResult((string) ($r['payment_url'] ?? ''), (string) ($r['message'] ?? ''), $raw, $request);
     }
 
-    /** The hosted payment page must be an https URL (http only against a local mock in development). */
-    private function paymentUrlResult(string $url, string $message, array $raw): CreatePaymentResult
+    /**
+     * The hosted payment page must be an https URL (http only against a local mock in development). The page is then asked for the UPI
+     * request behind its QR (HostedCheckout) — a failure there never fails the payment: the customer just gets the hosted page.
+     */
+    private function paymentUrlResult(string $url, string $message, array $raw, CreatePaymentRequest $request): CreatePaymentResult
     {
         $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
         $allowHttp = Env::bool('ALLOW_PRIVATE_API_HOSTS', false);
@@ -177,7 +184,19 @@ final class AlphaUpiGateway implements PaymentGateway
             Log::error('Alpha UPI returned an unusable payment_url');
             return new CreatePaymentResult(false, message: 'The gateway did not return a valid payment page URL.', code: 'bad_payment_url', raw: $raw);
         }
-        return new CreatePaymentResult(true, paymentUrl: $url, message: $message, raw: $raw);
+        $intent = null;
+        if (($this->config['qr_from_checkout_page'] ?? true) !== false) {
+            try {
+                $found = HostedCheckout::discover($url, (string) ($this->config['base_url'] ?? ''), $request->amountPaise);
+                $intent = $found['intent'];
+                $raw['qr_discovery'] = $found['info'];
+                Log::info('Checkout page QR lookup', ['gateway_order' => $request->gatewayOrderId] + array_intersect_key($found['info'], array_flip(['found', 'reason', 'why', 'http', 'bytes', 'ms', 'candidates'])));
+            } catch (\Throwable $e) {
+                Log::warning('Checkout page QR lookup failed', ['error' => $e->getMessage()]);
+                $raw['qr_discovery'] = ['found' => false, 'reason' => 'error'];
+            }
+        }
+        return new CreatePaymentResult(true, paymentUrl: $url, upiIntent: $intent, message: $message, raw: $raw);
     }
 
     // ── status ───────────────────────────────────────────────────────────────

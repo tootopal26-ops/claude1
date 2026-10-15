@@ -154,7 +154,7 @@ const gatewayCase = async (label, setup, { expect, ms = 20000 }) => t.step(`gate
   await healthy();
   resetLimits();
   await Promise.all([page.waitForURL(/\/pay\//, { timeout: 20000 }), card.locator('[data-action=proceed]').click()]);
-  t.ok((await page.locator('#btn-open').count()) === 1, 'recovered: the payment page opens once the gateway is back');
+  await page.waitForSelector('#qr-img'); t.ok((await page.locator('#qr-img').count()) === 1, 'recovered: the payment page opens with its QR once the gateway is back');
   await page.close();
 });
 await gatewayCase('offline', () => alpha('/__control', { mode: { offline: true } }), { expect: /unavailable|try again|moment/i });
@@ -187,7 +187,7 @@ await t.step('payment page keeps working through a connection drop: "Connection 
   await healthy();
   const page = await ctxPage();
   const { ref } = await placeOrder(page, 'ig-views-1k', 'https://www.instagram.com/reel/PollDrop001/');
-  await page.waitForSelector('#btn-open');
+  await page.waitForSelector('#qr-img');
   await page.context().setOffline(true);
   await page.waitForFunction(() => !document.querySelector('#pay-offline').hidden, null, { timeout: 30000 });
   t.has(await t.text(page.locator('#pay-offline')), 'Connection problem');

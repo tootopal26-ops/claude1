@@ -69,6 +69,7 @@ return static function (Router $r): void {
     $r->get('/admin/api/gateway', [IntegrationsController::class, 'gateway'], $api);
     $r->put("/admin/api/gateway/{$id}", [IntegrationsController::class, 'saveGateway'], $api);
     $r->post("/admin/api/gateway/{$id}/test", [IntegrationsController::class, 'testGateway'], $api);
+    $r->post("/admin/api/gateway/{$id}/qr-check", [IntegrationsController::class, 'qrCheckGateway'], $api);
     $r->get('/admin/api/smm', [IntegrationsController::class, 'providers'], $api);
     $r->post('/admin/api/smm', [IntegrationsController::class, 'createProvider'], $api);
     $r->put("/admin/api/smm/{$id}", [IntegrationsController::class, 'updateProvider'], $api);

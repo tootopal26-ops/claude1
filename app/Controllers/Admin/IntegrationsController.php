@@ -42,6 +42,15 @@ final class IntegrationsController extends BaseController
         return $this->ok(['result' => Gateways::test($id, $req, $this->admin($req)), 'gateway' => Gateways::adminView(Gateways::row($id))]);
     }
 
+    /** Creates a ₹1 test order at the gateway (never paid) to see whether its checkout page exposes the UPI request behind its QR. */
+    public function qrCheckGateway(Request $req, array $p): Response
+    {
+        $id = $this->id($p);
+        $admin = $this->admin($req);
+        RateLimiter::enforce('admin-qr-check', (string) $admin['id'], 6, 600, 'Too many QR checks. Please wait a few minutes.');
+        return $this->once($req, 'gateway-qr-check', static fn(): array => ['result' => Gateways::probeQr($id, $req, $admin)]);
+    }
+
     // ── SMM providers ──
 
     public function providers(Request $req, array $p): Response

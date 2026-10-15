@@ -174,7 +174,7 @@ T::test('upi: everything that is not a payment request for exactly this order is
         'a javascript: link' => 'javascript:alert(1)',
         'an insecure details link' => 'upi://pay?pa=a@ybl&am=5.00&url=http%3A%2F%2Fshop.example',
         'a bad merchant code' => 'upi://pay?pa=a@ybl&am=5.00&mc=12',
-        'a far too long reference' => 'upi://pay?pa=a@ybl&am=5.00&tr=' . str_repeat('x', 36),
+        'a far too long reference' => 'upi://pay?pa=a@ybl&am=5.00&tr=' . str_repeat('x', 81),
         'an absurd length' => 'upi://pay?pa=a@ybl&am=5.00&tn=' . str_repeat('x', 1000),
     ];
     foreach ($bad as $why => $uri) {
@@ -188,27 +188,117 @@ T::test('upi: everything that is not a payment request for exactly this order is
     T::same(null, Upi::validateFor(pq_intent(5000), 500), '₹50 for ₹5');
 });
 
-// ═════════════════════════════ Alpha UPI: hosted checkout only ═════════════════════════════
+// ═════════════════════════════ Alpha UPI: the QR comes from the gateway's own checkout page ═════════════════════════════
 
-T::test('qr: Alpha UPI returns only a hosted page, so NO QR is created — the page sends the customer to the checkout with a button', function () {
+/** The UPI request the mock gateway's hosted page carries for this payment (read the way a customer's browser would get the page). */
+function pq_page_request(array $payment): ?string
+{
+    return \App\Payments\HostedCheckout::read((string) file_get_contents((string) $payment['payment_url']), (int) $payment['amount_paise'])['intent'];
+}
+
+T::test('qr: Alpha UPI returns only a hosted page — the payment QR is the UPI request that page carries, rendered by the backend (never the hosted URL)', function () {
     pf_setup();
-    $p = pf_place('ig-followers-50');
+    $p = pf_place('ig-followers-50');                                         // ₹5
+    $uri = (string) $p['payment']['qr_payload'];
     T::true(str_starts_with((string) $p['payment']['payment_url'], 'http://127.0.0.1:4010/pay/SMB'), 'the hosted checkout page is stored as the payment link');
-    T::same(null, $p['payment']['qr_payload'], 'nothing is stored as "what the QR encodes": there is no QR');
+    T::same(pq_page_request($p['payment']), $uri, 'the stored QR payload is exactly the UPI request on the gateway page');
+    T::same(500, Upi::parse($uri)['amount_paise'], 'for exactly this amount');
+    T::true(str_starts_with($uri, 'upi://pay?') && !str_contains($uri, 'http'), 'a UPI request, not a web address');
+    T::contains($p['payment']['gateway_order_id'], $uri, 'it belongs to this gateway order');
+    $found = json_decode((string) $p['payment']['create_response'], true)['qr_discovery'] ?? [];
+    T::same([true, 'found', 'merchant.demo@okbizaxis', 500], [$found['found'] ?? null, $found['reason'] ?? null, $found['payee'] ?? null, $found['amount_paise'] ?? null], 'what was found is kept with the payment');
 
     $html = pq_pay_page($p['ref']);
-    T::contains('data-mode="hosted"', $html);
+    T::contains('data-mode="upi"', $html);
     T::contains('PAY SECURELY', $html);
-    T::contains('PAY ₹5 NOW', $html);
-    T::contains('href="' . $p['payment']['payment_url'] . '"', $html, 'the button opens the gateway checkout');
-    T::contains('target="_blank"', $html);
-    T::contains('rel="noopener noreferrer"', $html);
-    T::false(str_contains($html, 'id="qr-img"') || str_contains($html, '/qr.png') || str_contains($html, 'DOWNLOAD QR') || str_contains($html, 'SCAN AND PAY'), 'no QR image, no download link and no "scan" promise');
+    T::contains('SCAN AND PAY', $html);
+    T::contains('id="qr-img" src="', $html);
+    T::contains('DOWNLOAD QR CODE', $html);
     T::contains('id="timer"', $html);
     T::contains('05:00', $html, 'the 5-minute timer stays');
-    $e = T::throws(HttpException::class, fn() => pq_qr($p['ref']), 410);
-    T::same('gone', $e->errorCode, 'the QR route has nothing to serve');
-    T::same(null, Db::val('SELECT qr_payload FROM payments WHERE id = ?', [$p['payment']['id']]));
+    T::false((bool) preg_match('/payment partner|opens in a new tab|PAY ₹5 NOW|CONTINUE TO PAYMENT|scan its QR code/i', $html), 'none of the second-page instructions');
+    T::false(str_contains($html, (string) $p['payment']['payment_url']), 'the hosted URL is not on the page');
+    T::same(App\Services\Orders::continueUrl($p['payment']), url('pay/' . $p['ref']), 'checkout continues on OUR page, where the QR is');
+
+    $res = pq_qr($p['ref']);
+    T::same(Qr::png($uri, 10, 4, 'M'), $res->body, 'the image is the QR of that one request');
+    $decoded = pq_decode($res->body);
+    if ($decoded !== null) {
+        T::same($uri, $decoded, 'an independent decoder reads the request back');
+    }
+    // two customers never share a QR: each order's page carries its own request
+    $q = pf_place('ig-followers-50', 'https://www.instagram.com/jane/', ['visitor_id' => null, 'session_id' => null], '198.51.100.171');
+    T::true((string) $q['payment']['qr_payload'] !== $uri && str_contains((string) $q['payment']['qr_payload'], (string) $q['payment']['gateway_order_id']), 'another order, another request');
+});
+
+T::test('qr: whichever way the checkout page carries its UPI request (link, JSON, URL-encoded image, an app\'s own scheme), the same request is read', function () {
+    pf_setup();
+    $n = 0;
+    foreach (['link', 'json', 'encoded', 'appscheme'] as $mode) {
+        T::alpha('POST', '/__control', ['mode' => ['pageUpi' => $mode]]);
+        $p = pf_place('ig-followers-50', 'https://www.instagram.com/mode' . $mode . '/', ['visitor_id' => null, 'session_id' => null], '198.51.100.' . (180 + $n++));
+        $upi = Upi::validateFor($p['payment']['qr_payload'], 500);
+        T::true($upi !== null, "$mode: a valid request for ₹5.00 was read");
+        T::same(['merchant.demo@okbizaxis', $p['payment']['gateway_order_id']], [$upi['payee'], $upi['reference']], "$mode: the payee and this order's reference");
+        T::contains('data-mode="upi"', pq_pay_page($p['ref']), $mode);
+    }
+    T::alpha('POST', '/__control', ['mode' => ['pageUpi' => 'link']]);
+});
+
+T::test('qr: when the checkout page carries NO usable request there is no QR and the customer goes straight to the gateway\'s own checkout', function () {
+    pf_setup();
+    $n = 0;
+    foreach (['none', 'wrong_amount', 'no_amount', 'foreign_currency'] as $mode) {
+        T::alpha('POST', '/__control', ['mode' => ['pageUpi' => $mode]]);
+        $p = pf_place('ig-followers-50', 'https://www.instagram.com/fallback' . $mode . '/', ['visitor_id' => null, 'session_id' => null], '198.51.100.' . (150 + $n++));
+        T::same(null, $p['payment']['qr_payload'], "$mode: no QR payload is stored");
+        T::same('PENDING_PAYMENT', $p['order']['status'], "$mode: the order was created all the same");
+        T::same((string) $p['payment']['payment_url'], App\Services\Orders::continueUrl($p['payment']), "$mode: checkout continues at the gateway's checkout page");
+        $why = json_decode((string) $p['payment']['create_response'], true)['qr_discovery'] ?? [];
+        T::same(false, $why['found'] ?? null, $mode);
+        T::same($mode === 'none' ? 'no_upi_request_on_page' : 'upi_request_not_usable', $why['reason'] ?? null, "$mode: the reason is kept for the admin");
+        T::throws(HttpException::class, fn() => pq_qr($p['ref']), 410);
+        $html = pq_pay_page($p['ref']);                                           // opening our payment page later (Your orders): one button, no instruction card
+        T::contains('data-mode="hosted"', $html);
+        T::contains('CONTINUE TO PAYMENT', $html);
+        T::contains('href="' . $p['payment']['payment_url'] . '"', $html);
+        T::false((bool) preg_match('/payment partner|opens in a new tab|scan its QR code|id="qr-img"|DOWNLOAD QR/i', $html), "$mode: no instruction card and no QR");
+        T::contains('05:00', $html);
+    }
+    T::alpha('POST', '/__control', ['mode' => ['pageUpi' => 'link']]);
+});
+
+T::test('qr: a checkout page that is down, slow or enormous never blocks or fails the payment — it just means no QR', function () {
+    pf_setup();
+    $n = 0;
+    foreach (['down', 'slow', 'huge'] as $mode) {
+        T::alpha('POST', '/__control', ['mode' => ['pageUpi' => $mode]]);
+        $t0 = microtime(true);
+        $p = pf_place('ig-followers-50', 'https://www.instagram.com/page' . $mode . '/', ['visitor_id' => null, 'session_id' => null], '198.51.100.' . (160 + $n++));
+        $took = microtime(true) - $t0;
+        T::same(null, $p['payment']['qr_payload'], "$mode: no QR");
+        T::same('pending', $p['payment']['status'], "$mode: the payment session is open");
+        T::true($took < 9, "$mode: checkout was not held up ({$took}s)");
+        T::same((string) $p['payment']['payment_url'], App\Services\Orders::continueUrl($p['payment']));
+    }
+    T::alpha('POST', '/__control', ['mode' => ['pageUpi' => 'link']]);
+});
+
+T::test('qr: the checkout page is fetched only from the gateway\'s own host, and no credential goes with the request', function () {
+    pf_setup();
+    // the gateway is configured as localhost but its answer names 127.0.0.1: not its own host → the page is not fetched at all
+    Db::exec("UPDATE payment_gateways SET config_json = ? WHERE provider = 'alpha_upi'", [json_encode(['base_url' => 'http://localhost:4010', 'api_style' => 'bearer', 'provider_pref' => 'auto'])]);
+    $before = count(T::alpha('GET', '/__state')['log'] ?? []);
+    $p = pf_place('ig-followers-50');
+    T::same(null, $p['payment']['qr_payload']);
+    T::same('url_refused', json_decode((string) $p['payment']['create_response'], true)['qr_discovery']['reason'] ?? null);
+    // the page request carries no API key / secret / webhook secret (the mock records what it was sent on its pages)
+    pf_setup();
+    $q = pf_place('ig-followers-50');
+    T::true($q['payment']['qr_payload'] !== null);
+    $hits = array_values(array_filter(T::alpha('GET', '/__state')['pageRequests'] ?? [], static fn(array $r): bool => str_contains((string) $r['path'], (string) $q['payment']['gateway_order_id'])));
+    T::true(count($hits) >= 1, 'the checkout page was requested');
+    T::false(isset($hits[0]['headers']['authorization']) || isset($hits[0]['headers']['x-api-key']) || isset($hits[0]['headers']['x-api-secret']), 'no credential was sent to the page');
 });
 
 T::test('qr: a payment created BEFORE this fix (its QR payload is the hosted https URL) is shown as a hosted checkout, never as a QR', function () {
@@ -313,6 +403,133 @@ T::test('qr: no QR after the session ends — expired, paid and failed payments 
     T::throws(HttpException::class, fn() => pq_qr($b['ref']), 410);
     Db::update('payments', ['status' => 'success'], 'id = ?', [$b['payment']['id']]);
     T::throws(HttpException::class, fn() => pq_qr($b['ref']), 410);
+});
+
+// ═════════════════════════════ where checkout sends the customer ═════════════════════════════
+
+T::test('qr: POST /api/checkout continues on OUR payment page when there is a QR, and at the gateway\'s own checkout when there is none', function () {
+    pf_setup();
+    $svc = (int) Db::val("SELECT id FROM services WHERE code = 'ig-followers-50'");
+    $checkout = static function (string $ip) use ($svc): array {
+        $req = Request::fake('POST', '/api/checkout', ['Idempotency-Key' => bin2hex(random_bytes(8)), 'Content-Type' => 'application/json'],
+            (string) json_encode(['service_id' => $svc, 'target' => 'https://www.instagram.com/john/']), [], $ip);
+        $res = (new \App\Controllers\CheckoutController())->create($req, []);
+        T::same(200, $res->status);
+        return json_decode($res->body, true);
+    };
+
+    $a = $checkout('198.51.100.201');
+    T::same(url('pay/' . $a['ref']), $a['url'], 'the QR is on our page, so checkout continues there');
+    T::true(is_string($a['token']) && $a['token'] !== '' && isset($a['order_id']));
+
+    T::alpha('POST', '/__control', ['mode' => ['pageUpi' => 'none']]);
+    $b = $checkout('198.51.100.202');
+    $pay = Orders::paymentByRef($b['ref']);
+    T::same((string) $pay['payment_url'], $b['url'], 'no QR to show → straight to the gateway\'s checkout, not to a page of instructions');
+    T::true(str_starts_with($b['url'], 'http://127.0.0.1:4010/pay/SMB'));
+    T::alpha('POST', '/__control', ['mode' => ['pageUpi' => 'link']]);
+});
+
+// ═════════════════════════════ admin: "Check QR support" ═════════════════════════════
+
+T::test('admin: "Check QR support" makes a ₹1 test order, says whether the checkout page carries a UPI request, and leaves your orders alone', function () {
+    $gid = pf_setup();
+    $admin = ['id' => 1, 'username' => 'root', 'email' => 'r@x.test'];
+    $req = static fn(): Request => Request::fake('POST', '/admin/api/gateway/' . $gid . '/qr-check');
+    $orders0 = (int) Db::val('SELECT COUNT(*) FROM orders');
+    $payments0 = (int) Db::val('SELECT COUNT(*) FROM payments');
+
+    $yes = Gateways::probeQr($gid, $req(), $admin);
+    T::same([true, true, 'ok'], [$yes['ok'], $yes['found'], $yes['level']], $yes['message']);
+    T::contains('merchant.demo@okbizaxis', $yes['message'], 'names the payee it found');
+    T::contains('never paid', $yes['message']);
+    T::same(true, $yes['details']['found'] ?? null);
+    T::true(str_starts_with((string) $yes['checkout_url'], 'http://127.0.0.1:4010/pay/SMBQRCHECK'), 'the test order has its own reference');
+
+    $cases = [
+        'none'             => 'no upi request on page',
+        'wrong_amount'     => 'upi request not usable',
+        'foreign_currency' => 'upi request not usable',
+        'down'             => 'not 200',
+    ];
+    foreach ($cases as $mode => $reason) {
+        T::alpha('POST', '/__control', ['mode' => ['pageUpi' => $mode]]);
+        $no = Gateways::probeQr($gid, $req(), $admin);
+        T::same([true, false, 'warning'], [$no['ok'], $no['found'], $no['level']], "$mode: " . $no['message']);
+        T::contains('no usable UPI payment request', $no['message'], $mode);
+        T::contains('gateway’s own checkout page', $no['message'], "$mode: says what customers get instead");
+        T::false(str_contains($no['message'], 'Yes.'), $mode);
+        if ($mode !== 'down') {
+            T::contains($reason, $no['message'], "$mode: the reason");
+        }
+    }
+
+    T::alpha('POST', '/__control', ['mode' => ['pageUpi' => 'link', 'failCreate' => true]]);
+    $refused = Gateways::probeQr($gid, $req(), $admin);
+    T::same([false, false, 'error'], [$refused['ok'], $refused['found'], $refused['level']]);
+    T::contains('did not create the ₹1 test order', $refused['message']);
+    T::alpha('POST', '/__control', ['mode' => ['failCreate' => false]]);
+
+    T::same($orders0, (int) Db::val('SELECT COUNT(*) FROM orders'), 'no order of yours was created');
+    T::same($payments0, (int) Db::val('SELECT COUNT(*) FROM payments'), 'no payment of yours was created');
+    T::same(6, (int) Db::val("SELECT COUNT(*) FROM audit_logs WHERE action = 'gateway.qr_checked'"), 'every check is in the audit log');
+    $last = json_decode((string) Db::val("SELECT meta_json FROM audit_logs WHERE action = 'gateway.qr_checked' ORDER BY id DESC LIMIT 1"), true);
+    T::same(false, $last['found'] ?? null);
+    T::throws(HttpException::class, fn() => Gateways::probeQr(999999, $req(), $admin), 404);
+});
+
+T::test('admin: the QR check is an admin-only, rate-limited, confirmed-once API action', function () {
+    $gid = pf_setup();
+    $ctl = new \App\Controllers\Admin\IntegrationsController();
+    $call = static function (?array $admin, string $key = '') use ($ctl, $gid): \App\Core\Response {
+        $req = Request::fake('POST', '/admin/api/gateway/' . $gid . '/qr-check', $key !== '' ? ['Idempotency-Key' => $key] : [], '{}');
+        if ($admin !== null) {
+            $req->attributes['admin'] = $admin;
+        }
+        return $ctl->qrCheckGateway($req, ['id' => (string) $gid]);
+    };
+    T::throws(HttpException::class, fn() => $call(null), 401);
+
+    $admin = ['id' => 7, 'username' => 'root', 'email' => 'r@x.test'];
+    $first = json_decode($call($admin, 'qr-check-key-0001')->body, true);
+    T::same([true, true], [$first['ok'], $first['result']['found']]);
+    $made = count(T::alpha('GET', '/__state')['orders'] ?? []);
+    $again = json_decode($call($admin, 'qr-check-key-0001')->body, true);      // a double click / retry with the same key
+    T::same($first['result']['checkout_url'], $again['result']['checkout_url'], 'the same answer is replayed');
+    T::same($made, count(T::alpha('GET', '/__state')['orders'] ?? []), 'and no second test order is made');
+
+    for ($i = 0; $i < 4; $i++) {                                                   // 6 per 10 minutes
+        $call($admin);
+    }
+    T::throws(HttpException::class, fn() => $call($admin), 429);
+});
+
+T::test('gateway: "Show the gateway\'s QR on my payment page" is on by default; switched off, no checkout page is read, checkout goes to the gateway and the QR check says so', function () {
+    $gid = pf_setup();
+    $admin = ['id' => 1, 'username' => 'root', 'email' => 'r@x.test'];
+    $made = static fn(): int => count(T::alpha('GET', '/__state')['orders'] ?? []);
+    $pages = static fn(): int => count(T::alpha('GET', '/__state')['pageRequests'] ?? []);
+    T::same(true, Gateways::adminView(Gateways::row($gid))['qr_from_checkout_page'], 'on by default');
+
+    $off = Gateways::save($gid, ['qr_from_checkout_page' => false], Request::fake('PUT', '/x'), $admin);
+    T::same(false, $off['qr_from_checkout_page']);
+    T::same(false, json_decode((string) Gateways::row($gid)['config_json'], true)['qr_from_checkout_page'] ?? null, 'stored in the gateway\'s settings');
+    T::contains('qr_from_checkout_page', (string) Db::val("SELECT meta_json FROM audit_logs WHERE action = 'gateway.saved' ORDER BY id DESC LIMIT 1"), 'the audit log names the setting');
+    $pages0 = $pages();
+    $p = pf_place('ig-followers-50');
+    T::same(null, $p['payment']['qr_payload'], 'no QR');
+    T::same((string) $p['payment']['payment_url'], Orders::continueUrl($p['payment']), 'checkout continues at the gateway\'s own page');
+    T::same($pages0, $pages(), 'the gateway\'s checkout page was not read');
+    $before = $made();
+    $probe = Gateways::probeQr($gid, Request::fake('POST', '/x'), $admin);
+    T::same([true, false, 'warning'], [$probe['ok'], $probe['found'], $probe['level']]);
+    T::contains('switched off', $probe['message']);
+    T::same($before, $made(), 'no test order is made while the lookup is off');
+
+    $on = Gateways::save($gid, ['qr_from_checkout_page' => true], Request::fake('PUT', '/x'), $admin);
+    T::same(true, $on['qr_from_checkout_page']);
+    $q = pf_place('ig-followers-50', 'https://www.instagram.com/jane/', ['visitor_id' => null, 'session_id' => null], '198.51.100.171');
+    T::true(is_string($q['payment']['qr_payload']) && str_starts_with($q['payment']['qr_payload'], 'upi://pay?'), 'switched back on, the QR is back');
 });
 
 // ═════════════════════════════ paying is only ever confirmed by the server ═════════════════════════════

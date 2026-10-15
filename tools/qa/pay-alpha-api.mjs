@@ -97,7 +97,7 @@ await t.step('Test connection: reachable (warning with the ₹5 hint) · wrong s
 // ═══════════════════════════ a real checkout on the current API ═══════════════════════════
 const shop = await newPage(browser, { width: 1440, height: 900 }, { allowStatus: [503] });
 let ORDER;
-await t.step('checkout: the order is created with the documented request; the hosted payment link is opened with a button and is NEVER encoded in a QR', async () => {
+await t.step('checkout: the order is created with the documented request; the QR on our page is the UPI request the gateway\'s own checkout page carries — never the hosted URL', async () => {
   t.page = shop; await shop.goto(BASE + '/', { waitUntil: 'networkidle' });
   ORDER = await placeOrder(shop, 'ig-followers-50', 'https://www.instagram.com/alphaapi_check/');
   const p = payment(ORDER.ref);
@@ -108,12 +108,19 @@ await t.step('checkout: the order is created with the documented request; the ho
   t.eq(p.pAmount, 500, 'the amount is the SERVER price, in paise');
   const url = sql(`SELECT payment_url FROM payments WHERE ref = '${ORDER.ref}'`);
   t.has(url, `/pay/${p.gwOrder}`);
-  // the documented API returns ONLY this hosted page (no UPI request, no QR string): a QR of it would open a browser page that shows another QR
-  t.eq((await fetch(`${BASE}/pay/${ORDER.ref}/qr.png`)).status, 410, 'there is no QR for a hosted-checkout-only gateway');
-  t.eq(sql(`SELECT qr_payload IS NULL FROM payments WHERE ref = '${ORDER.ref}'`), '1');
+  // the documented API returns ONLY the hosted page (no UPI request, no QR string, no image). The page itself carries the request its QR is made of:
+  // the server reads it (no credentials, the gateway's own host only), checks it is for exactly this order and amount, and draws the QR itself
+  const stored = sql(`SELECT qr_payload FROM payments WHERE ref = '${ORDER.ref}'`);
+  t.ok(stored.startsWith('upi://pay?') && stored.includes('am=5.00') && stored.includes(`tr=${p.gwOrder}`) && !stored.includes('http'), 'a UPI request for this order and amount: ' + stored);
+  const png = await fetch(`${BASE}/pay/${ORDER.ref}/qr.png`); t.eq(png.status, 200);
+  t.eq(decodeQr(Buffer.from(await png.arrayBuffer())), stored, 'the QR our backend serves encodes exactly that request');
+  const pageHits = (await state()).pageRequests.filter((r) => r.path.includes(p.gwOrder));
+  t.ok(pageHits.length >= 1 && pageHits.every((r) => !r.headers['x-api-key'] && !r.headers['x-api-secret'] && !r.headers.authorization), 'the checkout page was read without any credential');
   t.eq((await t.text(shop.locator('[data-view=pending] h1'))).toUpperCase(), 'PAY SECURELY');
-  t.eq(await shop.locator('#qr-img').count(), 0);
-  t.eq(await shop.getAttribute('#btn-open', 'href'), url, 'the PAY button opens the gateway checkout');
+  t.eq((await t.text(shop.locator('.pay-box-title'))).toUpperCase(), 'SCAN AND PAY');
+  t.eq(await shop.locator('#qr-img').count(), 1);
+  t.ok(!(await shop.content()).includes(url), 'the hosted URL is not on the page (and is not what the QR encodes)');
+  t.eq(await shop.locator('#btn-open').isVisible(), false, 'no PAY NOW button on a desktop');
   await shop.screenshot({ path: `${OUT}/pay-page.png` });
 });
 

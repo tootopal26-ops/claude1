@@ -169,7 +169,7 @@
   .svc-premium .svc-price b { background: linear-gradient(135deg, #fff, #ffd7e8); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .svc-premium .svc-icon { background: linear-gradient(135deg, #ffd25a, #ff8a2b); color: #3a1b00; box-shadow: 0 8px 22px -6px rgb(255 170 40 / 0.7); }
   .svc-premium .label { color: rgb(255 255 255 / 0.75); }
-  .svc-premium .input { background: rgb(255 255 255 / 0.96); }
+  .svc-premium .input { background: #fff; }
 
   /* inline order form (slides down inside the card) */
   .expand { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden; transition: grid-template-rows 0.42s var(--ease-soft), opacity 0.28s ease, visibility 0s linear 0.42s; }
@@ -184,9 +184,22 @@
   .svc-premium .field-msg[data-state="valid"] { color: #7dffa7; }
   .svc-premium .field-msg[data-state="invalid"] { color: #ffb3b3; }
   .svc-premium .field-msg[data-state="idle"] { color: rgb(255 255 255 / 0.7); }
+  /* The service-link field: ONE thin pink border and, when focused, ONE soft 2px ring — nothing stacked on top of either.
+     The wrapper draws nothing (no border, shadow or outline of its own); the global `.input` shadow and 4px ring are replaced here. */
   .input-wrap { position: relative; }
   .input-wrap > .icon { position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%); color: var(--color-faint); pointer-events: none; }
-  .input-wrap > .input { padding-left: 2.75rem; min-height: 3rem; }
+  .input-wrap > .input {
+    padding-left: 2.75rem; min-height: 3rem; background: #fff; border: 1.5px solid var(--color-brand-500); border-radius: var(--radius-md); box-shadow: none;
+    text-overflow: ellipsis; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  @media (hover: hover) { .input-wrap > .input:hover:not(:disabled):not([data-valid="true"]):not([aria-invalid="true"]) { border-color: var(--color-brand-600); } }
+  .input-wrap > .input:focus, .input-wrap > .input:focus-visible { outline: none; border-color: var(--color-brand-600); border-radius: var(--radius-md); box-shadow: 0 0 0 2px rgb(255 45 135 / 0.28); }
+  .input-wrap > .input[data-valid="true"] { border-color: var(--color-ok-600); box-shadow: none; }
+  .input-wrap > .input[data-valid="true"]:focus-visible { box-shadow: 0 0 0 2px rgb(22 163 74 / 0.25); }
+  .input-wrap > .input[aria-invalid="true"] { border-color: var(--color-bad-600); box-shadow: none; }
+  .input-wrap > .input[aria-invalid="true"]:focus-visible { box-shadow: 0 0 0 2px rgb(220 38 38 / 0.22); }
+  .input-wrap > .input:disabled { background: #f6f6fa; border-color: var(--color-line-strong); color: var(--color-muted); box-shadow: none; cursor: not-allowed; }
+  .input-wrap > .input::placeholder { color: #7d8199; opacity: 1; }
   .shake { animation: shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
 
   .site-empty { text-align: center; padding: 3rem 1rem; color: var(--color-muted); }
@@ -198,17 +211,18 @@
   .order-row:hover { border-color: var(--color-brand-300); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
 
   /* ───────────── payment page ───────────── */
-  .pay-wrap { min-height: calc(100dvh - 4rem); display: grid; place-items: center; padding: 1.5rem 1rem 3rem; }
+  .pay-wrap { min-height: calc(100dvh - 4rem); display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: 1.5rem 1rem 3rem; }   /* minmax(0, …): the card may be narrower than its content's natural width */
   /* phones: start near the top like an app screen instead of floating in the middle of a tall, mostly empty page */
   @media (max-width: 639px) { .pay-wrap { place-items: start center; padding-top: 1rem; } }
-  .pay-card { width: 100%; max-width: 27.5rem; border-radius: var(--radius-2xl); padding: 1.5rem 1.25rem 1.5rem; text-align: center; animation: fade-up 0.6s var(--ease-soft) both; }
+  .pay-card { width: 100%; min-width: 0; max-width: 27.5rem; border-radius: var(--radius-2xl); padding: 1.5rem 1.25rem 1.5rem; text-align: center; animation: fade-up 0.6s var(--ease-soft) both; }
   @media (min-width: 480px) { .pay-card { padding: 2rem 2rem 1.75rem; } }
   .pay-kicker { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-ok-700); }
   .pay-title { margin-top: 0.4rem; font-size: 1.75rem; font-weight: 900; letter-spacing: -0.03em; line-height: 1.1; }
   @media (min-width: 480px) { .pay-title { font-size: 2rem; } }
   .pay-summary { margin-top: 0.6rem; display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem 0.6rem; align-items: baseline; font-size: 0.9375rem; color: var(--color-muted); }
   .pay-summary b { color: var(--color-ink); font-size: 1.125rem; font-weight: 800; }
-  .qr-frame { position: relative; margin: 1.25rem auto 0; width: min(100%, 17.5rem); aspect-ratio: 1; padding: 0.9rem; border-radius: var(--radius-xl); background: #fff; box-shadow: var(--shadow-md), 0 0 0 1px var(--color-line); }
+  .pay-summary b::after { content: '\2014'; margin-left: 0.6rem; font-weight: 400; color: var(--color-muted); }
+  .qr-frame { position: relative; margin: 1.25rem auto 0; width: min(100%, 20rem); aspect-ratio: 1; padding: 0.9rem; border-radius: var(--radius-xl); background: #fff; box-shadow: var(--shadow-md), 0 0 0 1px var(--color-line); }
   .qr-frame img { width: 100%; height: 100%; image-rendering: pixelated; border-radius: var(--radius-sm); }
   .qr-frame.rgb-ring { border-radius: var(--radius-xl); }
   .qr-corner { position: absolute; width: 1.6rem; height: 1.6rem; border: 3px solid var(--color-brand-500); opacity: 0.85; }
@@ -223,16 +237,17 @@
   .pay-payee b { color: var(--color-ink); }
   .pay-payee .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; }
 
-  /* hosted checkout: what the card shows instead of a QR when the gateway only offers its own payment page */
-  .hosted-card { position: relative; margin: 1.25rem auto 0; width: 100%; padding: 1.15rem 1rem 1rem; border-radius: var(--radius-xl); background: rgb(255 255 255 / 0.82); box-shadow: var(--shadow-md), 0 0 0 1px var(--color-line); text-align: left; }
-  .hosted-icon { display: grid; place-items: center; width: 3rem; height: 3rem; margin: 0 auto 0.6rem; border-radius: 9999px; color: #fff; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); box-shadow: 0 6px 18px -6px var(--accent-from); }
-  .hosted-icon .icon { width: 1.6rem; height: 1.6rem; }
-  .hosted-lead { text-align: center; font-size: 1rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.3; text-wrap: balance; }
-  .hosted-steps { margin: 0.9rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.7rem; }
-  .hosted-steps li { display: flex; align-items: flex-start; gap: 0.7rem; font-size: 0.875rem; line-height: 1.45; color: var(--color-ink-soft); }
-  .hosted-steps li b { flex: none; display: grid; place-items: center; width: 1.65rem; height: 1.65rem; border-radius: 9999px; font-size: 0.8125rem; font-weight: 800; color: var(--color-brand-700); background: var(--color-brand-100); }
-  .hosted-card[data-dead="true"] > :not(.qr-dead) { filter: blur(6px) grayscale(1); opacity: 0.35; }
-  .hosted-card[data-dead="true"] .qr-dead { display: grid; }
+  /* the payment box: a white card with a subtle border and a premium shadow that holds SCAN AND PAY, the QR, DOWNLOAD QR CODE and the timer */
+  .pay-box { margin: 1.25rem auto 0; width: 100%; padding: 1.25rem 1rem 1.15rem; border-radius: var(--radius-xl); background: #fff; border: 1px solid var(--color-line); box-shadow: 0 1px 2px rgb(15 16 32 / 0.04), 0 14px 38px -14px rgb(15 16 32 / 0.22), 0 28px 60px -34px rgb(255 45 135 / 0.35); }
+  .pay-box-title { font-size: 1.125rem; font-weight: 900; letter-spacing: 0.06em; line-height: 1.2; color: var(--color-ink); }
+  .pay-box .qr-frame { margin-top: 0.9rem; box-shadow: 0 0 0 1px var(--color-line), 0 8px 24px -12px rgb(15 16 32 / 0.25); }
+  .pay-box .btn-block { margin-top: 0.9rem; }
+  .pay-box .timer { margin-top: 1.1rem; }
+  /* small phones (360 px): a little less padding so the QR stays large and nothing overflows */
+  @media (max-width: 399px) { .pay-card { padding-left: 1rem; padding-right: 1rem; } .pay-box { padding-left: 0.75rem; padding-right: 0.75rem; } .pay-box .qr-frame { padding: 0.65rem; } }
+  /* the app button only matters on a phone (the screen that shows the QR cannot scan itself) */
+  .pay-actions.only-touch { display: none; }
+  @media (hover: none) and (pointer: coarse) { .pay-actions.only-touch { display: grid; } }
 
   .timer { margin-top: 1.25rem; }
   .timer-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); }

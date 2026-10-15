@@ -23,6 +23,7 @@ SUITES=(
   "node tools/qa/install-e2e.mjs"
   "node tools/qa/site-flows.mjs"
   "node tools/qa/site-layout.mjs"
+  "node tools/qa/site-input.mjs"
   "node tools/qa/site-badges.mjs"
   "node tools/qa/site-failures.mjs"
   "node tools/qa/site-tracking.mjs"

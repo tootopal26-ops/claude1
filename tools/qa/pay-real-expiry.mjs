@@ -1,7 +1,7 @@
 // REAL-TIME check of the 5:00 payment window (no clock tricks): the countdown must run 05:00 → 04:59 → 04:58 …, turn warn at 1:00 and
 // critical at 0:30, and at 00:00 the page must say "Payment session expired" — never a success state, QR removed, download disabled —
 // and the server must expire the order. Takes ~5½ minutes. Does NOT reset the database (safe next to other work).
-import { launch, newPage, BASE, mocksReset, resetLimits, payment, placeOrder, useMockProviderIds, sleep, sql, seedUpiQr } from './site.mjs';
+import { launch, newPage, BASE, mocksReset, resetLimits, payment, placeOrder, useMockProviderIds, sleep, sql } from './site.mjs';
 import { suite } from './harness.mjs';
 
 const t = suite('pay-real-expiry');
@@ -15,7 +15,7 @@ const successShown = [];
 await t.step('open a payment session; the countdown starts at 05:00 and ticks down one second at a time', async () => {
   ({ ref } = await placeOrder(page, 'ig-likes-100', 'https://www.instagram.com/p/RealExpiry01/'));
   startedAt = Date.now();
-  seedUpiQr(ref); await page.reload({ waitUntil: 'networkidle' });      // QR flavour: the one whose image and download must die with the session (a hosted page has neither)
+  await page.waitForSelector('#qr-img');                                 // the QR payment: its image and download must die with the session
   await page.exposeFunction('__tick', (txt, level, paidVisible) => { if (seen[seen.length - 1]?.txt !== txt) seen.push({ txt, level, at: Date.now() }); if (paidVisible) successShown.push(Date.now()); });
   await page.evaluate(() => {
     setInterval(() => window.__tick(document.querySelector('#timer-value')?.textContent.trim(), document.querySelector('#timer')?.dataset.level, !!document.querySelector('[data-view=paid]:not([hidden])')), 100);

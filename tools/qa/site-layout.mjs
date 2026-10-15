@@ -3,7 +3,7 @@
 // (valid + invalid), the Shop drawer, the payment page (pending, expired, paid), the order page, the 404 page and maintenance mode.
 import { execFileSync } from 'node:child_process';
 import { coveredControls } from './admin.mjs';
-import { launch, newPage, BASE, VIEWPORTS, sql, resetLimits, mocksReset, payment, payOk, placeOrder, openCard, serviceId, sleep, useMockProviderIds, seedUpiQr } from './site.mjs';
+import { launch, newPage, BASE, VIEWPORTS, sql, resetLimits, mocksReset, payment, payOk, placeOrder, placeOrderAtGateway, gatewayPage, openCard, serviceId, sleep, useMockProviderIds } from './site.mjs';
 import { suite } from './harness.mjs';
 
 const OUT = process.env.QA_OUT || '/tmp/qa/layout';
@@ -145,20 +145,10 @@ for (const vp of VIEWPORTS) {
     } finally { await page.keyboard.press('Escape'); await page.waitForFunction(() => !document.querySelector('#orders-drawer[open]')); }
   });
 
-  await t.step(`${vp.name}: payment page (hosted checkout and UPI QR, expired, paid) — card, QR, timer and buttons visible, no overflow`, async () => {
+  await t.step(`${vp.name}: payment page (QR, the no-QR fallback, expired, paid) — one centred white card, QR, download button and timer visible, no overflow`, async () => {
     resetLimits();
     const { ref } = await placeOrder(page, 'ig-likes-100', 'https://www.instagram.com/p/LayoutCheck1/');
-    await page.waitForSelector('#btn-open'); await page.waitForTimeout(500);
-    // hosted checkout (what the Alpha UPI API provides): the steps card and the PAY NOW button
-    const h = await page.evaluate(() => { const c = document.querySelector('.hosted-card').getBoundingClientRect(); const b = document.querySelector('#btn-open').getBoundingClientRect(); return { cw: c.width, cl: c.left, cr: c.right, vw: document.documentElement.clientWidth, btnH: b.height, btnTop: b.top, vh: innerHeight }; });
-    t.ok(h.cw >= 260 && h.cl >= 0 && h.cr <= h.vw, `hosted card fits: ${Math.round(h.cw)} wide in ${h.vw}`);
-    t.ok(h.btnH >= 44, 'PAY NOW button ' + h.btnH); t.ok(h.btnTop < h.vh * 1.05, 'the PAY NOW button is within the first screen: ' + Math.round(h.btnTop) + ' / ' + h.vh);
-    t.eq(await page.locator('#qr-img').count(), 0, 'no QR image on a hosted payment');
-    const ah = await audit(page); t.eq(ah.issues, [], JSON.stringify(ah.issues));
-    t.eq(await coveredControls(page), [], 'hosted payment page controls are reachable');
-    await shot('pay-hosted');
-    // a gateway that returns a UPI request: the QR flavour
-    seedUpiQr(ref); await page.reload({ waitUntil: 'networkidle' }); await page.waitForSelector('#qr-img'); await page.waitForTimeout(500);
+    await page.waitForSelector('#qr-img'); await page.waitForFunction(() => { const i = document.querySelector('#qr-img'); return i && i.complete && i.naturalWidth > 0; }); await page.waitForTimeout(500);
     const a = await audit(page); t.eq(a.issues, [], JSON.stringify(a.issues));
     const qr = await metrics(page, '#qr-img'); const timer = await metrics(page, '#timer-value'); const dl = await metrics(page, '#btn-download');
     t.ok(qr.w >= 220 && qr.w <= 360 && qr.w === qr.h, `QR ${qr.w}x${qr.h}`);
@@ -166,10 +156,29 @@ for (const vp of VIEWPORTS) {
     t.eq(await coveredControls(page), [], 'payment page controls are reachable');
     const above = await page.evaluate(() => ({ qrTop: document.querySelector('#qr-img').getBoundingClientRect().top, vh: window.innerHeight }));
     t.ok(above.qrTop < above.vh * 0.7, 'QR starts in the first screen: ' + above.qrTop);
+    const g = await page.evaluate(() => {
+      const r = (s) => { const b = document.querySelector(s).getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom }; };
+      return { head: r('.pay-title'), qr: r('#qr-frame'), dl: r('#btn-download'), tm: r('#timer'), box: r('#pay-box'), card: r('#pay-root'), vw: document.documentElement.clientWidth };
+    });
+    t.ok(g.head.b <= g.qr.t && g.qr.b <= g.dl.t + 1 && g.dl.b <= g.tm.t + 1, 'order: PAY SECURELY, QR, DOWNLOAD QR CODE, timer');
+    t.ok(Math.abs((g.card.l + g.card.r) / 2 - g.vw / 2) < 14 && g.card.l >= 0 && g.card.r <= g.vw + 1, 'the payment card is centred and inside the screen');
+    t.ok(g.box.l >= g.card.l && g.box.r <= g.card.r && g.qr.l >= g.box.l && g.qr.r <= g.box.r, 'the QR sits inside the white card, inside the payment card');
+    t.eq(await page.locator('#btn-open').isVisible(), vp.mobile ? true : false, vp.mobile ? 'OPEN UPI APP is offered on a phone' : 'no OPEN UPI APP on a desktop');
     await shot('pay-pending');
+    // the gateway's page carried no QR: checkout went to the gateway; our page for the order is one button inside the same card
+    await gatewayPage('none'); resetLimits();
+    const hosted = await placeOrderAtGateway(page, 'ig-likes-100', 'https://www.instagram.com/p/LayoutCheck2/'); await gatewayPage('link');
+    await page.goto(`${BASE}/pay/${hosted.ref}`, { waitUntil: 'networkidle' }); await page.waitForSelector('#btn-open'); await page.waitForTimeout(400);
+    const h = await page.evaluate(() => { const c = document.querySelector('#pay-box').getBoundingClientRect(); const b = document.querySelector('#btn-open').getBoundingClientRect(); return { cw: c.width, cl: c.left, cr: c.right, vw: document.documentElement.clientWidth, btnH: b.height, btnTop: b.top, vh: innerHeight }; });
+    t.ok(h.cw >= 260 && h.cl >= 0 && h.cr <= h.vw, `fallback box fits: ${Math.round(h.cw)} wide in ${h.vw}`);
+    t.ok(h.btnH >= 44, 'CONTINUE TO PAYMENT button ' + h.btnH); t.ok(h.btnTop < h.vh * 1.05, 'the button is within the first screen: ' + Math.round(h.btnTop) + ' / ' + h.vh);
+    t.eq(await page.locator('#qr-img').count(), 0, 'no QR image when there is none');
+    const ah = await audit(page); t.eq(ah.issues, [], JSON.stringify(ah.issues));
+    t.eq(await coveredControls(page), [], 'fallback payment page controls are reachable');
+    await shot('pay-hosted');
     // expired
     sql(`UPDATE payments SET expires_at = UTC_TIMESTAMP() + INTERVAL 4 SECOND WHERE ref = '${ref}'`);
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/pay/${ref}`, { waitUntil: 'networkidle' });
     await page.waitForSelector('[data-view=expired]:not([hidden])', { timeout: 12000 }); await page.waitForTimeout(400);
     const a2 = await audit(page); t.eq(a2.issues, [], JSON.stringify(a2.issues));
     await shot('pay-expired');

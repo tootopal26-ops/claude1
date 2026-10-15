@@ -1,6 +1,7 @@
 import { $, html, icon, on, url } from '../core/dom.js';
 import { fmtDateTime, timeAgo } from '../core/format.js';
 import { get, put, post } from './net.js';
+import { confirmDialog } from '../core/dialog.js';
 import { ok, fail, warn, errorState, showFieldErrors, clearFieldErrors, autoClearErrors, withBusy, copyText } from './ui.js';
 import { secretField, wireSecrets } from './secret.js';
 import { reloadStatus } from './shell.js';
@@ -49,8 +50,12 @@ function render(gw, testResult = null) {
         ${secretField({ name: 'webhook_secret', label: 'Webhook secret', has: g.has_webhook_secret, hint: g.webhook_secret_hint, placeholder: 'Paste the webhook secret', help: 'The “webhook” key from your Alpha UPI dashboard. Used to verify that payment notifications really come from the gateway.' })}
       </div>
 
+      <div class="form-section"><h3>Payment page</h3>
+        <div class="switch-row"><div><b>Show the gateway’s QR on my payment page</b><small>Reads the UPI request on the gateway’s own checkout page, so customers scan one QR on your page and can download it. When that page carries none — or this is off — customers go straight to the gateway’s checkout page. “Check QR support” tells you which it is.</small></div><label class="switch"><input type="checkbox" name="qr_from_checkout_page" ${g.qr_from_checkout_page ? 'checked' : ''} aria-label="Show the gateway’s QR on my payment page"><span></span></label></div></div>
+
       <div class="form-actions"><span class="spacer text-sm text-muted">${g.last_tested_at ? 'Last tested ' + fmtDateTime(g.last_tested_at) : 'Not tested yet'}</span>
         <button type="button" class="btn" id="gw-test">${icon('activity', 'icon-sm')}<span>Test connection</span></button>
+        <button type="button" class="btn" id="gw-qr" title="Creates a ₹1 test order (never paid) to see whether the gateway shows a scannable QR on your own payment page">${icon('qr-code', 'icon-sm')}<span>Check QR support</span></button>
         <button type="submit" class="btn btn-primary btn-shine" id="gw-save">${icon('check')}<span>Save gateway</span></button></div>
       <div id="gw-result" class="mt-4" aria-live="polite">${testResult ? resultBox(testResult) : ''}</div>
     </section>
@@ -72,7 +77,7 @@ function render(gw, testResult = null) {
 
 function body() {
   const f = $('#gw-form');
-  const out = { base_url: f.elements.base_url.value, api_style: f.elements.api_style.value, provider_pref: f.elements.provider_pref.value, environment: f.elements.environment.value, is_active: f.elements.is_active.checked };
+  const out = { base_url: f.elements.base_url.value, api_style: f.elements.api_style.value, provider_pref: f.elements.provider_pref.value, environment: f.elements.environment.value, is_active: f.elements.is_active.checked, qr_from_checkout_page: f.elements.qr_from_checkout_page.checked };
   for (const k of ['api_key', 'api_secret', 'webhook_secret']) { const el = f.elements[k]; if (el && !el.disabled && el.value.trim()) out[k] = el.value.trim(); }
   return out;
 }
@@ -102,13 +107,33 @@ export default async function init() {
       }
     });
   });
+  // save first when the form has unsaved connection details, so a test uses what is on screen
+  const saveConnectionIfChanged = async () => {
+    const b0 = body();
+    const changed = b0.base_url !== g.base_url || b0.api_key || b0.api_secret || b0.webhook_secret || b0.api_style !== g.api_style || b0.provider_pref !== g.provider_pref || b0.qr_from_checkout_page !== g.qr_from_checkout_page;
+    if (changed) await put(`gateway/${g.id}`, { ...b0, is_active: g.is_active }, { idempotency: true });
+  };
+  on(r, 'click', '#gw-qr', async (e, b) => {
+    if (!(await confirmDialog({
+      title: 'Check QR support?',
+      message: 'This creates one ₹1 test order at your payment gateway and looks at its checkout page for the UPI payment request behind its QR. The test order is never paid, does not appear in your orders and expires on its own.',
+      confirmText: 'Create test order',
+    }))) return;
+    await withBusy(b, async () => {
+      try {
+        await saveConnectionIfChanged();
+        const { result } = await post(`gateway/${g.id}/qr-check`, {}, { idempotency: true, timeout: 40000 });
+        $('#gw-result').innerHTML = String(resultBox(result));
+        (result.ok ? (result.level === 'ok' ? ok : warn) : fail)(result.found ? 'Your payment page can show the gateway’s QR' : result.ok ? 'No QR available from the gateway' : 'QR check failed', result.found ? 'Customers will see a scannable QR with a Download button.' : result.ok ? 'Customers are sent to the gateway’s own checkout page instead.' : result.message);
+      } catch (err) {
+        if (err.fields) { showFieldErrors(r, err.fields); fail('Please check the highlighted fields', err.message); } else fail('QR check failed', err.message);
+      }
+    });
+  });
   on(r, 'click', '#gw-test', async (e, b) => {
     await withBusy(b, async () => {
       try {
-        // save first when the form has unsaved connection details, so the test uses what is on screen
-        const b0 = body();
-        const changed = b0.base_url !== g.base_url || b0.api_key || b0.api_secret || b0.webhook_secret || b0.api_style !== g.api_style || b0.provider_pref !== g.provider_pref;
-        if (changed) await put(`gateway/${g.id}`, { ...b0, is_active: g.is_active }, { idempotency: true });
+        await saveConnectionIfChanged();
         const res = await post(`gateway/${g.id}/test`);
         render(res.gateway, res.result);
         reloadStatus();

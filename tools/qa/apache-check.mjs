@@ -109,11 +109,9 @@ for (const [label, port] of [['A (everything in public_html)', PORT_A], ['B (cod
     const home = await get('/');
     const co = await http(base, 'POST', '/api/checkout', { json: { service_id: serviceId('ig-followers-50'), target: 'https://instagram.com/apache_' + port }, headers: { 'idempotency-key': randomUUID() } });
     t.eq(co.status, 200, co.text); const j = JSON.parse(co.text); const ref = j.url.match(/pay\/([a-f0-9]{32})/)[1];
-    const page = await get(`/pay/${ref}`); t.eq(page.status, 200); t.has(page.text, 'PAY SECURELY'); t.has(page.text, 'data-mode="hosted"');
-    t.eq((await get(`/pay/${ref}/qr.png`)).status, 410, 'a hosted-checkout payment has no QR');
-    sql(`UPDATE payments SET qr_payload = CONCAT('upi://pay?pa=merchant.demo@okbizaxis&am=', FORMAT(amount_paise / 100, 2, 'en_US'), '&cu=INR&tr=', gateway_order_id) WHERE ref = '${ref}'`);   // a gateway that returns a UPI request
+    const page = await get(`/pay/${ref}`); t.eq(page.status, 200); t.has(page.text, 'PAY SECURELY'); t.has(page.text, 'data-mode="upi"'); t.has(page.text, 'SCAN AND PAY'); t.has(page.text, 'DOWNLOAD QR CODE');   // the QR is the UPI request of the gateway's own checkout page, read server-side
     const qr = await get(`/pay/${ref}/qr.png`); t.eq(qr.status, 200); t.eq(qr.buf.subarray(1, 4).toString(), 'PNG'); t.has(qr.headers.get('content-type'), 'image/png');
-    t.has((await get(`/pay/${ref}`)).text, 'SCAN AND PAY');
+    const dlq = await get(`/pay/${ref}/qr.png?download=1`); t.eq(dlq.status, 200); t.has(dlq.headers.get('content-disposition') || '', 'attachment');
     const gw = sql(`SELECT gateway_order_id FROM payments WHERE ref = '${ref}'`);
     const paid = await alpha(`/__pay/${gw}/success`, {}); t.eq(paid.webhook?.status, 200, JSON.stringify(paid));
     const orderStatus = () => sql(`SELECT o.status FROM orders o JOIN payments p ON p.order_id = o.id WHERE p.ref = '${ref}'`);
@@ -177,10 +175,9 @@ for (const [label, port] of [['A (everything in public_html)', PORT_A], ['B (cod
       await card.locator('[data-action=buy]').click(); await card.locator('input[name=target]').fill('https://youtu.be/dQw4w9WgXcQ');
       await page.waitForFunction((el) => !el.querySelector('[data-action=proceed]').disabled, await card.elementHandle());
       await Promise.all([page.waitForURL(/\/booster\/pay\/[a-f0-9]{32}/, { timeout: 30000 }), card.locator('[data-action=proceed]').click()]);
-      await page.waitForSelector('#btn-open'); t.ok(await page.$eval('#btn-open', (e) => e.href.startsWith('http://127.0.0.1:4010/pay/')), 'the pay button points at the gateway checkout (served from inside the folder)');
       const ref = page.url().match(/pay\/([a-f0-9]{32})/)[1];
-      sql(`UPDATE payments SET qr_payload = CONCAT('upi://pay?pa=merchant.demo@okbizaxis&am=', FORMAT(amount_paise / 100, 2, 'en_US'), '&cu=INR&tr=', gateway_order_id) WHERE ref = '${ref}'`);
-      await page.reload({ waitUntil: 'networkidle' }); await page.waitForSelector('#qr-img'); t.ok(await page.$eval('#qr-img', (e) => e.naturalWidth > 100), 'QR loaded from inside the folder');
+      await page.waitForSelector('#qr-img'); await page.waitForFunction(() => { const i = document.querySelector('#qr-img'); return i && i.complete && i.naturalWidth > 0; });
+      t.ok(await page.$eval('#qr-img', (e) => e.naturalWidth > 100), 'the QR is loaded from inside the folder');
       const gw = sql(`SELECT gateway_order_id FROM payments WHERE ref = '${ref}'`); const res = await alpha(`/__pay/${gw}/success`, {});
       t.eq(res.webhook?.status, 200, 'the signed webhook reached the sub-folder install: ' + JSON.stringify(res));
       await page.waitForSelector('[data-view=paid]:not([hidden])', { timeout: 10000 }).catch(async () => { throw new Error(`the page never flipped to paid; payment=${sql(`SELECT status FROM payments WHERE ref = '${ref}'`)} statusUrl=${await page.evaluate(() => JSON.parse(document.getElementById('pay-data').textContent).statusUrl)} problems=${page.problems.join(' | ')}`); });

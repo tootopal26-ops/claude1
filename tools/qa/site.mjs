@@ -57,7 +57,7 @@ export async function mocksReset() {
   await alpha('/__control', {
     reset: true, style: 'bearer', apiKey: 'test-api-key-123', apiSecret: 'test-api-secret-789', webhookSecret: 'test-webhook-secret-456',
     webhookUrl: `${BASE}/webhooks/payments/${gatewayId()}`,
-    mode: { offline: false, failCreate: false, quota: false, slowMs: 0, noAmount: false, currency: 'INR' },
+    mode: { offline: false, failCreate: false, quota: false, slowMs: 0, noAmount: false, currency: 'INR', pageUpi: 'link' },
   });
   await smm('/__control', { offline: false, slowMs: 0, garbled: false, hang: false, currency: 'INR' });
   await smm('/__reset');
@@ -72,8 +72,27 @@ export const payment = (ref) => {
 };
 
 /**
- * Give a payment a real UPI payment request — what a gateway that returns one (the Alpha UPI API does not) would have stored — so the QR
- * flavour of the payment page can be tested. The amount is the payment's own. Returns the request.
+ * Make the mock gateway's checkout page carry NO UPI request (`none`), a request for another amount (`wrong_amount`), …, so checkout has no
+ * QR to show and continues at the gateway's own checkout. `link` (the default) is a page that carries a valid request for the order.
+ */
+export const gatewayPage = (pageUpi) => alpha('/__control', { mode: { pageUpi } });
+
+/**
+ * Like placeOrder, for a gateway whose checkout page gives no QR: checkout sends the customer straight to the gateway's own page
+ * (never to a page of instructions). Returns { ref, gatewayUrl, card }; call gatewayPage('none') first.
+ */
+export async function placeOrderAtGateway(page, code, target) {
+  const card = await openCard(page, code);
+  await card.locator('input[name=target]').fill(target);
+  await page.waitForFunction((el) => !el.querySelector('[data-action=proceed]').disabled, await card.elementHandle());
+  await Promise.all([page.waitForURL((u) => u.href.startsWith(ALPHA + '/pay/'), { timeout: 30000 }), card.locator('[data-action=proceed]').click()]);
+  const gatewayUrl = page.url();
+  return { ref: sql(`SELECT ref FROM payments WHERE payment_url = '${gatewayUrl}'`), gatewayUrl, card };
+}
+
+/**
+ * Give a payment a real UPI payment request of the gateway's own shape (what the gateway's checkout page carries) so a test does not
+ * depend on the mock page. The amount is the payment's own. Returns the request.
  */
 export function seedUpiQr(ref, { vpa = 'merchant.demo@okbizaxis', name = 'Social Media Booster' } = {}) {
   const o = payment(ref);

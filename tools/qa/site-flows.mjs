@@ -3,7 +3,7 @@
 // the Shop drawer and order tracking. The same flows run again on a phone viewport at the end.
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { launch, newPage, BASE, sql, rows, alpha, smm, mocksReset, resetLimits, payment, payOk, decodeQr, openCard, placeOrder, serviceId, sleep, hexToRgb, luminance, contrast, useMockProviderIds, seedUpiQr } from './site.mjs';
+import { launch, newPage, BASE, sql, rows, alpha, smm, mocksReset, resetLimits, payment, payOk, decodeQr, openCard, placeOrder, placeOrderAtGateway, gatewayPage, serviceId, sleep, hexToRgb, luminance, contrast, useMockProviderIds } from './site.mjs';
 import { suite } from './harness.mjs';
 
 const t = suite('site-flows');
@@ -354,74 +354,91 @@ await t.step('PROCEED TO PAYMENT creates ONE pending order with the SERVER price
   page.removeAllListeners('request');
 });
 
-await t.step('payment page (hosted checkout — all the Alpha UPI API offers): PAY SECURELY, NO QR, a PAY ₹5 NOW button, 05:00 timer counting down, no layout problems', async () => {
+await t.step('payment page: PAY SECURELY → SCAN AND PAY → the REAL payment QR → DOWNLOAD QR CODE → 05:00 timer — no second-page instructions, no PAY NOW button', async () => {
   await page.waitForLoadState('networkidle');
-  t.eq(await page.getAttribute('[data-view=pending]', 'data-mode'), 'hosted');
+  await page.waitForFunction(() => { const i = document.querySelector('#qr-img'); return i && i.complete && i.naturalWidth > 0; });
+  t.eq(await page.getAttribute('[data-view=pending]', 'data-mode'), 'upi', 'the gateway page carried a UPI request, so the QR is on OUR page');
   t.eq((await text(page.locator('[data-view=pending] h1'))).toUpperCase(), 'PAY SECURELY');
+  t.eq((await text(page.locator('.pay-box-title'))).toUpperCase(), 'SCAN AND PAY');
   t.has(await text(page.locator('.pay-summary')), '₹5'); t.has(await text(page.locator('.pay-summary')), '50 Followers');
-  // the bug this replaces: a QR of the gateway's https page — a UPI app cannot pay it and a camera opens a page that shows ANOTHER QR
-  t.eq(await page.locator('#qr-img, #qr-frame, #btn-download, img[src*="qr.png"]').count(), 0, 'no QR image, no QR frame, no download link');
-  t.ok(!/scan and pay|download qr/i.test(await text(page.locator('#pay-root'))), 'no "scan" promise and no QR download on the card');
-  t.eq(await page.locator('.hosted-steps li').count(), 3, 'three short steps');
-  t.has(await text(page.locator('.hosted-card')), 'scan its QR code with any UPI app');
+  // the QR is the UPI request for THIS order and amount (the one the gateway's own checkout page carries), drawn by our backend
+  const stored = sql(`SELECT qr_payload FROM payments WHERE ref = '${ORDER.ref}'`);
+  t.ok(stored.startsWith('upi://pay?') && !/https?:/.test(stored), 'a UPI payment request, not a web address');
+  t.has(stored, 'am=5.00'); t.has(stored, 'cu=INR'); t.has(stored, `tr=${ORDER.gwOrder}`);
+  const shown = await page.$eval('#qr-img', (e) => ({ w: e.naturalWidth, h: e.naturalHeight, shown: e.getBoundingClientRect().width }));
+  t.ok(shown.w === shown.h && shown.shown >= 240, `QR ${shown.w}px, displayed ${Math.round(shown.shown)}px: large enough to scan from another phone`);
+  t.eq(decodeQr(await page.locator('#qr-frame').screenshot()), stored, 'what is on the screen decodes to that request');
+  // the second-page instruction card is gone
+  const card = await text(page.locator('#pay-root'));
+  t.ok(!/payment partner|new tab|scan its qr|another page|secure payment page opens|PAY ₹5 NOW|CONTINUE TO PAYMENT/i.test(card), 'no instruction card, no PAY NOW button: ' + card.slice(0, 200));
+  t.eq(await page.locator('.hosted-card, .hosted-steps, #hosted-frame').count(), 0);
+  t.eq(await page.locator('#btn-open').isVisible(), false, 'OPEN UPI APP is shown on phones only (a QR cannot be scanned on the phone that shows it)');
+  t.ok(!(await page.content()).includes(sql(`SELECT payment_url FROM payments WHERE ref = '${ORDER.ref}'`)), 'the gateway\'s checkout URL is not on the page');
+  // layout: SCAN AND PAY, the QR, DOWNLOAD directly below it, then the timer — all centred in one white card
+  const g = await page.evaluate(() => {
+    const r = (s) => { const b = document.querySelector(s).getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom }; };
+    return { title: r('.pay-box-title'), qr: r('#qr-frame'), dl: r('#btn-download'), tm: r('#timer'), box: r('#pay-box'), vw: document.documentElement.clientWidth, bg: getComputedStyle(document.querySelector('#pay-box')).backgroundColor };
+  });
+  t.ok(g.title.b <= g.qr.t && g.qr.b <= g.dl.t + 1 && g.dl.b <= g.tm.t + 1, 'order: SCAN AND PAY, QR, DOWNLOAD QR CODE, timer');
+  t.ok(g.dl.t - g.qr.b < 80, 'the download button is directly below the QR: ' + Math.round(g.dl.t - g.qr.b) + 'px');
+  t.ok(g.qr.l >= g.box.l && g.qr.r <= g.box.r && Math.abs((g.qr.l + g.qr.r) / 2 - g.vw / 2) < 14, 'the QR is centred in the card');
+  t.eq(g.bg, 'rgb(255, 255, 255)', 'a white card');
   const t0 = await text(page.locator('#timer-value')); t.ok(/^0[45]:\d\d$/.test(t0) && t0 >= '04:55', 'timer starts at 05:00: ' + t0);
   await page.waitForTimeout(2300);
   const t1 = await text(page.locator('#timer-value')); t.ok(t1 < t0, `counts down: ${t0} → ${t1}`);
   const tm = await page.$eval('#timer', (e) => ({ level: e.dataset.level, role: e.getAttribute('role') })); t.eq(tm.level, 'ok'); t.eq(tm.role, 'timer');
-  const open = await page.$eval('#btn-open', (e) => ({ text: e.textContent.trim().replace(/\s+/g, ' '), href: e.getAttribute('href'), target: e.target, rel: e.rel }));
-  t.eq(open.text.toUpperCase(), 'PAY ₹5 NOW');
-  t.eq(open.href, sql(`SELECT payment_url FROM payments WHERE ref = '${ORDER.ref}'`), 'the button opens the gateway checkout');
-  t.eq(open.target, '_blank'); t.has(open.rel, 'noopener');
-  t.eq(sql(`SELECT qr_payload IS NULL FROM payments WHERE ref = '${ORDER.ref}'`), '1', 'nothing is stored as "what the QR encodes"');
-  const qr = await fetch(`${BASE}/pay/${ORDER.ref}/qr.png`); t.eq(qr.status, 410, 'the QR route has nothing to serve for a hosted-only payment');
   t.has(await text(page.locator('.pay-meta')), ORDER.publicId);
-  t.eq(page.problems.filter((p) => !/favicon|410/.test(p)), [], page.problems.join('\n'));
+  t.eq(page.problems.filter((p) => !/favicon/.test(p)), [], page.problems.join('\n'));
 });
 
-await t.step('PAY ₹5 NOW opens the gateway checkout in a NEW tab while this page keeps the timer and the server-side status watch', async () => {
-  const before = page.url();
-  const [popup] = await Promise.all([page.context().waitForEvent('page'), page.click('#btn-open')]);
-  await popup.waitForLoadState('domcontentloaded');
-  t.eq(popup.url(), sql(`SELECT payment_url FROM payments WHERE ref = '${ORDER.ref}'`), 'the gateway checkout page opened');
-  t.has(await popup.textContent('body'), 'Mock Alpha UPI payment'); t.has(await popup.textContent('body'), ORDER.gwOrder);
-  await popup.close();
-  t.eq(page.url(), before, 'this page did not navigate'); t.eq(await page.locator('[data-view=pending]').isVisible(), true);
-  t.eq(payment(ORDER.ref).oStatus, 'PENDING_PAYMENT', 'opening the checkout paid nothing');
-});
-
-await t.step('payment page (UPI mode — when a gateway returns a real UPI request): SCAN AND PAY, the QR is that request, DOWNLOAD QR gives the same PNG, OPEN UPI APP opens it', async () => {
-  resetLimits();
-  const p2 = await newPage(browser, { width: 1440, height: 900 }); t.page = p2;
-  const { ref } = await placeOrder(p2, 'ig-likes-100', 'https://www.instagram.com/p/UpiModeOrd01/');
-  const o = payment(ref);
-  const am = (o.pAmount / 100).toFixed(2);
-  const upi = `upi://pay?pa=merchant.demo@okbizaxis&pn=Social%20Media%20Booster&am=${am}&cu=INR&tn=Order%20${o.publicId}&tr=${o.gwOrder}`;
-  sql(`UPDATE payments SET qr_payload = '${upi}' WHERE ref = '${ref}'`);   // what a gateway that returns a UPI payment request would have stored
-  await p2.goto(`${BASE}/pay/${ref}`, { waitUntil: 'networkidle' });
-  t.eq(await p2.getAttribute('[data-view=pending]', 'data-mode'), 'upi');
-  t.eq((await t.text(p2.locator('[data-view=pending] h1'))).toUpperCase(), 'SCAN AND PAY');
-  const qr = await p2.$eval('#qr-img', (e) => ({ w: e.naturalWidth, h: e.naturalHeight, shown: e.getBoundingClientRect().width }));
-  t.ok(qr.w >= 200 && qr.w === qr.h, `QR ${qr.w}x${qr.h}`); t.ok(qr.shown >= 240, 'QR displayed large: ' + qr.shown);
-  t.has(await t.text(p2.locator('#pay-payee')), 'merchant.demo@okbizaxis'); t.has(await t.text(p2.locator('#pay-payee')), 'Social Media Booster');
-  t.eq(await p2.locator('.hosted-card').count(), 0, 'no hosted card in UPI mode');
-  const [dl] = await Promise.all([p2.waitForEvent('download'), p2.click('#btn-download')]);
+await t.step('DOWNLOAD QR CODE saves the very QR on the screen (not a screenshot of the page), named after the order, decoding to this order\'s request', async () => {
+  const stored = sql(`SELECT qr_payload FROM payments WHERE ref = '${ORDER.ref}'`);
+  t.eq((await text(page.locator('#btn-download'))).toUpperCase(), 'DOWNLOAD QR CODE');
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#btn-download')]);
   const buf = readFileSync(await dl.path());
   t.eq(buf.subarray(1, 4).toString(), 'PNG'); t.ok(buf.length > 300, 'size ' + buf.length);
-  t.has(dl.suggestedFilename(), '.png'); t.has(dl.suggestedFilename().toUpperCase(), o.publicId.replace('SMB-', ''));
-  const decoded = decodeQr(buf);
-  t.eq(decoded, upi, 'the downloaded QR encodes the UPI payment request');
-  t.ok(decoded.startsWith('upi://pay?') && !decoded.includes('https://'), 'a UPI request, not a web page');
-  t.has(decoded, `am=${am}`); t.has(decoded, 'cu=INR');
-  t.eq(decodeQr(Buffer.from(await (await fetch(`${BASE}/pay/${ref}/qr.png`)).arrayBuffer())), upi, 'the inline image is the same QR');
-  t.has((await t.text(p2.locator('.toast').last())).toLowerCase(), 'qr');
-  const open = await p2.$eval('#btn-open', (e) => ({ text: e.textContent.trim().replace(/\s+/g, ' '), href: e.getAttribute('href') }));
-  t.eq(open.text.toUpperCase(), 'OPEN UPI APP'); t.eq(open.href, upi);
-  const gw = sql(`SELECT payment_url FROM payments WHERE ref = '${ref}'`);
-  t.ok(!(await p2.content()).includes(gw), 'the hosted checkout URL is not on the UPI-mode page');
-  // the session is bound to this order and amount: tamper with the stored request and the QR disappears
-  sql(`UPDATE payments SET qr_payload = REPLACE(qr_payload, 'am=${am}', 'am=1.00') WHERE ref = '${ref}'`);
-  t.eq((await fetch(`${BASE}/pay/${ref}/qr.png`)).status, 410, 'a request for another amount is never served as the QR');
-  await p2.close(); t.page = page;
+  t.eq(dl.suggestedFilename(), `${ORDER.publicId}-payment-qr.png`, 'the file name carries the order id');
+  t.eq(decodeQr(buf), stored, 'the downloaded QR encodes the UPI request for this order and amount');
+  t.eq(decodeQr(Buffer.from(await (await fetch(`${BASE}/pay/${ORDER.ref}/qr.png`)).arrayBuffer())), stored, 'and it is the same QR the page shows');
+  t.has((await fetch(`${BASE}/pay/${ORDER.ref}/qr.png?download=1`)).headers.get('content-disposition') || '', 'attachment');
+  t.has((await text(page.locator('.toast').last())).toLowerCase(), 'qr');
+  // viewing, fetching and downloading the QR pay nothing — only the gateway's own confirmation does
+  t.eq(payment(ORDER.ref).oStatus, 'PENDING_PAYMENT', 'nothing was marked paid'); t.eq(payment(ORDER.ref).pStatus, 'pending');
+  t.eq(await page.locator('[data-view=pending]').isVisible(), true);
+});
+
+await t.step('UPI details: OPEN UPI APP (phones) carries the same request; changing the stored request kills the QR', async () => {
+  const stored = sql(`SELECT qr_payload FROM payments WHERE ref = '${ORDER.ref}'`);
+  const open = await page.$eval('#btn-open', (e) => ({ text: e.textContent.trim().replace(/\s+/g, ' '), href: e.getAttribute('href') }));
+  t.eq(open.text.toUpperCase(), 'OPEN UPI APP'); t.eq(open.href, stored, 'the app button opens the same request');
+  // the session is bound to this order and amount: change the stored request and the QR disappears
+  sql(`UPDATE payments SET qr_payload = REPLACE(qr_payload, 'am=5.00', 'am=1.00') WHERE ref = '${ORDER.ref}'`);
+  t.eq((await fetch(`${BASE}/pay/${ORDER.ref}/qr.png`)).status, 410, 'a request for another amount is never served as the QR');
+  sql(`UPDATE payments SET qr_payload = '${stored}' WHERE ref = '${ORDER.ref}'`);
+  t.eq((await fetch(`${BASE}/pay/${ORDER.ref}/qr.png`)).status, 200, 'restored');
+});
+
+await t.step('no QR to show (the gateway\'s checkout page carries no UPI request): checkout goes straight to the gateway\'s own page — never to an instruction card — and our page is one button', async () => {
+  resetLimits(); await gatewayPage('none');
+  const p = await fresh();
+  const { ref, gatewayUrl } = await placeOrderAtGateway(p, 'ig-likes-100', 'https://www.instagram.com/p/NoQrOrder01/');
+  await gatewayPage('link');
+  t.has(await p.textContent('body'), 'Mock Alpha UPI payment');              // the gateway's own page is what the customer sees
+  t.eq(sql(`SELECT qr_payload IS NULL FROM payments WHERE ref = '${ref}'`), '1', 'nothing is stored as "what the QR encodes"');
+  t.eq((await fetch(`${BASE}/pay/${ref}/qr.png`)).status, 410, 'there is no QR to serve');
+  // our payment page for the same order (Your orders → open it, or a return from the gateway)
+  await p.goto(`${BASE}/pay/${ref}`, { waitUntil: 'networkidle' });
+  t.eq(await p.getAttribute('[data-view=pending]', 'data-mode'), 'hosted');
+  t.eq((await t.text(p.locator('[data-view=pending] h1'))).toUpperCase(), 'PAY SECURELY');
+  t.eq((await t.text(p.locator('.pay-box-title'))).toUpperCase(), 'COMPLETE YOUR PAYMENT');
+  t.eq(await p.locator('#qr-img, #qr-frame, #btn-download, .hosted-card, .hosted-steps').count(), 0, 'no QR, no steps card');
+  t.ok(!/payment partner|new tab|scan its qr|PAY ₹5 NOW/i.test(await t.text(p.locator('#pay-root'))), 'no instruction card');
+  const open = await p.$eval('#btn-open', (e) => ({ text: e.textContent.trim().replace(/\s+/g, ' '), href: e.getAttribute('href'), target: e.target }));
+  t.eq(open.text.toUpperCase(), 'CONTINUE TO PAYMENT'); t.eq(open.href, gatewayUrl, 'continues at the gateway\'s checkout'); t.eq(open.target, '', 'in the same tab');
+  const t0 = await t.text(p.locator('#timer-value')); t.ok(/^0[45]:\d\d$/.test(t0) && t0 >= '04:55', 'the 05:00 timer is there too: ' + t0);
+  t.eq(payment(ref).oStatus, 'PENDING_PAYMENT', 'opening pages paid nothing');
+  t.eq(p.problems.filter((x) => !/favicon|410/.test(x)), [], p.problems.join('\n'));
+  await p.close(); t.page = page;
 });
 
 await t.step('webhook success flips the page to "Payment successful" (no reload), order is PAID → handed to the SMM panel', async () => {
@@ -496,9 +513,10 @@ await t.step('session expiry (accelerated, UPI mode): at 00:00 → "Payment sess
   resetLimits();
   const { ref } = await placeOrder(page, 'yt-views-10', 'https://youtu.be/dQw4w9WgXcQ');
   const gwOrder = payment(ref).gwOrder;
-  sql(`UPDATE payments SET qr_payload = CONCAT('upi://pay?pa=merchant.demo@okbizaxis&am=', FORMAT(amount_paise / 100, 2, 'en_US'), '&cu=INR&tr=${gwOrder}'), expires_at = UTC_TIMESTAMP() + INTERVAL 9 SECOND WHERE ref = '${ref}'`);
+  sql(`UPDATE payments SET expires_at = UTC_TIMESTAMP() + INTERVAL 9 SECOND WHERE ref = '${ref}'`);
   await page.reload({ waitUntil: 'networkidle' });
-  t.eq(await page.getAttribute('[data-view=pending]', 'data-mode'), 'upi', 'seeded as a UPI-mode payment');
+  t.eq(await page.getAttribute('[data-view=pending]', 'data-mode'), 'upi', 'a QR payment with a live QR');
+  t.eq(await page.locator('#qr-img[src]').count(), 1, 'the QR is on the page while the session lives');
   const first = await text(page.locator('#timer-value')); t.ok(/^00:0\d$/.test(first) || first === '00:10', 'timer follows the server expiry: ' + first);
   await page.waitForSelector('[data-view=expired]:not([hidden])', { timeout: 15000 });
   t.has(await text(page.locator('[data-view=expired] h1')), 'Payment session expired');
@@ -518,23 +536,26 @@ await t.step('session expiry (accelerated, UPI mode): at 00:00 → "Payment sess
   ORDER.expired = { ref, gwOrder };
 });
 
-await t.step('session expiry (accelerated, hosted checkout): the PAY NOW button and the steps card die at 00:00, the page says so, nothing shows as success', async () => {
-  resetLimits();
-  const { ref } = await placeOrder(page, 'yt-views-10', 'https://youtu.be/abcDEF12345');
+await t.step('session expiry (accelerated, no-QR fallback): the CONTINUE button dies at 00:00, the page says so, nothing shows as success', async () => {
+  resetLimits(); await gatewayPage('none');
+  const p = await fresh();
+  const { ref } = await placeOrderAtGateway(p, 'yt-views-10', 'https://youtu.be/abcDEF12345');
+  await gatewayPage('link');
   sql(`UPDATE payments SET expires_at = UTC_TIMESTAMP() + INTERVAL 9 SECOND WHERE ref = '${ref}'`);
-  await page.reload({ waitUntil: 'networkidle' });
-  t.eq(await page.getAttribute('[data-view=pending]', 'data-mode'), 'hosted');
-  t.ok(await page.getAttribute('#btn-open', 'href'), 'the button works while the session is live');
-  await page.waitForSelector('[data-view=expired]:not([hidden])', { timeout: 15000 });
-  t.eq(await page.$eval('#btn-open', (e) => [e.getAttribute('aria-disabled'), e.hasAttribute('href'), e.hasAttribute('target')]), ['true', false, false], 'the pay button is dead');
-  t.eq(await page.getAttribute('#hosted-frame', 'data-dead'), 'true');
-  t.eq(await page.locator('[data-view=paid]').isHidden(), true);
+  await p.goto(`${BASE}/pay/${ref}`, { waitUntil: 'networkidle' });
+  t.eq(await p.getAttribute('[data-view=pending]', 'data-mode'), 'hosted');
+  t.ok(await p.getAttribute('#btn-open', 'href'), 'the button works while the session is live');
+  await p.waitForSelector('[data-view=expired]:not([hidden])', { timeout: 15000 });
+  t.eq(await p.$eval('#btn-open', (e) => [e.getAttribute('aria-disabled'), e.hasAttribute('href'), e.hasAttribute('target')]), ['true', false, false], 'the continue button is dead');
+  t.eq(await p.getAttribute('#pay-box', 'data-dead'), 'true');
+  t.eq(await p.locator('[data-view=paid]').isHidden(), true);
   await sleep(1500);
   t.eq(payment(ref).oStatus, 'EXPIRED');
-  await page.reload({ waitUntil: 'networkidle' });
-  t.eq(await page.locator('[data-view=expired]').isVisible(), true);
-  t.eq(await page.locator('#btn-open[href]').count(), 0, 'a reload ships no payment link for an expired session');
-  t.ok(!(await page.content()).includes('127.0.0.1:4010'), 'the gateway checkout URL is not on the expired page');
+  await p.reload({ waitUntil: 'networkidle' });
+  t.eq(await p.locator('[data-view=expired]').isVisible(), true);
+  t.eq(await p.locator('#btn-open[href]').count(), 0, 'a reload ships no payment link for an expired session');
+  t.ok(!(await p.content()).includes('127.0.0.1:4010'), 'the gateway checkout URL is not on the expired page');
+  await p.close(); t.page = page;
 });
 
 await t.step('a payment that arrives AFTER expiry is credited, flagged late, and explained (never silently lost, never shown as on-time)', async () => {
@@ -641,10 +662,12 @@ await t.step('INR only: no USD / dollar / currency picker on the storefront, the
   resetLimits();
   const { ref } = await placeOrder(page, 'ig-likes-100', 'https://www.instagram.com/p/InrOnly0001/');
   const o = payment(ref);
-  seen.push(['pay/hosted', await page.evaluate(() => document.body.innerText + '\n' + document.documentElement.outerHTML)]);
-  t.has(await text(page.locator('.pay-summary')), '₹5');
-  seedUpiQr(ref); await page.reload({ waitUntil: 'networkidle' });
   seen.push(['pay/upi', await page.evaluate(() => document.body.innerText + '\n' + document.documentElement.outerHTML)]);
+  t.has(await text(page.locator('.pay-summary')), '₹5');
+  await gatewayPage('none'); resetLimits();
+  const h = await placeOrderAtGateway(page, 'ig-likes-100', 'https://www.instagram.com/p/InrOnly0002/'); await gatewayPage('link');
+  await page.goto(`${BASE}/pay/${h.ref}`, { waitUntil: 'networkidle' });
+  seen.push(['pay/hosted', await page.evaluate(() => document.body.innerText + '\n' + document.documentElement.outerHTML)]);
   await page.goto(`${BASE}/order/${o.token}`, { waitUntil: 'networkidle' });
   seen.push(['order/tracking', await page.evaluate(() => document.body.innerText + '\n' + document.documentElement.outerHTML)]);
   t.has(await text(page.locator('.pay-summary')), '₹5');
@@ -674,11 +697,20 @@ await t.step('PHONE (390×844): choose platform → BUY NOW → type link → pa
   const box = await card.locator('[data-action=proceed]').boundingBox(); t.ok(box.height >= 44, 'tap target ' + box.height);
   await Promise.all([p.waitForURL(/\/pay\//), card.locator('[data-action=proceed]').tap()]);
   const ref = (p.url().match(/\/pay\/([a-f0-9]{32})/) || [])[1];
-  await p.waitForSelector('#btn-open');
-  const m = await p.evaluate(() => { const b = document.querySelector('#btn-open').getBoundingClientRect(); const c = document.querySelector('.hosted-card').getBoundingClientRect(); return { sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, vh: innerHeight, card: c.width, cardRight: c.right, btnTop: b.top, btnH: b.height, btnL: b.left, btnR: b.right }; });
-  t.ok(m.sw <= m.cw + 1, `no horizontal overflow ${m.sw}/${m.cw}`); t.ok(m.card >= 300 && m.cardRight <= m.cw, 'the steps card fits the phone: ' + m.card);
-  t.ok(m.btnTop < m.vh && m.btnH >= 44 && m.btnL >= 0 && m.btnR <= m.cw, `PAY button reachable on the first screen, tap target ${m.btnH}`);
-  t.eq(await p.locator('#qr-img').count(), 0, 'no QR on the phone either');
+  await p.waitForSelector('#qr-img'); await p.waitForFunction(() => { const i = document.querySelector('#qr-img'); return i && i.complete && i.naturalWidth > 0; });
+  const stored = sql(`SELECT qr_payload FROM payments WHERE ref = '${ref}'`);
+  const m = await p.evaluate(() => {
+    const r = (s) => document.querySelector(s).getBoundingClientRect();
+    const q = r('#qr-img'), d = r('#btn-download'), tm = r('#timer'), o = r('#btn-open');
+    return { sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, vh: innerHeight, qrW: q.width, qrL: q.left, qrR: q.right, dlH: d.height, dlB: d.bottom, tmB: tm.bottom, openH: o.height, openShown: getComputedStyle(document.querySelector('.pay-actions')).display !== 'none' };
+  });
+  t.ok(m.sw <= m.cw + 1, `no horizontal overflow ${m.sw}/${m.cw}`);
+  t.ok(m.qrW >= 240 && m.qrL >= 0 && m.qrR <= m.cw, 'the QR is large and fits the phone: ' + Math.round(m.qrW));
+  t.ok(m.dlH >= 44 && m.dlB < m.vh, `DOWNLOAD QR CODE is on the first screen, tap target ${Math.round(m.dlH)}`);
+  t.ok(m.tmB < m.vh, 'the timer is on the first screen too');
+  t.ok(m.openShown && m.openH >= 44, 'a phone also gets OPEN UPI APP (it cannot scan its own screen)');
+  t.eq(decodeQr(await p.locator('#qr-frame').screenshot()), stored, 'the QR on the phone screen decodes to the order\'s request');
+  t.ok(!/payment partner|new tab|scan its qr|PAY ₹5 NOW/i.test(await t.text(p.locator('#pay-root'))), 'no instruction card on the phone');
   await payOk(ref);
   await p.waitForSelector('[data-view=paid]:not([hidden])', { timeout: 9000 });
   t.eq(p.problems.filter((x) => !/favicon/.test(x)), [], p.problems.join('\n'));

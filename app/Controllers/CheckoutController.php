@@ -27,9 +27,11 @@ final class CheckoutController
 
         [$status, $body] = Idempotency::run('checkout', $key, $hash, static function () use ($req, $in, $visitor): array {
             $r = Orders::checkout($req, $in, $visitor);
-            $order = Orders::byId((int) Orders::paymentByRef($r['ref'])['order_id']);
+            $payment = Orders::paymentByRef($r['ref']);
+            $order = Orders::byId((int) $payment['order_id']);
             return [200, [
-                'ok' => true, 'ref' => $r['ref'], 'order_id' => $r['order_id'], 'url' => url('pay/' . $r['ref']),
+                'ok' => true, 'ref' => $r['ref'], 'order_id' => $r['order_id'],
+                'url' => Orders::continueUrl($payment),      // our payment page with the QR — or, when the gateway gave no QR, its own checkout
                 'token' => $order['access_token'],
             ]];
         });

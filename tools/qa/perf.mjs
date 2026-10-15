@@ -4,7 +4,7 @@
 //   • images: explicit sizes (no layout shift), lazy-loaded below the fold, modern formats
 //   • database statements per request (dev Server-Timing header) and API chatter (beacons, polling)
 // Budgets are asserted so a regression fails the run. Needs apache2 + mod_php (skips the Apache part otherwise).
-import { launch, newPage, BASE, sql, resetLimits, mocksReset, useMockProviderIds, placeOrder, serviceId, sleep, seedUpiQr, MOBILE_UA, DESKTOP_UA } from './site.mjs';
+import { launch, newPage, BASE, sql, resetLimits, mocksReset, useMockProviderIds, placeOrder, serviceId, sleep, MOBILE_UA, DESKTOP_UA } from './site.mjs';
 import { startApache } from './apache-env.mjs';
 import { suite } from './harness.mjs';
 
@@ -112,7 +112,6 @@ await t.step('database statements and time per request (dev Server-Timing): the 
   const timing = async (method, path, init = {}) => { const r = await fetch(BASE + path, { method, ...init }); await r.arrayBuffer(); const h = r.headers.get('server-timing') || ''; return { q: Number(h.match(/"(\d+) queries"/)?.[1]), app: Number(h.match(/app;dur=([\d.]+)/)?.[1]), db: Number(h.match(/db;dur=([\d.]+)/)?.[1]), status: r.status }; };
   const co = await (await fetch(BASE + '/api/checkout', { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'smb', origin: BASE, 'idempotency-key': crypto.randomUUID() }, body: JSON.stringify({ service_id: serviceId('ig-likes-100'), target: 'https://www.instagram.com/p/PerfDb00001/' }) })).json();
   const ref = co.url.match(/pay\/([a-f0-9]{32})/)[1];
-  seedUpiQr(ref);                                   // the Alpha UPI API gives no UPI request (its qr.png answers 410): time the real PNG with one
   const rows = {
     'GET /': await timing('GET', '/'), 'GET /pay/{ref}': await timing('GET', `/pay/${ref}`), 'GET /pay/{ref}/qr.png': await timing('GET', `/pay/${ref}/qr.png`), 'GET /api/pay/{ref}/status (poll)': await timing('GET', `/api/pay/${ref}/status`),
     'GET /order/{token}': await timing('GET', `/order/${co.token}`), 'GET /api/order/{token}': await timing('GET', `/api/order/${co.token}`), 'GET /health': await timing('GET', '/health'),

@@ -379,10 +379,15 @@ await t.step('Q9/Q10/Q11 · negative quantity, negative price, invalid service �
 // ═════════════════════════ 12. Expired payment reuse ═════════════════════════
 await t.step('Q12 · can an expired payment be reused? NO — an expired session shows no QR, is never re-offered, and a new attempt always gets a fresh session', async () => {
   const o = await newOrder('ig-likes-100', 'https://www.instagram.com/p/Expire' + uniq() + '/');
-  t.eq((await req('GET', `/pay/${o.ref}/qr.png`)).status, 410, 'a hosted-checkout payment has no QR at all');
-  const upi = `upi://pay?pa=merchant.demo@okbizaxis&am=${(payment(o.ref).pAmount / 100).toFixed(2)}&cu=INR&tr=${payment(o.ref).gwOrder}`;
-  sql(`UPDATE payments SET qr_payload = '${upi}' WHERE ref = '${o.ref}'`);
-  t.eq((await req('GET', `/pay/${o.ref}/qr.png`)).status, 200, 'a live session with a real UPI request serves its QR');
+  const upi = sql(`SELECT qr_payload FROM payments WHERE ref = '${o.ref}'`);
+  t.ok(upi.startsWith('upi://pay?') && upi.includes(`am=${(payment(o.ref).pAmount / 100).toFixed(2)}`) && upi.includes(`tr=${payment(o.ref).gwOrder}`), 'the order has its own UPI request (read from the gateway page): ' + upi.slice(0, 60));
+  t.eq((await req('GET', `/pay/${o.ref}/qr.png`)).status, 200, 'a live session serves the QR of its own request');
+  // a payment whose gateway page gave no UPI request has no QR at all (checkout goes to the gateway; our page has nothing to draw)
+  await alpha('/__control', { mode: { pageUpi: 'none' } }); resetLimits();
+  const noQr = await checkout('ig-likes-100', 'https://www.instagram.com/p/NoQr' + uniq() + '/'); await alpha('/__control', { mode: { pageUpi: 'link' } });
+  t.eq(noQr.status, 200); t.ok(noQr.json.url.startsWith('http://127.0.0.1:4010/pay/'), 'checkout continues at the gateway: ' + noQr.json.url);
+  const noQrRef = sql(`SELECT ref FROM payments WHERE payment_url = '${noQr.json.url}'`);
+  t.eq((await req('GET', `/pay/${noQrRef}/qr.png`)).status, 410, 'no QR is served for a payment that has none');
   sql(`UPDATE payments SET qr_payload = REPLACE(qr_payload, '&cu=INR', '&cu=USD') WHERE ref = '${o.ref}'`);
   t.eq((await req('GET', `/pay/${o.ref}/qr.png`)).status, 410, 'a request in another currency is never served');
   sql(`UPDATE payments SET qr_payload = '${upi}' WHERE ref = '${o.ref}'`);

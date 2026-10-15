@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
-import { launch, newPage, BASE, ROOT, sql, resetLimits, mocksReset, payment, payOk, placeOrder, openCard, serviceId, sleep, useMockProviderIds, seedUpiQr } from './site.mjs';
+import { launch, newPage, BASE, ROOT, sql, resetLimits, mocksReset, payment, payOk, placeOrder, openCard, placeOrderAtGateway, gatewayPage, serviceId, sleep, useMockProviderIds } from './site.mjs';
 import { login } from './admin.mjs';
 import { suite } from './harness.mjs';
 
@@ -58,9 +58,11 @@ for (const vp of [{ name: 'desktop', width: 1440, height: 900 }, { name: 'phone'
   await t.step(`${vp.name}: payment page — pending, expired, paid, failed, tracking`, async () => {
     resetLimits();
     const { ref } = await placeOrder(page, 'ig-likes-100', 'https://www.instagram.com/p/A11yPay0001/');
-    await page.waitForSelector('#btn-open'); await page.waitForTimeout(400); await scan('pay/pending-hosted', page);
-    seedUpiQr(ref); await page.reload({ waitUntil: 'networkidle' }); await page.waitForSelector('#qr-img'); await page.waitForTimeout(400); await scan('pay/pending-upi', page);
-    sql(`UPDATE payments SET expires_at = UTC_TIMESTAMP() + INTERVAL 3 SECOND WHERE ref = '${ref}'`); await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForSelector('#qr-img'); await page.waitForFunction(() => { const i = document.querySelector('#qr-img'); return i && i.complete && i.naturalWidth > 0; }); await page.waitForTimeout(400); await scan('pay/pending-qr', page);
+    await gatewayPage('none'); resetLimits();
+    const fb = await placeOrderAtGateway(page, 'ig-likes-100', 'https://www.instagram.com/p/A11yPay0002/'); await gatewayPage('link');
+    await page.goto(`${BASE}/pay/${fb.ref}`, { waitUntil: 'networkidle' }); await page.waitForSelector('#btn-open'); await page.waitForTimeout(400); await scan('pay/pending-no-qr-fallback', page);
+    sql(`UPDATE payments SET expires_at = UTC_TIMESTAMP() + INTERVAL 3 SECOND WHERE ref = '${ref}'`); await page.goto(`${BASE}/pay/${ref}`, { waitUntil: 'networkidle' });
     await page.waitForSelector('[data-view=expired]:not([hidden])', { timeout: 15000 }); await page.waitForTimeout(400); await scan('pay/expired', page);
     resetLimits(); const second = await placeOrder(page, 'yt-views-10k', 'https://youtu.be/dQw4w9WgXcQ');
     await payOk(second.ref); await page.waitForSelector('[data-view=paid]:not([hidden])', { timeout: 9000 }); await page.waitForTimeout(500); await scan('pay/paid', page);

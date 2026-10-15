@@ -99,6 +99,7 @@ final class Gateways
             'environment'        => $row['environment'],
             'base_url'           => (string) ($config['base_url'] ?? ''),
             'provider_pref'      => (string) ($config['provider_pref'] ?? 'auto'),
+            'qr_from_checkout_page' => ($config['qr_from_checkout_page'] ?? true) !== false,
             'api_style'          => self::style($row, $config, $secrets),
             'has_api_key'        => !empty($secrets['api_key']),
             'api_key_hint'       => Crypto::mask($secrets['api_key'] ?? null),
@@ -164,6 +165,10 @@ final class Gateways
                 $changed[] = 'provider_pref';
             }
         }
+        if (array_key_exists('qr_from_checkout_page', $in)) {
+            $config['qr_from_checkout_page'] = (bool) $in['qr_from_checkout_page'];
+            $changed[] = 'qr_from_checkout_page';
+        }
         $env = $row['environment'];
         if (array_key_exists('environment', $in)) {
             if (!in_array($in['environment'], ['test', 'production'], true)) {
@@ -222,6 +227,58 @@ final class Gateways
         // Field NAMES only — never values.
         Audit::log('gateway.saved', 'payment_gateway', $id, ['changed' => $changed], $req, $admin);
         return self::adminView(self::row($id));
+    }
+
+    /**
+     * "Check QR support": create a ₹1 test order at the gateway (it is never paid) and report what its checkout page carries, i.e. whether
+     * customers will get a scannable QR on the payment page or be sent to the gateway's own checkout. Nothing is stored in our database
+     * apart from the audit entry; the order stays unpaid at the gateway.
+     *
+     * @param array{id:int,username:string,email:string} $admin
+     * @return array{ok:bool,found:bool,level:string,message:string,details:array<string,mixed>,checkout_url:?string,duration_ms:int}
+     */
+    public static function probeQr(int $id, Request $req, array $admin): array
+    {
+        $row = self::row($id) ?? throw new HttpException(404, 'Gateway not found.');
+        $config = json_decode((string) ($row['config_json'] ?? ''), true);
+        if (is_array($config) && ($config['qr_from_checkout_page'] ?? true) === false) {
+            Audit::log('gateway.qr_checked', 'payment_gateway', $id, ['found' => false, 'reason' => 'lookup_off'], $req, $admin);
+            return ['ok' => true, 'found' => false, 'level' => 'warning', 'details' => ['reason' => 'lookup_off'], 'checkout_url' => null, 'duration_ms' => 0,
+                'message' => 'Showing the gateway’s QR on your payment page is switched off, so no test order was made. Customers are sent straight to the gateway’s own checkout page. Switch it on and check again to see whether its checkout page carries a UPI payment request.'];
+        }
+        $t0 = microtime(true);
+        $res = self::adapter($row)->createPayment(new CreatePaymentRequest(
+            gatewayOrderId: 'SMBQRCHECK' . strtoupper(bin2hex(random_bytes(6))),
+            amountPaise: 100,
+            redirectUrl: absolute_url('/'),
+            remark1: 'QR support check',
+            remark2: 'test order, never paid',
+            customerName: 'QR check',
+        ));
+        $ms = (int) round((microtime(true) - $t0) * 1000);
+        $details = is_array($res->raw['qr_discovery'] ?? null) ? $res->raw['qr_discovery'] : [];
+        $intent = $res->ok ? \App\Support\Upi::validateFor($res->upiIntent, 100) : null;
+
+        if (!$res->ok) {
+            $out = ['ok' => false, 'found' => false, 'level' => 'error', 'message' => 'The gateway did not create the ₹1 test order: ' . ($res->message !== '' ? $res->message : 'no reason given') . '.', 'details' => [], 'checkout_url' => null];
+        } elseif ($intent !== null) {
+            $out = ['ok' => true, 'found' => true, 'level' => 'ok', 'checkout_url' => $res->paymentUrl, 'details' => $details,
+                'message' => 'Yes. The gateway’s checkout page carries a UPI payment request (payee ' . $intent['payee'] . ', ₹1.00), so customers see a scannable QR on your payment page and a UPI app opens straight on the payment screen. '
+                    . 'The test order was never paid.'];
+        } else {
+            $why = (string) ($details['reason'] ?? 'not_checked');
+            $facts = array_filter([
+                isset($details['http']) ? 'HTTP ' . $details['http'] : null,
+                isset($details['bytes']) ? round(((int) $details['bytes']) / 1024, 1) . ' KB' : null,
+                isset($details['candidates']) ? $details['candidates'] . ' UPI link(s)' : null,
+                isset($details['why']) ? (string) $details['why'] : null,
+            ]);
+            $out = ['ok' => true, 'found' => false, 'level' => 'warning', 'checkout_url' => $res->paymentUrl, 'details' => $details,
+                'message' => 'The ₹1 test order was created, but no usable UPI payment request was found on its checkout page (' . str_replace('_', ' ', $why) . ($facts ? '; ' . implode(', ', $facts) : '') . '). '
+                    . 'Customers are therefore sent straight to the gateway’s own checkout page, which shows its QR there. A QR on your own payment page needs a gateway whose API returns the UPI request — ask Alpha UPI support. The test order was never paid.'];
+        }
+        Audit::log('gateway.qr_checked', 'payment_gateway', $id, ['found' => $out['found'], 'reason' => (string) ($details['reason'] ?? ($res->ok ? 'unknown' : 'refused'))], $req, $admin);
+        return $out + ['duration_ms' => $ms];
     }
 
     /** @return array{ok:bool,message:string,level:string,duration_ms:int} */

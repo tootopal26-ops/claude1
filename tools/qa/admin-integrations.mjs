@@ -1,6 +1,6 @@
 // Gateway, SMM provider, advertising, security (password/sessions/forced change), audit log and system pages.
 import { execFileSync } from 'node:child_process';
-import { writeFileSync, unlinkSync } from 'node:fs';
+import { writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
 import { launch, newPage, login, go, BASE } from './admin.mjs';
 import { sql } from './site.mjs';
 import { suite } from './harness.mjs';
@@ -37,6 +37,39 @@ await t.step('gateway: Test connection against the (mock) gateway reports succes
   const r = await t.text(page.locator('#gw-result'));
   t.ok(/ms/.test(r), r);
   t.ok(await page.locator('#gw-result .callout-success, #gw-result .callout-warning').count() === 1, r);
+});
+
+await t.step('gateway: "Check QR support" asks first, makes ONE ₹1 test order at the gateway, and says in words whether its checkout page carries a UPI request', async () => {
+  const mock = async () => (await fetch('http://127.0.0.1:4010/__state')).json();
+  const gw = (pageUpi) => fetch('http://127.0.0.1:4010/__control', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: { pageUpi } }) });
+  const orders0 = Number(sql('SELECT COUNT(*) FROM orders')), made0 = Object.keys((await mock()).orders).length;
+  await gw('link');
+  // asked first; cancelling creates nothing
+  await page.click('#gw-qr'); await page.waitForSelector('dialog.dlg[open] [data-act="yes"]');
+  t.has(await t.text(page.locator('dialog.dlg[open]')), '₹1 test order');
+  await page.click('dialog.dlg[open] [data-act="no"]:has-text("Cancel")');
+  await page.waitForFunction(() => !document.querySelector('dialog[open]'));
+  t.eq(Object.keys((await mock()).orders).length, made0, 'cancelled: no test order was made');
+  // found
+  await page.click('#gw-qr'); await page.waitForSelector('dialog.dlg[open] [data-act="yes"]'); await page.click('dialog.dlg[open] [data-act="yes"]');
+  await page.waitForSelector('#gw-result .callout-success', { timeout: 20000 });
+  const yes = await t.text(page.locator('#gw-result'));
+  t.has(yes, 'UPI payment request'); t.has(yes, 'merchant.demo@okbizaxis'); t.has(yes, 'never paid');
+  const made = Object.entries((await mock()).orders).filter(([id]) => id.startsWith('SMBQRCHECK'));
+  t.eq(made.length, 1, 'one test order at the gateway'); t.eq(made[0][1].amount, '1.00', 'for ₹1');
+  // not found
+  await gw('none');
+  await page.click('#gw-qr'); await page.waitForSelector('dialog.dlg[open] [data-act="yes"]'); await page.click('dialog.dlg[open] [data-act="yes"]');
+  await page.waitForSelector('#gw-result .callout-warning', { timeout: 20000 });
+  const no = await t.text(page.locator('#gw-result'));
+  t.has(no, 'no usable UPI payment request'); t.has(no, 'gateway’s own checkout page'); t.ok(!no.includes('merchant.demo@okbizaxis'));
+  await gw('link');
+  t.eq(Number(sql('SELECT COUNT(*) FROM orders')), orders0, 'none of your orders were created');
+  t.eq(Number(sql("SELECT COUNT(*) FROM audit_logs WHERE action = 'gateway.qr_checked'")), 2, 'both checks are in the audit log');
+  // the page offers it, and says what it does, without exposing anything
+  t.has(await page.locator('#gw-qr').getAttribute('title'), '₹1 test order');
+  const html = await page.content(); for (const s of ['test-api-key-123', 'test-webhook-secret-456']) t.ok(!html.includes(s), 'HTML leaks ' + s);
+  mkdirSync('/tmp/qa', { recursive: true }); await page.screenshot({ path: '/tmp/qa/admin-gateway-qr-check.png', fullPage: true });
 });
 
 await t.step('gateway: invalid base URL and too-short key are refused with field errors', async () => {

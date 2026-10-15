@@ -29,7 +29,7 @@ function aa_setup(): int
     T::startMocks();
     T::freshDb();
     T::alpha('POST', '/__control', ['reset' => true, 'style' => 'headers', 'apiKey' => AA_KEY, 'apiSecret' => AA_SECRET, 'webhookSecret' => AA_WEBHOOK, 'webhookUrl' => '',
-        'mode' => ['offline' => false, 'failCreate' => false, 'quota' => false, 'slowMs' => 0, 'noAmount' => false, 'currency' => 'INR']]);
+        'mode' => ['offline' => false, 'failCreate' => false, 'quota' => false, 'slowMs' => 0, 'noAmount' => false, 'currency' => 'INR', 'pageUpi' => 'link']]);
     T::smm('POST', '/__reset');
     T::smm('POST', '/__control', ['offline' => false, 'slowMs' => 0, 'garbled' => false, 'hang' => false]);
     return T::configureGateway(AA_KEY, AA_WEBHOOK, 4010, 'headers', AA_SECRET);
@@ -39,7 +39,7 @@ function aa_setup(): int
 function aa_done(): void
 {
     T::alpha('POST', '/__control', ['reset' => true, 'style' => 'bearer', 'apiKey' => 'test-api-key-123', 'apiSecret' => 'test-api-secret-789', 'webhookSecret' => 'test-webhook-secret-456',
-        'webhookUrl' => '', 'mode' => ['offline' => false, 'failCreate' => false, 'quota' => false, 'slowMs' => 0, 'noAmount' => false, 'currency' => 'INR']]);
+        'webhookUrl' => '', 'mode' => ['offline' => false, 'failCreate' => false, 'quota' => false, 'slowMs' => 0, 'noAmount' => false, 'currency' => 'INR', 'pageUpi' => 'link']]);
     T::configureGateway();
 }
 
@@ -105,7 +105,7 @@ T::test('alpha-api: connection test — reachable / wrong key / wrong secret / w
 
 // ═════════════════════════════ create order ═════════════════════════════
 
-T::test('alpha-api: checkout sends the documented request and keeps the hosted payment URL as the checkout link (no QR)', function () {
+T::test('alpha-api: checkout sends the documented request, keeps the hosted URL as the checkout link and reads the QR request from that page', function () {
     aa_setup();
     $p = pf_place('ig-followers-50');            // ₹5
     $calls = array_values(array_filter(aa_requests(), fn($c) => $c['path'] === '/api/create-order'));
@@ -122,7 +122,10 @@ T::test('alpha-api: checkout sends the documented request and keeps the hosted p
 
     T::same('pending', $p['payment']['status']);
     T::contains('/pay/' . $p['payment']['gateway_order_id'], (string) $p['payment']['payment_url']);
-    T::same(null, $p['payment']['qr_payload'], 'no QR: the hosted page is opened with a button, never encoded');
+    $upi = App\Support\Upi::validateFor($p['payment']['qr_payload'], 500);
+    T::true($upi !== null && $upi['payee'] === 'merchant.demo@okbizaxis', 'the QR payload is the UPI request of the checkout page, for exactly ₹5.00');
+    T::true($p['payment']['qr_payload'] !== $p['payment']['payment_url'], 'the hosted URL is never encoded');
+    T::contains('qr_discovery', (string) $p['payment']['create_response'], 'what was found is kept with the payment for diagnosis');
     $stored = (string) $p['payment']['create_response'];
     T::contains('payment_url', $stored);
     foreach ([AA_KEY, AA_SECRET, AA_WEBHOOK] as $secret) {

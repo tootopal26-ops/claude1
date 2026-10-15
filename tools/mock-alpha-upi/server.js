@@ -11,12 +11,17 @@
  *       POST /api/create-order        X-API-Key + X-API-Secret, {amount, order_id, customer_name, callback_url, description} → 201 {status:"success", data:{payment_url, ...}}
  *       POST /api/check-status        {order_id} → {status:"success", data:{payment_status:"success", amount, utr, ...}}
  *       webhooks                      HMAC-SHA256(rawBody, secret) in X-PayIndia-Signature, {event:"payment.success", status:"success", order_id, amount, utr} (no event_id)
- *   GET  /pay/:id                 fake hosted payment page (buttons: pay / fail)
+ *   GET  /pay/:id                 fake hosted payment page (buttons: pay / fail) — like a real checkout page it carries the UPI request its QR
+ *                                 encodes (that is what the app's HostedCheckout reader looks for); mode.pageUpi chooses how it is hidden in the page
  *   /html404/...                  answers with an HTML 404 page (what a wrong base URL looks like)
  *
  * Test hooks (never exist in the real gateway):
  *   POST /__control   {style, apiKey, apiSecret, webhookSecret, webhookUrl, reset, mode:{offline,failCreate,quota,slowMs,noAmount,currency}}
  *       mode.currency → the currency the gateway declares (default INR; anything else exercises the shop's INR-only guards)
+ *       mode.pageUpi  → what the hosted page carries: link (default: an <a href="upi://pay?…"> and a script variable) | json (only inside a JSON
+ *                       string with \u0026 / \/ escapes) | encoded (only URL-encoded inside an image address) | appscheme (only phonepe:// and
+ *                       tez:// links) | wrong_amount | no_amount | foreign_currency | none (a canvas and an image, no UPI text) | down (HTTP 500) |
+ *                       slow (answers after 8 s) | huge (a 2 MB page, the request at the very end)
  *   GET  /__state
  *   POST /__pay/:id/success   {amount?, utr?, noWebhook?}   → marks SUCCESS (+ sends signed webhook)
  *   POST /__pay/:id/fail
@@ -36,10 +41,12 @@ const state = {
   apiSecret: 'test-api-secret-789',
   webhookSecret: 'test-webhook-secret-456',
   webhookUrl: '',
-  mode: { offline: false, failCreate: false, quota: false, slowMs: 0, noAmount: false, currency: 'INR' },
+  mode: { offline: false, failCreate: false, quota: false, slowMs: 0, noAmount: false, currency: 'INR', pageUpi: 'link' },
+  vpa: 'merchant.demo@okbizaxis',
   orders: {},      // id -> order
   lastWebhook: {}, // id -> {body, signature}
   requests: [],    // the last API calls received: {path, auth, body} (never the credentials)
+  pageRequests: [], // the last hosted-page requests: {path, headers} (headers that could carry credentials, so a test can assert none was sent)
   log: [],
 };
 const sigHeader = () => (state.style === 'headers' ? 'X-PayIndia-Signature' : 'X-Alpha-Signature');
@@ -92,9 +99,9 @@ const server = http.createServer(async (req, res) => {
   if (path === '/__state') return json(res, 200, state);
   if (path === '/__control' && req.method === 'POST') {
     const b = JSON.parse((await readBody(req)) || '{}');
-    for (const k of ['style', 'apiKey', 'apiSecret', 'webhookSecret', 'webhookUrl']) if (b[k] !== undefined) state[k] = b[k];
+    for (const k of ['style', 'apiKey', 'apiSecret', 'webhookSecret', 'webhookUrl', 'vpa']) if (b[k] !== undefined) state[k] = b[k];
     if (b.mode) Object.assign(state.mode, b.mode);
-    if (b.reset) { state.orders = {}; state.lastWebhook = {}; state.log = []; state.requests = []; }
+    if (b.reset) { state.orders = {}; state.lastWebhook = {}; state.log = []; state.requests = []; state.pageRequests = []; }
     return json(res, 200, { ok: true });
   }
   let m;
@@ -186,9 +193,28 @@ const server = http.createServer(async (req, res) => {
   if ((m = path.match(/^\/pay\/([\w-]+)$/))) {
     const o = state.orders[m[1]];
     if (!o) { res.writeHead(404); return res.end('unknown order'); }
-    res.writeHead(200, { 'Content-Type': 'text/html' });
+    const mode = state.mode.pageUpi || 'link';
+    state.pageRequests.push({ path, headers: Object.fromEntries(Object.entries(req.headers).filter(([k]) => ['authorization', 'x-api-key', 'x-api-secret', 'cookie', 'user-agent'].includes(k))) });
+    state.pageRequests = state.pageRequests.slice(-50);
+    if (mode === 'down') { res.writeHead(500, { 'Content-Type': 'text/html' }); return res.end('<h1>Something went wrong</h1>'); }
+    if (mode === 'slow') await new Promise((r) => setTimeout(r, 8000));
+    const amount = mode === 'wrong_amount' ? (Number(o.amount) + 1).toFixed(2) : o.amount;
+    const q = [`pa=${state.vpa}`, `pn=${encodeURIComponent('Social Media Booster')}`, ...(mode === 'no_amount' ? [] : [`am=${amount}`]), `cu=${mode === 'foreign_currency' ? 'USD' : 'INR'}`, `tr=${o.order_id}`, `tn=${encodeURIComponent('Order ' + o.order_id)}`].join('&');
+    const upi = 'upi://pay?' + q;
+    const esc = (x) => x.replace(/&/g, '&amp;');
+    const carry = {
+      link: `<a class="upi-app" href="${esc(upi)}">Pay with your UPI app</a><canvas id="qr" width="256" height="256"></canvas><script>var upiLink = "${upi}"; /* the page draws its QR from this */</script>`,
+      json: `<canvas id="qr" width="256" height="256"></canvas><script>window.__PAY__ = ${JSON.stringify({ order: o.order_id, upi }).replace(/\//g, '\\/').replace(/&/g, '\\u0026')};</script>`,
+      encoded: `<img alt="QR code" width="256" height="256" src="https://qr.example.test/create?size=256x256&amp;data=${encodeURIComponent(upi)}">`,
+      appscheme: `<a href="phonepe://pay?${esc(q)}">PhonePe</a> <a href="tez://upi/pay?${esc(q)}">Google Pay</a>`,
+      none: `<canvas id="qr" width="256" height="256"></canvas><img alt="QR code" width="256" height="256" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">`,
+      huge: `<!-- ${'x'.repeat(2_000_000)} --><a href="${esc(upi)}">Pay with your UPI app</a>`,
+    };
+    const body = carry[mode] ?? carry.link;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     return res.end(`<!doctype html><meta charset=utf-8><title>Mock Alpha UPI</title><body style="font-family:sans-serif;padding:2rem">
       <h1>Mock Alpha UPI payment</h1><p>Order <b>${o.order_id}</b> — ₹${o.amount} — status <b>${o.status}</b></p>
+      ${body}
       <form method=post action="/__ui/${o.order_id}/success"><button>Simulate payment success</button></form>
       <form method=post action="/__ui/${o.order_id}/fail" style="margin-top:1rem"><button>Simulate failure</button></form></body>`);
   }
@@ -197,6 +223,17 @@ const server = http.createServer(async (req, res) => {
     if (m[2] === 'success') { o.status = 'SUCCESS'; o.utr = 'UTR' + rid(5).toUpperCase(); await sendWebhook(o, webhookBody(o, 'SUCCESS')); }
     else { o.status = 'FAILED'; await sendWebhook(o, webhookBody(o, 'FAILED')); }
     res.writeHead(302, { Location: o.redirect_url || '/' }); return res.end();
+  }
+
+  // ── the fake bank: every order with its buttons — a demo of the whole flow needs a way to "pay" after the QR is shown ──
+  if (path === '/' && req.method === 'GET') {
+    const list = Object.values(state.orders).slice(-20).reverse();
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    return res.end(`<!doctype html><meta charset=utf-8><title>Mock Alpha UPI — fake bank</title><body style="font-family:sans-serif;padding:2rem">
+      <h1>Fake bank</h1><p>There is no bank behind the fake gateway. "Pay" an order here, as the customer's bank would after the QR on the shop's payment page is scanned.</p>
+      ${list.length ? list.map((o) => `<div style="margin:1rem 0;padding:.75rem;border:1px solid #ddd;border-radius:8px"><b>${o.order_id}</b> — ₹${o.amount} — ${o.status}
+        <form method=post action="/__ui/${o.order_id}/success" style="display:inline"><button>Simulate payment success</button></form>
+        <form method=post action="/__ui/${o.order_id}/fail" style="display:inline"><button>Simulate failure</button></form></div>`).join('') : '<p>No orders yet.</p>'}</body>`);
   }
 
   json(res, 404, { status: false, message: 'Not found' });

@@ -220,12 +220,29 @@ final class Orders
             throw new HttpException(503, 'Payment is temporarily unavailable. Please try again in a few minutes.', 'payments_unavailable');
         }
 
+        Log::info('Payment session created', [
+            'order' => $created['public_id'], 'qr' => $upi !== null ? 'upi_request' : 'none (hosted checkout)', 'payee' => $upi['payee'] ?? null,
+            'amount_paise' => (int) $service['price_paise'],
+        ]);
         Db::update('payments', [
             'status' => Status::PAY_PENDING, 'payment_url' => $hosted, 'qr_payload' => $upi['uri'] ?? null,
             'create_response' => json_encode($result->raw, JSON_UNESCAPED_SLASHES), 'updated_at' => Clock::sql(),
         ], "id = ? AND status = 'creating'", [$created['payment_id']]);
 
         return ['ref' => $ref, 'order_id' => $created['public_id'], 'reused' => false];
+    }
+
+    /**
+     * Where the customer goes right after checkout: our payment page when it can show the payment QR; otherwise straight to the gateway's own
+     * checkout (the documented flow: "redirect your customer to this URL") — an intermediate page with nothing to scan would only be in the way.
+     *
+     * @param array<string,mixed> $payment
+     */
+    public static function continueUrl(array $payment): string
+    {
+        $hasQr = Upi::validateFor($payment['qr_payload'] ?? null, (int) $payment['amount_paise']) !== null;
+        $hosted = (string) ($payment['payment_url'] ?? '');
+        return !$hasQr && preg_match('#^https?://#i', $hosted) === 1 ? $hosted : url('pay/' . $payment['ref']);
     }
 
     // ───────────────────────── state machine ────────────────────────────────

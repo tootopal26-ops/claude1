@@ -19,7 +19,7 @@ function pf_setup(): int
     T::startMocks();
     T::freshDb();
     T::alpha('POST', '/__control', ['reset' => true, 'style' => 'bearer', 'apiKey' => 'test-api-key-123', 'apiSecret' => 'test-api-secret-789', 'webhookSecret' => 'test-webhook-secret-456', 'webhookUrl' => '',
-        'mode' => ['offline' => false, 'failCreate' => false, 'quota' => false, 'slowMs' => 0, 'noAmount' => false, 'currency' => 'INR']]);
+        'mode' => ['offline' => false, 'failCreate' => false, 'quota' => false, 'slowMs' => 0, 'noAmount' => false, 'currency' => 'INR', 'pageUpi' => 'link']]);
     T::smm('POST', '/__reset');
     T::smm('POST', '/__control', ['offline' => false, 'slowMs' => 0, 'garbled' => false, 'hang' => false, 'currency' => 'INR']);
     return T::configureGateway();
@@ -122,7 +122,8 @@ T::test('checkout: creates a pending order + 5-minute payment with the gateway-h
     T::same(32, strlen($o['access_token']));
     T::same('pending', $p['payment']['status']);
     T::true(str_starts_with((string) $p['payment']['payment_url'], 'http://127.0.0.1:4010/pay/SMB'));
-    T::same(null, $p['payment']['qr_payload'], 'no QR: the gateway only offers a hosted page, and a QR of that page is the bug this avoids');
+    T::true(App\Support\Upi::validateFor($p['payment']['qr_payload'], 500) !== null, 'the QR payload is a UPI payment request for exactly ₹5.00 …');
+    T::true($p['payment']['qr_payload'] !== $p['payment']['payment_url'] && str_starts_with((string) $p['payment']['qr_payload'], 'upi://pay?'), '… read from the checkout page, never the hosted URL itself');
     T::same(Clock::sql(1_800_000_300), $p['payment']['expires_at'], 'session lasts exactly 5:00');
     T::same(1, (int) Db::val('SELECT COUNT(*) FROM order_status_history WHERE order_id = ?', [$o['id']]));
     // the gateway received the amount in rupees and OUR order id
