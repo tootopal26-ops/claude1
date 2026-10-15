@@ -42,6 +42,8 @@ This document describes what protects the shop, how each protection was **verifi
 * Settlement under a **row lock**: amount must equal the amount we stored, the bank reference (UTR) must be unused, the payment must belong to that gateway; otherwise the payment is flagged `mismatch` and **nothing is fulfilled** ✔. Success is final: later `FAILED`/`EXPIRED` events cannot undo it ✔.
 * The return URL (`?returned=1`) and every query-string flag are **not** proof of payment: the server asks the gateway ✔.
 * **Duplicates:** an event id is processed once (20 concurrent deliveries → one settlement, one provider order) ✔; a second payment with a different bank reference is noted for refund.
+* **The QR can only carry a real UPI payment request for exactly this payment** (`App\Support\Upi`: valid payee, the payment's own amount, INR, known parameters only, none repeated, URL-safe characters only), re-checked on every page view and every `qr.png` request — a gateway answer or a database row that asks for another amount or currency, or that is really a web link, never becomes a QR ✔. The gateway's hosted checkout URL is only ever a link behind a button, never encoded ✔.
+* **INR only:** a gateway that opens an order in, or reports a payment in, another currency is refused / held for review and never fulfilled ✔; the client cannot choose a currency or price (only the service id and the link are read) ✔.
 * **Expired sessions:** no QR, no pay link, `qr.png` answers `410`; a new attempt always gets a fresh session ✔. (Money that genuinely arrives late is credited once and flagged — see [ORDERS.md](ORDERS.md).)
 
 ### SMM provider
@@ -74,7 +76,7 @@ Each answer below was *tested by attacking a running server*; the script prints 
 | 9 | Can a negative quantity be submitted? | **No** | Ignored by checkout; the admin API rejects negative/zero/fractional/huge/min>max values; the columns are `UNSIGNED` | Q9–Q11 |
 | 10 | Can a negative price be submitted? | **No** | Same; price must be ₹1–₹1,00,000 with ≤ 2 decimals (27 malformed variants tested); unsellable rows are refused at checkout | Q9–Q11 |
 | 11 | Can an invalid service be ordered? | **No** | See #4; also `price < ₹1`, `quantity` outside min/max, AUTO without SMM id/provider | Q4, Q9–Q11 |
-| 12 | Can an expired payment be reused? | **No** | Expired sessions show no QR/link; `qr.png` → 410; a new checkout creates a new session; a signed late event is credited **once** and flagged; one QR cannot pay another order | Q12 |
+| 12 | Can an expired payment be reused? | **No** | Expired sessions show no QR/pay button/link; `qr.png` → 410; a new checkout creates a new session; a signed late event is credited **once** and flagged; one QR cannot pay another order | Q12 |
 | 13 | Can an unauthenticated user access admin APIs? | **No** | All 41 admin API routes answer `401` JSON to anonymous callers on every verb, with forged cookies/tokens too; signed in, missing/wrong CSRF or a foreign `Origin` → `403` | Q13 |
 
 Additional hardening verified: headers on every response type, cookie flags, host-header injection (links come from `APP_URL`, never `Host`), open redirects, reflected XSS in paths/queries, stored XSS in service titles, TRACE/odd methods, oversized and deeply nested JSON, form-encoded bodies, cross-site beacons, rate limiting with `Retry-After`.

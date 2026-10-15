@@ -140,6 +140,7 @@ Everything lives in `.env` (see [.env.example](.env.example)) plus the admin pan
 | [docs/PROFIT-AND-ANALYTICS.md](docs/PROFIT-AND-ANALYTICS.md) | profit maths, KPI definitions, visitor tracking and CPC |
 | [docs/SECURITY.md](docs/SECURITY.md) | security model, the 13-point audit, operator checklist |
 | [docs/QA-REPORT.md](docs/QA-REPORT.md) | final QA: what was tested, results, known limitations |
+| [CHANGELOG.md](CHANGELOG.md) | what changed in each release, and what to do when upgrading |
 | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | licences of bundled third-party code |
 
 ## Honest notes

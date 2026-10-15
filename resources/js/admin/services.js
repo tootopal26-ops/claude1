@@ -117,7 +117,8 @@ function editorHtml(s) {
       <div class="field"><label class="label" for="f-description">Description (optional)</label>
         <textarea class="textarea" id="f-description" name="description" rows="2" maxlength="2000">${s?.description || ''}</textarea></div>
       <div class="field-row"><div class="field"><label class="label req" for="f-target_kind">Customer enters</label>
-        <select class="select" id="f-target_kind" name="target_kind">${kinds.map((k) => html`<option value="${k}" ${k === (s?.target_kind || kinds[0]) ? 'selected' : ''}>${{ profile: 'Username / profile link', post: 'Post / reel link', channel: 'Channel link', video: 'Video link' }[k] || k}</option>`)}</select></div>
+        <select class="select" id="f-target_kind" name="target_kind">${kinds.map((k) => html`<option value="${k}" ${k === (s?.target_kind || kinds[0]) ? 'selected' : ''}>${{ profile: 'Username / profile link', post: 'Post / reel link', channel: 'Channel link', video: 'Video link' }[k] || k}</option>`)}</select>
+        <p class="field-hint">Followers and Subscribers always ask for the account link (Instagram Profile Link / YouTube Channel Link), not a username.</p></div>
         <div class="field"><label class="label req" for="f-code">Service ID</label>
         <input class="input mono" id="f-code" name="code" maxlength="63" value="${s?.code || ''}" placeholder="ig-followers-100k" spellcheck="false" autocapitalize="none">
         <p class="field-hint">Unique, lowercase. Used internally and in reports.</p></div></div>

@@ -24,7 +24,7 @@ await t.step('open a payment session; the countdown starts at 05:00 and ticks do
   const first = seen.slice(0, 8).map((s) => s.txt);
   t.ok(first[0] >= '04:58', 'starts at ~05:00: ' + first.join(' '));
   for (let i = 1; i < first.length; i++) t.ok(first[i] < first[i - 1], `counts down: ${first[i - 1]} → ${first[i]}`);
-  const gaps = seen.slice(1, 7).map((s, i) => s.at - seen[i].at); t.ok(gaps.every((g) => g > 850 && g < 1150), 'one tick per second: ' + gaps.join(','));
+  const gaps = seen.slice(2, 8).map((s, i) => s.at - seen[i + 1].at); t.ok(gaps.every((g) => g > 850 && g < 1150), 'one tick per second: ' + gaps.join(','));   // (the first text was caught mid-second, so its gap is not a full second)
   const server = await (await fetch(`${BASE}/api/pay/${ref}/status`)).json(); t.eq(server.state, 'pending');
   t.ok(server.expires_at - server.server_now > 285000, 'the server window is 5:00: ' + (server.expires_at - server.server_now));
 });

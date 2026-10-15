@@ -117,7 +117,8 @@ for (const vp of VIEWPORTS) {
     const inp = await metrics(page, `[data-id="${serviceId('ig-followers-50')}"] input[name=target]`);
     t.ok(inp.h >= 44, 'input height ' + inp.h); t.ok(parseFloat(inp.fs) >= 16, 'input font ≥ 16px avoids iOS zoom: ' + inp.fs);
     await shot('card-invalid');
-    await card.locator('input[name=target]').fill('@growth.account'); await page.waitForTimeout(350);
+    await card.locator('input[name=target]').fill('https://www.instagram.com/growth.account/'); await page.waitForTimeout(350);
+    t.eq(await card.locator('.field-msg').getAttribute('data-state'), 'valid', 'a profile link is accepted for Followers');
     const proceed = await card.locator('[data-action=proceed]').boundingBox();
     t.ok(proceed.height >= 44 && proceed.width >= 200, `PROCEED ${proceed.width}x${proceed.height}`);
     const inView = await card.locator('[data-action=proceed]').evaluate((e) => { const r = e.getBoundingClientRect(); return r.bottom <= window.innerHeight + 1 || true; });
