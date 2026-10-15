@@ -1,7 +1,7 @@
 # Final QA report
 
 > **Result: every automated suite passes** (table in §2). This report says what was tested, how, what the QA found and fixed, and — just as important — what was **not** tested.
-> Re-run everything yourself: `bash tools/qa/run-all.sh` (≈ 20 min; add `--long` for the real-time 5:00 countdown test — the complete run took 24 min). Last complete run on MariaDB 10.11: **18 of 18 suites passed** (table below). The same battery (everything except the 5-minute real-time countdown test) was then run against a real **MySQL 8.0.46** server: **17 of 17 passed** — the one first-run failure there was a timing-sensitive animation check that sampled a single instant; it now samples every frame and passes on both engines.
+> Re-run everything yourself: `bash tools/qa/run-all.sh` (≈ 27 min; add `--long` for the real-time 5:00 countdown test — the complete run took 32 min). Last complete run on MariaDB 10.11: **20 of 20 suites passed** (table below). The same battery (everything except the 5-minute real-time countdown test) was then run against a real **MySQL 8.0.46** server: **19 of 19 passed**. (An earlier MySQL 8 run had one failure — a timing-sensitive animation check that sampled a single instant; it now samples every frame and passes on both engines.)
 
 ## 1. Method
 
