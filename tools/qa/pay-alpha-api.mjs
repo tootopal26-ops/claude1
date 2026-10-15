@@ -97,9 +97,9 @@ await t.step('Test connection: reachable (warning with the ₹5 hint) · wrong s
 // ═══════════════════════════ a real checkout on the current API ═══════════════════════════
 const shop = await newPage(browser, { width: 1440, height: 900 }, { allowStatus: [503] });
 let ORDER;
-await t.step('checkout: the order is created with the documented request, and the QR encodes the gateway\'s hosted payment link', async () => {
+await t.step('checkout: the order is created with the documented request; the hosted payment link is opened with a button and is NEVER encoded in a QR', async () => {
   t.page = shop; await shop.goto(BASE + '/', { waitUntil: 'networkidle' });
-  ORDER = await placeOrder(shop, 'ig-followers-50', '@alphaapi_check');
+  ORDER = await placeOrder(shop, 'ig-followers-50', 'https://www.instagram.com/alphaapi_check/');
   const p = payment(ORDER.ref);
   const call = (await state()).requests.filter((c) => c.path === '/api/create-order').at(-1);
   t.eq(call.auth, 'headers');
@@ -108,9 +108,12 @@ await t.step('checkout: the order is created with the documented request, and th
   t.eq(p.pAmount, 500, 'the amount is the SERVER price, in paise');
   const url = sql(`SELECT payment_url FROM payments WHERE ref = '${ORDER.ref}'`);
   t.has(url, `/pay/${p.gwOrder}`);
-  const png = Buffer.from(await (await fetch(`${BASE}/pay/${ORDER.ref}/qr.png`)).arrayBuffer());
-  t.eq(decodeQr(png), url, 'scanning the QR opens the gateway page');
-  t.eq((await t.text(shop.locator('[data-view=pending] h1'))).toUpperCase(), 'SCAN AND PAY');
+  // the documented API returns ONLY this hosted page (no UPI request, no QR string): a QR of it would open a browser page that shows another QR
+  t.eq((await fetch(`${BASE}/pay/${ORDER.ref}/qr.png`)).status, 410, 'there is no QR for a hosted-checkout-only gateway');
+  t.eq(sql(`SELECT qr_payload IS NULL FROM payments WHERE ref = '${ORDER.ref}'`), '1');
+  t.eq((await t.text(shop.locator('[data-view=pending] h1'))).toUpperCase(), 'PAY SECURELY');
+  t.eq(await shop.locator('#qr-img').count(), 0);
+  t.eq(await shop.getAttribute('#btn-open', 'href'), url, 'the PAY button opens the gateway checkout');
   await shop.screenshot({ path: `${OUT}/pay-page.png` });
 });
 

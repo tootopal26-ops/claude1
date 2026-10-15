@@ -71,6 +71,17 @@ export const payment = (ref) => {
   return { pStatus, pAmount: Number(pAmount), gwOrder, expires, paidAt, late: late === '1', publicId, oStatus, mode, oAmount: Number(oAmount), targetUrl, token, id: Number(id), providerOrder, lastError, failureKind, code, quantity: Number(quantity) };
 };
 
+/**
+ * Give a payment a real UPI payment request — what a gateway that returns one (the Alpha UPI API does not) would have stored — so the QR
+ * flavour of the payment page can be tested. The amount is the payment's own. Returns the request.
+ */
+export function seedUpiQr(ref, { vpa = 'merchant.demo@okbizaxis', name = 'Social Media Booster' } = {}) {
+  const o = payment(ref);
+  const uri = `upi://pay?pa=${vpa}&pn=${encodeURIComponent(name)}&am=${(o.pAmount / 100).toFixed(2)}&cu=INR&tn=${encodeURIComponent('Order ' + o.publicId)}&tr=${o.gwOrder}`;
+  sql(`UPDATE payments SET qr_payload = '${uri}' WHERE ref = '${ref}'`);
+  return uri;
+}
+
 export const refFromUrl = (url) => (String(url).match(/\/pay\/([a-f0-9]{32})/) || [])[1];
 
 /** Poll until fn() is truthy (returns it) or the time is up (returns the last value). For work that continues after an HTTP answer. */

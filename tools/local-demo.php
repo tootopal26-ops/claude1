@@ -231,8 +231,8 @@ foreach (preg_split('/\R/', trim($login)) as $line) {
     }
 }
 if ($node !== null) {
-    $say(PHP_EOL . ' Try it: press BUY NOW on any card, enter a username or link, PROCEED TO PAYMENT, then on the');
-    $say(' payment page press PAY ON THIS DEVICE and use "Simulate payment success" on the fake gateway page.');
+    $say(PHP_EOL . ' Try it: press BUY NOW on any card, paste a profile / channel / post link, PROCEED TO PAYMENT, then on the');
+    $say(' payment page press PAY NOW and use "Simulate payment success" on the fake gateway page.');
 } else {
     $say(PHP_EOL . ' Browse the storefront freely. A checkout will say "payments are temporarily unavailable" until you install');
     $say(' Node.js (https://nodejs.org) and run this command again — then the fake payment gateway works too.');

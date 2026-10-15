@@ -2,6 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { launch, newPage, login, go, BASE } from './admin.mjs';
 import { suite } from './harness.mjs';
+import { sql, alpha, mocksReset, serviceId, payment, refFromUrl, sleep } from './site.mjs';
 
 const t = suite('admin-orders');
 const rawStep = t.step.bind(t);
@@ -317,6 +318,45 @@ await t.step('drawer API failure shows an error with Retry instead of a blank pa
   await page.click('#od-body [data-retry]');
   await page.waitForSelector('#od-body .od-hero');
   await closeDrawer();
+});
+
+await t.step('account link: a Followers order shows its complete profile link in the list, the drawer and the manual delivery section (clickable, copyable)', async () => {
+  execFileSync('php', ['tools/qa/reset-limits.php'], { cwd: '/home/user/claude1', stdio: 'ignore' });
+  await mocksReset();
+  const co = await page.request.post(BASE + '/api/checkout', { headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'smb', Origin: BASE, 'Idempotency-Key': 'qa-link-order-0001' }, data: { service_id: serviceId('ig-followers-100k'), target: 'instagram.com/qa_manual_link?igsh=abc123' } });
+  t.eq(co.status(), 200, await co.text());
+  const ref = refFromUrl((await co.json()).url);
+  const link = 'https://www.instagram.com/qa_manual_link/';
+  t.eq(sql(`SELECT target FROM orders o JOIN payments p ON p.order_id = o.id WHERE p.ref = '${ref}'`), link, 'the complete validated link is the order target');
+  const res = await alpha(`/__pay/${payment(ref).gwOrder}/success`, {});
+  t.eq(res.webhook?.status, 200, JSON.stringify(res));
+  await sleep(800);
+  t.eq(payment(ref).oStatus, 'MANUAL_PENDING');
+
+  await go(page, '/admin/orders?filter=manual&q=qa_manual_link');
+  await settled();
+  t.eq(await rows().count(), 1, 'search finds the order by its link');
+  const a = rows().first().locator('a[href^="https://www.instagram.com/"]');
+  t.eq(await a.count(), 1, 'the link is clickable in the list');
+  t.eq(await a.getAttribute('href'), link); t.eq((await a.innerText()).trim(), link);
+  t.eq(await a.getAttribute('target'), '_blank'); t.has(await a.getAttribute('rel'), 'noopener');
+  await a.evaluate((el) => el.addEventListener('click', (e) => e.preventDefault(), { once: true }));   // do not leave the page
+  await a.click();
+  t.eq(await page.locator('#order-drawer[open]').count(), 0, 'clicking the link opens the account, not the drawer');
+
+  await rows().first().locator('button[data-open]').click();
+  await page.waitForSelector('#order-drawer[open] .od-hero');
+  const body = page.locator('#od-body');
+  t.has(await t.text(body), 'Instagram Profile Link');
+  const drawerLink = body.locator('.od-section:has(h3:has-text("Order")) a[href^="https://www.instagram.com/qa_manual_link"]').first();
+  t.eq((await drawerLink.innerText()).trim(), link, 'the drawer shows the full URL');
+  t.ok(await body.locator('.od-section:has(h3:has-text("Order")) [data-copy^="https://www.instagram.com/qa_manual_link"]').count() >= 1, 'copy button for the link');
+  const manual = body.locator('.od-section:has(h3:has-text("Manual delivery"))');
+  t.has(await t.text(manual), 'Deliver to'); t.has(await t.text(manual), link);
+  t.has(await t.text(body.locator('.timeline')), link, 'the timeline keeps the link from the moment the order was created');
+  await closeDrawer();
+  await go(page, '/admin/orders');
+  await settled();
 });
 
 console.log('console/network problems:', page.problems.join('\n') || 'none');

@@ -170,6 +170,29 @@ await t.step('smm: a provider used by services cannot be removed; an unused one 
   t.eq(await page.locator('[data-provider]').count(), 1);
 });
 
+await t.step('INR only: no USD / dollar / exchange rate / currency picker on any admin screen, and money is shown with ₹', async () => {
+  const bad = /\bUSD\b|\bUS\$|dollar|\$\s?\d|\bEUR\b|\bGBP\b|exchange rate|Rupees per 1/i;
+  const failures = [];
+  for (const path of ['dashboard', 'orders', 'services', 'tags', 'payments', 'website', 'gateway', 'smm', 'advertising', 'audit', 'system', 'security']) {
+    await go(page, '/admin/' + path);
+    await page.waitForTimeout(500);
+    const txt = await page.evaluate(() => document.body.innerText + '\n' + document.documentElement.outerHTML);
+    const m = txt.match(bad); if (m) failures.push(`${path}: ${m[0]}`);
+    const pickers = await page.locator('[name*="currency" i], [id*="currency" i], [id*="pv-cur"], [id*="pv-rate"], datalist').count();
+    if (pickers) failures.push(`${path}: ${pickers} currency control(s)`);
+  }
+  t.eq(failures, [], failures.join(' | '));
+  await go(page, '/admin/services'); await page.waitForTimeout(400);
+  await page.locator('[data-edit], [data-open]').first().click().catch(() => {});
+  await page.waitForTimeout(600);
+  const editor = await page.evaluate(() => (document.querySelector('#service-drawer')?.innerText || ''));
+  t.ok(!/exchange rate|USD|Rupees per/i.test(editor), 'the service editor mentions no exchange rate / USD');
+  await page.keyboard.press('Escape');
+  const api = JSON.stringify(await (await page.request.get(BASE + '/admin/api/smm', { headers: { Accept: 'application/json', 'X-Requested-With': 'smb' } })).json());
+  t.ok(!/currency|rate_to_inr|USD/i.test(api), 'the providers API exposes no currency / rate');
+  await go(page, '/admin/smm');
+});
+
 // ───────────────────────────── ADVERTISING ─────────────────────────────
 await go(page, '/admin/advertising');
 

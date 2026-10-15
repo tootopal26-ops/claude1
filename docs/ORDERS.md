@@ -9,10 +9,10 @@
  PROCEED ───────────────▶ POST /api/checkout
                             • price, quantity, mode come from the DB
                             • order PENDING_PAYMENT + payment "creating"
-                            • ask the gateway for a QR ──────────────────▶ create-order
-                            • payment "pending", expires in 5:00 ◀─────────
- ◀── /pay/{ref} ──────────  SCAN AND PAY (QR, 05:00 countdown)
- pays with any UPI app ──────────────────────────────────────────────────▶ bank
+                            • ask the gateway for a payment ─────────────▶ create-order
+                            • payment "pending", expires in 5:00 ◀───────── hosted checkout URL
+ ◀── /pay/{ref} ──────────  PAY SECURELY (PAY ₹X NOW, 05:00 countdown)
+ opens the checkout, pays with any UPI app ──────────────────────────────▶ bank
                             signed webhook ◀────────────────────────────── SUCCESS + amount + UTR
                             (or the page/cron verifies with the gateway)
                             Settlement (row lock): amount matches? UTR unused?
@@ -56,11 +56,26 @@ Every change goes through `Orders::transition()`, which validates the move under
 ## 3. Payment sessions
 
 * A session lives exactly **5:00** (`Orders::PAYMENT_TTL = 300`). The page counts down against the **server's** clock (`server_now` / `expires_at`), ticking once per second.
-* At 00:00 the page shows **"Payment session expired"** and removes the QR; it never claims success locally. The server independently expires the payment (page poll, cron sweep) — but first **double-checks with the gateway**, so a payment made in the last seconds is not lost.
+* At 00:00 the page shows **"Payment session expired"** and removes the QR / the pay button; it never claims success locally. The server independently expires the payment (page poll, cron sweep) — but first **double-checks with the gateway**, so a payment made in the last seconds is not lost.
 * **Late payments are honoured.** If the gateway later reports success for an expired session (money really arrived), it is credited once, flagged `late` (admin sees a "late payment" chip) and the page explains *"We received your payment after the payment session had ended, and it has been accepted."* A 2-minute grace window after expiry is not even flagged late (gateway callbacks lag).
-* The QR image is served only while the session is live (`410` afterwards); an expired/paid/failed/under-review page ships no QR or pay link at all.
-* **One payment session = one order.** A QR cannot buy a different order: the webhook is matched by gateway order id and the **amount must equal** the stored amount, otherwise the payment is flagged `mismatch` for manual review and the order is not fulfilled.
+* The QR image (UPI mode only, §3a) is served only while the session is live (`410` afterwards); an expired/paid/failed/under-review page ships no QR or pay link at all.
+* **One payment session = one order.** A payment request cannot buy a different order: the webhook is matched by gateway order id and the **amount must equal** the stored amount (and the gateway must not report a currency other than INR), otherwise the payment is flagged `mismatch` for manual review and the order is not fulfilled.
 * **Duplicate protection:** the same visitor + service + link with a live unpaid session reuses it (double clicks, retries, two tabs, a response lost on a flaky connection); checkout is serialised per visitor/service/link with an advisory lock; every checkout carries an idempotency key. A second *payment* with a different bank reference is noted on the order so you can refund it.
+
+## 3a. The payment page: hosted checkout or UPI QR
+
+What the customer sees depends on what the gateway **actually returned** for the order (`payments.payment_url`, `payments.qr_payload`):
+
+| Mode | When | The card shows |
+|---|---|---|
+| **hosted** | the gateway returned only its checkout page (**Alpha UPI: always** — `create-order` answers `data.payment_url`, nothing else) | **PAY SECURELY**, three steps and a **PAY ₹X NOW** button that opens the gateway's checkout in a new tab (its page offers the UPI QR and the UPI-app buttons). **No QR here.** The 05:00 timer, status polling and server-side confirmation are unchanged. |
+| **upi** | a validated `upi://pay` request for exactly this order is stored in `qr_payload` | **SCAN AND PAY**: a QR of that request (a UPI app opens its payment screen with the payee and the amount filled in), the payee name / UPI ID, **DOWNLOAD QR** and **OPEN UPI APP** (the same request as a link). |
+
+**Why Alpha UPI has no QR.** The old page encoded the hosted checkout URL (`https://alphaupi.site/pay/…`) in its QR. A UPI app cannot pay an https URL, and a phone camera opens it as a web page that draws *another* QR. The documented API (and the bundled SDK) returns no UPI request, QR string or image, so the only honest options are a button to the hosted page — implemented — or scraping that page, which is undocumented and fragile — not done.
+
+**The QR can only ever be a real UPI request.** `App\Support\Upi::validateFor()` accepts a string only if it is `upi://pay?…` with a valid payee address, an amount equal to *this payment's own amount*, currency INR (or absent), only the standard parameters, none repeated, and URL-safe characters only. It runs when the gateway's answer is stored (a mismatching request is dropped and the hosted page is used) **and again on every page view and every `qr.png` request**, so a changed row can never put a QR for another amount on screen. Payments created before this change (their `qr_payload` is the hosted https URL) are shown as hosted.
+
+**Paying is confirmed only by the server**, in both modes: the signed webhook, or the server asking the gateway (`check-status`) when the page polls or the customer returns (`?returned=1`). There is no "I have paid" button and a view, a scan or a click changes nothing. The amount must equal the stored amount and the currency must be INR (§5), the bank reference (UTR) is used once, and a repeated webhook is a no-op.
 
 ## 4. AUTO orders (sent to the SMM provider)
 
@@ -68,7 +83,7 @@ Every change goes through `Orders::transition()`, which validates the move under
 1. **Claim:** `PAID → PROCESSING` inside a row-locked transaction. Only the winner of that claim calls the provider (verified with 6 parallel processes → exactly one provider order).
 2. Call `add(service, link, quantity)` with the **order's snapshot** service id (never anything from the browser). The call is logged in `smm_transactions` (no key). This happens **after** the webhook has been answered: the payment gateway is never kept waiting for the provider (on PHP-FPM/LiteSpeed the connection is closed early; on plain mod_php/CGI the answer carries an exact `Content-Length`, so the gateway has read everything it will get while the work continues).
 3. Provider returned an order id → `SUBMITTED`, store the id and the *estimated* cost.
-4. **Cron syncs** status, `remains`, `start_count` and the provider's **actual charge** (converted with the provider's exchange rate) — the real charge replaces the estimate (`provider_cost_final = 1`). Provider "Canceled/Failed" means the provider refunded us → cost 0.
+4. **Cron syncs** status, `remains`, `start_count` and the provider's **actual charge** — read as ₹ (the shop is INR-only; a charge the panel declares in another currency is ignored and the ₹ estimate stays) — the real charge replaces the estimate (`provider_cost_final = 1`). Provider "Canceled/Failed" means the provider refunded us → cost 0.
 
 ### What happens when the provider misbehaves
 | Situation | Classified as | Result | Customer sees | Admin sees / can do |

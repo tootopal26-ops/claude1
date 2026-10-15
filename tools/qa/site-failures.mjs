@@ -154,7 +154,7 @@ const gatewayCase = async (label, setup, { expect, ms = 20000 }) => t.step(`gate
   await healthy();
   resetLimits();
   await Promise.all([page.waitForURL(/\/pay\//, { timeout: 20000 }), card.locator('[data-action=proceed]').click()]);
-  t.ok((await page.locator('#qr-img').count()) === 1, 'recovered: QR page opens once the gateway is back');
+  t.ok((await page.locator('#btn-open').count()) === 1, 'recovered: the payment page opens once the gateway is back');
   await page.close();
 });
 await gatewayCase('offline', () => alpha('/__control', { mode: { offline: true } }), { expect: /unavailable|try again|moment/i });
@@ -187,7 +187,7 @@ await t.step('payment page keeps working through a connection drop: "Connection 
   await healthy();
   const page = await ctxPage();
   const { ref } = await placeOrder(page, 'ig-views-1k', 'https://www.instagram.com/reel/PollDrop001/');
-  await page.waitForSelector('#qr-img');
+  await page.waitForSelector('#btn-open');
   await page.context().setOffline(true);
   await page.waitForFunction(() => !document.querySelector('#pay-offline').hidden, null, { timeout: 30000 });
   t.has(await t.text(page.locator('#pay-offline')), 'Connection problem');
@@ -290,7 +290,7 @@ await t.step('DATABASE unreachable: friendly 503 page, no leaks, /health reports
     const css = await fetch(`http://127.0.0.1:${port}/assets/css/app.css`); t.eq(css.status, 200);
     const health = await fetch(`http://127.0.0.1:${port}/health`); t.eq(health.status, 503);
     const hb = await health.text(); noLeak(hb, '/health body');
-    const co = await fetch(`http://127.0.0.1:${port}/api/checkout`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'smb', origin: `http://127.0.0.1:${port}`, 'idempotency-key': randomUUID() }, body: JSON.stringify({ service_id: 1, target: '@someone' }) });
+    const co = await fetch(`http://127.0.0.1:${port}/api/checkout`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-requested-with': 'smb', origin: `http://127.0.0.1:${port}`, 'idempotency-key': randomUUID() }, body: JSON.stringify({ service_id: 1, target: 'https://www.instagram.com/someone/' }) });
     t.ok([500, 503].includes(co.status), 'checkout status ' + co.status);
     const cb = await co.text(); noLeak(cb, 'checkout error JSON');
     t.ok((() => { try { return typeof JSON.parse(cb).error?.message === 'string'; } catch { return false; } })(), 'checkout error is JSON with a message: ' + cb.slice(0, 120));

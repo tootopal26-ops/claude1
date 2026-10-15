@@ -13,7 +13,7 @@ Margin         = net profit ÷ revenue                        (one decimal place
 ```
 The dashboard card is literally **`REVENUE − SMM COST − ADS COST = NET PROFIT`** (+ margin).
 
-* **Provider (SMM) cost** is counted **once**, on the order that incurred it. While an order is in progress the cost is the *estimate* (`services.smm_cost_paise` at the time of purchase); when the provider reports its **actual charge** (cron sync) the actual figure replaces the estimate and the order is marked final. A provider-cancelled/failed order costs 0 (the provider refunded us). The provider's currency is converted with the rate you set (`rate_to_inr_micros`).
+* **Provider (SMM) cost** is counted **once**, on the order that incurred it. While an order is in progress the cost is the *estimate* (`services.smm_cost_paise` at the time of purchase); when the provider reports its **actual charge** (cron sync) the actual figure replaces the estimate and the order is marked final. A provider-cancelled/failed order costs 0 (the provider refunded us). The charge is read as ₹ (INR only): a charge the provider declares in another currency is not converted — the ₹ estimate stays and the order is not marked final.
 * **Ad cost** is counted **once**, from qualified visitors — it is never also deducted inside an order's profit. That is why order- and service-level profit is "before ads", and only the dashboard's breakdown (and net profit KPIs) subtract advertising.
 * **Refunds** reduce revenue (and therefore profit) from the day of the order's payment; partial refunds are supported. A refunded AUTO order keeps its provider cost (money already spent) unless the provider refunded it.
 * **Late payments** count on the day they were received.

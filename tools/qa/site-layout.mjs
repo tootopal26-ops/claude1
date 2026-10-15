@@ -3,7 +3,7 @@
 // (valid + invalid), the Shop drawer, the payment page (pending, expired, paid), the order page, the 404 page and maintenance mode.
 import { execFileSync } from 'node:child_process';
 import { coveredControls } from './admin.mjs';
-import { launch, newPage, BASE, VIEWPORTS, sql, resetLimits, mocksReset, payment, payOk, placeOrder, openCard, serviceId, sleep, useMockProviderIds } from './site.mjs';
+import { launch, newPage, BASE, VIEWPORTS, sql, resetLimits, mocksReset, payment, payOk, placeOrder, openCard, serviceId, sleep, useMockProviderIds, seedUpiQr } from './site.mjs';
 import { suite } from './harness.mjs';
 
 const OUT = process.env.QA_OUT || '/tmp/qa/layout';
@@ -144,10 +144,20 @@ for (const vp of VIEWPORTS) {
     } finally { await page.keyboard.press('Escape'); await page.waitForFunction(() => !document.querySelector('#orders-drawer[open]')); }
   });
 
-  await t.step(`${vp.name}: payment page (pending, expired, paid) — QR, timer and buttons visible, no overflow`, async () => {
+  await t.step(`${vp.name}: payment page (hosted checkout and UPI QR, expired, paid) — card, QR, timer and buttons visible, no overflow`, async () => {
     resetLimits();
     const { ref } = await placeOrder(page, 'ig-likes-100', 'https://www.instagram.com/p/LayoutCheck1/');
-    await page.waitForSelector('#qr-img'); await page.waitForTimeout(500);
+    await page.waitForSelector('#btn-open'); await page.waitForTimeout(500);
+    // hosted checkout (what the Alpha UPI API provides): the steps card and the PAY NOW button
+    const h = await page.evaluate(() => { const c = document.querySelector('.hosted-card').getBoundingClientRect(); const b = document.querySelector('#btn-open').getBoundingClientRect(); return { cw: c.width, cl: c.left, cr: c.right, vw: document.documentElement.clientWidth, btnH: b.height, btnTop: b.top, vh: innerHeight }; });
+    t.ok(h.cw >= 260 && h.cl >= 0 && h.cr <= h.vw, `hosted card fits: ${Math.round(h.cw)} wide in ${h.vw}`);
+    t.ok(h.btnH >= 44, 'PAY NOW button ' + h.btnH); t.ok(h.btnTop < h.vh * 1.05, 'the PAY NOW button is within the first screen: ' + Math.round(h.btnTop) + ' / ' + h.vh);
+    t.eq(await page.locator('#qr-img').count(), 0, 'no QR image on a hosted payment');
+    const ah = await audit(page); t.eq(ah.issues, [], JSON.stringify(ah.issues));
+    t.eq(await coveredControls(page), [], 'hosted payment page controls are reachable');
+    await shot('pay-hosted');
+    // a gateway that returns a UPI request: the QR flavour
+    seedUpiQr(ref); await page.reload({ waitUntil: 'networkidle' }); await page.waitForSelector('#qr-img'); await page.waitForTimeout(500);
     const a = await audit(page); t.eq(a.issues, [], JSON.stringify(a.issues));
     const qr = await metrics(page, '#qr-img'); const timer = await metrics(page, '#timer-value'); const dl = await metrics(page, '#btn-download');
     t.ok(qr.w >= 220 && qr.w <= 360 && qr.w === qr.h, `QR ${qr.w}x${qr.h}`);

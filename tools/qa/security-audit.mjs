@@ -144,10 +144,13 @@ await t.step('Q2b · malformed checkout input is refused cleanly (422/4xx, never
     noSecrets(r.text, 'validation error');
   }
   t.eq(Number(sql('SELECT COUNT(*) FROM orders')), before, 'no order was created by any of them');
-  // control characters pasted into an otherwise valid username are stripped, never stored
+  // control characters pasted around an otherwise valid profile link are stripped, never stored; a bidi override INSIDE the link is refused
   resetLimits();
-  const ctl = await req('POST', '/api/checkout', { json: { service_id: serviceId('ig-followers-50'), target: '\u0000\u202e\u200bctl_user\u0007\n' }, headers: { 'idempotency-key': randomUUID() } });
-  if (ctl.status === 200) t.eq(sql(`SELECT HEX(target) FROM orders WHERE target_url LIKE '%ctl_user%' ORDER BY id DESC LIMIT 1`), Buffer.from('ctl_user').toString('hex').toUpperCase(), 'only the visible text is stored'); else t.ok(ctl.status === 422);
+  const ctl = await req('POST', '/api/checkout', { json: { service_id: serviceId('ig-followers-50'), target: '\u0000\u200bhttps://www.instagram.com/ctl_user/\u0007\n' }, headers: { 'idempotency-key': randomUUID() } });
+  if (ctl.status === 200) t.eq(sql(`SELECT HEX(target) FROM orders WHERE target_url LIKE '%ctl_user%' ORDER BY id DESC LIMIT 1`), Buffer.from('https://www.instagram.com/ctl_user/').toString('hex').toUpperCase(), 'only the visible link is stored'); else t.ok(ctl.status === 422);
+  resetLimits();
+  const rlo = await req('POST', '/api/checkout', { json: { service_id: serviceId('ig-followers-50'), target: 'https://www.instagram.com/\u202ectl_user2/' }, headers: { 'idempotency-key': randomUUID() } });
+  t.eq(rlo.status, 422, 'a right-to-left override inside the link is refused');
   const raw = await req('POST', '/api/checkout', { headers: { ...JSONH, 'idempotency-key': randomUUID() }, body: '{"service_id": 1, "target": ' });
   t.ok(raw.status >= 400 && raw.status < 500, 'broken JSON → ' + raw.status);
   const big = await req('POST', '/api/checkout', { headers: { ...JSONH, 'idempotency-key': randomUUID() }, body: JSON.stringify({ service_id: 1, target: '@' + 'a'.repeat(3_000_000) }) });
@@ -224,7 +227,7 @@ await t.step('Q4 · can the user change the service id? NO — only active, cata
   const del = await req('POST', '/api/checkout', { json: { service_id: serviceId('ig-views-1m'), target }, headers: { 'idempotency-key': randomUUID() } });
   t.eq(del.status, 422, 'deleted service'); sql("UPDATE services SET deleted_at = NULL WHERE code = 'ig-views-1m'");
   sql("UPDATE platforms SET is_active = 0 WHERE slug = 'youtube'");
-  const plat = await req('POST', '/api/checkout', { json: { service_id: serviceId('yt-subs-50'), target: '@somebody' }, headers: { 'idempotency-key': randomUUID() } });
+  const plat = await req('POST', '/api/checkout', { json: { service_id: serviceId('yt-subs-50'), target: 'https://www.youtube.com/@somebody' }, headers: { 'idempotency-key': randomUUID() } });
   t.eq(plat.status, 422, 'service of a disabled platform'); sql("UPDATE platforms SET is_active = 1 WHERE slug = 'youtube'");
   // link must match the service kind: a YouTube link for an Instagram service is refused even if the id is valid
   const wrong = await checkout('ig-followers-50', 'https://youtube.com/@someone'); t.eq(wrong.status, 422);
@@ -376,7 +379,13 @@ await t.step('Q9/Q10/Q11 · negative quantity, negative price, invalid service �
 // ═════════════════════════ 12. Expired payment reuse ═════════════════════════
 await t.step('Q12 · can an expired payment be reused? NO — an expired session shows no QR, is never re-offered, and a new attempt always gets a fresh session', async () => {
   const o = await newOrder('ig-likes-100', 'https://www.instagram.com/p/Expire' + uniq() + '/');
-  t.eq((await req('GET', `/pay/${o.ref}/qr.png`)).status, 200, 'live session serves its QR');
+  t.eq((await req('GET', `/pay/${o.ref}/qr.png`)).status, 410, 'a hosted-checkout payment has no QR at all');
+  const upi = `upi://pay?pa=merchant.demo@okbizaxis&am=${(payment(o.ref).pAmount / 100).toFixed(2)}&cu=INR&tr=${payment(o.ref).gwOrder}`;
+  sql(`UPDATE payments SET qr_payload = '${upi}' WHERE ref = '${o.ref}'`);
+  t.eq((await req('GET', `/pay/${o.ref}/qr.png`)).status, 200, 'a live session with a real UPI request serves its QR');
+  sql(`UPDATE payments SET qr_payload = REPLACE(qr_payload, '&cu=INR', '&cu=USD') WHERE ref = '${o.ref}'`);
+  t.eq((await req('GET', `/pay/${o.ref}/qr.png`)).status, 410, 'a request in another currency is never served');
+  sql(`UPDATE payments SET qr_payload = '${upi}' WHERE ref = '${o.ref}'`);
   sql(`UPDATE payments SET expires_at = UTC_TIMESTAMP() - INTERVAL 5 MINUTE WHERE ref = '${o.ref}'`);
   const st = await req('GET', `/api/pay/${o.ref}/status`); t.eq(st.json.state, 'expired');
   const pg = await req('GET', `/pay/${o.ref}`); t.has(pg.text, 'Payment session expired'); t.ok(!/id="qr-img"[^>]*src=/.test(pg.text), 'no QR in the expired page');
