@@ -125,7 +125,7 @@ function editorHtml(s) {
     <div class="form-section"><h3>Price &amp; quantity</h3>
       <div class="field-row"><div class="field"><label class="label req" for="f-price">Price customers pay</label>
         <div class="input-affix"><span class="affix">₹</span><input class="input" id="f-price" name="price" inputmode="decimal" value="${s ? plain(s.price_paise).replace(/\.00$/, '') : ''}" placeholder="99"></div>
-        <p class="field-hint" id="trial-hint" hidden>${icon('check', 'icon-sm')} At ${meta.trial_pack.price} this service gets the red ${meta.trial_pack.label} badge on the store automatically.</p></div>
+        <p class="field-hint" id="trial-hint" role="status" hidden>At ${meta.trial_pack.price} this service gets the red ${meta.trial_pack.label} badge on the store automatically.</p></div>
         <div class="field"><label class="label req" for="f-quantity">Units delivered per purchase</label>
         <input class="input" id="f-quantity" name="quantity" inputmode="numeric" value="${s?.quantity ?? ''}" placeholder="100000"></div></div>
       <div class="field-row"><div class="field"><label class="label" for="f-min_quantity">Minimum quantity</label><input class="input" id="f-min_quantity" name="min_quantity" inputmode="numeric" value="${s?.min_quantity ?? 1}"></div>
@@ -160,7 +160,7 @@ function editorHtml(s) {
     <div class="form-section"><h3>Appearance</h3>
       <div class="field-row"><div class="field"><label class="label" for="f-badge">Badge text</label>
         <input class="input" id="f-badge" name="badge" maxlength="40" value="${s?.badge || ''}" placeholder="e.g. BEST SELLER" aria-describedby="badge-hint">
-        <p class="field-hint" id="badge-hint">${meta.trial_pack.label} is automatic: every service priced at exactly ${meta.trial_pack.price} shows it, so don't type it here. Use this for any other label.</p></div>
+        <p class="field-hint" id="badge-hint">${meta.trial_pack.label} is added automatically to any service priced at exactly ${meta.trial_pack.price} — don't type it here. Use this field for any other label.</p></div>
         <div class="field"><label class="label" for="f-badge_color">Badge colour</label>
         <select class="select" id="f-badge_color" name="badge_color">${meta.badge_colors.map((c) => html`<option value="${c}" ${(s?.badge_color || 'red') === c ? 'selected' : ''}>${c[0].toUpperCase() + c.slice(1)}</option>`)}</select></div></div>
       <div class="field-row"><div class="field"><label class="label" for="f-sort_order">Sort order</label>
