@@ -177,20 +177,14 @@ T::test('alpha-api: the documented webhook (no event_id, X-PayIndia-Signature) s
     aa_done();
 });
 
-T::test('alpha-api: the signature is accepted in any header that mentions "signature", with or without sha256=; anything else is refused', function () {
+T::test('alpha-api: the signature is accepted in any header that mentions "signature" — but only as the exact lower-case digest', function () {
     $gid = aa_setup();
     $sig = fn(string $raw, string $secret = AA_WEBHOOK) => hash_hmac('sha256', $raw, $secret);
-    $variants = [
-        'X-Alpha-Signature' => fn($raw) => $sig($raw),
-        'X-Lola-Pay-Signature' => fn($raw) => $sig($raw),
-        'X-Hub-Signature-256' => fn($raw) => 'sha256=' . $sig($raw),
-        'X-Something-New-Signature' => fn($raw) => strtoupper($sig($raw)),
-    ];
     $n = 100;
-    foreach ($variants as $header => $make) {
+    foreach (['X-PayIndia-Signature', 'X-Alpha-Signature', 'X-Lola-Pay-Signature', 'X-Hub-Signature-256', 'X-Something-New-Signature'] as $header) {
         $p = pf_place('ig-followers-50', '@john', ['visitor_id' => null, 'session_id' => null], '198.51.100.' . $n++);
         $raw = json_encode(aa_evt($p['payment']));
-        [$status] = aa_webhook($gid, json_decode($raw, true), [$header => $make($raw)]);
+        [$status] = aa_webhook($gid, json_decode($raw, true), [$header => $sig($raw)]);
         T::same(200, $status, $header);
         T::same('success', pf_payment((int) $p['payment']['id'])['status'], $header . ' settled the payment');
     }
@@ -202,6 +196,9 @@ T::test('alpha-api: the signature is accepted in any header that mentions "signa
         'digest in an unrelated header' => ['X-Request-Id' => $sig($raw)],
         'empty signature' => ['X-PayIndia-Signature' => ''],
         'digest of another body' => ['X-PayIndia-Signature' => $sig($raw . ' ')],
+        'sha256= prefix' => ['X-PayIndia-Signature' => 'sha256=' . $sig($raw)],
+        'upper-case digest' => ['X-PayIndia-Signature' => strtoupper($sig($raw))],
+        'truncated digest' => ['X-PayIndia-Signature' => substr($sig($raw), 0, 32)],
     ] as $name => $headers) {
         [$status] = aa_webhook($gid, json_decode($raw, true), $headers);
         T::same(401, $status, $name);

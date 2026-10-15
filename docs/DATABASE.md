@@ -24,7 +24,7 @@ MySQL 5.7+ / MariaDB 10.3+, InnoDB, `utf8mb4`. No CTEs, window functions, `CONVE
 | `service_tags` | The badges (**Admin → Services → Tags & Badges**): `code` (stable key of the 10 predefined tags — `trial-pack`, `best-seller`, `popular`, `best-value`, `premium`, `hot-deal`, `non-drop`, `instant`, `limited-offer`, `vip`; NULL for custom tags — the automatic ₹5 rule is bound to `trial-pack`, never to a name), `name` (unique, case-insensitive), `bg_color` / `text_color` (`#RRGGBB`, upper case, validated), `is_active` (a disabled tag is hidden on the store but keeps its assignments), `is_system` (predefined: editable and disableable, not deletable), `sort_order`. `services.tag_id` → `service_tags.id` is `ON DELETE SET NULL`, so deleting a custom tag leaves no dangling reference. |
 | `service_pricing` | Append-only history of price / provider-cost changes (who, when). |
 | `smm_providers` | Supplier panels: `api_url`, `api_key_enc` (**AES-256-GCM**), `currency`, `rate_to_inr_micros` (1 provider-currency unit in ₹ × 10⁶, used to convert the provider's charge), `is_active`, `is_default`, last test result and balance. |
-| `payment_gateways` | `provider` (`alpha_upi`), `environment` (test\|production), `config_json` (non-secret: base URL…), `secrets_enc` (**encrypted JSON**: API key, webhook secret), `is_active`, last test result. |
+| `payment_gateways` | `provider` (`alpha_upi`), `environment` (test\|production), `config_json` (non-secret: `base_url`, `api_style` = headers\|bearer, `provider_pref`), `secrets_enc` (**encrypted JSON**: `api_key`, `api_secret`, `webhook_secret`), `is_active`, last test result. |
 
 ### Orders & payments
 | Table | Purpose / notable columns |

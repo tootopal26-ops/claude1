@@ -89,16 +89,17 @@ If the same visitor already has a live, unpaid session for the **same service an
 
 ## 2. Payment webhook
 
-`POST /webhooks/payments/{gatewayId}` — configure `https://your-domain/webhooks/payments/1` in the Alpha UPI dashboard.
+`POST /webhooks/payments/{gatewayId}` — configure `https://your-domain/webhooks/payments/1` in the Alpha UPI dashboard (Webhooks portal).
 
 ```http
 POST /webhooks/payments/1
 Content-Type: application/json
-X-Alpha-Signature: <hex HMAC-SHA256 of the RAW request body, key = the webhook secret>
+X-PayIndia-Signature: <hex HMAC-SHA256 of the RAW request body, key = the webhook secret>
 
-{ "event_id": "evt_9f2c", "order_id": "SMB9F3A…", "status": "SUCCESS", "amount": "5.00", "utr": "UTR8A12", "provider": "bharatpe", "paid_at": "2026-10-14 12:00:00" }
+{ "event": "payment.success", "status": "success", "order_id": "SMB9F3A…", "amount": 5.00, "utr": "615372849102" }
 ```
-Pipeline: verify the signature (constant-time) → de-duplicate by event id → find the payment by gateway order id **and** gateway → settle under a row lock: the amount must equal the stored amount, the UTR must be unused → order becomes PAID and is routed. AUTO orders are submitted to the SMM provider **after** the HTTP answer is sent (the answer is complete before the provider is contacted, whatever PHP handler the host uses, so a slow provider never makes the gateway's webhook time out).
+The signature may arrive in **any header whose name contains "signature"** (`X-PayIndia-Signature`, `X-Alpha-Signature`, `X-Hub-Signature-256` …) — the digest, not the header's name, authenticates the delivery, and it must be the exact lower-case hex digest (no `sha256=` prefix, no other case). The body may be the current format above, the older one — `{ "event_id": "evt_9f2c", "order_id": "…", "status": "SUCCESS", "amount": "5.00", "utr": "…", "provider": "bharatpe" }` — or either nested under `data`. Only unmistakable words count as paid (`success`, `successful`, `paid`, `completed`, any case); unfamiliar statuses change nothing.
+Pipeline: verify the signature (constant-time) → de-duplicate by event id (the current payload has none, so a SHA-256 of the body stands in: identical redeliveries are acknowledged as `duplicate`, and settlement itself is idempotent) → find the payment by gateway order id **and** gateway → settle under a row lock: the amount must equal the stored amount, the UTR must be unused → order becomes PAID and is routed. AUTO orders are submitted to the SMM provider **after** the HTTP answer is sent (the answer is complete before the provider is contacted, whatever PHP handler the host uses, so a slow provider never makes the gateway's webhook time out).
 
 | Answer | Meaning |
 |---|---|
@@ -163,7 +164,7 @@ Validation (server-side, `422` with `fields`): **name** 2–24 characters after 
 | `GET\|PUT /admin/api/website` | Site name, tagline, accent colours, SEO, support link, maintenance mode + message, payment instructions, business time zone (locked once orders exist). |
 | `POST\|DELETE /admin/api/branding/{site_logo\|favicon}` | Upload / reset the logo or favicon. |
 | `GET\|PUT /admin/api/advertising` | CPC (₹) and qualification seconds; history is append-only; new values apply to *new* visitors only. |
-| `GET /admin/api/gateway` · `PUT /admin/api/gateway/{id}` · `POST /admin/api/gateway/{id}/test` | Gateway config (`environment`, `base_url`, `api_key`, `webhook_secret`, active flag). Secrets are **write-only**: responses contain only `configured: true` + a masked hint. |
+| `GET /admin/api/gateway` · `PUT /admin/api/gateway/{id}` · `POST /admin/api/gateway/{id}/test` | Gateway config: `environment`, `base_url` (the API host, e.g. `https://alphaupi.site`; a trailing `/api` is trimmed), `api_style` (`headers` = the current Alpha UPI API with `X-API-Key` + `X-API-Secret`, the default; `bearer` = the older single-key SDK API), `provider_pref` (older API only), `api_key`, `api_secret` (current API only), `webhook_secret`, active flag. Going live needs every secret the chosen type uses. Secrets are **write-only**: responses contain only `has_… : true` + a masked hint. The test is a read-only lookup of an order that cannot exist and answers `ok` / `warning` (reachable, credentials not refused) / `error` (rejected key or secret, an address that is not the API, unreachable). |
 | `GET\|POST /admin/api/smm` · `PUT\|DELETE /admin/api/smm/{id}` · `POST /admin/api/smm/{id}/test` · `GET /admin/api/smm/{id}/services?q=` | Providers (name, URL, key, currency, ₹ rate, default/active), connection test (balance), provider service search for the service editor. Provider URLs are checked by the SSRF guard (https, public addresses, no credentials). |
 
 ### Account, audit, system

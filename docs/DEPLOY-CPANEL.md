@@ -97,11 +97,13 @@ It shows the exact text to paste into a new `.env` file (File Manager → **+ Fi
 Sign in at **`/admin`**. The **system notices** at the top of every admin page list what is still missing (gateway, SMM provider, cron, temporary password…).
 
 1. **Admin → Website:** site name, logo, favicon, accent colours, SEO title/description, support link (https or mailto only).
-2. **Admin → Payment gateway (Alpha UPI):**
-   * enter your **API key** and **webhook secret** (write-only: after saving, only a masked hint is shown);
-   * keep **Test** mode until a ₹5 test payment has worked end-to-end, then switch to **Production**;
-   * copy the **Webhook URL** shown on the page — `https://your-domain.com/webhooks/payments/1` — into the Alpha UPI dashboard;
-   * press **Test connection** — a read-only lookup of an order that cannot exist: it proves the gateway is reachable and rejects a wrong key. Because a gateway cannot confirm a *correct* key without a real order, it may answer with a yellow "reachable, key not independently confirmed" — the **₹5 test order** in step 7 is the real proof.
+2. **Admin → Payment gateway (Alpha UPI):** the credentials are on your Alpha UPI dashboard (API Settings / API keys page).
+   * **Gateway base URL:** `https://alphaupi.site` — the API host only (a pasted `https://alphaupi.site/api` is trimmed for you);
+   * **API type:** *Current — API key + API secret* (the default). Your dashboard lists a **Production API Key** (sent as `X-API-Key`), a **Production API Secret** (`X-API-Secret`) and the **webhook** key. Choose *Older — API key only (Bearer)* only for the older SDK API;
+   * enter the **API key**, **API secret** and **webhook secret** (all write-only: after saving, only a masked hint is shown). The gateway cannot go live without all three;
+   * Alpha UPI works in **production mode only — there is no sandbox**. The Test / Production switch is just a label for you; your first test is a real **₹5 order** (the money goes to your own account);
+   * copy the **Webhook URL** shown on the page — `https://your-domain.com/webhooks/payments/1` — into the **Webhooks portal** of the Alpha UPI dashboard (the signature is checked with the webhook secret; the header name does not matter);
+   * press **Test connection** — a read-only lookup of an order that cannot exist: it proves the gateway is reachable and rejects a wrong key or secret. A correct key cannot be confirmed without a real order, so it ends with a yellow "reachable … the gateway did not refuse the credentials" — the **₹5 test order** in step 7 is the real proof. *"answered with a web page (HTTP 404)"* means the base URL is not the API host.
 3. **Admin → SMM provider:** API URL (`…/api/v2`), API key, currency and exchange rate to ₹ (used to convert the provider's charge into ₹ cost), then **TEST CONNECTION** (shows your provider balance). Make it the default provider.
 4. **Admin → Services:** every service starts as **MANUAL**. To automate one: set mode **AUTO**, enter its **SMM service ID** and **provider cost** (what the provider charges you for one purchase of that pack), save. The editor shows the profit per order. *An AUTO service without a service ID or active provider is hidden from the store automatically.*
 5. **Admin → Advertising:** set your cost per click (default ₹1.08) and the qualification time (default 3 s).

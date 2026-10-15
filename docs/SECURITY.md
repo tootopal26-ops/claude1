@@ -7,7 +7,7 @@ This document describes what protects the shop, how each protection was **verifi
 ## 1. Principles
 
 1. **The browser is never trusted.** Price, quantity, mode, provider ids, payment and order status are decided on the server from the database. A client may only send a service id and a link.
-2. **Secrets live on the server, encrypted, write-only.** Gateway key, webhook secret and SMM keys are AES-256-GCM encrypted at rest (key derived from `APP_KEY`), never returned by any API (only a masked hint), never logged, never in an error page.
+2. **Secrets live on the server, encrypted, write-only.** Gateway key, gateway secret, webhook secret and SMM keys are AES-256-GCM encrypted at rest (key derived from `APP_KEY`), never returned by any API (only a masked hint), never logged, never in an error page.
 3. **Fail closed, say little.** Errors are friendly and generic for visitors; details go to `storage/logs` (and, in local development only, to the response).
 4. **Everything important is idempotent.** Checkout, Approve All, saves and the webhook are safe against double clicks, retries and parallel requests.
 5. **Least privilege:** the DB user needs no `GRANT`/`SUPER`; uploads cannot execute; the web root can contain only `public/`.

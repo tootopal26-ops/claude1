@@ -31,7 +31,7 @@ one-click **Approve All**, and an admin panel whose analytics dashboard shows re
 * **Website settings** (name, logos, colours, SEO, support link), **payment gateway** configuration, **SMM provider** configuration with **TEST CONNECTION**, advertising/CPC settings, password change & session management, audit log, system health.
 
 ### Payments & orders
-* Payment-gateway **abstraction** (`app/Payments`) with the official Alpha UPI SDK bundled unmodified; webhooks are signature-verified and **idempotent**.
+* Payment-gateway **abstraction** (`app/Payments`). The Alpha UPI adapter speaks the **current Alpha UPI API** (`X-API-Key` + `X-API-Secret` headers, `/api/create-order`, `/api/check-status` — the one documented for alphaupi.site) and, selectable in the admin, the older single-key API of the bundled official SDK (unmodified). Webhooks are signature-verified and **idempotent**.
 * SMM API v2 client (server-side only; keys are AES-256-GCM encrypted at rest and never reach a browser).
 * 13 order statuses with an enforced transition map; AUTO orders are claimed under a row lock so a provider order can never be sent twice; unclear provider answers are parked for a human instead of being retried blindly.
 * Money is stored as **integer paise** and percentages as tenths — no floating point anywhere in accounting.
@@ -47,7 +47,7 @@ Strict CSP (no inline scripts or styles), CSRF protection, same-origin checks, s
 php tools/local-demo.php
 ```
 
-Installs the whole site with ~75 days of demo data, starts a **fake payment gateway** and a **fake SMM panel** (so you can place and pay an order end to end) and prints your admin login. Needs PHP 8.1+, a running MySQL/MariaDB (XAMPP, MAMP, Homebrew …) and, for the fake gateway, Node.js 18+. Details and troubleshooting: **[docs/RUN-LOCALLY.md](docs/RUN-LOCALLY.md)**.
+Installs the whole site with ~75 days of demo data, starts a **fake payment gateway** (it speaks the current Alpha UPI API: `X-API-Key` + `X-API-Secret`) and a **fake SMM panel** (so you can place and pay an order end to end) and prints your admin login. Needs PHP 8.1+, a running MySQL/MariaDB (XAMPP, MAMP, Homebrew …) and, for the fake gateway, Node.js 18+. Details and troubleshooting: **[docs/RUN-LOCALLY.md](docs/RUN-LOCALLY.md)**.
 
 ---
 
@@ -57,7 +57,7 @@ Installs the whole site with ~75 days of demo data, starts a **fake payment gate
 2. Upload the project (zip → File Manager → Extract) into `public_html`.
 3. Open **`https://your-domain.com/install`**, follow the wizard (it checks the server, tests the database, writes `.env`, creates the tables and your admin account).
 4. Add the one-minute cron job shown in **Admin → System**.
-5. In **Admin → Payment gateway** enter your Alpha UPI API key and webhook secret, copy the webhook URL into the gateway dashboard, press **Test connection**.
+5. In **Admin → Payment gateway** enter the base URL `https://alphaupi.site`, your Alpha UPI **API key**, **API secret** and **webhook secret**, copy the webhook URL into the gateway's Webhooks portal, press **Test connection**, then place a ₹5 test order (Alpha UPI has no sandbox).
 
 The complete walkthrough — folder layouts, permissions, HTTPS, cron, upgrades, backups, troubleshooting — is in **[docs/DEPLOY-CPANEL.md](docs/DEPLOY-CPANEL.md)**.
 
@@ -96,7 +96,7 @@ npm run build        # icons sprite + Tailwind CSS + JS bundles → public/asset
 
 ### Tests
 ```bash
-php tests/run.php                 # 128 unit + integration tests (payments, webhooks, fulfilment, analytics, admin services, tags & badges …)
+php tests/run.php                 # 140 unit + integration tests (payments, webhooks, both Alpha UPI APIs, fulfilment, analytics, admin services, tags & badges …)
 bash tools/qa/run-all.sh          # every browser/HTTP QA suite (Playwright, axe-core, real Apache) — see docs/QA-REPORT.md
 ```
 
@@ -143,7 +143,7 @@ Everything lives in `.env` (see [.env.example](.env.example)) plus the admin pan
 
 ## Honest notes
 * **What was run:** PHP 8.3, MariaDB 10.11 and MySQL 8.0 (the whole QA battery on each), Apache + mod_php (three folder layouts) and Chromium. PHP 8.1/8.2/8.4, MySQL 5.7, LiteSpeed, NGINX, PHP-FPM, Firefox and Safari are supported by design but were not run — see [docs/QA-REPORT.md](docs/QA-REPORT.md) §5.
-* The Alpha UPI and SMM integrations were verified against **faithful mock servers** that speak the real protocols (the QA suites use them); they were not run against live credentials — do a ₹5 test order in **test mode** first.
+* The Alpha UPI (current and older API) and SMM integrations were verified against **faithful mock servers** that speak the documented protocols (the QA suites use them); they were not run against live credentials — do a ₹5 test order in **test mode** first.
 * Your logo and your Instagram / YouTube icons are used exactly as supplied (kept in `resources/brand/`); the header logo, favicon, app icons, sharing image and platform buttons are cropped / resized from them (`python3 tools/build-brand-images.py`). Replace them any time in **Admin → Website** (logo, favicon) and **Admin → Services** (platform logos) — no code change needed.
 * Alpha UPI exposes no refund API, so refunds are *recorded* in the panel (you refund through your gateway/bank); the books stay correct.
 * New installs start with every service on **MANUAL**; switch a service to **AUTO** after adding its SMM service ID and provider cost.

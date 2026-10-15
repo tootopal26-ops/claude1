@@ -266,8 +266,9 @@ final class AlphaUpiGateway implements PaymentGateway
     }
 
     /**
-     * HMAC-SHA256 of the raw body, hex, in any of the usual signature headers (optionally "sha256=…"). The digest — not the header
-     * name — is what proves the sender knows the webhook secret, so trying every header that mentions "signature" costs no security.
+     * HMAC-SHA256 of the raw body as lower-case hex, in any of the usual signature headers. The digest — not the header's name — is
+     * what proves the sender knows the webhook secret, so trying every header that mentions "signature" costs no security; the digest
+     * itself must match exactly (no prefix, no other case).
      *
      * @param array<string,string> $headers lower-cased names
      */
@@ -289,10 +290,7 @@ final class AlphaUpiGateway implements PaymentGateway
         }
         $expected = hash_hmac('sha256', $rawBody, $secret);
         foreach ($candidates as $c) {
-            $c = strtolower(trim((string) $c));
-            if (str_starts_with($c, 'sha256=')) {
-                $c = substr($c, 7);
-            }
+            $c = trim((string) $c);                  // the exact lower-case hex digest — no prefix, no other case
             if ($c !== '' && hash_equals($expected, $c)) {
                 return true;
             }
