@@ -13,6 +13,8 @@ export const getStatus = () => latest;
 function paintBadges(s) {
   const n = s.approvable || 0;
   $$('[data-approve-count]').forEach((el) => { el.hidden = n === 0; el.textContent = n > 99 ? '99+' : String(n); });
+  const rc = s.recovery_open || 0;
+  $$('[data-recovery-count]').forEach((el) => { el.hidden = rc === 0; el.textContent = rc > 99 ? '99+' : String(rc); });
   const f = s.payment_flags || 0;
   $$('[data-flag-count]').forEach((el) => { el.hidden = f === 0; el.textContent = f > 99 ? '99+' : String(f); });
   $$('[data-approve-chip]').forEach((el) => {

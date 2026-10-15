@@ -8,6 +8,7 @@ import {
   orderChip, payChip, modeChip, signedMoney, skeletonTable, emptyState, errorState, pager, onSearch, copyText, withBusy, setBusy,
   formDialog, ORDER_STATUSES, whenVisible,
 } from './ui.js';
+import { RECOVERY_ACTIONS, CATEGORY_TONE, LABEL as RC_LABEL, ICON as RC_ICON, runRecoveryAction } from './recovery-actions.js';
 
 const CHIPS = [
   ['all', 'All'], ['pending', 'Pending payment'], ['paid', 'Paid'], ['processing', 'Processing'], ['completed', 'Completed'],
@@ -61,7 +62,7 @@ function rowHtml(o) {
     <td data-label="Amount" class="num"><span class="cell-main"><b>${inr(o.amount_paise)}</b>${o.refunded_paise ? html`<small class="amt-neg">−${inr(o.refunded_paise)} refunded</small>` : ''}</span></td>
     <td data-label="Payment · mode"><span class="stackcell">${payChip(o.payment_status)}${modeChip(o.mode)}</span></td>
     <td data-label="Profit" class="num">${profitCell(o)}</td>
-    <td data-label="Status"><span class="stackcell">${orderChip(o.status, o.status_label)}${o.late ? html`<span class="chip chip-warn" title="Payment arrived after the 5-minute session ended">late payment</span>` : ''}</span>${o.last_error && o.status === 'FAILED' ? html`<small class="block mt-1 text-bad-700 truncate max-w-[14rem]" title="${o.last_error}">${o.last_error}</small>` : ''}</td>
+    <td data-label="Status"><span class="stackcell">${orderChip(o.status, o.status_label)}<small class="mono text-muted" title="Status in the shop's standard vocabulary">${o.state}</small>${['needs_review', 'escalated'].includes(o.recovery_status) ? html`<a class="chip chip-warn" href="${url('/admin/recovery')}" title="A person was asked to look at this order">${o.recovery_status === 'escalated' ? 'escalated' : 'needs review'}</a>` : ''}${o.late ? html`<span class="chip chip-warn" title="Payment arrived after the 5-minute session ended">late payment</span>` : ''}</span>${o.last_error && o.status === 'FAILED' ? html`<small class="block mt-1 text-bad-700 truncate max-w-[14rem]" title="${o.last_error}">${o.last_error}</small>` : ''}</td>
     <td class="row-actions-cell"><span class="row-actions"><button type="button" class="btn btn-sm" data-open="${o.id}" aria-label="View order ${o.public_id}">${icon('eye', 'icon-sm')}<span class="md:sr-only 2xl:not-sr-only">View</span></button></span></td>
   </tr>`;
 }
@@ -123,6 +124,10 @@ const ACTION_UI = {
   approve: { label: 'Approve', ico: 'circle-check', cls: 'btn-success' },
   complete: { label: 'Mark completed', ico: 'square-check-big', cls: 'btn-primary' },
   retry_submit: { label: 'Retry provider submission', ico: 'rotate-ccw', cls: 'btn-primary' },
+  link_provider_order: { label: 'Link provider order', ico: 'link', cls: '' },
+  mark_review: { label: 'Mark for review', ico: 'circle-alert', cls: '' },
+  escalate: { label: 'Escalate', ico: 'bell-ring', cls: '' },
+  resolve_review: { label: 'Resolve', ico: 'circle-check', cls: '' },
   move_to_manual: { label: 'Move to manual queue', ico: 'package', cls: '' },
   sync: { label: 'Sync status now', ico: 'refresh-cw', cls: '' },
   confirm_payment: { label: 'Confirm payment manually', ico: 'badge-check', cls: '' },
@@ -144,6 +149,17 @@ function targetLink(o) {
   return html`<span class="inline-flex items-start gap-1"><a class="underline break-all" href="${o.target_url}" target="_blank" rel="noopener noreferrer nofollow">${shown}</a>${copyBtn(o.target_url, 'Copy link')}</span>`;
 }
 
+/** What recovery knows about an order: why it is in the recovery queue, how many times it was sent, when it is tried next, who looked. */
+function recoveryHtml(o) {
+  const r = o.recovery;
+  if (!r || (!r.categories.length && !r.recovery_status)) return '';
+  return html`<div class="od-section"><h3>Recovery</h3>
+    ${r.categories.length ? html`<div class="chips-wrap mb-2">${r.categories.map((c) => html`<span class="chip ${CATEGORY_TONE[c] || 'chip-gray'}">${r.category_labels[c]}</span>`)}</div>` : ''}
+    ${r.explanation ? html`<p class="text-sm text-ink-soft mb-2">${r.explanation}</p>` : ''}
+    <dl class="dl">${dd('Shop status', html`<span class="mono">${r.state}</span>`)}${dd('Attempts', `${r.attempts} of ${r.max_attempts}`)}${dd('Last attempt', dt(r.last_attempt_at))}${dd('Next automatic retry', r.next_attempt_at ? dt(r.next_attempt_at) : '—')}
+      ${dd('Recovery status', r.recovery_status ? r.recovery_status.replace('_', ' ') : '—')}${r.escalated_at ? dd('Escalated', `${dt(r.escalated_at)} by ${r.escalated_by || 'the system'}`) : ''}${r.error ? dd('Latest error', r.error) : ''}</dl></div>`;
+}
+
 function drawerHtml(d) {
   const o = d.order;
   const m = d.money;
@@ -158,7 +174,9 @@ function drawerHtml(d) {
 
     ${o.last_error && ['FAILED', 'PAID', 'PROCESSING'].includes(o.status) ? html`<div class="callout callout-error mt-3" role="alert">${icon('circle-alert')}<div><strong>Provider issue:</strong> ${o.last_error}${o.next_attempt_at ? html`<br><small>Next automatic retry at ${dt(o.next_attempt_at)} (attempt ${o.attempts}).</small>` : ''}</div></div>` : ''}
 
-    ${actions.length ? html`<div class="od-section"><h3>Actions</h3><div class="action-bar">${actions.map((a) => html`<button type="button" class="btn btn-sm ${ACTION_UI[a].cls}" data-act="${a}">${icon(ACTION_UI[a].ico, 'icon-sm')}<span>${ACTION_UI[a].label}</span></button>`)}</div></div>` : ''}
+    ${recoveryHtml(o)}
+
+    ${actions.length ? html`<div class="od-section"><h3>Actions</h3><div class="action-bar">${actions.map((a) => html`<button type="button" class="btn btn-sm ${ACTION_UI[a].cls}" data-act="${a}">${icon(RECOVERY_ACTIONS.includes(a) ? RC_ICON[a] : ACTION_UI[a].ico, 'icon-sm')}<span>${RECOVERY_ACTIONS.includes(a) ? RC_LABEL[a](o) : ACTION_UI[a].label}</span></button>`)}</div></div>` : ''}
 
     <div class="od-section"><h3>Order</h3><dl class="dl">
       ${dd('Order ID', o.public_id, 'mono')}${dd('Service', `${o.service} (${o.service_code})`)}${dd('Quantity', num(o.quantity))}
@@ -242,19 +260,26 @@ async function runAction(action, btn) {
     return res;
   };
   try {
+    if (RECOVERY_ACTIONS.includes(action)) {
+      // a plain send / sync runs behind the button's busy state; the others open their own dialog
+      const plain = action === 'sync' || (action === 'retry_submit' && o.failure_kind !== 'ambiguous');
+      const run = () => runRecoveryAction(o, action, async (extra, key) => {
+        const res = await post(`orders/${id}/action`, { action, ...extra }, { idempotency: key });
+        paintDrawer(res.detail);
+        ok(res.message);
+        load({ silent: true });
+        reloadStatus();
+        return res;
+      });
+      if (plain) await withBusy(btn, run); else await run();
+      return;
+    }
     switch (action) {
       case 'approve':
         await withBusy(btn, () => send());
         break;
-      case 'sync':
-      case 'retry_submit':
-        await withBusy(btn, () => send());
-        break;
       case 'complete':
         if (await confirmDialog({ title: 'Mark this order as completed?', message: `${o.public_id} will be shown to the customer as completed.`, confirmText: 'Mark completed' })) await withBusy(btn, () => send());
-        break;
-      case 'move_to_manual':
-        if (await confirmDialog({ title: 'Move to the manual queue?', message: 'The order will stop retrying the SMM provider and wait for you to approve and deliver it yourself.', confirmText: 'Move to manual' })) await withBusy(btn, () => send());
         break;
       case 'cancel': {
         const key = uuid();
@@ -308,11 +333,13 @@ async function runAction(action, btn) {
 
 async function approveAll(btn) {
   let count;
-  try { count = (await get('orders/approvable')).count; } catch (e) { fail('Could not check pending orders', e.message); return; }
-  if (count === 0) { ok('Nothing to approve', 'There are no paid manual orders waiting for approval.'); load({ silent: true }); return; }
+  let held = 0;
+  try { const r = await get('orders/approvable'); count = r.count; held = r.held_back || 0; } catch (e) { fail('Could not check pending orders', e.message); return; }
+  if (count === 0) { ok('Nothing to approve', held ? `${held} paid manual order${held === 1 ? ' is' : 's are'} held back because the payment has an open high-risk flag — see Payment checks.` : 'There are no paid manual orders waiting for approval.'); load({ silent: true }); return; }
   const yes = await confirmDialog({
     title: 'Approve all eligible manual orders?',
-    message: `${count} paid manual order${count === 1 ? '' : 's'} will be approved. Unpaid, cancelled, refunded and already completed orders are never touched.`,
+    message: `${count} paid manual order${count === 1 ? '' : 's'} will be approved. Unpaid, cancelled, refunded and already completed orders are never touched.`
+      + (held ? ` ${held} more ${held === 1 ? 'is' : 'are'} left out because the payment has an open high-risk flag (Payment checks); approve ${held === 1 ? 'it' : 'those'} one by one after looking.` : ''),
     confirmText: `Approve ${count} order${count === 1 ? '' : 's'}`, tone: 'success',
   });
   if (!yes) return;

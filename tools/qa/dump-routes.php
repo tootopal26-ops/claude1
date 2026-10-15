@@ -27,7 +27,7 @@ function example(string $regex): string
                 $name === 'ref' || $name === 'token' => str_repeat('a', 32),
                 $name === 'page' => 'dashboard',
                 (bool) preg_match('/^[a-z_\-]+(\|[a-z_\-]+)+$/', $pattern) => explode('|', $pattern)[0],   // alternatives such as site_logo|favicon
-                default => '1',
+                default => sample($pattern),
             };
             $i = $j - 1;
             continue;
@@ -36,6 +36,17 @@ function example(string $regex): string
         $out .= $s[$i];
     }
     return $out;
+}
+
+/** A concrete value for a route parameter: the first of a few typical values that the parameter's own pattern accepts (an id, a job name …). */
+function sample(string $pattern): string
+{
+    foreach (['1', 'payments', 'abc', 'a1b'] as $candidate) {
+        if (@preg_match('#^(?:' . $pattern . ')$#', $candidate) === 1) {
+            return $candidate;
+        }
+    }
+    return '1';
 }
 
 foreach ($routes as $r) {

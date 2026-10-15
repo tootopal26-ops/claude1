@@ -350,7 +350,10 @@ await t.step('Q8 · can a duplicate webhook create a duplicate order? NO — 20 
   t.eq(Number(sql(`SELECT paid_orders_count FROM users u JOIN orders o ON o.user_id = u.id WHERE o.id = ${o.p.id}`) || 1), 1);
   const note = sql(`SELECT COUNT(*) FROM order_status_history WHERE order_id = ${o.p.id} AND note LIKE 'Duplicate payment received%'`);
   t.ok(Number(note) >= 1, 'a second payment with a different bank reference is flagged on the order for a refund: ' + note);
-  t.eq(Number(sql(`SELECT COUNT(*) FROM order_status_history WHERE order_id = ${o.p.id} AND note LIKE 'Duplicate payment received%' AND note LIKE '%${e.utr}%'`)), 0, 'the same bank reference is NOT reported as a duplicate payment');
+  // whichever delivery won the race is "the payment": the bank reference it settled with must never be reported as a duplicate of itself
+  const settledWith = sql(`SELECT provider_txn_id FROM payments WHERE gateway_order_id = '${o.p.gwOrder}'`);
+  t.ok(/^UTR[0-9A-F]{8}$/.test(settledWith), 'the payment carries the bank reference of the delivery that settled it: ' + settledWith);
+  t.eq(Number(sql(`SELECT COUNT(*) FROM order_status_history WHERE order_id = ${o.p.id} AND note LIKE 'Duplicate payment received%' AND note LIKE '%bank ref ${settledWith}%'`)), 0, 'the same bank reference is NOT reported as a duplicate payment');
   const ev = rows(`SELECT status, COUNT(*) FROM webhook_events WHERE payload LIKE '%${o.p.gwOrder}%' GROUP BY status`); console.log('      webhook events by status:', JSON.stringify(ev));
 });
 

@@ -193,14 +193,14 @@ await t.step('Approve All with nothing to approve: friendly message, no error', 
   t.has(j.message, 'no eligible');
 });
 
-await t.step('AUTO failed order: Retry provider submission responds with a clear outcome', async () => {
+await t.step('AUTO failed order: "Send now" (retry the provider submission) responds with a clear outcome', async () => {
   await page.click('[data-filter="failed"]'); await settled();
   const row = rows().filter({ has: page.locator('.mode-auto') }).filter({ hasText: 'Provider rejected' }).first();
   t.ok(await row.count() === 1, 'a paid FAILED AUTO order exists in the demo data');
   await row.click();
   await page.waitForSelector('#order-drawer[open] .od-hero');
   const actions = await page.locator('#od-body [data-act]').allInnerTexts();
-  t.ok(actions.some((a) => /Retry provider/.test(a)), actions.join('|'));
+  t.ok(actions.some((a) => /Send now/.test(a)), actions.join('|'));
   t.ok(actions.some((a) => /Move to manual/.test(a)), 'move to manual offered');
   await page.click('#od-body [data-act="retry_submit"]');
   await page.waitForSelector('.toast');

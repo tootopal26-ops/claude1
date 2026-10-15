@@ -6,6 +6,7 @@ initShell();
 const pages = {
   dashboard: () => import('./admin/dashboard.js'),
   orders: () => import('./admin/orders.js'),
+  recovery: () => import('./admin/recovery.js'),
   payments: () => import('./admin/payments.js'),
   'payment-checks': () => import('./admin/payment-checks.js'),
   services: () => import('./admin/services.js'),

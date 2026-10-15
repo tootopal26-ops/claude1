@@ -30,11 +30,15 @@ final class JobHandlers
     /** @return array<string,mixed> */
     public static function recovery(JobContext $c): array
     {
-        $out = ['submit' => Fulfilment::submitDue()];
-        if (!$c->expired()) {
-            $out['sync'] = Fulfilment::syncDue();
+        if ($c->dryRun) {
+            $out = ['would_do' => Fulfilment::dueCounts()];          // nothing is sent, synced or released
+        } else {
+            $out = ['submit' => Fulfilment::submitDue()];
+            if (!$c->expired()) {
+                $out['sync'] = Fulfilment::syncDue();
+            }
         }
-        if (!$c->expired() && class_exists(Recovery::class)) {
+        if (!$c->expired()) {
             $out['recovery'] = Recovery::scan($c);
         }
         return $out;

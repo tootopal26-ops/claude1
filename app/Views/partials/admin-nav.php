@@ -2,7 +2,7 @@
 /** Admin navigation (rendered twice: desktop sidebar and mobile drawer). Expects: $page, $admin, $site, $idp */
 $groups = [
     ['Overview', [['dashboard', 'Dashboard', 'layout-dashboard']]],
-    ['Sales', [['orders', 'Orders', 'package'], ['payments', 'Payments', 'credit-card'], ['payment-checks', 'Payment checks', 'shield-alert', true], ['services', 'Services', 'layers'], ['tags', 'Tags & Badges', 'tags', true]]],
+    ['Sales', [['orders', 'Orders', 'package'], ['recovery', 'Order recovery', 'life-buoy', true], ['payments', 'Payments', 'credit-card'], ['payment-checks', 'Payment checks', 'shield-alert', true], ['services', 'Services', 'layers'], ['tags', 'Tags & Badges', 'tags', true]]],
     ['Configuration', [['website', 'Website', 'globe'], ['gateway', 'Payment gateway', 'wallet'], ['smm', 'SMM API', 'server'], ['advertising', 'Advertising', 'megaphone']]],
     ['Account', [['security', 'Security', 'shield-check'], ['audit', 'Audit log', 'history'], ['system', 'System', 'activity']]],
 ];
@@ -30,6 +30,7 @@ $groups = array_values(array_filter(array_map(
       <a class="adm-link<?= $page === $key ? ' is-active' : '' ?><?= $sub ? ' adm-sub' : '' ?>" href="<?= e(url('/admin/' . $key)) ?>"<?= $page === $key ? ' aria-current="page"' : '' ?>>
         <?= icon($ico) ?><span><?= e($text) ?></span>
         <?php if ($key === 'orders'): ?><span class="adm-count" data-approve-count hidden title="Manual orders waiting for approval">0</span><?php endif; ?>
+        <?php if ($key === 'recovery'): ?><span class="adm-count" data-recovery-count hidden title="Paid orders that need a person (unknown outcome, review, failed)">0</span><?php endif; ?>
         <?php if ($key === 'payment-checks'): ?><span class="adm-count" data-flag-count hidden title="Payment flags that need a person to look">0</span><?php endif; ?>
       </a>
       <?php endforeach; ?>

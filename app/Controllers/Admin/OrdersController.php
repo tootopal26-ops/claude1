@@ -10,6 +10,7 @@ use App\Core\Response;
 use App\Services\AdminOrders;
 use App\Services\Audit;
 use App\Services\Fulfilment;
+use App\Services\Recovery;
 use App\Support\Permissions;
 
 final class OrdersController extends BaseController
@@ -37,11 +38,19 @@ final class OrdersController extends BaseController
     {
         $id = $this->id($p);
         $in = $req->json();
-        $admin = $this->authorize($req, 'orders.act');
-        if (($in['action'] ?? '') === 'confirm_payment') {
-            $admin = $this->authorize($req, 'payments.override');   // a manual payment confirmation is a person's decision, never a gateway's: owners only
-        }
+        $action = (string) ($in['action'] ?? '');
+        $admin = $this->authorize($req, self::permissionFor($action));   // recovery actions: orders.recover · a manual payment confirmation: owners only (payments.override) · the rest: orders.act
         return $this->once($req, 'order-action', fn(): array => $this->limit(AdminOrders::act($id, $in, $req, $admin), $req));
+    }
+
+    /** The permission an order action needs: a manual payment confirmation is a person's decision, never a gateway's (owners only); recovery actions have their own. */
+    private static function permissionFor(string $action): string
+    {
+        return match (true) {
+            $action === 'confirm_payment' => 'payments.override',
+            in_array($action, Recovery::ACTIONS, true) => 'orders.recover',
+            default => 'orders.act',
+        };
     }
 
     /**
@@ -53,10 +62,7 @@ final class OrdersController extends BaseController
     private function limit(array $data, Request $req): array
     {
         $role = (string) $this->admin($req)['role'];
-        $may = static fn(array $actions): array => array_values(array_filter($actions, static fn(string $a): bool => match (true) {
-            $a === 'confirm_payment' => Permissions::can($role, 'payments.override'),
-            default => Permissions::can($role, 'orders.act'),
-        }));
+        $may = static fn(array $actions): array => array_values(array_filter($actions, static fn(string $a): bool => Permissions::can($role, self::permissionFor($a))));
         foreach ($data['rows'] ?? [] as $i => $row) {
             $data['rows'][$i]['actions'] = $may($row['actions'] ?? []);
         }
@@ -67,7 +73,7 @@ final class OrdersController extends BaseController
             $data['detail']['order']['actions'] = $may($data['detail']['order']['actions']);
         }
         if (isset($data['rows'])) {
-            $data['can'] = ['bulk' => Permissions::can($role, 'orders.bulk'), 'act' => Permissions::can($role, 'orders.act')];
+            $data['can'] = ['bulk' => Permissions::can($role, 'orders.bulk'), 'act' => Permissions::can($role, 'orders.act'), 'recover' => Permissions::can($role, 'orders.recover')];
         }
         return $data;
     }
@@ -75,7 +81,7 @@ final class OrdersController extends BaseController
     public function approvable(Request $req, array $p): Response
     {
         $this->authorize($req, 'orders.view');
-        return $this->ok(['count' => Fulfilment::approvableCount()]);
+        return $this->ok(['count' => Fulfilment::approvableCount(), 'held_back' => Fulfilment::heldBackCount()]);
     }
 
     /**
@@ -95,7 +101,7 @@ final class OrdersController extends BaseController
             return [
                 'approved' => $r['approved'], 'skipped' => $r['skipped'] ?? 0,
                 'message' => $r['approved'] === 0 ? 'There were no eligible manual orders to approve.' : ($r['approved'] === 1 ? '1 order approved.' : $r['approved'] . ' orders approved.'),
-                'remaining' => Fulfilment::approvableCount(),
+                'remaining' => Fulfilment::approvableCount(), 'held_back' => Fulfilment::heldBackCount(),
             ];
         }, true);
     }

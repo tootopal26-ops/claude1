@@ -118,7 +118,7 @@ After a webhook has been accepted the shop can ask the gateway whether it agrees
 
 ## 3. Admin routes
 
-HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|orders|payments|payment-checks|services|tags|website|advertising|gateway|smm|security|audit|system}`) redirect to the sign-in page when signed out. The pages load their data from the JSON API below.
+HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|orders|recovery|payments|payment-checks|services|tags|website|advertising|gateway|smm|security|audit|system}`) redirect to the sign-in page when signed out. The pages load their data from the JSON API below.
 
 ### Auth
 | Method & path | Purpose |
@@ -150,6 +150,15 @@ HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|orders|payments|pa
 | `POST /admin/api/payment-flags/{id}/review` `{status:"reviewed"\|"dismissed", note?}` *(payments.review)* | Close a flag (a note is required to dismiss). Audited. `409` when already closed. |
 | `POST /admin/api/payments/{id}/recheck` *(payments.review)* | Ask the gateway about that payment now. 30 per 5 min per admin (`429`), `502 gateway_unreachable`, `409` for a refunded payment. Returns `action` (`settled\|confirmed\|flagged\|failed\|expired\|none`), `message`, the gateway's `status` / `amount_paise` / `reference`, and the refreshed row. Audited. |
 | `GET` / `PUT /admin/api/payment-checks/settings` *(payments.view / alerts.manage)* | Thresholds (validated, bounded, audited). |
+
+### Order recovery and scheduled jobs (permission in brackets; `403 forbidden` without it)
+| Method & path | Purpose |
+|---|---|
+| `GET /admin/api/recovery?category=&q=&page=` *(orders.view)* | The queue: 25 paid orders per page, most urgent first. `category` = `unknown\|review\|failed\|sending\|errors\|stale\|waiting\|retry` (empty = all). Each row: `id, public_id, service, quantity, target, status, status_label, state` (requested vocabulary), `failure_kind, recovery_status, categories, primary, category_labels, attempts, max_attempts, paid_at, last_attempt_at, next_attempt_at, error` (cleaned), `provider {name, order_id, status, last_sync_at}, escalated_at, escalated_by, actions`. Also `summary` (`counts` per category, `needs_person`, `in_queue`, the recovery `job`, `policy`), `can {recover, run_job}` and `categories {key: {label, what}}`. Roles without `orders.recover` get `actions: []`. |
+| `POST /admin/api/recovery/{id}/action` `{action, note?, verified_absent?, provider_order_id?}` *(orders.recover)* | `retry_submit` · `link_provider_order` · `move_to_manual` · `sync` · `mark_review` · `escalate` · `resolve_review`. `409 not_allowed` when the order's state does not allow it; `422 verification_required` (an unknown outcome needs `verified_absent: true` and a note of 5+ characters); `422` / `409` with `fields` for a bad or unconfirmed provider order id; `502 provider_error` when a sync cannot reach the provider. Idempotent per `Idempotency-Key`; audited. The same actions are accepted on `POST /admin/api/orders/{id}/action` (same permission). |
+| `GET` / `PUT /admin/api/recovery/settings` *(orders.view / orders.recover)* | The retry policy: `{max_attempts}` 1–10 (`422` with the field otherwise), the schedule and the rules of §2 of [ORDER-RECOVERY.md](ORDER-RECOVERY.md). Audited. |
+| `GET /admin/api/jobs` *(jobs.view)* | Every scheduled job with its last run, last success and state (`ok\|overdue\|failing\|never_run\|running`). |
+| `POST /admin/api/jobs/{job}/run` `{dry_run?}` *(jobs.run)* | The same locked, time-bounded, recorded run as the cron line (`trigger_source = admin`); `dry_run` writes nothing and asks no provider anything. 10 per 10 minutes per admin (`429`). Audited (`job.run`). |
 
 ### Catalogue
 | | |

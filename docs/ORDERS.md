@@ -112,6 +112,8 @@ What the customer sees depends on what we **actually obtained** for the order (`
 
 Customers never see provider names, messages, ids or costs; `GET /api/order/{token}` contains none of them.
 
+**Admin → Sales → Order recovery** ([ORDER-RECOVERY.md](ORDER-RECOVERY.md)) lists every paid order that is not where it should be (an unknown outcome, a refusal, stuck sending, a provider order that is not being followed, a waiting or retrying order) with the reason and the safe actions: *Send now*, *Resend after checking…* (an unknown outcome is resent only after the admin states, with a note, that the provider's panel has no order for the link), *Link provider order…* (verified with the provider's own `status` call), *Move to manual queue…*, *Sync*, *Mark for review*, *Escalate*, *Resolve*. The number of automatic attempts is a setting (1–10, default 5); the back-off steps above are fixed.
+
 ## 5. MANUAL orders
 
 Paid MANUAL orders enter the queue as `MANUAL_PENDING` (no provider call, no cost). In **Admin → Orders**:

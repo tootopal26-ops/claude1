@@ -100,7 +100,7 @@ final class AdminOrders
         return [
             'rows' => array_map([self::class, 'row'], $rows),
             'page' => $page, 'per' => $per, 'total' => $total, 'pages' => max(1, (int) ceil($total / $per)),
-            'chips' => $chips, 'approvable' => Fulfilment::approvableCount(),
+            'chips' => $chips, 'approvable' => Fulfilment::approvableCount(), 'held_back' => Fulfilment::heldBackCount(),
         ];
     }
 
@@ -114,7 +114,8 @@ final class AdminOrders
             'quantity' => (int) $o['quantity'], 'amount_paise' => (int) $o['amount_paise'], 'refunded_paise' => (int) $o['refunded_paise'],
             'payment_status' => $o['payment_status'], 'mode' => $o['mode'], 'provider' => $o['provider_name'], 'provider_order_id' => $o['provider_order_id'],
             'cost_paise' => $paid ? ($profit['cost']) : null, 'cost_final' => (bool) $o['provider_cost_final'], 'profit_paise' => $profit['gross'] ?? null,
-            'status' => $o['status'], 'status_label' => Status::orderLabel((string) $o['status']), 'failure_kind' => $o['failure_kind'], 'late' => (bool) $o['late_payment'],
+            'status' => $o['status'], 'status_label' => Status::orderLabel((string) $o['status']), 'state' => Status::specOrder($o), 'failure_kind' => $o['failure_kind'],
+            'recovery_status' => $o['recovery_status'], 'late' => (bool) $o['late_payment'],
             'last_error' => $o['last_error'] !== null ? mb_substr((string) $o['last_error'], 0, 160) : null,
             'created_at' => Clock::iso($o['created_at']), 'paid_at' => Clock::iso($o['paid_at']), 'actions' => self::allowed($o),
         ];
@@ -132,15 +133,8 @@ final class AdminOrders
         if (in_array($s, [Status::MANUAL_APPROVED, Status::PARTIAL, Status::MANUAL_PENDING], true) && $paid) {
             $a[] = 'complete';
         }
-        if ($o['mode'] === Status::AUTO && $paid && $s === Status::FAILED) {
-            $a[] = 'retry_submit';
-        }
-        if ($paid && $o['mode'] === Status::AUTO && in_array($s, [Status::FAILED, Status::PAID, Status::PROCESSING], true) && $o['provider_order_id'] === null) {
-            $a[] = 'move_to_manual';
-        }
-        if ($o['provider_order_id'] !== null && in_array($s, [Status::SUBMITTED, Status::IN_PROGRESS], true)) {
-            $a[] = 'sync';
-        }
+        // retry / link a provider order / move to the manual queue / sync / mark for review / escalate / resolve — see App\Services\Recovery
+        array_push($a, ...Recovery::actionsFor($o));
         if (Status::canTransition($s, Status::CANCELLED)) {
             $a[] = 'cancel';
         }
@@ -183,6 +177,7 @@ final class AdminOrders
 
         return [
             'order' => self::row($o) + [
+                'recovery' => Recovery::one($id),
                 'link_only' => Targets::orderHasAccountLink((string) $o['platform_slug'], (string) $o['service_type']),
                 'target_label' => Targets::orderHasAccountLink((string) $o['platform_slug'], (string) $o['service_type']) ? Targets::label((string) $o['platform_slug'], true) : 'Target',
                 'access_url' => absolute_url('order/' . $o['access_token']), 'service_code' => $o['service_code'], 'service_type' => $o['service_type'],
@@ -240,19 +235,13 @@ final class AdminOrders
                 $message = 'Order cancelled.';
                 break;
             case 'retry_submit':
-                $r = Fulfilment::submit($id, $admin, true);
-                $message = $r['status'] === 'submitted' ? 'Submitted to the provider.' : ($r['message'] ?? 'The retry did not succeed — see the order timeline.');
-                break;
             case 'move_to_manual':
-                Fulfilment::moveToManual($id, $admin, $req);
-                $message = 'Moved to the manual queue.';
-                break;
             case 'sync':
-                $r = Fulfilment::sync($id);
-                if (!$r['ok']) {
-                    throw new HttpException(502, 'Could not sync: ' . $r['message'], 'provider_error');
-                }
-                $message = $r['message'];
+            case 'link_provider_order':
+            case 'mark_review':
+            case 'escalate':
+            case 'resolve_review':
+                $message = Recovery::act($id, $in, $req, $admin)['message'];
                 break;
             case 'refund':
                 $amount = Money::parseRupees(is_scalar($in['amount'] ?? null) ? $in['amount'] : null);

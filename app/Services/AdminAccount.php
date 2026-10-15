@@ -119,12 +119,15 @@ final class AdminAccount
         ];
         try {
             $flags = Risk::openCounts()['attention'];
+            $recovery = Recovery::summary()['needs_person'];
         } catch (\Throwable) {
-            $flags = 0;        // the table arrives with a database update that may not be applied yet: the banner below says so
+            $flags = 0;        // these arrive with a database update that may not be applied yet: the banner below says so
+            $recovery = 0;
         }
         return [
             'approvable' => Fulfilment::approvableCount(),
             'payment_flags' => $flags,
+            'recovery_open' => $recovery,
             'setup' => $items,
             'auto_services' => $autoServices,
             'smm_ok' => $provider !== null,

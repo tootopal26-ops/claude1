@@ -24,11 +24,24 @@ use App\Support\Status;
  * that claim calls the provider, and the provider order id is stored the moment
  * it is known. If a call ends ambiguously (timeout / garbled reply) the order is
  * parked as FAILED for a human instead of being retried automatically.
+ *
+ * Recovery bookkeeping (see App\Services\Recovery): every attempt stamps `last_attempt_at`; a retry that is scheduled sets
+ * `recovery_status = auto_retry`; an outcome nobody can know (ambiguous) or a misconfiguration sets `needs_review`; a later success marks
+ * the order `resolved`. The SMM API v2 offers no idempotency key and no lookup by link, so an ambiguous submission can only be reconciled
+ * by a person with the provider's panel (Recovery::link / Recovery::retry with a verification).
  */
 final class Fulfilment
 {
-    private const MAX_AUTO_ATTEMPTS = 5;
-    private const BACKOFF = [60, 300, 1200, 3600];   // seconds before retry #2..#5
+    /** Default for the setting `recovery.max_attempts` (1–10). */
+    public const MAX_AUTO_ATTEMPTS = 5;
+    /** Seconds to wait before attempt #2, #3, #4 … (the last value repeats: the delay never grows beyond an hour). */
+    public const BACKOFF = [60, 300, 1200, 3600];
+
+    /** How many times an AUTO order is sent before a person is asked (setting `recovery.max_attempts`, 1–10). */
+    public static function maxAttempts(): int
+    {
+        return max(1, min(10, (int) Settings::get('recovery.max_attempts', self::MAX_AUTO_ATTEMPTS)));
+    }
 
     // ═════════════════════════ AUTO: submit to provider ═════════════════════
 
@@ -46,7 +59,7 @@ final class Fulfilment
         if (!$claimed) {
             return ['status' => 'skipped', 'message' => 'The order is not waiting for submission (already being processed or finished).'];
         }
-        Db::exec('UPDATE orders SET provider_attempts = provider_attempts + 1, next_attempt_at = NULL WHERE id = ?', [$orderId]);
+        Db::exec('UPDATE orders SET provider_attempts = provider_attempts + 1, last_attempt_at = ?, next_attempt_at = NULL WHERE id = ?', [Clock::sql(), $orderId]);
         $o = Orders::byId($orderId);
 
         if ($o['mode'] !== Status::AUTO) {
@@ -93,6 +106,7 @@ final class Fulfilment
                         'provider_order_id' => mb_substr($providerOrderId, 0, 64), 'provider_status' => 'Pending', 'smm_provider_id' => $provider['id'],
                         'provider_cost_paise' => (int) $o['estimated_cost_paise'], 'provider_cost_final' => 0,
                         'submitted_at' => Clock::sql(), 'last_error' => null, 'failure_kind' => null, 'next_attempt_at' => null,
+                        'recovery_status' => in_array((string) ($o['recovery_status'] ?? ''), ['auto_retry', 'needs_review', 'escalated'], true) ? 'resolved' : ($o['recovery_status'] ?? null),
                     ],
                 ]);
             } catch (\Throwable $e) {
@@ -111,7 +125,7 @@ final class Fulfilment
         return match ($res->kind) {
             SmmResponse::REJECTED => self::fail($o, 'Provider rejected the order: ' . $res->error, 'rejected', $admin),
             SmmResponse::UNREACHABLE => self::retryLater($o, $res->error, $admin),
-            default => self::fail($o, 'Unclear provider response (' . $res->error . '). The order may or may not exist at the provider — verify there before retrying.', 'ambiguous', $admin),
+            default => self::fail($o, 'Unclear provider response (' . rtrim((string) $res->error, '. ') . '). The order may or may not exist at the provider — verify there before retrying.', 'ambiguous', $admin),
         };
     }
 
@@ -119,29 +133,36 @@ final class Fulfilment
     private static function retryLater(array $o, string $error, ?array $admin): array
     {
         $attempts = (int) $o['provider_attempts'];
-        if ($attempts >= self::MAX_AUTO_ATTEMPTS || $admin !== null) {
+        $max = self::maxAttempts();
+        if ($attempts >= $max || $admin !== null) {
             return self::fail($o, 'Provider unreachable after ' . $attempts . ' attempt(s): ' . $error, 'unreachable', $admin);
         }
         $delay = self::BACKOFF[min($attempts - 1, count(self::BACKOFF) - 1)];
         Orders::transition((int) $o['id'], Status::PAID, [
-            'actor' => 'system', 'note' => 'Provider unreachable (' . $error . '). Will retry in ' . intdiv($delay, 60) . ' min.',
-            'set' => ['next_attempt_at' => Clock::sql(Clock::now() + $delay), 'last_error' => mb_substr($error, 0, 500), 'failure_kind' => 'unreachable'],
+            'actor' => 'system', 'note' => 'Provider unreachable (' . $error . '). Attempt ' . $attempts . ' of ' . $max . '; will retry in ' . ($delay >= 120 ? intdiv($delay, 60) . ' min' : $delay . ' s') . '.',
+            'set' => ['next_attempt_at' => Clock::sql(Clock::now() + $delay), 'last_error' => mb_substr($error, 0, 500), 'failure_kind' => 'unreachable', 'recovery_status' => 'auto_retry'],
         ]);
         return ['status' => 'retry_scheduled', 'message' => $error];
     }
 
     private static function fail(array $o, string $message, string $kind, ?array $admin): array
     {
+        // An outcome nobody can know, or a setup problem, needs a person; a plain refusal / exhausted retries are known failures. A person's
+        // earlier "review" / "escalated" mark is kept, and an old "resolved" / "auto_retry" mark never hides a NEW failure.
+        $previous = (string) ($o['recovery_status'] ?? '');
+        $recovery = in_array($kind, ['ambiguous', 'misconfigured'], true)
+            ? ($previous === 'escalated' ? 'escalated' : 'needs_review')
+            : (in_array($previous, ['needs_review', 'escalated'], true) ? $previous : null);
         Orders::transition((int) $o['id'], Status::FAILED, [
             'actor' => $admin ? 'admin' : 'system', 'actor_id' => $admin['id'] ?? null, 'actor_label' => $admin['username'] ?? null,
-            'note' => $message, 'set' => ['last_error' => mb_substr($message, 0, 500), 'failure_kind' => $kind, 'next_attempt_at' => null],
+            'note' => $message, 'set' => ['last_error' => mb_substr($message, 0, 500), 'failure_kind' => $kind, 'next_attempt_at' => null, 'recovery_status' => $recovery],
         ]);
         Log::warning('AUTO order could not be submitted', ['order' => $o['public_id'], 'kind' => $kind, 'message' => $message]);
         return ['status' => 'failed', 'message' => $message];
     }
 
     /** @param array<string,mixed> $request */
-    private static function logTransaction(array $o, array $provider, string $action, array $request, SmmResponse $res, ?string $providerOrderId, ?int $costPaise = null): void
+    public static function logTransaction(array $o, array $provider, string $action, array $request, SmmResponse $res, ?string $providerOrderId, ?int $costPaise = null): void
     {
         try {
             Db::insert('smm_transactions', [
@@ -268,7 +289,7 @@ final class Fulfilment
             $message = 'The submission was interrupted before the provider\'s answer was recorded. The provider may already have this order — check its panel (and the transaction log) for this link before retrying.';
             $moved = Orders::transition((int) $id, Status::FAILED, [
                 'actor' => 'system', 'note' => $message, 'expect' => [Status::PROCESSING], 'soft' => true,
-                'set' => ['last_error' => $message, 'failure_kind' => 'ambiguous', 'next_attempt_at' => null],
+                'set' => ['last_error' => $message, 'failure_kind' => 'ambiguous', 'next_attempt_at' => null, 'recovery_status' => 'needs_review'],
             ]);
             if ($moved) {
                 Log::warning('Order was stuck in PROCESSING and has been handed to an admin', ['order_id' => $id]);
@@ -287,10 +308,7 @@ final class Fulfilment
     public static function submitDue(int $limit = 20): array
     {
         $released = self::releaseStuck();
-        $rows = Db::all(
-            "SELECT id FROM orders WHERE status = 'PAID' AND mode = 'AUTO' AND provider_order_id IS NULL AND paid_at <= ? AND (next_attempt_at IS NULL OR next_attempt_at <= ?) ORDER BY id LIMIT ?",
-            [Clock::sql(Clock::now() - 20), Clock::sql(), $limit]
-        );
+        $rows = Db::all('SELECT id FROM orders WHERE ' . self::DUE_SUBMIT . ' ORDER BY id LIMIT ?', [Clock::sql(Clock::now() - 20), Clock::sql(), $limit]);
         foreach ($rows as $r) {
             try {
                 self::submit((int) $r['id']);
@@ -301,10 +319,28 @@ final class Fulfilment
         return ['attempted' => count($rows), 'released' => $released];
     }
 
+    /** Paid AUTO orders waiting to be sent whose time has come. A person who was asked to look (needs review / escalated) pauses the automatic sending. */
+    private const DUE_SUBMIT = "status = 'PAID' AND mode = 'AUTO' AND provider_order_id IS NULL AND paid_at <= ? AND (next_attempt_at IS NULL OR next_attempt_at <= ?) AND COALESCE(recovery_status, '') NOT IN ('needs_review', 'escalated')";
+
+    /**
+     * What the next real run of the recovery job would do — a dry run reports this and changes nothing, asks the provider nothing.
+     *
+     * @return array{to_release:int,to_submit:int,to_sync:int}
+     */
+    public static function dueCounts(): array
+    {
+        $now = Clock::now();
+        return [
+            'to_release' => (int) Db::val("SELECT COUNT(*) FROM orders WHERE status = 'PROCESSING' AND provider_order_id IS NULL AND updated_at <= ?", [Clock::sql($now - 600)]),
+            'to_submit'  => (int) Db::val('SELECT COUNT(*) FROM orders WHERE ' . self::DUE_SUBMIT, [Clock::sql($now - 20), Clock::sql($now)]),
+            'to_sync'    => (int) Db::val("SELECT COUNT(*) FROM orders WHERE status IN ('SUBMITTED', 'IN_PROGRESS') AND provider_order_id IS NOT NULL AND (last_sync_at IS NULL OR last_sync_at <= ?)", [Clock::sql($now - 120)]),
+        ];
+    }
+
     // ═════════════════════════ MANUAL queue ═════════════════════════════════
 
     /** Send a stuck AUTO order to the manual queue (the admin will fulfil it by hand). */
-    public static function moveToManual(int $orderId, array $admin, Request $req): void
+    public static function moveToManual(int $orderId, array $admin, ?Request $req): void
     {
         $o = Orders::byId($orderId) ?? throw new HttpException(404, 'Order not found.');
         if ($o['paid_at'] === null) {
@@ -363,7 +399,7 @@ final class Fulfilment
             $rows = Db::all(
                 "SELECT o.id FROM orders o JOIN manual_orders m ON m.order_id = o.id "
                 . "WHERE o.status = 'MANUAL_PENDING' AND o.mode = 'MANUAL' AND o.payment_status = 'success' AND o.paid_at IS NOT NULL AND m.state = 'pending' "
-                . 'ORDER BY o.id FOR UPDATE'
+                . 'AND ' . self::NOT_PAYMENT_FLAGGED . ' ORDER BY o.id FOR UPDATE'
             );
             foreach ($rows as $r) {
                 Orders::transition((int) $r['id'], Status::MANUAL_APPROVED, [
@@ -378,11 +414,25 @@ final class Fulfilment
         return ['approved' => $approved];
     }
 
+    /**
+     * A bulk action must not carry along an order whose payment a person has not cleared: a paid order whose payment has an open HIGH-risk
+     * flag (Payment checks) is left out of Approve All. It can still be approved one by one, with the flag in front of the admin.
+     */
+    private const NOT_PAYMENT_FLAGGED = "NOT EXISTS (SELECT 1 FROM payment_flags f WHERE f.order_id = o.id AND f.active_key IS NOT NULL AND f.severity = 'high')";
+
     /** Count of orders Approve All would approve right now (shown in the confirmation dialog). */
     public static function approvableCount(): int
     {
         return (int) Db::val(
-            "SELECT COUNT(*) FROM orders o JOIN manual_orders m ON m.order_id = o.id WHERE o.status = 'MANUAL_PENDING' AND o.mode = 'MANUAL' AND o.payment_status = 'success' AND o.paid_at IS NOT NULL AND m.state = 'pending'"
+            "SELECT COUNT(*) FROM orders o JOIN manual_orders m ON m.order_id = o.id WHERE o.status = 'MANUAL_PENDING' AND o.mode = 'MANUAL' AND o.payment_status = 'success' AND o.paid_at IS NOT NULL AND m.state = 'pending' AND " . self::NOT_PAYMENT_FLAGGED
+        );
+    }
+
+    /** Paid manual orders Approve All leaves out because their payment has an open high-risk flag. */
+    public static function heldBackCount(): int
+    {
+        return (int) Db::val(
+            "SELECT COUNT(*) FROM orders o JOIN manual_orders m ON m.order_id = o.id WHERE o.status = 'MANUAL_PENDING' AND o.mode = 'MANUAL' AND o.payment_status = 'success' AND o.paid_at IS NOT NULL AND m.state = 'pending' AND NOT " . self::NOT_PAYMENT_FLAGGED
         );
     }
 

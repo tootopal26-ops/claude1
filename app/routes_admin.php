@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-use App\Controllers\Admin\{AccountController, AuthController, DashboardController, IntegrationsController, OrdersController, PageController, PaymentChecksController, ServicesController, SettingsController, TagsController};
+use App\Controllers\Admin\{AccountController, AuthController, DashboardController, IntegrationsController, JobsController, OrdersController, PageController, PaymentChecksController, RecoveryController, ServicesController, SettingsController, TagsController};
 use App\Core\Middleware;
 use App\Core\Router;
 
@@ -38,6 +38,16 @@ return static function (Router $r): void {
     $r->get("/admin/api/orders/{$id}", [OrdersController::class, 'show'], $api);
     $r->post("/admin/api/orders/{$id}/action", [OrdersController::class, 'act'], $api);
     $r->get('/admin/api/payments', [OrdersController::class, 'payments'], $api);
+
+    // ── order recovery: the queue, safe retries, reconcile actions, the retry policy ──
+    $r->get('/admin/api/recovery', [RecoveryController::class, 'queue'], $api);
+    $r->get('/admin/api/recovery/settings', [RecoveryController::class, 'settings'], $api);
+    $r->put('/admin/api/recovery/settings', [RecoveryController::class, 'saveSettings'], $api);
+    $r->post("/admin/api/recovery/{$id}/action", [RecoveryController::class, 'act'], $api);
+
+    // ── scheduled jobs: health and "run now" ──
+    $r->get('/admin/api/jobs', [JobsController::class, 'list'], $api);
+    $r->post('/admin/api/jobs/{job:[a-z][a-z0-9\-]{2,24}}/run', [JobsController::class, 'run'], $api);
 
     // ── payment checks: monitor, flags, thresholds, re-check ──
     $r->get('/admin/api/payment-checks/summary', [PaymentChecksController::class, 'summary'], $api);

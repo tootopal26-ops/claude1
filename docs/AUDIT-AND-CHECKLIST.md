@@ -77,7 +77,7 @@ The existing values stay (they are stored in rows, used by the UI, 185 tests and
 - [x] **Phase 1** — this audit.
 - [x] **Phase 2** — migrations (finance, risk, jobs, alerts, reports, support, ads, pricing), RBAC, audit helper, job runner, state mapping. *(commit `6259e03`)*
 - [x] **Phase 3** — payment risk flags, thresholds, monitoring screen, safe reconcile actions, webhook cross-check, role enforcement on the existing admin. See [PAYMENT-CHECKS.md](PAYMENT-CHECKS.md).
-- [ ] **Phase 4** — recovery queue + actions, per-job cron entry points with locks and run history.
+- [x] **Phase 4** — recovery queue + actions (Admin → Order recovery), safe retry policy, per-job cron entry points with locks and run history (`php bin/cron.php recovery`), "run now" / dry run. See [ORDER-RECOVERY.md](ORDER-RECOVERY.md).
 - [ ] **Phase 5** — Profit Intelligence and Ads Intelligence (calculations, screens, reconciliation).
 - [ ] **Phase 6** — Business Watchdog, alerts, deterministic Daily Report.
 - [ ] **Phase 7** — AI adapter (optional), AI commentary, Support Assistant (rules-based; AI optional).
