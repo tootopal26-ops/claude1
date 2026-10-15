@@ -46,10 +46,18 @@ function profitCell(o) {
   return html`<span class="cell-main"><b>${signedMoney(o.profit_paise)}</b><small>${o.mode === 'AUTO' ? `cost ${inr(o.cost_paise)}${o.cost_final ? '' : ' (est.)'}` : 'no provider cost'}</small></span>`;
 }
 
+/** The account link / username of an order, as a link to the account when it is one (the admin delivers manual orders from it). */
+function targetCell(o) {
+  const isUrl = /^https?:\/\//i.test(o.target_url || '');
+  return isUrl
+    ? html`<small class="cell-link" title="${o.target_url}"><a class="underline" href="${o.target_url}" target="_blank" rel="noopener noreferrer nofollow">${o.target}</a></small>`
+    : html`<small title="${o.target}">${o.target}</small>`;
+}
+
 function rowHtml(o) {
   return html`<tr data-open="${o.id}">
     <td data-label="Order"><span class="cell-main"><b class="mono">${o.public_id}</b><small>${fmtDateTime(o.created_at)}</small></span></td>
-    <td data-label="Service" class="span2"><span class="cell-svc">${platformIcon(o.platform) ? html`<img src="${platformIcon(o.platform)}" alt="" width="30" height="30" loading="lazy">` : ''}<span class="cell-main"><b>${o.service}</b><small title="${o.target}">${o.target}</small></span></span></td>
+    <td data-label="Service" class="span2"><span class="cell-svc">${platformIcon(o.platform) ? html`<img src="${platformIcon(o.platform)}" alt="" width="30" height="30" loading="lazy">` : ''}<span class="cell-main"><b>${o.service}</b>${targetCell(o)}</span></span></td>
     <td data-label="Amount" class="num"><span class="cell-main"><b>${inr(o.amount_paise)}</b>${o.refunded_paise ? html`<small class="amt-neg">−${inr(o.refunded_paise)} refunded</small>` : ''}</span></td>
     <td data-label="Payment · mode"><span class="stackcell">${payChip(o.payment_status)}${modeChip(o.mode)}</span></td>
     <td data-label="Profit" class="num">${profitCell(o)}</td>
@@ -128,6 +136,13 @@ function copyBtn(text, label = 'Copy') {
   return html`<button type="button" class="btn btn-ghost btn-sm btn-icon" data-copy="${text}" aria-label="${label}" title="${label}">${icon('copy', 'icon-sm')}</button>`;
 }
 
+/** The full account link (Instagram Profile Link / YouTube Channel Link): clickable, with a copy button. Other orders keep their username / post link. */
+function targetLink(o) {
+  if (!o.target_url) return o.target;
+  const shown = o.link_only ? o.target_url : o.target;
+  return html`<span class="inline-flex items-start gap-1"><a class="underline break-all" href="${o.target_url}" target="_blank" rel="noopener noreferrer nofollow">${shown}</a>${copyBtn(o.target_url, 'Copy link')}</span>`;
+}
+
 function drawerHtml(d) {
   const o = d.order;
   const m = d.money;
@@ -146,7 +161,7 @@ function drawerHtml(d) {
 
     <div class="od-section"><h3>Order</h3><dl class="dl">
       ${dd('Order ID', o.public_id, 'mono')}${dd('Service', `${o.service} (${o.service_code})`)}${dd('Quantity', num(o.quantity))}
-      ${dd('Target', o.target_url ? html`<a class="underline break-all" href="${o.target_url}" target="_blank" rel="noopener noreferrer nofollow">${o.target}</a>` : o.target)}
+      ${dd(o.target_label, targetLink(o))}
       ${dd('Created', dt(o.created_at))}${dd('Paid', dt(o.paid_at))}${dd('Submitted', dt(o.submitted_at))}${dd('Completed', dt(o.completed_at))}
       ${dd('Customer link', html`<span class="inline-flex items-center gap-1"><a class="underline break-all" href="${o.access_url}" target="_blank" rel="noopener">${o.access_url.replace(/^https?:\/\//, '')}</a>${copyBtn(o.access_url, 'Copy customer link')}</span>`)}
     </dl></div>
@@ -171,7 +186,7 @@ function drawerHtml(d) {
       ${d.smm.length ? html`<details class="fold mt-3"><summary>Provider calls (${d.smm.length})</summary><div class="grid gap-2">${d.smm.map((t) => html`<div><div class="flex items-center justify-between text-xs mb-1"><b>${t.action.toUpperCase()} · ${t.ok ? 'ok' : 'failed'}${t.http_status ? ' · HTTP ' + t.http_status : ''}${t.duration_ms ? ' · ' + t.duration_ms + ' ms' : ''}</b><span class="text-muted">${dt(t.at)}</span></div>
         ${t.error ? html`<p class="text-xs text-bad-700 mb-1">${t.error}</p>` : ''}<pre class="code">${(t.request || '') + '\n→ ' + (t.response || '')}</pre></div>`)}</div></details>` : ''}</div>` : ''}
 
-    ${d.manual ? html`<div class="od-section"><h3>Manual delivery</h3><dl class="dl">${dd('State', d.manual.state)}${dd('Approved by', d.manual.approved_by)}${dd('Approved at', dt(d.manual.approved_at))}</dl></div>` : ''}
+    ${d.manual ? html`<div class="od-section"><h3>Manual delivery</h3><dl class="dl">${dd('Deliver to', targetLink(o))}${dd('State', d.manual.state)}${dd('Approved by', d.manual.approved_by)}${dd('Approved at', dt(d.manual.approved_at))}</dl></div>` : ''}
 
     <div class="od-section"><h3>Timeline</h3><div class="timeline">${tl}</div></div>
 

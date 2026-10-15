@@ -239,7 +239,7 @@ foreach ([
     ['service.updated', 'service', '2', ['code' => 'ig-followers-100k', 'changed' => ['smm_cost_paise']], 5 * 86400],
     ['service.price_changed', 'service', '1', ['code' => 'ig-followers-50', 'from' => '5.00', 'to' => '5.00'], 9 * 86400],
     ['settings.advertisement', 'advertisement', null, ['cpc_from' => '0.95', 'cpc_to' => '1.08', 'qualify_seconds' => 3], 30 * 86400],
-    ['smm.provider_saved', 'smm_provider', '1', ['created' => false, 'changed' => ['rate_to_inr']], 12 * 86400],
+    ['smm.provider_saved', 'smm_provider', '1', ['created' => false, 'changed' => ['api_url']], 12 * 86400],
     ['order.approve_all', 'order', null, ['approved' => 14], 2 * 86400],
     ['gateway.saved', 'payment_gateway', '1', ['changed' => ['environment']], 20 * 86400],
 ] as [$action, $et, $eid, $meta, $ago]) {

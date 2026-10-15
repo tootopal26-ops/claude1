@@ -23,7 +23,7 @@ function ff_setup(string $smmKey = 'smm-key-ok'): array
 }
 
 /** Place + pay an order (webhook), running post-response tasks. @return array order row */
-function ff_paid(int $gid, string $code = 'ig-followers-50', string $target = '@john'): array
+function ff_paid(int $gid, string $code = 'ig-followers-50', string $target = 'https://www.instagram.com/john/'): array
 {
     $p = pf_place($code, $target, ['visitor_id' => null, 'session_id' => null], ff_ip());
     pf_webhook($gid, pf_evt($p['payment']));
@@ -86,10 +86,10 @@ T::test('auto: status sync follows the provider and the ACTUAL charge replaces t
     $o = pf_order((int) $o['id']);
     T::same('IN_PROGRESS', $o['status']);
     T::same(30, (int) $o['remains']);
-    T::same(2323, (int) $o['provider_cost_paise'], '0.27819 USD × ₹83.5');
+    T::same(2323, (int) $o['provider_cost_paise'], 'the provider charge of 23.23 is ₹23.23 (INR only, no exchange rate)');
     T::same(0, (int) $o['provider_cost_final'], 'not final while in progress');
 
-    T::smm('POST', '/__advance', ['order' => '70001', 'status' => 'Completed', 'remains' => 0, 'charge' => '0.30000']);
+    T::smm('POST', '/__advance', ['order' => '70001', 'status' => 'Completed', 'remains' => 0, 'charge' => '25.05']);
     Fulfilment::sync((int) $o['id']);
     $o = pf_order((int) $o['id']);
     T::same('COMPLETED', $o['status']);
@@ -170,7 +170,7 @@ T::test('checkout: an AUTO service that cannot be routed (no SMM service id / no
     $cards = static fn(): array => array_merge(...array_map(static fn(array $p): array => array_merge([], ...array_map(static fn(array $s): array => $s['services'], $p['sections'])), \App\Services\Catalog::storefront()));
     T::same(null, \App\Services\Catalog::orderable($id), 'empty SMM service id');
     T::false(in_array($id, array_column($cards(), 'id'), true), 'hidden from the storefront');
-    T::throws(HttpException::class, fn() => pf_place('ig-followers-50', '@john', ['visitor_id' => null, 'session_id' => null], ff_ip()), 422);
+    T::throws(HttpException::class, fn() => pf_place('ig-followers-50', 'https://www.instagram.com/john/', ['visitor_id' => null, 'session_id' => null], ff_ip()), 422);
 
     T::makeAuto('ig-followers-50', '1001', 100, null);                 // service id present, but no provider exists at all
     Db::exec('DELETE FROM smm_providers');
@@ -189,7 +189,7 @@ T::test('checkout: an AUTO service that cannot be routed (no SMM service id / no
 
 T::test('auto failure: the provider / SMM id disappears AFTER the customer paid → FAILED (misconfigured), no call made, nothing lost', function () {
     ['gid' => $gid] = ff_setup();
-    $p = pf_place('ig-followers-50', '@john', ['visitor_id' => null, 'session_id' => null], ff_ip());
+    $p = pf_place('ig-followers-50', 'https://www.instagram.com/john/', ['visitor_id' => null, 'session_id' => null], ff_ip());
     Db::exec('DELETE FROM smm_providers');
     Db::exec("UPDATE orders SET smm_provider_id = NULL, smm_service_id = '' WHERE id = ?", [$p['order']['id']]);
     pf_webhook($gid, pf_evt($p['payment']));
@@ -266,7 +266,7 @@ T::test('auto failure: garbled reply → AMBIGUOUS: parked for a human, NEVER au
 T::test('auto: 6 parallel processes try to submit one PAID order — the provider receives ONE order', function () {
     ['gid' => $gid] = ff_setup();
     T::smm('POST', '/__control', ['offline' => false]);
-    $p = pf_place('ig-followers-50', '@racer', ['visitor_id' => null, 'session_id' => null], ff_ip());
+    $p = pf_place('ig-followers-50', 'https://www.instagram.com/racer/', ['visitor_id' => null, 'session_id' => null], ff_ip());
     // settle without the post-response submission so the order is PAID and unsent
     App\Services\Settlement::settle((int) $p['payment']['id'], ['source' => 'webhook', 'amount_paise' => 500, 'utr' => 'RACEUTR']);
     T::same('PAID', pf_order((int) $p['order']['id'])['status']);
@@ -295,8 +295,8 @@ T::test('auto: 6 parallel processes try to submit one PAID order — the provide
 T::test('auto failure: a process that dies right after claiming the order leaves it PROCESSING — the cron watchdog hands it to a human, it is NEVER resubmitted', function () {
     ['gid' => $gid] = ff_setup();
     Clock::setFixed(1_800_000_000);
-    $stuck = ff_paid($gid, 'ig-followers-50', '@stuck_one');
-    $fresh = ff_paid($gid, 'ig-followers-50', '@fresh_one');
+    $stuck = ff_paid($gid, 'ig-followers-50', 'https://www.instagram.com/stuck_one/');
+    $fresh = ff_paid($gid, 'ig-followers-50', 'https://www.instagram.com/fresh_one/');
     $adds = count(ff_smm_adds());
     // simulate "claimed, then the PHP process was killed before the provider's answer was recorded"
     Db::exec("UPDATE orders SET status = 'PROCESSING', provider_order_id = NULL, provider_status = NULL, submitted_at = NULL, updated_at = ? WHERE id = ?", [Clock::sql(1_800_000_000 - 700), $stuck['id']]);
@@ -325,7 +325,7 @@ T::test('auto failure: the provider ACCEPTED the order but the database refuses 
     try {
         $crashed = null;
         try {
-            ff_paid($gid, 'ig-followers-50', '@trigger_victim');
+            ff_paid($gid, 'ig-followers-50', 'https://www.instagram.com/trigger_victim/');
         } catch (\Throwable $e) {
             $crashed = $e;
         }
@@ -374,7 +374,7 @@ T::test('manual: APPROVE ALL approves only eligible orders (paid, manual, pendin
     Fulfilment::refund((int) $e['id'], 9900, 'UPI-REF-1', $ADMIN, ff_req());        // REFUNDED
     $f = ff_paid($gid, 'yt-likes-100', 'https://youtu.be/dQw4w9WgXcQ');
     Fulfilment::approve((int) $f['id'], $ADMIN, ff_req());                         // already approved
-    $g = ff_paid($gid, 'ig-followers-50', '@auto_one');                            // AUTO, submitted to provider
+    $g = ff_paid($gid, 'ig-followers-50', 'https://www.instagram.com/auto_one/');                            // AUTO, submitted to provider
 
     T::same(2, Fulfilment::approvableCount());
     $r = Fulfilment::approveAll($ADMIN, ff_req());
@@ -417,7 +417,7 @@ T::test('manual: two concurrent APPROVE ALL runs approve each order exactly once
 
 T::test('refund: partial then full; revenue and status follow; over-refund and repeat are refused', function () use ($ADMIN) {
     $gid = pf_setup();
-    $o = ff_paid($gid, 'ig-followers-100k', '@big');          // ₹99
+    $o = ff_paid($gid, 'ig-followers-100k', 'https://www.instagram.com/big/');          // ₹99
     $r = Fulfilment::refund((int) $o['id'], 4000, 'UPI-REF-A', $ADMIN, ff_req());
     T::same(false, $r['full']);
     $o2 = pf_order((int) $o['id']);
@@ -445,4 +445,59 @@ T::test('state machine: illegal manual transitions are refused with 409', functi
     T::throws(HttpException::class, fn() => Fulfilment::complete((int) $o['id'], $ADMIN, ff_req()), 409);     // CANCELLED → COMPLETED
     T::throws(HttpException::class, fn() => Fulfilment::approve((int) $o['id'], $ADMIN, ff_req()), 409);
     T::same(false, Orders::transition((int) $o['id'], 'CANCELLED'), 'same-status transition is a no-op');
+});
+
+// ═════════════════════════════ INR only ═════════════════════════════
+
+T::test('inr only: a provider charge is read as rupees; one that declares another currency is never converted', function () {
+    ['gid' => $gid, 'pid' => $pid] = ff_setup();
+    $o = ff_paid($gid);
+    T::same(100, (int) $o['provider_cost_paise'], 'the ₹ estimate of the service');
+    // the panel starts declaring USD: its 23.23 is not ₹23.23 and there is no exchange rate to turn it into rupees
+    T::smm('POST', '/__control', ['currency' => 'USD']);
+    T::smm('POST', '/__advance', ['order' => '70001', 'status' => 'Completed', 'remains' => 0]);
+    T::true(Fulfilment::sync((int) $o['id'])['ok']);
+    $o = pf_order((int) $o['id']);
+    T::same('COMPLETED', $o['status'], 'the delivery status is still followed');
+    T::same(100, (int) $o['provider_cost_paise'], 'the estimate stays: the foreign charge is ignored, not guessed');
+    T::same(0, (int) $o['provider_cost_final'], 'still an estimate');
+    // back to a panel that bills in INR (or does not say): the charge is taken as rupees
+    T::smm('POST', '/__control', ['currency' => 'INR']);
+    Fulfilment::sync((int) $o['id']);
+    T::same(2323, (int) pf_order((int) $o['id'])['provider_cost_paise']);
+    T::smm('POST', '/__control', ['currency' => 'INR']);
+});
+
+T::test('inr only: the provider form has no currency / exchange rate — whatever a client sends is ignored and INR is stored', function () {
+    ['pid' => $pid] = ff_setup();
+    $admin = ['id' => 1, 'username' => 'root', 'email' => 'r@x.test'];
+    Db::exec("UPDATE smm_providers SET currency = 'USD', rate_to_inr_micros = 83500000 WHERE id = ?", [$pid]);   // an old row configured before the change
+    $view = SmmProviders::save($pid, ['name' => 'Renamed', 'currency' => 'EUR', 'rate_to_inr' => '90'], ff_req(), $admin);
+    T::false(array_key_exists('currency', $view) || array_key_exists('rate_to_inr', $view), 'the admin view has no currency or rate');
+    $row = Db::one('SELECT currency, rate_to_inr_micros, name FROM smm_providers WHERE id = ?', [$pid]);
+    T::same('Renamed', $row['name']);
+    T::same('INR', $row['currency']);
+    T::same(1_000_000, (int) $row['rate_to_inr_micros']);
+    $new = SmmProviders::save(null, ['name' => 'Second', 'api_url' => 'http://127.0.0.1:4020/api/v2', 'api_key' => 'smm-key-ok', 'currency' => 'USD', 'rate_to_inr' => '83.5'], ff_req(), $admin);
+    $row = Db::one('SELECT currency, rate_to_inr_micros FROM smm_providers WHERE id = ?', [$new['id']]);
+    T::same(['INR', 1_000_000], [$row['currency'], (int) $row['rate_to_inr_micros']]);
+    $audited = implode(' ', Db::col("SELECT meta_json FROM audit_logs WHERE action = 'smm.provider_saved' ORDER BY id"));
+    T::true(str_contains($audited, '"changed"'), 'the save is audited: ' . $audited);
+    T::false(str_contains($audited, 'rate_to_inr') || str_contains($audited, 'currency'), 'no currency / exchange-rate change is audited any more: ' . $audited);
+});
+
+T::test('inr only: testing a connection to a panel that bills in another currency says so (and never converts)', function () {
+    ['pid' => $pid] = ff_setup();
+    $admin = ['id' => 1, 'username' => 'root', 'email' => 'r@x.test'];
+    $ok = SmmProviders::test($pid, ff_req(), $admin);
+    T::true($ok['ok']);
+    T::same('8421.50 INR', $ok['balance']);
+    T::false(str_contains($ok['message'], 'bills in'));
+    T::smm('POST', '/__control', ['currency' => 'USD']);
+    $usd = SmmProviders::test($pid, ff_req(), $admin);
+    T::true($usd['ok'], 'the connection itself works');
+    T::same('8421.50 USD', $usd['balance']);
+    T::contains('bills in USD', $usd['message']);
+    T::contains('not converted', $usd['message']);
+    T::smm('POST', '/__control', ['currency' => 'INR']);
 });

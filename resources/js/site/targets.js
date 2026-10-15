@@ -3,6 +3,9 @@
  * tests/fixtures/targets.json (PHP: tests/Unit/TargetsTest.php, JS: tools/qa/targets-parity.mjs).
  * The SERVER re-validates on checkout; this file only gives instant feedback.
  *
+ * `linkOnly` (Instagram Followers / YouTube Subscribers) means the customer must paste the ACCOUNT LINK: a bare @username / @handle
+ * is refused. Every other service keeps its "username or link" / post / video input.
+ *
  * URLs are parsed by hand (not with `new URL`) so behaviour matches PHP exactly —
  * e.g. dot-segments are NOT resolved and credentials/odd ports are rejected.
  */
@@ -20,7 +23,13 @@ const phpTrim = (s) => s.replace(/^[ \t\n\r\0\x0B]+|[ \t\n\r\0\x0B]+$/g, '');
 const clean = (s) => phpTrim(String(s ?? '').replace(/[\u0000-\u001F\u007F​-‍﻿]/g, ''));
 const safeDecode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
 
-export function hint(platform, kind) {
+export function hint(platform, kind, linkOnly = false) {
+  if (linkOnly) {
+    return {
+      instagram: 'Paste the link to your Instagram profile. In the app: Profile → Share profile → Copy link.',
+      youtube: 'Paste the link to your YouTube channel — youtube.com/@name or youtube.com/channel/UC…',
+    }[platform] || 'Paste the link to the account.';
+  }
   const k = `${platform}|${kind}`;
   return {
     'instagram|profile': 'Enter your Instagram @username or profile link.',
@@ -30,12 +39,12 @@ export function hint(platform, kind) {
   }[k] || 'Enter a username or link.';
 }
 
-export function validateTarget(platform, kind, input) {
+export function validateTarget(platform, kind, input, linkOnly = false) {
   const raw = clean(input);
-  if (raw === '') return fail(hint(platform, kind));
-  if ([...raw].length > 300) return fail('That is too long to be a username or link.');
-  if (platform === 'instagram') return instagram(kind, raw);
-  if (platform === 'youtube') return youtube(kind, raw);
+  if (raw === '') return fail(hint(platform, kind, linkOnly));
+  if ([...raw].length > 300) return fail(linkOnly ? 'That is too long to be a profile or channel link.' : 'That is too long to be a username or link.');
+  if (platform === 'instagram') return instagram(kind, raw, linkOnly);
+  if (platform === 'youtube') return youtube(kind, raw, linkOnly);
   return fail('This platform is not supported.');
 }
 
@@ -76,12 +85,14 @@ function asUrl(raw, hosts) {
 const validIgUsername = (n) => /^[A-Za-z0-9._]{1,30}$/.test(n) && /[A-Za-z0-9_]/.test(n);
 const looksLikeUsername = (s, max) => new RegExp(`^@?[A-Za-z0-9._]{1,${max}}$`).test(s);
 
-function instagram(kind, raw) {
+function instagram(kind, raw, linkOnly) {
   const u = asUrl(raw, IG_HOSTS);
   if (u && u.bad) {
     return fail(kind === 'post'
       ? 'That does not look like an Instagram post or reel link.'
-      : 'That does not look like an Instagram link. Use instagram.com/yourusername or just your @username.');
+      : (linkOnly
+        ? 'That is not an Instagram profile link. Use a link like https://www.instagram.com/username/'
+        : 'That does not look like an Instagram link. Use instagram.com/yourusername or just your @username.'));
   }
   if (kind === 'post') {
     if (u === null) {
@@ -101,13 +112,23 @@ function instagram(kind, raw) {
   }
   // profile
   if (u === null) {
+    if (linkOnly) {   // the account LINK is required, a bare username is not enough
+      return fail(looksLikeUsername(raw, 30)
+        ? 'Please paste your full Instagram profile link, not just the username. Example: https://www.instagram.com/username/'
+        : 'Paste your Instagram profile link. Example: https://www.instagram.com/username/');
+    }
     const name = raw.replace(/^@+/, '');
     if (!validIgUsername(name)) return fail('Enter a valid Instagram username (letters, numbers, dots and underscores) or profile link.');
     return ok(`https://www.instagram.com/${name}/`, `@${name}`);
   }
-  const first = u.segments[0] || '';
-  if (first === '') return fail('That link has no username. Use https://instagram.com/yourusername');
-  if (IG_RESERVED.includes(first.toLowerCase())) return fail('That looks like a post or page link. Paste your profile link or @username instead.');
+  let first = u.segments[0] || '';
+  if (first.toLowerCase() === '_u' && u.segments[1] !== undefined) first = u.segments[1];   // the app's share link: instagram.com/_u/username
+  if (first === '') return fail(linkOnly ? 'That link has no username in it. Use https://www.instagram.com/username/' : 'That link has no username. Use https://instagram.com/yourusername');
+  if (IG_RESERVED.includes(first.toLowerCase())) {
+    return fail(linkOnly
+      ? 'That looks like a post or page link, not a profile. Paste your profile link: https://www.instagram.com/username/'
+      : 'That looks like a post or page link. Paste your profile link or @username instead.');
+  }
   const name = first.replace(/^@+/, '');
   if (!validIgUsername(name)) return fail('That profile link does not contain a valid Instagram username.');
   return ok(`https://www.instagram.com/${name}/`, `@${name}`);
@@ -118,9 +139,13 @@ function isChannelPath(u) {
   return (first !== '' && first[0] === '@') || ['channel', 'c', 'user'].includes(first.toLowerCase());
 }
 
-function youtube(kind, raw) {
+function youtube(kind, raw, linkOnly) {
   const u = asUrl(raw, YT_HOSTS);
-  if (u && u.bad) return fail('That does not look like a YouTube link. Copy the link from YouTube and paste it here.');
+  if (u && u.bad) {
+    return fail(linkOnly && kind === 'channel'
+      ? 'That is not a YouTube channel link. Copy the link from YouTube, e.g. https://www.youtube.com/@channelname'
+      : 'That does not look like a YouTube link. Copy the link from YouTube and paste it here.');
+  }
 
   if (kind === 'video') {
     if (u === null) return fail('Paste the full link of the YouTube video.');
@@ -143,13 +168,22 @@ function youtube(kind, raw) {
 
   // channel
   if (u === null) {
+    if (linkOnly) {   // the channel LINK is required, a bare @handle is not enough
+      return fail(/^@?[A-Za-z0-9._-]{1,30}$/.test(raw)
+        ? 'Please paste your full YouTube channel link, not just the @handle. Example: https://www.youtube.com/@channelname'
+        : 'Paste your YouTube channel link. Example: https://www.youtube.com/@channelname');
+    }
     const handle = raw.replace(/^@+/, '');
     if (!/^[A-Za-z0-9._-]{3,30}$/.test(handle)) return fail('Enter a valid channel @handle or paste your channel link.');
     return ok(`https://www.youtube.com/@${handle}`, `@${handle}`);
   }
   const segs = u.segments;
   const first = segs[0] || '';
-  if (u.host.endsWith('youtu.be') || ['watch', 'shorts', 'live', 'embed', 'v'].includes(first.toLowerCase())) return fail('That is a video link. This service needs your channel link or @handle.');
+  if (u.host.endsWith('youtu.be') || ['watch', 'shorts', 'live', 'embed', 'v'].includes(first.toLowerCase())) {
+    return fail(linkOnly
+      ? 'That is a video link. Paste your channel link instead, e.g. https://www.youtube.com/@channelname'
+      : 'That is a video link. This service needs your channel link or @handle.');
+  }
   if (first !== '' && first[0] === '@') {
     const h = first.slice(1);
     if (/^[A-Za-z0-9._-]{3,30}$/.test(h)) return ok(`https://www.youtube.com/@${h}`, `@${h}`);
@@ -160,5 +194,7 @@ function youtube(kind, raw) {
   } else if (first !== '' && !YT_RESERVED.includes(first.toLowerCase()) && /^[A-Za-z0-9._-]{3,100}$/.test(first)) {
     return ok(`https://www.youtube.com/${first}`, first);
   }
-  return fail('That link does not look like a YouTube channel. Use youtube.com/@yourchannel');
+  return fail(linkOnly
+    ? 'That link does not look like a YouTube channel. Use https://www.youtube.com/@channelname or https://www.youtube.com/channel/UC…'
+    : 'That link does not look like a YouTube channel. Use youtube.com/@yourchannel');
 }

@@ -57,9 +57,9 @@ export async function mocksReset() {
   await alpha('/__control', {
     reset: true, style: 'bearer', apiKey: 'test-api-key-123', apiSecret: 'test-api-secret-789', webhookSecret: 'test-webhook-secret-456',
     webhookUrl: `${BASE}/webhooks/payments/${gatewayId()}`,
-    mode: { offline: false, failCreate: false, quota: false, slowMs: 0, noAmount: false },
+    mode: { offline: false, failCreate: false, quota: false, slowMs: 0, noAmount: false, currency: 'INR' },
   });
-  await smm('/__control', { offline: false, slowMs: 0, garbled: false, hang: false });
+  await smm('/__control', { offline: false, slowMs: 0, garbled: false, hang: false, currency: 'INR' });
   await smm('/__reset');
 }
 

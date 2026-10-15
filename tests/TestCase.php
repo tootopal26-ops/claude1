@@ -110,7 +110,7 @@ final class T
         Db::exec('DELETE FROM smm_providers');
         return Db::insert('smm_providers', [
             'name' => 'Mock SMM', 'api_url' => "http://127.0.0.1:{$port}/api/v2", 'api_key_enc' => \App\Core\Crypto::encrypt($key),
-            'currency' => 'USD', 'rate_to_inr_micros' => 83_500_000, 'is_active' => 1, 'is_default' => 1,
+            'is_active' => 1, 'is_default' => 1,
             'created_at' => \App\Support\Clock::sql(), 'updated_at' => \App\Support\Clock::sql(),
         ]);
     }

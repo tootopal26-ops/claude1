@@ -104,6 +104,9 @@ await t.step('smm: API key is never present in the page or JSON; TEST CONNECTION
   const r = await t.text(page.locator('[data-test-result]'));
   t.has(r, 'Connected');
   t.has(await t.text(page.locator('.dl')), 'Passed');
+  t.has(await t.text(page.locator('.dl')), 'INR', 'the balance is in rupees');
+  const card = await t.text(page.locator('[data-provider]').first());
+  t.ok(!/USD|EUR|GBP|Currency|exchange|1 [A-Z]{3} =/i.test(card), 'the provider card shows no currency / exchange rate: ' + card.slice(0, 160));
 });
 
 await t.step('smm: add provider — empty/invalid input is refused; wrong key saves but its test fails clearly', async () => {
@@ -118,11 +121,11 @@ await t.step('smm: add provider — empty/invalid input is refused; wrong key sa
   await page.click('#pv-save');
   await page.waitForSelector('#prov-form [data-err="api_url"]');
   await page.fill('#pv-url', 'http://127.0.0.1:4020/api/v2');
-  await page.fill('#pv-cur', 'USD');
-  await page.fill('#pv-rate', '-3');
-  await page.click('#pv-save');
-  await page.waitForSelector('#prov-form [data-err="rate_to_inr"]');
-  await page.fill('#pv-rate', '83.25');
+  // INR only: the form has no currency or exchange-rate field at all, and no USD (or any other currency) anywhere in it
+  t.eq(await page.locator('#prov-form [name="currency"], #prov-form [name="rate_to_inr"], #pv-cur, #pv-rate, #cur-list, #rate-field').count(), 0, 'no currency / exchange-rate controls');
+  const formText = await page.evaluate(() => document.querySelector('#prov-dialog').innerText + ' ' + document.querySelector('#prov-dialog').innerHTML);
+  t.ok(!/USD|EUR|GBP|exchange rate|Rupees per 1/i.test(formText), 'no foreign currency or exchange rate mentioned in the provider form');
+  t.has(formText, 'INR');
   await clearToasts();
   await page.click('#pv-save');
   await toast('success').waitFor();

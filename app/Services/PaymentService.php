@@ -77,7 +77,7 @@ final class PaymentService
         $id = (int) $payment['id'];
         switch ($r->status) {
             case PaymentStatusResult::SUCCESS:
-                $s = Settlement::settle($id, ['source' => 'poll', 'amount_paise' => $r->amountPaise, 'utr' => $r->utr, 'method' => $r->method]);
+                $s = Settlement::settle($id, ['source' => 'poll', 'amount_paise' => $r->amountPaise, 'currency' => $r->currency, 'utr' => $r->utr, 'method' => $r->method]);
                 return ['route' => $s['route'], 'order_id' => $s['order_id']];
             case PaymentStatusResult::FAILED:
                 self::fail($id, 'The payment failed at the gateway.');

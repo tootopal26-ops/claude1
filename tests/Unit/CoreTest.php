@@ -49,12 +49,16 @@ T::test('money: integer percentage / rounding', function () {
     T::same(-2, Money::mulDiv(-5, 1, 3));
     T::same(1, Money::mulDiv(1, 1, 2));              // half rounds away from zero
 });
-T::test('money: provider charge → paise', function () {
+T::test('money: provider charge (rupees) → paise — INR only, no exchange rate', function () {
     T::same(278190, Money::parseDecimalMicros('0.27819'));
-    T::same(2323, Money::chargeToPaise(278190, 83_500_000));
-    T::same(100, Money::chargeToPaise(1_000_000, 1_000_000));
+    T::same(28, Money::rupeeMicrosToPaise(278190), '₹0.27819 → 28 paise (half up)');
+    T::same(2323, Money::rupeeMicrosToPaise((int) Money::parseDecimalMicros('23.23')));
+    T::same(100, Money::rupeeMicrosToPaise(1_000_000));
+    T::same(0, Money::rupeeMicrosToPaise(0));
+    T::same(1, Money::rupeeMicrosToPaise(5_000), '₹0.005 → 1 paise (half rounds up)');
     T::same(null, Money::parseDecimalMicros('abc'));
-    T::same(null, Money::chargeToPaise(PHP_INT_MAX, 83_500_000));
+    T::same(null, Money::rupeeMicrosToPaise(-1));
+    T::true(Money::rupeeMicrosToPaise(PHP_INT_MAX) > 0, 'no overflow');
 });
 
 // ───────────────────────────── profit ─────────────────────────────

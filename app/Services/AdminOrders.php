@@ -11,6 +11,7 @@ use App\Support\Clock;
 use App\Support\Money;
 use App\Support\Profit;
 use App\Support\Status;
+use App\Support\Targets;
 use App\Support\Tz;
 
 /** Order listing, detail and actions for the admin panel. */
@@ -109,7 +110,7 @@ final class AdminOrders
         $paid = $o['paid_at'] !== null;
         $profit = $paid ? Profit::forOrder($o) : null;
         return [
-            'id' => (int) $o['id'], 'public_id' => $o['public_id'], 'platform' => $o['platform_slug'], 'service' => $o['service_title'], 'target' => $o['target'],
+            'id' => (int) $o['id'], 'public_id' => $o['public_id'], 'platform' => $o['platform_slug'], 'service' => $o['service_title'], 'target' => $o['target'], 'target_url' => $o['target_url'],
             'quantity' => (int) $o['quantity'], 'amount_paise' => (int) $o['amount_paise'], 'refunded_paise' => (int) $o['refunded_paise'],
             'payment_status' => $o['payment_status'], 'mode' => $o['mode'], 'provider' => $o['provider_name'], 'provider_order_id' => $o['provider_order_id'],
             'cost_paise' => $paid ? ($profit['cost']) : null, 'cost_final' => (bool) $o['provider_cost_final'], 'profit_paise' => $profit['gross'] ?? null,
@@ -182,7 +183,9 @@ final class AdminOrders
 
         return [
             'order' => self::row($o) + [
-                'target_url' => $o['target_url'], 'access_url' => absolute_url('order/' . $o['access_token']), 'service_code' => $o['service_code'], 'service_type' => $o['service_type'],
+                'link_only' => Targets::orderHasAccountLink((string) $o['platform_slug'], (string) $o['service_type']),
+                'target_label' => Targets::orderHasAccountLink((string) $o['platform_slug'], (string) $o['service_type']) ? Targets::label((string) $o['platform_slug'], true) : 'Target',
+                'access_url' => absolute_url('order/' . $o['access_token']), 'service_code' => $o['service_code'], 'service_type' => $o['service_type'],
                 'admin_note' => $o['admin_note'], 'start_count' => $o['start_count'] !== null ? (int) $o['start_count'] : null, 'remains' => $o['remains'] !== null ? (int) $o['remains'] : null,
                 'attempts' => (int) $o['provider_attempts'], 'next_attempt_at' => Clock::iso($o['next_attempt_at']), 'provider_status' => $o['provider_status'],
                 'estimated_cost_paise' => (int) $o['estimated_cost_paise'], 'smm_service_id' => $o['smm_service_id'], 'submitted_at' => Clock::iso($o['submitted_at']), 'completed_at' => Clock::iso($o['completed_at']),

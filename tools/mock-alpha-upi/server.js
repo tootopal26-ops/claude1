@@ -15,7 +15,8 @@
  *   /html404/...                  answers with an HTML 404 page (what a wrong base URL looks like)
  *
  * Test hooks (never exist in the real gateway):
- *   POST /__control   {style, apiKey, apiSecret, webhookSecret, webhookUrl, reset, mode:{offline,failCreate,quota,slowMs,noAmount}}
+ *   POST /__control   {style, apiKey, apiSecret, webhookSecret, webhookUrl, reset, mode:{offline,failCreate,quota,slowMs,noAmount,currency}}
+ *       mode.currency → the currency the gateway declares (default INR; anything else exercises the shop's INR-only guards)
  *   GET  /__state
  *   POST /__pay/:id/success   {amount?, utr?, noWebhook?}   → marks SUCCESS (+ sends signed webhook)
  *   POST /__pay/:id/fail
@@ -35,7 +36,7 @@ const state = {
   apiSecret: 'test-api-secret-789',
   webhookSecret: 'test-webhook-secret-456',
   webhookUrl: '',
-  mode: { offline: false, failCreate: false, quota: false, slowMs: 0, noAmount: false },
+  mode: { offline: false, failCreate: false, quota: false, slowMs: 0, noAmount: false, currency: 'INR' },
   orders: {},      // id -> order
   lastWebhook: {}, // id -> {body, signature}
   requests: [],    // the last API calls received: {path, auth, body} (never the credentials)
@@ -70,7 +71,9 @@ function webhookBody(order, status, extra = {}) {
     const word = { SUCCESS: 'success', FAILED: 'failed', EXPIRED: 'expired' }[status] || String(status).toLowerCase();
     return {
       event: 'payment.' + word, status: word, order_id: order.order_id, ...(state.mode.noAmount ? {} : { amount: Number(order.amount) }),
-      utr: status === 'SUCCESS' ? order.utr : '', provider: 'paytm', paid_at: iso(), ...extra,
+      utr: status === 'SUCCESS' ? order.utr : '', provider: 'paytm', paid_at: iso(),
+      ...(state.mode.currency && state.mode.currency !== 'INR' ? { currency: state.mode.currency } : {}),   // the documented payload has no currency: only a test of the INR guard adds one
+      ...extra,
     };
   }
   return {
@@ -144,13 +147,13 @@ const server = http.createServer(async (req, res) => {
       state.orders[b.order_id] = { order_id: b.order_id, amount: String(b.amount), redirect_url: b.callback_url || '', status: 'PENDING', utr: '', remark1: b.description || '', customer_name: b.customer_name, created: now };
       const token = rid(16);
       return json(res, 201, { status: 'success', message: 'Order created successfully', data: {
-        payment_url: `http://127.0.0.1:${PORT}/pay/${b.order_id}`, order_id: b.order_id, token, amount: Number(b.amount), currency: 'INR',
+        payment_url: `http://127.0.0.1:${PORT}/pay/${b.order_id}`, order_id: b.order_id, token, amount: Number(b.amount), currency: state.mode.currency || 'INR',
         customer_name: b.customer_name, expires_at: iso(now + 86400000), created_at: iso(now) } });
     }
     const o = state.orders[b.order_id];
     if (!o) return err(404, 'Order not found');
     return json(res, 200, { status: 'success', data: {
-      order_id: o.order_id, ...(state.mode.noAmount ? {} : { amount: Number(o.amount) }), currency: 'INR', payment_status: o.status.toLowerCase(),
+      order_id: o.order_id, ...(state.mode.noAmount ? {} : { amount: Number(o.amount) }), currency: state.mode.currency || 'INR', payment_status: o.status.toLowerCase(),
       customer_name: o.customer_name, utr: o.status === 'SUCCESS' ? o.utr : null, payment_method: 'UPI QR', provider: 'paytm', gateway_txn_id: o.status === 'SUCCESS' ? 'TXN_' + rid(5) : null,
       paid_at: o.status === 'SUCCESS' ? o.paid_at : null, payment_url: `http://127.0.0.1:${PORT}/pay/${o.order_id}`, callback_url: o.redirect_url, created_at: iso(o.created) } });
   }

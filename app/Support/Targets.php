@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace App\Support;
 
 /**
- * Validates and normalises what a customer types into "ENTER USERNAME OR LINK".
+ * Validates and normalises what a customer types into the order form.
+ *
+ * Two input styles:
+ *   - Instagram Followers / YouTube Subscribers ("link only", see requiresLink()): the customer pastes the ACCOUNT LINK —
+ *     "Instagram Profile Link" / "YouTube Channel Link". A bare @username / @handle is not accepted;
+ *   - every other service keeps its "username or link" (profile) or post / video link input.
  *
  * Rules of thumb:
  *   - be GENEROUS about formatting (scheme/www/mobile/trailing slash/tracking
@@ -20,6 +25,9 @@ namespace App\Support;
  */
 final class Targets
 {
+    /** Service types that are sold per ACCOUNT: the customer pastes the account's link. */
+    private const LINK_ONLY_TYPES = ['followers', 'subscribers'];
+
     private const IG_HOSTS = ['instagram.com', 'www.instagram.com', 'm.instagram.com', 'instagr.am', 'www.instagr.am'];
     private const YT_HOSTS = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtu.be', 'www.youtu.be'];
 
@@ -29,27 +37,64 @@ final class Targets
         'premium', 'gaming', 'music', 'kids', 'trending', 'hashtag', 'redirect', 'oembed', 'attribution_link', 'about', 't', 'howyoutubeworks', 'reporthistory'];
 
     /**
+     * Instagram Followers and YouTube Subscribers take the account LINK (label "Instagram Profile Link" / "YouTube Channel Link").
+     * Every other service keeps its current input (Blue Tick: username or link; likes / views / watch time: the post or video link).
+     */
+    public static function requiresLink(string $platform, string $kind, string $serviceType): bool
+    {
+        return in_array($serviceType, self::LINK_ONLY_TYPES, true)
+            && (($platform === 'instagram' && $kind === 'profile') || ($platform === 'youtube' && $kind === 'channel'));
+    }
+
+    /** The same rule for a stored order, which keeps the platform and the service type (not the service's target kind). */
+    public static function orderHasAccountLink(string $platform, string $serviceType): bool
+    {
+        return in_array($serviceType, self::LINK_ONLY_TYPES, true) && in_array($platform, ['instagram', 'youtube'], true);
+    }
+
+    /**
+     * @param bool $linkOnly the service wants the account link, so a bare username / handle is refused (see requiresLink())
      * @return array{ok:bool,url?:string,display?:string,error?:string}
      */
-    public static function validate(string $platform, string $kind, string $raw): array
+    public static function validate(string $platform, string $kind, string $raw, bool $linkOnly = false): array
     {
         $raw = self::clean($raw);
         if ($raw === '') {
-            return self::fail(self::hint($platform, $kind));
+            return self::fail(self::hint($platform, $kind, $linkOnly));
         }
         if (mb_strlen($raw) > 300) {
-            return self::fail('That is too long to be a username or link.');
+            return self::fail($linkOnly ? 'That is too long to be a profile or channel link.' : 'That is too long to be a username or link.');
         }
         return match ($platform) {
-            'instagram' => self::instagram($kind, $raw),
-            'youtube'   => self::youtube($kind, $raw),
+            'instagram' => self::instagram($kind, $raw, $linkOnly),
+            'youtube'   => self::youtube($kind, $raw, $linkOnly),
             default     => self::fail('This platform is not supported.'),
         };
     }
 
-    /** Placeholder text per platform/kind. */
-    public static function placeholder(string $platform, string $kind): string
+    /** The field's label on the storefront card. */
+    public static function label(string $platform, bool $linkOnly = false): string
     {
+        if (!$linkOnly) {
+            return 'Enter username or link';
+        }
+        return match ($platform) {
+            'instagram' => 'Instagram Profile Link',
+            'youtube'   => 'YouTube Channel Link',
+            default     => 'Account link',
+        };
+    }
+
+    /** Placeholder text per platform/kind. */
+    public static function placeholder(string $platform, string $kind, bool $linkOnly = false): string
+    {
+        if ($linkOnly) {
+            return match ($platform) {
+                'instagram' => 'https://www.instagram.com/username/',
+                'youtube'   => 'https://www.youtube.com/@channelname',
+                default     => 'https://',
+            };
+        }
         return match ([$platform, $kind]) {
             ['instagram', 'profile'] => '@username or https://instagram.com/username',
             ['instagram', 'post']    => 'https://instagram.com/p/… or /reel/…',
@@ -59,8 +104,15 @@ final class Targets
         };
     }
 
-    public static function hint(string $platform, string $kind): string
+    public static function hint(string $platform, string $kind, bool $linkOnly = false): string
     {
+        if ($linkOnly) {
+            return match ($platform) {
+                'instagram' => 'Paste the link to your Instagram profile. In the app: Profile → Share profile → Copy link.',
+                'youtube'   => 'Paste the link to your YouTube channel — youtube.com/@name or youtube.com/channel/UC…',
+                default     => 'Paste the link to the account.',
+            };
+        }
         return match ([$platform, $kind]) {
             ['instagram', 'profile'] => 'Enter your Instagram @username or profile link.',
             ['instagram', 'post']    => 'Paste the link of the Instagram post or reel.',
@@ -72,13 +124,15 @@ final class Targets
 
     // ───────────────────────────── Instagram ────────────────────────────────
 
-    private static function instagram(string $kind, string $raw): array
+    private static function instagram(string $kind, string $raw, bool $linkOnly): array
     {
         $u = self::asUrl($raw, self::IG_HOSTS);
         if ($u !== null && !empty($u['bad'])) {
             return self::fail($kind === 'post'
                 ? 'That does not look like an Instagram post or reel link.'
-                : 'That does not look like an Instagram link. Use instagram.com/yourusername or just your @username.');
+                : ($linkOnly
+                    ? 'That is not an Instagram profile link. Use a link like https://www.instagram.com/username/'
+                    : 'That does not look like an Instagram link. Use instagram.com/yourusername or just your @username.'));
         }
 
         if ($kind === 'post') {
@@ -101,6 +155,11 @@ final class Targets
 
         // profile
         if ($u === null) {
+            if ($linkOnly) {   // the account LINK is required, a bare username is not enough
+                return self::fail(self::looksLikeUsername($raw, 30)
+                    ? 'Please paste your full Instagram profile link, not just the username. Example: https://www.instagram.com/username/'
+                    : 'Paste your Instagram profile link. Example: https://www.instagram.com/username/');
+            }
             $name = ltrim($raw, '@');
             if (!self::validIgUsername($name)) {
                 return self::fail('Enter a valid Instagram username (letters, numbers, dots and underscores) or profile link.');
@@ -108,11 +167,16 @@ final class Targets
             return self::ok('https://www.instagram.com/' . $name . '/', '@' . $name);
         }
         $first = $u['segments'][0] ?? '';
+        if (strtolower($first) === '_u' && isset($u['segments'][1])) {
+            $first = $u['segments'][1];   // the app's share link: instagram.com/_u/username
+        }
         if ($first === '') {
-            return self::fail('That link has no username. Use https://instagram.com/yourusername');
+            return self::fail($linkOnly ? 'That link has no username in it. Use https://www.instagram.com/username/' : 'That link has no username. Use https://instagram.com/yourusername');
         }
         if (in_array(strtolower($first), self::IG_RESERVED, true)) {
-            return self::fail('That looks like a post or page link. Paste your profile link or @username instead.');
+            return self::fail($linkOnly
+                ? 'That looks like a post or page link, not a profile. Paste your profile link: https://www.instagram.com/username/'
+                : 'That looks like a post or page link. Paste your profile link or @username instead.');
         }
         $name = ltrim($first, '@');
         if (!self::validIgUsername($name)) {
@@ -128,11 +192,13 @@ final class Targets
 
     // ───────────────────────────── YouTube ──────────────────────────────────
 
-    private static function youtube(string $kind, string $raw): array
+    private static function youtube(string $kind, string $raw, bool $linkOnly): array
     {
         $u = self::asUrl($raw, self::YT_HOSTS);
         if ($u !== null && !empty($u['bad'])) {
-            return self::fail('That does not look like a YouTube link. Copy the link from YouTube and paste it here.');
+            return self::fail($linkOnly && $kind === 'channel'
+                ? 'That is not a YouTube channel link. Copy the link from YouTube, e.g. https://www.youtube.com/@channelname'
+                : 'That does not look like a YouTube link. Copy the link from YouTube and paste it here.');
         }
 
         if ($kind === 'video') {
@@ -166,6 +232,11 @@ final class Targets
 
         // channel
         if ($u === null) {
+            if ($linkOnly) {   // the channel LINK is required, a bare @handle is not enough
+                return self::fail(preg_match('/^@?[A-Za-z0-9._-]{1,30}$/D', $raw)
+                    ? 'Please paste your full YouTube channel link, not just the @handle. Example: https://www.youtube.com/@channelname'
+                    : 'Paste your YouTube channel link. Example: https://www.youtube.com/@channelname');
+            }
             $handle = ltrim($raw, '@');
             if (!preg_match('/^[A-Za-z0-9._-]{3,30}$/D', $handle)) {
                 return self::fail('Enter a valid channel @handle or paste your channel link.');
@@ -175,7 +246,9 @@ final class Targets
         $segs = $u['segments'];
         $first = $segs[0] ?? '';
         if (str_ends_with($u['host'], 'youtu.be') || in_array(strtolower($first), ['watch', 'shorts', 'live', 'embed', 'v'], true)) {
-            return self::fail('That is a video link. This service needs your channel link or @handle.');
+            return self::fail($linkOnly
+                ? 'That is a video link. Paste your channel link instead, e.g. https://www.youtube.com/@channelname'
+                : 'That is a video link. This service needs your channel link or @handle.');
         }
         if (isset($first[0]) && $first[0] === '@') {
             $h = substr($first, 1);
@@ -189,7 +262,9 @@ final class Targets
         } elseif ($first !== '' && !in_array(strtolower($first), self::YT_RESERVED, true) && preg_match('/^[A-Za-z0-9._-]{3,100}$/D', $first)) {
             return self::ok('https://www.youtube.com/' . $first, $first);   // legacy custom URL
         }
-        return self::fail('That link does not look like a YouTube channel. Use youtube.com/@yourchannel');
+        return self::fail($linkOnly
+            ? 'That link does not look like a YouTube channel. Use https://www.youtube.com/@channelname or https://www.youtube.com/channel/UC…'
+            : 'That link does not look like a YouTube channel. Use youtube.com/@yourchannel');
     }
 
     private static function isChannelPath(array $u): bool

@@ -128,6 +128,11 @@ final class AlphaUpiGateway implements PaymentGateway
             return new CreatePaymentResult(false, message: $msg, code: $code, retryable: $res['http'] >= 500, raw: $raw);
         }
         $data = is_array($j['data'] ?? null) ? $j['data'] : [];
+        $currency = self::currencyOf($data);
+        if ($currency !== null && $currency !== 'INR') {   // the shop charges ₹ only: an order the gateway opened in another currency is not used
+            Log::error('Alpha UPI created the order in a currency other than INR', ['currency' => $currency]);
+            return new CreatePaymentResult(false, message: 'The gateway created the order in ' . $currency . ', but this shop charges in INR only. Check the currency setting of your gateway account.', code: 'gateway_currency', raw: $raw);
+        }
         return $this->paymentUrlResult((string) ($data['payment_url'] ?? ''), (string) ($j['message'] ?? ''), $raw);
     }
 
@@ -208,6 +213,7 @@ final class AlphaUpiGateway implements PaymentGateway
             paidAt: null,
             message: (string) ($j['message'] ?? ''),
             raw: $this->sanitize($j),
+            currency: self::currencyOf($d),
         );
     }
 
@@ -262,6 +268,7 @@ final class AlphaUpiGateway implements PaymentGateway
             method: self::str($d['provider'] ?? $d['payment_method'] ?? null, 24),
             paidAt: null,
             payload: $this->sanitize($d),
+            currency: self::currencyOf($d),
         );
     }
 
@@ -452,6 +459,13 @@ final class AlphaUpiGateway implements PaymentGateway
             $out['usage'] = array_intersect_key($raw['usage'], array_flip(['used', 'limit', 'remaining']));
         }
         return $out;
+    }
+
+    /** The currency code a gateway block declares, upper-case; null when it declares none. */
+    private static function currencyOf(array $d): ?string
+    {
+        $c = self::str($d['currency'] ?? null, 8);
+        return $c === null ? null : strtoupper($c);
     }
 
     private static function paise(mixed $v): ?int

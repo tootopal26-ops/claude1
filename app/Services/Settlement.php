@@ -33,7 +33,7 @@ final class Settlement
     public const IGNORED  = 'ignored';
 
     /**
-     * @param array{source:string,amount_paise:?int,utr?:?string,method?:?string,admin?:array{id:int,username:string,email:string},note?:string} $evidence
+     * @param array{source:string,amount_paise:?int,currency?:?string,utr?:?string,method?:?string,admin?:array{id:int,username:string,email:string},note?:string} $evidence
      * @return array{result:string,order_id:?int,payment_id:int,route:?string,message:string}
      */
     public static function settle(int $paymentId, array $evidence): array
@@ -63,6 +63,11 @@ final class Settlement
             if ($source !== 'admin') {
                 if ($p['status'] === Status::PAY_MISMATCH) {
                     return self::out(self::MISMATCH, $orderId, $paymentId, null, 'Payment is flagged for manual review.');
+                }
+                // The shop is INR-only. A gateway that says the payment is in another currency has not paid ₹ — a human decides.
+                $currency = isset($evidence['currency']) ? strtoupper(trim((string) $evidence['currency'])) : '';
+                if ($currency !== '' && $currency !== 'INR') {
+                    return self::flag($p, 'The gateway reported the payment in ' . mb_substr($currency, 0, 8) . ', not INR, so the amount cannot be verified automatically.');
                 }
                 if ($reported === null) {
                     return self::flag($p, 'The gateway did not report the paid amount, so it cannot be verified automatically.');

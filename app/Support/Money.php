@@ -125,18 +125,11 @@ final class Money
     }
 
     /**
-     * Provider charge → INR paise:  paise = chargeMicros × rateMicros / 1e10
-     * (rate = INR per 1 provider-currency unit, in millionths). Null if the
-     * multiplication could overflow — callers then keep their estimate.
+     * A provider charge in rupees, as millionths ("0.27819" → 278190 via parseDecimalMicros) → paise (round half up).
+     * The shop works in INR only: there is no exchange rate anywhere. Null for a negative amount.
      */
-    public static function chargeToPaise(int $chargeMicros, int $rateMicros): ?int
+    public static function rupeeMicrosToPaise(int $micros): ?int
     {
-        if ($chargeMicros < 0 || $rateMicros < 0) {
-            return null;
-        }
-        if ($chargeMicros !== 0 && $rateMicros > intdiv(PHP_INT_MAX, $chargeMicros)) {
-            return null;
-        }
-        return self::mulDiv($chargeMicros, $rateMicros, 10_000_000_000);
+        return $micros < 0 ? null : self::mulDiv($micros, 1, 10_000);
     }
 }

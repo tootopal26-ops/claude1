@@ -78,7 +78,7 @@ final class WebhookService
         switch ($event->status) {
             case PaymentStatusResult::SUCCESS:
                 $s = Settlement::settle((int) $payment['id'], [
-                    'source' => 'webhook', 'amount_paise' => $event->amountPaise, 'utr' => $event->utr, 'method' => $event->method,
+                    'source' => 'webhook', 'amount_paise' => $event->amountPaise, 'currency' => $event->currency, 'utr' => $event->utr, 'method' => $event->method,
                 ]);
                 $status = match ($s['result']) {
                     Settlement::SETTLED, Settlement::ALREADY => 'processed',

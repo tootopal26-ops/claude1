@@ -221,7 +221,7 @@ await t.step('BUY NOW opens the order form INSIDE the card (animated height + op
   t.ok(after.h > before + 90, `expanded by ${after.h - before}px`);
   t.eq(after.op, '1'); t.eq(after.focus, 'target'); t.eq(after.inert, false);
   t.eq(await card.locator('[data-action=buy]').getAttribute('aria-expanded'), 'true');
-  t.eq((await text(card.locator('label'))).toUpperCase(), 'ENTER USERNAME OR LINK');
+  t.eq((await text(card.locator('label'))).toUpperCase(), 'INSTAGRAM PROFILE LINK');
   t.eq(await card.locator('[data-action=proceed]').isDisabled(), true, 'PROCEED disabled until valid');
   t.eq((await text(card.locator('[data-action=proceed]'))).toUpperCase(), 'PROCEED TO PAYMENT');
 });
@@ -241,43 +241,79 @@ await t.step('only one card is open at a time; Cancel, Escape and BUY NOW (toggl
   t.eq(await a.locator('.expand').evaluate((e) => e.inert), true, 'closed form is inert (not tabbable)');
 });
 
-await t.step('placeholders match the service kind (@username / instagram.com / youtube.com)', async () => {
-  const want = { 'ig-followers-50': ['@username', 'instagram.com/username'], 'ig-likes-100': ['instagram.com/p/', '/reel/'], 'yt-subs-50': ['@channel', 'youtube.com'], 'yt-views-10': ['youtube.com/watch'] };
-  for (const [code, parts] of Object.entries(want)) {
-    const ph = await page.$eval(`[data-id="${serviceId(code)}"] input[name=target]`, (e) => e.placeholder);
-    parts.forEach((p) => t.has(ph, p, code));
+await t.step('labels and placeholders: Followers / Subscribers ask for the LINK, every other service keeps its input', async () => {
+  const want = {
+    'ig-followers-50': ['Instagram Profile Link', 'https://www.instagram.com/username/'], 'ig-followers-100k': ['Instagram Profile Link', 'https://www.instagram.com/username/'],
+    'yt-subs-50': ['YouTube Channel Link', 'https://www.youtube.com/@channelname'], 'yt-subs-100k': ['YouTube Channel Link', 'https://www.youtube.com/@channelname'],
+  };
+  for (const [code, [label, ph]] of Object.entries(want)) {
+    const sel = `[data-id="${serviceId(code)}"]`;
+    t.eq(await page.$eval(`${sel} label`, (e) => e.textContent.trim()), label, code + ' label');
+    t.eq(await page.$eval(`${sel} input[name=target]`, (e) => e.placeholder), ph, code + ' placeholder');
+    t.eq(await page.$eval(sel, (e) => e.dataset.linkOnly), 'true', code + ' is link-only');
+    t.eq(await page.$eval(`${sel} input[name=target]`, (e) => e.getAttribute('inputmode')), 'url');
+    t.eq((await page.$eval(`${sel} .field-msg`, (e) => e.textContent)).toLowerCase().includes('username'), false, code + ' does not ask for a username');
+  }
+  const others = { 'ig-blue-tick': ['@username', 'instagram.com/username'], 'ig-likes-100': ['instagram.com/p/', '/reel/'], 'yt-likes-100': ['youtube.com/watch'], 'yt-views-10': ['youtube.com/watch'] };
+  for (const [code, parts] of Object.entries(others)) {
+    const sel = `[data-id="${serviceId(code)}"]`;
+    t.eq(await page.$eval(`${sel} label`, (e) => e.textContent.trim()), 'Enter username or link', code + ' keeps its label');
+    t.eq(await page.$eval(sel, (e) => e.dataset.linkOnly ?? null), null, code + ' is not link-only');
+    const ph = await page.$eval(`${sel} input[name=target]`, (e) => e.placeholder);
+    parts.forEach((x) => t.has(ph, x, code));
   }
 });
 
-await t.step('live validation: invalid shows ⚠ "Invalid username/link", valid shows ✓ "Valid input", PROCEED enables only when valid', async () => {
+await t.step('live validation (Followers): invalid shows ⚠ "Invalid link", valid shows ✓ "Valid link", a bare @username is NOT accepted, PROCEED enables only for a valid link', async () => {
   const card = await openCard(page, 'ig-followers-50');
   const input = card.locator('input[name=target]'), msg = card.locator('.field-msg'), go = card.locator('[data-action=proceed]');
   const settle = () => page.waitForTimeout(350);
   t.eq(await msg.getAttribute('data-state'), 'idle');
   await input.fill('not a valid name!!'); await settle();
-  t.eq(await msg.getAttribute('data-state'), 'invalid'); t.has(await text(msg), 'Invalid username/link'); t.eq(await go.isDisabled(), true);
+  t.eq(await msg.getAttribute('data-state'), 'invalid'); t.has(await text(msg), 'Invalid link'); t.eq(await go.isDisabled(), true);
   t.eq(await input.getAttribute('aria-invalid'), 'true');
   t.has(await msg.locator('use').getAttribute('href'), 'triangle-alert');
   await input.fill('@valid_user.name'); await settle();
-  t.eq(await msg.getAttribute('data-state'), 'valid'); t.has(await text(msg), 'Valid input'); t.eq(await go.isDisabled(), false);
+  t.eq(await msg.getAttribute('data-state'), 'invalid', 'a bare @username is not a link'); t.eq(await go.isDisabled(), true);
+  t.has(await text(msg), 'link');
+  await input.fill('valid_user'); await settle();
+  t.eq(await msg.getAttribute('data-state'), 'invalid'); t.eq(await go.isDisabled(), true);
+  await input.fill('https://www.instagram.com/valid_user.name/'); await settle();
+  t.eq(await msg.getAttribute('data-state'), 'valid'); t.has(await text(msg), 'Valid link'); t.eq(await go.isDisabled(), false);
   t.has(await msg.locator('use').getAttribute('href'), 'circle-check');
   const colours = await page.evaluate(() => { const m = document.querySelector('[data-service][data-open=true] .field-msg'); return getComputedStyle(m).color; });
   const [r, g, b] = hexToRgb(colours); t.ok(g > r && g > b, 'valid message is green: ' + colours);
-  await input.fill('https://www.instagram.com/valid_user/?utm_source=x'); await settle();
-  t.eq(await msg.getAttribute('data-state'), 'valid', 'profile URLs with tracking params are accepted');
-  await input.fill('https://evil.example.com/valid_user'); await settle();
-  t.eq(await msg.getAttribute('data-state'), 'invalid', 'foreign host rejected');
-  await input.fill('javascript:alert(1)'); await settle();
-  t.eq(await msg.getAttribute('data-state'), 'invalid'); t.eq(await go.isDisabled(), true);
+  for (const ok of ['https://www.instagram.com/valid_user/?utm_source=x', 'http://instagram.com/valid_user', 'instagram.com/valid_user', 'https://m.instagram.com/valid_user/', 'https://www.instagram.com/valid_user/?igsh=MWRtN2Fi']) {
+    await input.fill(ok); await settle();
+    t.eq(await msg.getAttribute('data-state'), 'valid', `accepted: ${ok}`);
+  }
+  for (const bad of ['https://evil.example.com/valid_user', 'https://instagram.com.evil.example/valid_user', 'https://www.instagram.com/p/CxYz123AbC/', 'https://www.instagram.com/', 'https://www.youtube.com/@valid_user', 'javascript:alert(1)', 'ftp://instagram.com/valid_user']) {
+    await input.fill(bad); await settle();
+    t.eq(await msg.getAttribute('data-state'), 'invalid', `rejected: ${bad}`); t.eq(await go.isDisabled(), true);
+  }
   await input.fill(''); await settle();
   t.eq(await msg.getAttribute('data-state'), 'idle'); t.eq(await go.isDisabled(), true);
   const [rr, gg, bb] = hexToRgb(await msg.evaluate((e) => getComputedStyle(e).color)); t.ok(contrast([rr, gg, bb], [255, 255, 255]) >= 4.5, 'hint text contrast');
 });
 
+await t.step('live validation (Blue Tick keeps "username or link"): ⚠ "Invalid username/link", ✓ "Valid input", @username accepted', async () => {
+  const card = await openCard(page, 'ig-blue-tick');
+  const input = card.locator('input[name=target]'), msg = card.locator('.field-msg'), go = card.locator('[data-action=proceed]');
+  const settle = () => page.waitForTimeout(350);
+  await input.fill('not a valid name!!'); await settle();
+  t.eq(await msg.getAttribute('data-state'), 'invalid'); t.has(await text(msg), 'Invalid username/link'); t.eq(await go.isDisabled(), true);
+  await input.fill('@valid_user.name'); await settle();
+  t.eq(await msg.getAttribute('data-state'), 'valid'); t.has(await text(msg), 'Valid input'); t.eq(await go.isDisabled(), false);
+  await input.fill('');
+});
+
 await t.step('post / channel / video services validate their own link shapes', async () => {
   const cases = [
     ['ig-likes-100', 'https://www.instagram.com/p/CxYz123AbC/', 'valid'], ['ig-likes-100', 'https://instagram.com/reel/CxYz123AbC', 'valid'], ['ig-likes-100', '@username', 'invalid'],
-    ['yt-subs-50', '@MrBeast', 'valid'], ['yt-subs-50', 'https://youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA', 'valid'], ['yt-subs-50', 'https://youtu.be/dQw4w9WgXcQ', 'invalid'],
+    ['yt-subs-50', 'https://www.youtube.com/@MrBeast', 'valid'], ['yt-subs-50', 'https://youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA', 'valid'], ['yt-subs-50', 'youtube.com/@MrBeast', 'valid'],
+    ['yt-subs-50', 'https://www.youtube.com/c/MrBeast6000', 'valid'], ['yt-subs-50', 'https://www.youtube.com/user/MrBeast6000', 'valid'],
+    ['yt-subs-50', '@MrBeast', 'invalid'], ['yt-subs-50', 'MrBeast', 'invalid'], ['yt-subs-50', 'https://youtu.be/dQw4w9WgXcQ', 'invalid'], ['yt-subs-50', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'invalid'],
+    ['yt-subs-50', 'https://youtube.com/channel/UCshort', 'invalid'], ['yt-subs-50', 'https://example.com/@MrBeast', 'invalid'], ['yt-subs-50', 'https://www.instagram.com/mrbeast/', 'invalid'],
     ['yt-views-10', 'https://youtu.be/dQw4w9WgXcQ', 'valid'], ['yt-views-10', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10s', 'valid'], ['yt-views-10', 'https://www.youtube.com/shorts/abcDEF12345', 'valid'], ['yt-views-10', 'hello', 'invalid'],
   ];
   for (const [code, value, want] of cases) {
@@ -285,6 +321,9 @@ await t.step('post / channel / video services validate their own link shapes', a
     await card.locator('input[name=target]').fill(value); await page.waitForTimeout(330);
     t.eq(await card.locator('.field-msg').getAttribute('data-state'), want, `${code} ← ${value}`);
   }
+  const card = await openCard(page, 'yt-subs-50');
+  await card.locator('input[name=target]').fill('@MrBeast'); await page.waitForTimeout(330);
+  t.has(await text(card.locator('.field-msg')), 'Invalid link'); t.has(await text(card.locator('.field-msg')), 'https://www.youtube.com/@channelname');
 });
 
 await t.step('Enter key submits only when valid; invalid Enter shakes + keeps focus, no request is sent', async () => {
@@ -302,12 +341,13 @@ let ORDER = {};
 await t.step('PROCEED TO PAYMENT creates ONE pending order with the SERVER price and opens the payment page', async () => {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
   const reqs = []; page.on('request', (r) => { if (r.url().includes('/api/checkout')) reqs.push({ body: r.postData(), idem: r.headers()['idempotency-key'], xrw: r.headers()['x-requested-with'] }); });
-  const { ref } = await placeOrder(page, 'ig-followers-50', '@Valid_User');
+  const { ref } = await placeOrder(page, 'ig-followers-50', 'instagram.com/Valid_User?igsh=abc');
   ORDER = { ref, ...payment(ref) };
   t.eq(reqs.length, 1); t.ok(reqs[0].idem?.length >= 16, 'idempotency key'); t.eq(reqs[0].xrw, 'smb');
-  t.eq(JSON.parse(reqs[0].body), { service_id: serviceId('ig-followers-50'), target: '@Valid_User' }, 'only the service id and what was typed are sent: no price');
+  t.eq(JSON.parse(reqs[0].body), { service_id: serviceId('ig-followers-50'), target: 'instagram.com/Valid_User?igsh=abc' }, 'only the service id and what was typed are sent: no price');
   t.eq(ORDER.oStatus, 'PENDING_PAYMENT'); t.eq(ORDER.pStatus, 'pending'); t.eq(ORDER.oAmount, 500); t.eq(ORDER.pAmount, 500); t.eq(ORDER.mode, 'AUTO');
   t.eq(ORDER.targetUrl, 'https://www.instagram.com/Valid_User/', 'target normalised to a canonical profile URL server-side');
+  t.eq(sql(`SELECT target FROM orders WHERE public_id = '${ORDER.publicId}'`), 'https://www.instagram.com/Valid_User/', 'the order keeps the complete validated link');
   t.eq(Number(sql(`SELECT COUNT(*) FROM orders WHERE target_url = '${ORDER.targetUrl}'`)), 1);
   const mock = await (await fetch('http://127.0.0.1:4010/__state')).json();
   t.eq(mock.orders[ORDER.gwOrder].amount, '5.00', 'gateway asked for ₹5.00');

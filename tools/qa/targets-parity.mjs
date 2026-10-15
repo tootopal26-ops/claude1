@@ -6,11 +6,11 @@ import { validateTarget } from '../../resources/js/site/targets.js';
 const cases = JSON.parse(readFileSync(new URL('../../tests/fixtures/targets.json', import.meta.url), 'utf8'));
 let bad = 0;
 for (const c of cases) {
-  const r = validateTarget(c.platform, c.kind, c.input);
+  const r = validateTarget(c.platform, c.kind, c.input, c.link_only === true);
   const same = r.ok === c.ok && (!c.ok || (r.url === c.url && r.display === c.display));
   if (!same) {
     bad++;
-    console.log(`✗ ${c.platform}/${c.kind} ${JSON.stringify(c.input)}\n    expected ${c.ok ? c.url : 'reject'}  got ${r.ok ? r.url : 'reject (' + r.error + ')'}`);
+    console.log(`✗ ${c.platform}/${c.kind}${c.link_only ? ' (link only)' : ''} ${JSON.stringify(c.input)}\n    expected ${c.ok ? c.url : 'reject'}  got ${r.ok ? r.url : 'reject (' + r.error + ')'}`);
   }
 }
 console.log(bad === 0 ? `✓ JS matches PHP on all ${cases.length} fixtures\ntargets-parity: ${cases.length}/${cases.length} passed` : `${bad} of ${cases.length} fixtures differ\ntargets-parity: ${cases.length - bad}/${cases.length} passed, ${bad} failed`);

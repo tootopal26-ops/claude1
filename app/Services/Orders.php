@@ -69,7 +69,9 @@ final class Orders
             throw new HttpException(422, 'This service is not available right now. Please pick another one.', 'service_unavailable');
         }
 
-        $check = Targets::validate((string) $service['platform_slug'], (string) $service['target_kind'], $rawTarget);
+        // Followers / Subscribers take the account LINK; the browser asks for it too, but only this check counts.
+        $linkOnly = Targets::requiresLink((string) $service['platform_slug'], (string) $service['target_kind'], (string) $service['type']);
+        $check = Targets::validate((string) $service['platform_slug'], (string) $service['target_kind'], $rawTarget, $linkOnly);
         if (!$check['ok']) {
             throw new HttpException(422, $check['error'], 'invalid_target', ['fields' => ['target' => $check['error']]]);
         }
@@ -90,7 +92,7 @@ final class Orders
             }
         }
         try {
-            return self::openSession($service, $rawTarget, $check, $gwRow, $visitor);
+            return self::openSession($service, $rawTarget, $check, $gwRow, $visitor, $linkOnly);
         } finally {
             if ($lock !== null) {
                 Db::unlock($lock);
@@ -105,9 +107,10 @@ final class Orders
      * @param array{ok:bool,url?:string,display?:string} $check
      * @param array<string,mixed> $gwRow
      * @param array{visitor_id:?int,session_id:?int} $visitor
+     * @param bool $linkOnly the customer gave an account link (followers / subscribers): the validated link is what the order keeps as its target
      * @return array{ref:string,order_id:string,reused:bool}
      */
-    private static function openSession(array $service, string $rawTarget, array $check, array $gwRow, array $visitor): array
+    private static function openSession(array $service, string $rawTarget, array $check, array $gwRow, array $visitor, bool $linkOnly): array
     {
         // Same visitor, same service, same target, a still-valid unpaid session → reuse it (no duplicate orders).
         if ($visitor['visitor_id']) {
@@ -128,7 +131,11 @@ final class Orders
         $ref = Crypto::token(16);
         $gatewayOrderId = 'SMB' . strtoupper(bin2hex(random_bytes(9)));
 
-        $created = Db::tx(static function () use ($service, $rawTarget, $check, $visitor, $auto, $day, $now, $ref, $gatewayOrderId, $gwRow): array {
+        // What the order shows as its target: for an account link the complete validated URL (https://www.instagram.com/username/),
+        // otherwise what the customer typed. `target_url` is always the normalised URL — the one the SMM provider receives.
+        $shownTarget = $linkOnly ? (string) $check['url'] : mb_substr(Targets::clean($rawTarget), 0, 500);
+
+        $created = Db::tx(static function () use ($service, $shownTarget, $check, $visitor, $auto, $day, $now, $ref, $gatewayOrderId, $gwRow): array {
             $userId = null;
             if ($visitor['visitor_id']) {
                 Db::exec(
@@ -150,7 +157,7 @@ final class Orders
                     [
                         $publicId, Crypto::token(16), $userId, $visitor['visitor_id'], $visitor['session_id'], $service['id'], $service['platform_id'],
                         $service['platform_slug'], $service['code'], $service['title'], $service['type'], $service['mode'], $service['quantity'], $service['price_paise'],
-                        mb_substr(Targets::clean($rawTarget), 0, 500), $check['url'],
+                        $shownTarget, $check['url'],
                         $auto ? $service['smm_provider_id'] : null, $auto ? $service['smm_service_id'] : null,
                         $auto ? (int) $service['smm_cost_paise'] : 0,
                         $day, Clock::sql($now), Clock::sql($now),
@@ -172,7 +179,7 @@ final class Orders
                 'status' => Status::PAY_CREATING, 'expires_at' => Clock::sql($now + self::PAYMENT_TTL),
                 'created_day' => $day, 'created_at' => Clock::sql($now), 'updated_at' => Clock::sql($now),
             ]);
-            self::history($orderId, null, Status::PENDING_PAYMENT, 'customer', null, 'Order created — waiting for payment');
+            self::history($orderId, null, Status::PENDING_PAYMENT, 'customer', null, 'Order created — waiting for payment · ' . $check['url'], ['target_url' => $check['url']]);
             return ['order_id' => $orderId, 'public_id' => $publicId, 'payment_id' => $paymentId];
         });
 

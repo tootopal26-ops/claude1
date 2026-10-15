@@ -97,6 +97,8 @@ final class Catalog
     /** @return array<string,mixed> one storefront card (public fields only) */
     public static function card(array $r, string $platformSlug): array
     {
+        // Instagram Followers / YouTube Subscribers ask for the account LINK ("Instagram Profile Link" / "YouTube Channel Link"), not a username
+        $linkOnly = Targets::requiresLink($platformSlug, (string) $r['target_kind'], (string) $r['type']);
         return [
             'id'          => (int) $r['id'],
             'type'        => (string) $r['type'],
@@ -111,8 +113,10 @@ final class Catalog
             'tag'         => Tags::effective((int) $r['price_paise'], ($r['tag_id'] ?? null) !== null ? (int) $r['tag_id'] : null),
             'is_premium'  => (bool) $r['is_premium'],
             'icon_url'    => upload_url($r['icon_path'] ?? null),
-            'placeholder' => Targets::placeholder($platformSlug, (string) $r['target_kind']),
-            'hint'        => Targets::hint($platformSlug, (string) $r['target_kind']),
+            'link_only'   => $linkOnly,
+            'label'       => Targets::label($platformSlug, $linkOnly),
+            'placeholder' => Targets::placeholder($platformSlug, (string) $r['target_kind'], $linkOnly),
+            'hint'        => Targets::hint($platformSlug, (string) $r['target_kind'], $linkOnly),
             'platform'    => $platformSlug,
         ];
     }

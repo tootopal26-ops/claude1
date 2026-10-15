@@ -24,6 +24,8 @@ final class PaymentStatusResult
         public readonly ?int $paidAt = null,
         public readonly string $message = '',
         public readonly array $raw = [],
+        /** Currency the gateway says the payment is in (upper-case code), null when it does not say. The shop is INR-only. */
+        public readonly ?string $currency = null,
     ) {
     }
 

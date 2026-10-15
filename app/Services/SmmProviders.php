@@ -46,7 +46,6 @@ final class SmmProviders
     public static function adminView(array $r): array
     {
         $key = Crypto::decrypt($r['api_key_enc'] ?? null);
-        $rate = (int) $r['rate_to_inr_micros'];
         $services = (int) Db::val('SELECT COUNT(*) FROM services WHERE smm_provider_id = ? AND deleted_at IS NULL', [$r['id']]);
         return [
             'id'              => (int) $r['id'],
@@ -54,8 +53,6 @@ final class SmmProviders
             'api_url'         => (string) $r['api_url'],
             'has_api_key'     => $key !== null && $key !== '',
             'api_key_hint'    => Crypto::mask($key),
-            'currency'        => (string) $r['currency'],
-            'rate_to_inr'     => rtrim(rtrim(sprintf('%d.%06d', intdiv($rate, 1_000_000), $rate % 1_000_000), '0'), '.'),
             'is_active'       => (bool) $r['is_active'],
             'is_default'      => (bool) $r['is_default'],
             'last_tested_at'  => Clock::iso($r['last_tested_at']),
@@ -89,23 +86,10 @@ final class SmmProviders
             $errors['api_url'] = $e->getMessage();
         }
 
-        $currency = strtoupper(trim((string) ($in['currency'] ?? ($row['currency'] ?? 'INR'))));
-        if (!preg_match('/^[A-Z]{3,8}$/', $currency)) {
-            $errors['currency'] = 'Use a currency code such as INR or USD.';
-        }
-        $data['currency'] = $currency;
-
-        $rateIn = $currency === 'INR' ? '1' : trim((string) ($in['rate_to_inr'] ?? ''));
-        if ($currency !== 'INR' && $rateIn === '' && $row !== null) {
-            $data['rate_to_inr_micros'] = (int) $row['rate_to_inr_micros'];
-        } else {
-            $micros = Money::parseDecimalMicros($rateIn);
-            if ($micros === null || $micros <= 0 || $micros > 1_000_000_000_000) {
-                $errors['rate_to_inr'] = 'Enter how many rupees one ' . $currency . ' is worth (for example 83.5).';
-            } else {
-                $data['rate_to_inr_micros'] = $micros;
-            }
-        }
+        // INR only: there is no currency or exchange-rate setting. (The two legacy columns are kept at INR / 1.0 so an old row cannot
+        // hold a stale foreign currency once it is saved again; nothing reads them any more.)
+        $data['currency'] = 'INR';
+        $data['rate_to_inr_micros'] = 1_000_000;
 
         $newKey = isset($in['api_key']) && is_string($in['api_key']) ? trim($in['api_key']) : '';
         if ($newKey !== '') {
@@ -144,7 +128,10 @@ final class SmmProviders
         });
 
         // Names of fields that changed — never their values.
-        $changed = array_values(array_filter(array_keys($data), static fn(string $k): bool => $k === 'api_key_enc' || $row === null || (string) ($row[$k] ?? '') !== (string) $data[$k]));
+        $changed = array_values(array_filter(
+            array_keys($data),
+            static fn(string $k): bool => !in_array($k, ['currency', 'rate_to_inr_micros'], true) && ($k === 'api_key_enc' || $row === null || (string) ($row[$k] ?? '') !== (string) $data[$k])
+        ));
         Audit::log('smm.provider_saved', 'smm_provider', $savedId, ['created' => $row === null, 'changed' => array_map(static fn(string $k): string => $k === 'api_key_enc' ? 'api_key' : $k, $changed)], $req, $admin);
         return self::adminView(self::row($savedId));
     }
@@ -162,8 +149,13 @@ final class SmmProviders
         $ok = false;
         if ($res->ok() && isset($res->data['balance'])) {
             $ok = true;
-            $balance = trim((string) $res->data['balance'] . ' ' . (string) ($res->data['currency'] ?? $row['currency']));
+            $billing = isset($res->data['currency']) && is_string($res->data['currency']) ? strtoupper(trim($res->data['currency'])) : '';
+            $balance = trim((string) $res->data['balance'] . ' ' . ($billing !== '' ? $billing : 'INR'));
             $message = 'Connected. Provider balance: ' . $balance . '.';
+            if ($billing !== '' && $billing !== 'INR') {
+                // Not an error (the API works) but the shop is INR-only and never converts: say what that means for profit figures.
+                $message .= ' This panel bills in ' . $billing . ', and the shop works in ₹ only: its charges are not converted, so profit uses the ₹ cost you enter on each service. Prefer a provider that bills in INR.';
+            }
         } elseif ($res->ok()) {
             $message = 'The provider answered but did not return a balance. Check the API URL points to the provider’s v2 API endpoint.';
         } else {

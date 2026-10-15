@@ -13,7 +13,6 @@ let services = [];
 let meta = null;
 let editing = null;          // service being edited (null = new)
 let form = { icon_path: undefined };
-let providerRates = null;    // { micros, currency } of the selected provider
 const root = () => $('#services-root');
 
 const TYPE_ICON = { followers: 'users', subscribers: 'user-plus', likes: 'heart', views: 'eye', verification: 'badge-check', watch_time: 'clock' };
@@ -255,11 +254,10 @@ function setMode(mode) {
 
 // provider catalogue lookup
 function costFromRate(rate, quantity) {
-  if (!providerRates || !/^\d+(\.\d+)?$/.test(String(rate))) return null;
   const m = /^(\d+)(?:\.(\d{1,6})\d*)?$/.exec(String(rate));
-  const rateMicros = BigInt(m[1]) * 1000000n + BigInt((m[2] || '0').padEnd(6, '0'));
-  const paise = (rateMicros * BigInt(quantity) * providerRates.micros + 10n ** 13n - 1n) / 10n ** 13n;   // ceil: per-1000 rate × qty × INR rate
-  return Number(paise);
+  if (!m) return null;
+  const rateMicros = BigInt(m[1]) * 1000000n + BigInt((m[2] || '0').padEnd(6, '0'));   // ₹ per 1000, in millionths
+  return Number((rateMicros * BigInt(quantity) + 10n ** 7n - 1n) / 10n ** 7n);          // paise, rounded up: rate per 1000 × quantity ÷ 1000
 }
 async function searchProvider(q) {
   const pid = val('smm_provider_id');
@@ -299,21 +297,8 @@ async function openEditor(id) {
 function paintEditor() {
   $('#sd-body').innerHTML = String(editorHtml(editing));
   $('#sd-foot').innerHTML = String(footHtml(editing));
-  providerRates = null;
-  const prov = meta.providers.find((p) => p.id === Number(val('smm_provider_id')));
-  if (prov) loadRate(prov.id);
   updatePreview();
   autoClearErrors($('#sd-body'));
-}
-
-async function loadRate(pid) {
-  try {
-    const { providers } = await get('smm');
-    const p = providers.find((x) => x.id === Number(pid));
-    if (!p) { providerRates = null; return; }
-    const m = /^(\d+)(?:\.(\d+))?$/.exec(String(p.rate_to_inr));
-    providerRates = m ? { micros: BigInt(m[1]) * 1000000n + BigInt((m[2] || '0').padEnd(6, '0').slice(0, 6)), currency: p.currency } : null;
-  } catch { providerRates = null; }
 }
 
 function collect() {
@@ -401,7 +386,6 @@ export default async function init() {
     const n = e.target.name;
     if (n === 'platform_id') { syncTargetKinds(); suggestCode(); }
     if (n === 'type') suggestCode();
-    if (n === 'smm_provider_id') loadRate(e.target.value);
     updatePreview();
   });
   // provider service lookup (debounced)
@@ -411,7 +395,7 @@ export default async function init() {
   on(dlg, 'click', '[data-pick]', (e, b) => {
     const p = JSON.parse(b.dataset.pick);
     $('#f-smm_service_id').value = p.id;
-    if (p.cost !== null && p.cost !== undefined) { $('#f-smm_cost').value = plain(p.cost).replace(/\.00$/, ''); $('#cost-hint').textContent = 'Estimated from the provider rate and your exchange rate — adjust if your real cost differs.'; }
+    if (p.cost !== null && p.cost !== undefined) { $('#f-smm_cost').value = plain(p.cost).replace(/\.00$/, ''); $('#cost-hint').textContent = 'Estimated from the provider’s rate per 1,000 — adjust if your real cost differs.'; }
     $('#svc-results').hidden = true;
     $('#svc-search').setAttribute('aria-expanded', 'false');
     clearFieldErrors($('#svc-form'));

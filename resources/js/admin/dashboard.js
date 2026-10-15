@@ -101,7 +101,7 @@ function profitCard(d) {
   const neg = b.net < 0;
   const before = !m.ads_attributable;
   return html`<section class="card" aria-labelledby="h-profit">
-    <div class="card-head"><h2 class="card-title" id="h-profit">${icon('circle-dollar-sign')}Profit breakdown</h2>
+    <div class="card-head"><h2 class="card-title" id="h-profit">${icon('badge-indian-rupee')}Profit breakdown</h2>
       <span class="card-sub">${rangeText(m)}${m.filtered ? ' · filtered' : ''}</span></div>
     <div class="eq" role="group" aria-label="Revenue minus SMM cost minus ads cost equals net profit">
       <div class="eq-item"><small>Revenue</small><strong>${inr(b.revenue)}</strong></div>

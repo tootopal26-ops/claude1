@@ -15,8 +15,7 @@ function card(p) {
   return html`<article class="card prov-card" data-provider="${p.id}" aria-label="${p.name}">
     <div class="prov-head"><div class="min-w-0"><h2 class="text-lg font-extrabold truncate">${p.name}</h2><p class="text-xs text-muted mono break-all">${p.api_url}</p></div>
       <span class="flex flex-wrap gap-1.5">${p.is_default ? html`<span class="chip chip-brand">Default</span>` : ''}<span class="chip ${p.is_active ? 'chip-ok' : 'chip-gray'}">${p.is_active ? 'Active' : 'Inactive'}</span></span></div>
-    <dl class="dl"><dt>Currency</dt><dd>${p.currency}${p.currency !== 'INR' ? ` · 1 ${p.currency} = ₹${p.rate_to_inr}` : ''}</dd>
-      <dt>API key</dt><dd class="mono">${p.has_api_key ? p.api_key_hint : 'not set'}</dd>
+    <dl class="dl"><dt>API key</dt><dd class="mono">${p.has_api_key ? p.api_key_hint : 'not set'}</dd>
       <dt>Services using it</dt><dd>${p.services_using}</dd>
       <dt>Balance</dt><dd>${p.last_balance || '—'}</dd>
       <dt>Last test</dt><dd>${t === null ? 'Never tested' : html`<span class="chip ${t ? 'chip-ok' : 'chip-bad'}">${t ? 'Passed' : 'Failed'}</span> <span class="text-xs text-muted">${p.last_tested_at ? timeAgo(p.last_tested_at) : ''}</span>`}</dd></dl>
@@ -36,16 +35,12 @@ function renderList() {
 }
 
 function formHtml(p) {
-  const cur = p?.currency || 'USD';
   return html`<form id="prov-form" novalidate autocomplete="off">
     <div class="field"><label class="label req" for="pv-name">Name</label><input class="input" id="pv-name" name="name" maxlength="80" value="${p?.name || ''}" placeholder="e.g. MyProvider"></div>
     <div class="field"><label class="label req" for="pv-url">API URL</label><input class="input mono" id="pv-url" name="api_url" value="${p?.api_url || ''}" placeholder="https://provider.com/api/v2" spellcheck="false" autocapitalize="none">
       <p class="field-hint">The provider’s standard API v2 endpoint (the one that accepts <span class="kbd">key</span> and <span class="kbd">action</span>). Must be https:// in production.</p></div>
     ${secretField({ name: 'api_key', label: 'API key', has: !!p?.has_api_key, hint: p?.api_key_hint || '', placeholder: 'Paste your provider API key', help: 'Stored encrypted. Only the server uses it; the browser never receives it.' })}
-    <div class="field-row"><div class="field"><label class="label req" for="pv-cur">Provider currency</label>
-      <input class="input" id="pv-cur" name="currency" maxlength="8" value="${cur}" list="cur-list" autocapitalize="characters"><datalist id="cur-list"><option value="INR"><option value="USD"><option value="EUR"><option value="GBP"></datalist></div>
-      <div class="field" id="rate-field" ${cur.toUpperCase() === 'INR' ? 'hidden' : ''}><label class="label req" for="pv-rate">Rupees per 1 ${cur.toUpperCase()}</label><input class="input" id="pv-rate" name="rate_to_inr" inputmode="decimal" value="${p?.currency !== 'INR' ? p?.rate_to_inr || '' : ''}" placeholder="83.5">
-      <p class="field-hint">Used to convert the provider’s charges into rupees for profit reports.</p></div></div>
+    <p class="field-hint mb-3">Everything is in ₹ (INR): the charges this provider reports are read as rupees. Use a provider that bills in INR.</p>
     <div class="switch-row"><div><b>Active</b><small>Inactive providers are never called.</small></div><label class="switch"><input type="checkbox" name="is_active" ${(p?.is_active ?? true) ? 'checked' : ''} aria-label="Active"><span></span></label></div>
     <div class="switch-row"><div><b>Default provider</b><small>Used for services that do not name a provider.</small></div><label class="switch"><input type="checkbox" name="is_default" ${(p?.is_default ?? providers.length === 0) ? 'checked' : ''} aria-label="Default"><span></span></label></div>
   </form>`;
@@ -62,7 +57,7 @@ function openForm(p) {
 
 function formBody() {
   const f = $('#prov-form');
-  const o = { name: f.elements.name.value, api_url: f.elements.api_url.value, currency: f.elements.currency.value, rate_to_inr: f.elements.rate_to_inr?.value || '', is_active: f.elements.is_active.checked, is_default: f.elements.is_default.checked };
+  const o = { name: f.elements.name.value, api_url: f.elements.api_url.value, is_active: f.elements.is_active.checked, is_default: f.elements.is_default.checked };
   const k = f.elements.api_key; if (k && !k.disabled && k.value.trim()) o.api_key = k.value.trim();
   return o;
 }
@@ -79,11 +74,6 @@ export default async function init() {
   on(r, 'click', '[data-retry]', load);
   wireSecrets($('#pd-body'));
   const dlg = $('#prov-dialog');
-  on(dlg, 'input', '[name="currency"]', (e, el) => {
-    const c = el.value.trim().toUpperCase();
-    $('#rate-field').hidden = c === 'INR' || c === '';
-    const lab = $('#rate-field label'); if (lab) lab.textContent = `Rupees per 1 ${c}`;
-  });
   on(dlg, 'click', '#pv-save', async (e, btn) => {
     clearFieldErrors($('#prov-form'));
     await withBusy(btn, async () => {

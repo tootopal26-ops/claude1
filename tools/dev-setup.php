@@ -22,8 +22,8 @@ $gid = (int) $gw['id'];
 
 Db::exec('DELETE FROM smm_providers');
 $pid = Db::insert('smm_providers', [
-    'name' => 'Mock SMM Panel', 'api_url' => 'http://127.0.0.1:4020/api/v2', 'api_key_enc' => Crypto::encrypt('smm-key-ok'), 'currency' => 'USD',
-    'rate_to_inr_micros' => 83_500_000, 'is_active' => 1, 'is_default' => 1, 'created_at' => Clock::sql(), 'updated_at' => Clock::sql(),
+    'name' => 'Mock SMM Panel', 'api_url' => 'http://127.0.0.1:4020/api/v2', 'api_key_enc' => Crypto::encrypt('smm-key-ok'),
+    'is_active' => 1, 'is_default' => 1, 'created_at' => Clock::sql(), 'updated_at' => Clock::sql(),
 ]);
 echo "gateway #{$gid} → mock Alpha UPI (webhook URL: " . rtrim((string) App\Core\Env::get('APP_URL', 'http://127.0.0.1:8080'), '/') . "/webhooks/payments/{$gid}); SMM provider #{$pid} → mock panel\n";
 

@@ -104,6 +104,7 @@ function validate(card, { showErrors = true } = {}) {
   const value = input.value;
   const kind = card.dataset.kind;
   const platform = card.dataset.platform;
+  const linkOnly = card.dataset.linkOnly === 'true';   // Instagram Followers / YouTube Subscribers: the account LINK, not a username
 
   if (value.trim() === '') {
     input.removeAttribute('aria-invalid');
@@ -112,18 +113,18 @@ function validate(card, { showErrors = true } = {}) {
     setMsg(card, 'idle', html`${card._hint}`);
     return { ok: false, empty: true };
   }
-  const r = validateTarget(platform, kind, value);
+  const r = validateTarget(platform, kind, value, linkOnly);
   if (r.ok) {
     input.removeAttribute('aria-invalid');
     input.dataset.valid = 'true';
     proceed.disabled = card._busy === true;
-    setMsg(card, 'valid', html`${icon('circle-check')}<span><strong>Valid input</strong> · ${r.display}</span>`);
+    setMsg(card, 'valid', html`${icon('circle-check')}<span><strong>${linkOnly ? 'Valid link' : 'Valid input'}</strong> · ${r.display}</span>`);
   } else {
     delete input.dataset.valid;
     proceed.disabled = true;
     if (showErrors) {
       input.setAttribute('aria-invalid', 'true');
-      setMsg(card, 'invalid', html`${icon('triangle-alert')}<span><strong>Invalid username/link.</strong> ${r.error}</span>`);
+      setMsg(card, 'invalid', html`${icon('triangle-alert')}<span><strong>${linkOnly ? 'Invalid link.' : 'Invalid username/link.'}</strong> ${r.error}</span>`);
     }
   }
   return r;
@@ -194,7 +195,7 @@ async function proceed(card) {
     const field = err.fields?.target;
     if (field) {
       input.setAttribute('aria-invalid', 'true');
-      setMsg(card, 'invalid', html`${icon('triangle-alert')}<span><strong>Invalid username/link.</strong> ${field}</span>`);
+      setMsg(card, 'invalid', html`${icon('triangle-alert')}<span><strong>${card.dataset.linkOnly === 'true' ? 'Invalid link.' : 'Invalid username/link.'}</strong> ${field}</span>`);
       btn.disabled = true;
       shake(input);
     } else {
@@ -259,6 +260,7 @@ function renderOrders(list) {
       <div class="min-w-0 flex-1">
         <div class="truncate font-bold">${o.service}</div>
         <div class="mt-0.5 text-xs text-muted">${o.order_id} · <span class="num">${o.amount}</span></div>
+        ${o.target ? html`<div class="mt-0.5 truncate text-xs text-muted" title="${o.target}">${o.target}</div>` : ''}
         <div class="mt-1 text-xs text-muted">${o.pay_url ? 'Tap to continue paying' : o.status_label}</div>
       </div>
       <span class="chip ${cls}">${label}</span>${icon('chevron-right', 'text-faint')}</a></li>`;

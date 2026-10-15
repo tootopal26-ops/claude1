@@ -19,14 +19,14 @@ function pf_setup(): int
     T::startMocks();
     T::freshDb();
     T::alpha('POST', '/__control', ['reset' => true, 'style' => 'bearer', 'apiKey' => 'test-api-key-123', 'apiSecret' => 'test-api-secret-789', 'webhookSecret' => 'test-webhook-secret-456', 'webhookUrl' => '',
-        'mode' => ['offline' => false, 'failCreate' => false, 'quota' => false, 'slowMs' => 0, 'noAmount' => false]]);
+        'mode' => ['offline' => false, 'failCreate' => false, 'quota' => false, 'slowMs' => 0, 'noAmount' => false, 'currency' => 'INR']]);
     T::smm('POST', '/__reset');
-    T::smm('POST', '/__control', ['offline' => false, 'slowMs' => 0, 'garbled' => false, 'hang' => false]);
+    T::smm('POST', '/__control', ['offline' => false, 'slowMs' => 0, 'garbled' => false, 'hang' => false, 'currency' => 'INR']);
     return T::configureGateway();
 }
 
 /** Create an order+payment through the real checkout code. @return array{ref:string,order:array,payment:array} */
-function pf_place(string $code = 'ig-followers-50', string $target = '@john', array $visitor = ['visitor_id' => null, 'session_id' => null], string $ip = '203.0.113.9'): array
+function pf_place(string $code = 'ig-followers-50', string $target = 'https://www.instagram.com/john/', array $visitor = ['visitor_id' => null, 'session_id' => null], string $ip = '203.0.113.9'): array
 {
     $svc = Db::one('SELECT id FROM services WHERE code = ?', [$code]);
     $res = Orders::checkout(Request::fake('POST', '/api/checkout', [], '', [], $ip), ['service_id' => (int) $svc['id'], 'target' => $target], $visitor);
@@ -135,7 +135,7 @@ T::test('checkout: price/quantity/mode can never come from the client', function
     pf_setup();
     $svc = Db::one("SELECT id FROM services WHERE code = 'ig-followers-100k'");
     $res = Orders::checkout(Request::fake('POST', '/api/checkout'), [
-        'service_id' => (int) $svc['id'], 'target' => '@john', 'amount' => 1, 'amount_paise' => 1, 'price' => '0.01', 'quantity' => 999999, 'mode' => 'AUTO', 'cost' => 0,
+        'service_id' => (int) $svc['id'], 'target' => 'https://www.instagram.com/john/', 'amount' => 1, 'amount_paise' => 1, 'price' => '0.01', 'quantity' => 999999, 'mode' => 'AUTO', 'cost' => 0,
     ], ['visitor_id' => null, 'session_id' => null]);
     $o = Orders::byId((int) Orders::paymentByRef($res['ref'])['order_id']);
     T::same(9900, (int) $o['amount_paise']);
@@ -177,11 +177,11 @@ T::test('checkout: rejects bad input, unknown/inactive/deleted/misconfigured ser
 T::test('checkout: repeated click on the same pending checkout returns the SAME payment (no duplicate orders)', function () {
     pf_setup();
     $v = Db::insert('visitors', ['anon_id' => bin2hex(random_bytes(16)), 'first_seen_at' => Clock::sql(), 'last_seen_at' => Clock::sql()]);
-    $a = pf_place('ig-followers-50', '@john', ['visitor_id' => $v, 'session_id' => null]);
+    $a = pf_place('ig-followers-50', 'https://www.instagram.com/john/', ['visitor_id' => $v, 'session_id' => null]);
     $b = pf_place('ig-followers-50', 'instagram.com/john/', ['visitor_id' => $v, 'session_id' => null]);
     T::same($a['ref'], $b['ref']);
     T::same(1, (int) Db::val('SELECT COUNT(*) FROM orders'));
-    $c = pf_place('ig-followers-50', '@someoneelse', ['visitor_id' => $v, 'session_id' => null]);
+    $c = pf_place('ig-followers-50', 'https://www.instagram.com/someoneelse/', ['visitor_id' => $v, 'session_id' => null]);
     T::true($c['ref'] !== $a['ref'], 'a different target is a different order');
 });
 
@@ -189,7 +189,7 @@ T::test('checkout: gateway failures give a safe error and leave a FAILED order (
     pf_setup();
     foreach ([['offline' => true], ['failCreate' => true], ['quota' => true]] as $i => $mode) {
         T::alpha('POST', '/__control', ['mode' => array_merge(['offline' => false, 'failCreate' => false, 'quota' => false], $mode)]);
-        $e = T::throws(HttpException::class, fn() => pf_place('ig-followers-50', '@john', ['visitor_id' => null, 'session_id' => null], '198.51.100.' . (10 + $i)), 503);
+        $e = T::throws(HttpException::class, fn() => pf_place('ig-followers-50', 'https://www.instagram.com/john/', ['visitor_id' => null, 'session_id' => null], '198.51.100.' . (10 + $i)), 503);
         T::same('payments_unavailable', $e->errorCode);
         T::false(str_contains($e->getMessage(), 'quota'), 'internal gateway detail is not shown to customers');
     }
@@ -203,7 +203,7 @@ T::test('checkout: no active gateway → 503, and a gateway with a wrong API key
     Db::exec('UPDATE payment_gateways SET is_active = 0');
     T::throws(HttpException::class, fn() => pf_place(), 503);
     T::configureGateway('WRONG-KEY');
-    T::throws(HttpException::class, fn() => pf_place('ig-followers-50', '@john', ['visitor_id' => null, 'session_id' => null], '198.51.100.77'), 503);
+    T::throws(HttpException::class, fn() => pf_place('ig-followers-50', 'https://www.instagram.com/john/', ['visitor_id' => null, 'session_id' => null], '198.51.100.77'), 503);
 });
 
 // ═════════════════════════════ webhook ═════════════════════════════
@@ -272,7 +272,7 @@ T::test('webhook: a NEW event id for an already-paid payment never double-counts
 
 T::test('webhook: wrong amount → flagged for review, order stays unpaid, nothing fulfilled', function () {
     $gid = pf_setup();
-    $p = pf_place('ig-followers-100k', '@john');
+    $p = pf_place('ig-followers-100k', 'https://www.instagram.com/john/');
     [$status] = pf_webhook($gid, pf_evt($p['payment'], ['amount' => '1.00']));      // paid ₹1 for a ₹99 order
     T::same(200, $status);
     $pay = pf_payment((int) $p['payment']['id']);
@@ -314,17 +314,17 @@ T::test('webhook: a forged event cannot poison the dedupe table', function () {
 
 T::test('webhook: FAILED and EXPIRED events close the session; they cannot undo a paid one', function () {
     $gid = pf_setup();
-    $a = pf_place('ig-followers-50', '@a', ['visitor_id' => null, 'session_id' => null], '198.51.100.21');
+    $a = pf_place('ig-followers-50', 'https://www.instagram.com/a/', ['visitor_id' => null, 'session_id' => null], '198.51.100.21');
     pf_webhook($gid, pf_evt($a['payment'], ['status' => 'FAILED', 'utr' => '']));
     T::same('failed', pf_payment((int) $a['payment']['id'])['status']);
     T::same('FAILED', pf_order((int) $a['order']['id'])['status']);
 
-    $b = pf_place('ig-followers-50', '@b', ['visitor_id' => null, 'session_id' => null], '198.51.100.22');
+    $b = pf_place('ig-followers-50', 'https://www.instagram.com/b/', ['visitor_id' => null, 'session_id' => null], '198.51.100.22');
     pf_webhook($gid, pf_evt($b['payment'], ['status' => 'EXPIRED', 'utr' => '']));
     T::same('expired', pf_payment((int) $b['payment']['id'])['status']);
     T::same('EXPIRED', pf_order((int) $b['order']['id'])['status']);
 
-    $c = pf_place('ig-followers-50', '@c', ['visitor_id' => null, 'session_id' => null], '198.51.100.23');
+    $c = pf_place('ig-followers-50', 'https://www.instagram.com/c/', ['visitor_id' => null, 'session_id' => null], '198.51.100.23');
     pf_webhook($gid, pf_evt($c['payment']));
     pf_webhook($gid, pf_evt($c['payment'], ['status' => 'FAILED', 'utr' => '']));
     T::same('success', pf_payment((int) $c['payment']['id'])['status'], 'a paid payment stays paid');
@@ -333,8 +333,8 @@ T::test('webhook: FAILED and EXPIRED events close the session; they cannot undo 
 
 T::test('webhook: the same bank reference (UTR) cannot pay two different orders', function () {
     $gid = pf_setup();
-    $a = pf_place('ig-followers-50', '@a', ['visitor_id' => null, 'session_id' => null], '198.51.100.31');
-    $b = pf_place('ig-followers-50', '@b', ['visitor_id' => null, 'session_id' => null], '198.51.100.32');
+    $a = pf_place('ig-followers-50', 'https://www.instagram.com/a/', ['visitor_id' => null, 'session_id' => null], '198.51.100.31');
+    $b = pf_place('ig-followers-50', 'https://www.instagram.com/b/', ['visitor_id' => null, 'session_id' => null], '198.51.100.32');
     pf_webhook($gid, pf_evt($a['payment'], ['utr' => 'SAMEUTR1']));
     pf_webhook($gid, pf_evt($b['payment'], ['utr' => 'SAMEUTR1']));
     T::same('success', pf_payment((int) $a['payment']['id'])['status']);
@@ -438,8 +438,8 @@ T::test('expiry: a payment confirmed AFTER the session ended is still credited, 
 T::test('expiry: cron sweep — double-checks with the gateway before expiring, then expires the rest', function () {
     pf_setup();
     Clock::setFixed(1_800_000_000);
-    $paid = pf_place('ig-followers-50', '@paid', ['visitor_id' => null, 'session_id' => null], '198.51.100.41');
-    $idle = pf_place('ig-followers-50', '@idle', ['visitor_id' => null, 'session_id' => null], '198.51.100.42');
+    $paid = pf_place('ig-followers-50', 'https://www.instagram.com/paid/', ['visitor_id' => null, 'session_id' => null], '198.51.100.41');
+    $idle = pf_place('ig-followers-50', 'https://www.instagram.com/idle/', ['visitor_id' => null, 'session_id' => null], '198.51.100.42');
     T::alpha('POST', '/__pay/' . $paid['payment']['gateway_order_id'] . '/success', ['noWebhook' => true]);   // paid, webhook lost
     Clock::setFixed(1_800_000_400);
     $stats = PaymentService::sweep();

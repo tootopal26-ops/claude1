@@ -18,6 +18,8 @@ final class WebhookEvent
         public readonly ?int $paidAt = null,
         public readonly array $payload = [],
         public readonly string $error = '',
+        /** Currency the gateway says the payment is in (upper-case code), null when it does not say. The shop is INR-only. */
+        public readonly ?string $currency = null,
     ) {
     }
 }

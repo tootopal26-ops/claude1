@@ -199,8 +199,11 @@ final class Fulfilment
             $set['provider_cost_paise'] = 0;
             $set['provider_cost_final'] = 1;
         } elseif (isset($d['charge'])) {
-            $micros = Money::parseDecimalMicros(is_scalar($d['charge']) ? $d['charge'] : null);
-            $paise = $micros !== null ? Money::chargeToPaise($micros, (int) $provider['rate_to_inr_micros']) : null;
+            // The shop is INR-only: the provider's charge is rupees. A provider that says it bills in anything else is NOT converted
+            // (there is no exchange rate): the per-service ₹ cost estimate stays in force and nothing is recorded from that charge.
+            $currency = isset($d['currency']) && is_string($d['currency']) ? strtoupper(trim($d['currency'])) : '';
+            $micros = $currency === '' || $currency === 'INR' ? Money::parseDecimalMicros(is_scalar($d['charge']) ? $d['charge'] : null) : null;
+            $paise = $micros !== null ? Money::rupeeMicrosToPaise($micros) : null;
             if ($paise !== null && ($paise > 0 || $terminal)) {
                 $set['provider_cost_paise'] = $paise;
                 $set['provider_cost_final'] = $terminal ? 1 : 0;

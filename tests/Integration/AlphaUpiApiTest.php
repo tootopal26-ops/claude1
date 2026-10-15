@@ -29,7 +29,7 @@ function aa_setup(): int
     T::startMocks();
     T::freshDb();
     T::alpha('POST', '/__control', ['reset' => true, 'style' => 'headers', 'apiKey' => AA_KEY, 'apiSecret' => AA_SECRET, 'webhookSecret' => AA_WEBHOOK, 'webhookUrl' => '',
-        'mode' => ['offline' => false, 'failCreate' => false, 'quota' => false, 'slowMs' => 0, 'noAmount' => false]]);
+        'mode' => ['offline' => false, 'failCreate' => false, 'quota' => false, 'slowMs' => 0, 'noAmount' => false, 'currency' => 'INR']]);
     T::smm('POST', '/__reset');
     T::smm('POST', '/__control', ['offline' => false, 'slowMs' => 0, 'garbled' => false, 'hang' => false]);
     return T::configureGateway(AA_KEY, AA_WEBHOOK, 4010, 'headers', AA_SECRET);
@@ -39,7 +39,7 @@ function aa_setup(): int
 function aa_done(): void
 {
     T::alpha('POST', '/__control', ['reset' => true, 'style' => 'bearer', 'apiKey' => 'test-api-key-123', 'apiSecret' => 'test-api-secret-789', 'webhookSecret' => 'test-webhook-secret-456',
-        'webhookUrl' => '', 'mode' => ['offline' => false, 'failCreate' => false, 'quota' => false, 'slowMs' => 0, 'noAmount' => false]]);
+        'webhookUrl' => '', 'mode' => ['offline' => false, 'failCreate' => false, 'quota' => false, 'slowMs' => 0, 'noAmount' => false, 'currency' => 'INR']]);
     T::configureGateway();
 }
 
@@ -141,7 +141,7 @@ T::test('alpha-api: refusals are safe for customers and readable for the admin (
     ];
     foreach ($cases as $i => $c) {
         T::alpha('POST', '/__control', ['apiSecret' => $c['secret'] ?? AA_SECRET, 'mode' => array_merge(['offline' => false, 'failCreate' => false, 'quota' => false], $c['mode'] ?? [])]);
-        $e = T::throws(HttpException::class, fn() => pf_place('ig-followers-50', '@john', ['visitor_id' => null, 'session_id' => null], '198.51.100.' . (20 + $i)), 503);
+        $e = T::throws(HttpException::class, fn() => pf_place('ig-followers-50', 'https://www.instagram.com/john/', ['visitor_id' => null, 'session_id' => null], '198.51.100.' . (20 + $i)), 503);
         T::same('payments_unavailable', $e->errorCode);
         T::false(str_contains($e->getMessage(), $c['reason']), 'the customer never sees the gateway\'s wording');
     }
@@ -182,13 +182,13 @@ T::test('alpha-api: the signature is accepted in any header that mentions "signa
     $sig = fn(string $raw, string $secret = AA_WEBHOOK) => hash_hmac('sha256', $raw, $secret);
     $n = 100;
     foreach (['X-PayIndia-Signature', 'X-Alpha-Signature', 'X-Lola-Pay-Signature', 'X-Hub-Signature-256', 'X-Something-New-Signature'] as $header) {
-        $p = pf_place('ig-followers-50', '@john', ['visitor_id' => null, 'session_id' => null], '198.51.100.' . $n++);
+        $p = pf_place('ig-followers-50', 'https://www.instagram.com/john/', ['visitor_id' => null, 'session_id' => null], '198.51.100.' . $n++);
         $raw = json_encode(aa_evt($p['payment']));
         [$status] = aa_webhook($gid, json_decode($raw, true), [$header => $sig($raw)]);
         T::same(200, $status, $header);
         T::same('success', pf_payment((int) $p['payment']['id'])['status'], $header . ' settled the payment');
     }
-    $p = pf_place('ig-followers-50', '@john', ['visitor_id' => null, 'session_id' => null], '198.51.100.250');
+    $p = pf_place('ig-followers-50', 'https://www.instagram.com/john/', ['visitor_id' => null, 'session_id' => null], '198.51.100.250');
     $raw = json_encode(aa_evt($p['payment']));
     foreach ([
         'wrong secret' => ['X-PayIndia-Signature' => $sig($raw, 'not-the-secret')],
@@ -215,7 +215,7 @@ T::test('alpha-api: the unified parser also takes the older payload (event_id, u
     T::same(200, $status);
     T::same('success', pf_payment((int) $p['payment']['id'])['status']);
 
-    $p2 = pf_place('ig-followers-50', '@john', ['visitor_id' => null, 'session_id' => null], '198.51.100.201');
+    $p2 = pf_place('ig-followers-50', 'https://www.instagram.com/john/', ['visitor_id' => null, 'session_id' => null], '198.51.100.201');
     [$status] = aa_webhook($gid, ['event' => 'payment.success', 'data' => ['order_id' => $p2['payment']['gateway_order_id'], 'status' => 'success', 'amount' => '5.00', 'utr' => 'UTRNESTED1']]);
     T::same(200, $status);
     T::same('UTRNESTED1', pf_payment((int) $p2['payment']['id'])['provider_txn_id']);
@@ -263,8 +263,8 @@ T::test('alpha-api: a lost webhook is recovered through /api/check-status (and a
 T::test('alpha-api: failed and expired payments are recognised; a success without a verifiable amount is held for review', function () {
     aa_setup();
     $a = pf_place();
-    $b = pf_place('ig-followers-50', '@john', ['visitor_id' => null, 'session_id' => null], '198.51.100.202');
-    $c = pf_place('ig-followers-50', '@john', ['visitor_id' => null, 'session_id' => null], '198.51.100.203');
+    $b = pf_place('ig-followers-50', 'https://www.instagram.com/john/', ['visitor_id' => null, 'session_id' => null], '198.51.100.202');
+    $c = pf_place('ig-followers-50', 'https://www.instagram.com/john/', ['visitor_id' => null, 'session_id' => null], '198.51.100.203');
     T::alpha('POST', '/__pay/' . $a['payment']['gateway_order_id'] . '/fail', ['noWebhook' => true]);
     T::alpha('POST', '/__pay/' . $b['payment']['gateway_order_id'] . '/expire', ['noWebhook' => true]);
     T::same('failed', PaymentService::refresh($a['payment'])['payment']['status']);
@@ -371,4 +371,69 @@ T::test('alpha-api: an existing gateway with no chosen type keeps working as bef
     T::same('bearer', Gateways::style(['is_active' => 0], ['api_style' => 'bearer'], $key), 'an explicit choice wins');
     T::same('headers', Gateways::style(['is_active' => 1], ['api_style' => 'headers'], $key), 'an explicit choice wins');
     T::same('headers', Gateways::style(['is_active' => 1], ['api_style' => 'junk'], $key + ['api_secret' => AA_SECRET]));
+});
+
+// ═════════════════════════════ INR only ═════════════════════════════
+
+T::test('alpha-api: INR only — the amount is sent in rupees and nothing in the request names another currency', function () {
+    aa_setup();
+    foreach ([['ig-followers-50', '5.00'], ['ig-followers-100k', '99.00']] as $i => [$code, $amount]) {
+        pf_place($code, 'https://www.instagram.com/john/', ['visitor_id' => null, 'session_id' => null], '198.51.100.' . (60 + $i));
+    }
+    $sent = array_values(array_filter(aa_requests(), fn($c) => $c['path'] === '/api/create-order'));
+    T::same(['5.00', '99.00'], array_column(array_column($sent, 'body'), 'amount'), 'rupees with two decimals');
+    T::false(str_contains(strtolower(json_encode($sent)), 'usd'), 'no USD anywhere in what is sent');
+    T::same(['INR', 'INR'], Db::col('SELECT currency FROM payments ORDER BY id'));
+    // a client that tries to pick another currency (or its own price) is ignored: only the service id and the link are read
+    $svc = (int) Db::val("SELECT id FROM services WHERE code = 'ig-followers-50'");
+    $res = App\Services\Orders::checkout(Request::fake('POST', '/api/checkout', [], '', [], '198.51.100.70'),
+        ['service_id' => $svc, 'target' => 'https://www.instagram.com/johnny/', 'currency' => 'USD', 'amount' => '0.01', 'price' => 1], ['visitor_id' => null, 'session_id' => null]);
+    $pay = App\Services\Orders::paymentByRef($res['ref']);
+    T::same(['INR', 500], [$pay['currency'], (int) $pay['amount_paise']]);
+    aa_done();
+});
+
+T::test('alpha-api: INR only — a gateway that opens the order in another currency is refused; the customer sees a safe message, the admin the reason', function () {
+    aa_setup();
+    T::alpha('POST', '/__control', ['mode' => ['currency' => 'USD']]);
+    $e = T::throws(HttpException::class, fn() => pf_place('ig-followers-50'), 503);
+    T::same('payments_unavailable', $e->errorCode);
+    T::false(str_contains($e->getMessage(), 'USD'));
+    $reason = (string) Db::val('SELECT failure_reason FROM payments ORDER BY id DESC LIMIT 1');
+    T::contains('USD', $reason);
+    T::contains('INR only', $reason);
+    T::same('FAILED', Db::val('SELECT status FROM orders ORDER BY id DESC LIMIT 1'));
+    aa_done();
+});
+
+T::test('alpha-api: INR only — a success reported in another currency is held for review (webhook and status poll), never fulfilled', function () {
+    $gid = aa_setup();
+    $a = pf_place('ig-followers-50', 'https://www.instagram.com/john/', ['visitor_id' => null, 'session_id' => null], '198.51.100.81');
+    [$status] = aa_webhook($gid, aa_evt($a['payment'], ['currency' => 'usd']));
+    T::same(200, $status);
+    $pay = pf_payment((int) $a['payment']['id']);
+    T::same('mismatch', $pay['status']);
+    T::contains('USD, not INR', (string) $pay['failure_reason']);
+    T::same('PENDING_PAYMENT', pf_order((int) $a['order']['id'])['status'], 'the order is not paid');
+    T::same(0, (int) Db::val("SELECT COUNT(*) FROM manual_orders WHERE order_id = ?", [$a['order']['id']]));
+
+    // the same through the status poll: the gateway's own check-status says the payment is in USD
+    $b = pf_place('ig-followers-50', 'https://www.instagram.com/jane/', ['visitor_id' => null, 'session_id' => null], '198.51.100.82');
+    T::alpha('POST', '/__pay/' . $b['payment']['gateway_order_id'] . '/success', ['noWebhook' => true]);
+    T::alpha('POST', '/__control', ['mode' => ['currency' => 'EUR']]);
+    $r = PaymentService::refresh(pf_payment((int) $b['payment']['id']));
+    T::same('mismatch', $r['payment']['status']);
+    T::contains('EUR, not INR', (string) $r['payment']['failure_reason']);
+    T::same('PENDING_PAYMENT', pf_order((int) $b['order']['id'])['status']);
+
+    // INR (or a gateway that does not say) settles as always
+    T::alpha('POST', '/__control', ['mode' => ['currency' => 'INR']]);
+    $c = pf_place('ig-followers-50', 'https://www.instagram.com/jim/', ['visitor_id' => null, 'session_id' => null], '198.51.100.83');
+    [$status] = aa_webhook($gid, aa_evt($c['payment'], ['currency' => 'INR']));
+    T::same(200, $status);
+    T::same('success', pf_payment((int) $c['payment']['id'])['status']);
+    $d = pf_place('ig-followers-50', 'https://www.instagram.com/joe/', ['visitor_id' => null, 'session_id' => null], '198.51.100.84');
+    aa_webhook($gid, aa_evt($d['payment']));
+    T::same('success', pf_payment((int) $d['payment']['id'])['status'], 'the documented webhook has no currency field at all');
+    aa_done();
 });

@@ -29,7 +29,7 @@ final class AdminServices
         $est = Ads::estimatedPerOrder();
         return [
             'platforms' => array_map(static fn(array $p): array => ['id' => $p['id'], 'slug' => $p['slug'], 'name' => $p['name'], 'logo_url' => $p['logo_url'], 'is_active' => $p['is_active']], Catalog::platforms(false)),
-            'providers' => array_map(static fn(array $p): array => ['id' => $p['id'], 'name' => $p['name'], 'is_active' => $p['is_active'], 'is_default' => $p['is_default'], 'currency' => $p['currency']], SmmProviders::all()),
+            'providers' => array_map(static fn(array $p): array => ['id' => $p['id'], 'name' => $p['name'], 'is_active' => $p['is_active'], 'is_default' => $p['is_default']], SmmProviders::all()),
             'types' => array_map(static fn(string $t): array => ['value' => $t, 'label' => Status::serviceTypeLabel($t)], Status::SERVICE_TYPES),
             'target_kinds' => self::KINDS,
             'tags' => array_values(array_map(static fn(array $t): array => [

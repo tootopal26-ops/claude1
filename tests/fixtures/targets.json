@@ -864,5 +864,735 @@
         "kind": "video",
         "input": "https://www.youtube.com/watch?v[]=dQw4w9WgXcQ",
         "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/username/",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com/username",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "http://instagram.com/username/",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "instagram.com/username",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "www.instagram.com/username/",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/username/?igsh=MWRtN2FibGpkZ3p1Zw==",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/username?utm_source=ig_web_button_share_sheet",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/username/#top",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://m.instagram.com/username/",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagr.am/username",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "HTTPS://WWW.INSTAGRAM.COM/Username/",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/Username/",
+        "display": "@Username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/user.name_1/",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/user.name_1/",
+        "display": "@user.name_1"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/username/reels/",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/_u/username/",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "  https://www.instagram.com/username/  ",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/_u/",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.instagram.com/_u/",
+        "display": "@_u"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/_u/username/",
+        "ok": true,
+        "url": "https://www.instagram.com/username/",
+        "display": "@username"
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "@username",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "username",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "user.name",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "   ",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com//",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/p/CxYz123AbC/",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/reel/CxYz123AbC/",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/explore/",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/stories/username/1234567890/",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/accounts/login/",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/_u/explore/",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/user name/",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/user$name/",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/../",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com/....",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://facebook.com/username",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://example.com/username",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com.evil.com/username",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://evil.com/instagram.com/username",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.instagram.com@evil.com/username",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://user:pw@instagram.com/username",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://instagram.com:8080/username",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "ftp://instagram.com/username",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "javascript:alert(1)",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "//instagram.com/username",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https:/instagram.com/username",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "http://instagram",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.youtube.com/@channelname",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "https://www.tiktok.com/@username",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "instagram",
+        "kind": "profile",
+        "input": "instagram",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/@channelname",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/@channelname",
+        "display": "@channelname"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com/@channelname",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/@channelname",
+        "display": "@channelname"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "youtube.com/@channelname",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/@channelname",
+        "display": "@channelname"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "www.youtube.com/@channelname/",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/@channelname",
+        "display": "@channelname"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "http://www.youtube.com/@channelname",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/@channelname",
+        "display": "@channelname"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://m.youtube.com/@channelname",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/@channelname",
+        "display": "@channelname"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/@channel.name-1_x?si=abcdef",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/@channel.name-1_x",
+        "display": "@channel.name-1_x"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/@channelname/videos",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/@channelname",
+        "display": "@channelname"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "HTTPS://WWW.YOUTUBE.COM/@ChannelName",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/@ChannelName",
+        "display": "@ChannelName"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA",
+        "display": "channel/UCX6OQ3DkcsbYNE6H8uQQuVA"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA/videos?view=0",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA",
+        "display": "channel/UCX6OQ3DkcsbYNE6H8uQQuVA"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://music.youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/channel/UCX6OQ3DkcsbYNE6H8uQQuVA",
+        "display": "channel/UCX6OQ3DkcsbYNE6H8uQQuVA"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/c/ChannelName",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/c/ChannelName",
+        "display": "c/ChannelName"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/user/ChannelName",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/user/ChannelName",
+        "display": "user/ChannelName"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/ChannelName",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/ChannelName",
+        "display": "ChannelName"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "  https://www.youtube.com/@channelname  ",
+        "link_only": true,
+        "ok": true,
+        "url": "https://www.youtube.com/@channelname",
+        "display": "@channelname"
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "@channelname",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "channelname",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "UCX6OQ3DkcsbYNE6H8uQQuVA",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "   ",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/@",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/@ab",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/channel/UCshort",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/channel/",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtu.be/dQw4w9WgXcQ",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/shorts/dQw4w9WgXcQ",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/playlist?list=PL1234567890",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/feed/subscriptions",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/results?search_query=music",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://example.com/@channelname",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com.evil.com/@channelname",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://evil.com/youtube.com/@channelname",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://user@youtube.com/@channelname",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://youtube.com:444/@channelname",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "ftp://youtube.com/@channelname",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "javascript:alert(1)",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https:/youtube.com/@channelname",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.instagram.com/username/",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "https://www.youtube.com/@bad!handle",
+        "link_only": true,
+        "ok": false
+    },
+    {
+        "platform": "youtube",
+        "kind": "channel",
+        "input": "channel.name",
+        "link_only": true,
+        "ok": false
     }
 ]

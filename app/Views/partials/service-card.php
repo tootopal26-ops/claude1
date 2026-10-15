@@ -7,7 +7,7 @@ $typeIcon = match ($s['type']) {
 };
 $classes = 'svc glass' . ($s['is_premium'] ? ' svc-premium svc-wide' : '');
 ?>
-<article class="<?= e($classes) ?>" data-service data-id="<?= $id ?>" data-platform="<?= e($p['slug']) ?>" data-kind="<?= e($s['target_kind']) ?>" data-title="<?= e($s['title']) ?>" data-price="<?= e($s['price']) ?>" data-open="false">
+<article class="<?= e($classes) ?>" data-service data-id="<?= $id ?>" data-platform="<?= e($p['slug']) ?>" data-kind="<?= e($s['target_kind']) ?>"<?= $s['link_only'] ? ' data-link-only="true"' : '' ?> data-title="<?= e($s['title']) ?>" data-price="<?= e($s['price']) ?>" data-open="false">
   <?php if ($s['tag'] !== null): $tag = $s['tag']; ?>
   <span class="badge svc-badge tag-<?= (int) $tag['id'] ?>" data-badge="<?= $tag['auto'] ? 'auto' : 'tag' ?>" data-tag-id="<?= (int) $tag['id'] ?>"><?= e($tag['name']) ?></span>
   <?php endif; ?>
@@ -30,7 +30,7 @@ $classes = 'svc glass' . ($s['is_premium'] ? ' svc-premium svc-wide' : '');
   <div class="expand" id="order-<?= $id ?>" data-open="false" inert>
     <div class="expand-inner">
       <form class="order-form" novalidate autocomplete="off">
-        <label class="label" for="target-<?= $id ?>">Enter username or link</label>
+        <label class="label" for="target-<?= $id ?>"><?= e($s['label']) ?></label>
         <div class="input-wrap mt-2">
           <?= icon('link') ?>
           <input id="target-<?= $id ?>" class="input" type="text" name="target" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"

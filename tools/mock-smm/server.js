@@ -5,7 +5,8 @@
  *
  * API keys:   smm-key-ok (works)   smm-key-poor (add → "Not enough funds on balance")   anything else → "Invalid API key"
  * Services:   1001 (ok) … ; 9999 → "Incorrect service ID"; link containing "badlink" → "Incorrect link"
- * Control:    POST /__control {offline, slowMs, garbled, hang}   POST /__advance {order, status, remains?, charge?}   GET /__state
+ * Control:    POST /__control {offline, slowMs, garbled, hang, currency}   POST /__advance {order, status, remains?, charge?}   GET /__state
+ *   currency → the currency the panel declares in balance / status answers (default INR; set USD to test that the shop never converts)
  *   offline  → connection reset before any answer      (client sees: unreachable / ambiguous)
  *   garbled  → 200 OK with non-JSON body               (client sees: ambiguous)
  *   hang     → never answers                           (client sees: timeout → ambiguous)
@@ -15,7 +16,7 @@
 const http = require('http');
 const PORT = Number(process.argv.slice(2).find((a) => /^\d+$/.test(a)) || process.env.PORT || 4020);
 const AUTO_PROGRESS = process.argv.includes('--auto-progress') || process.env.MOCK_SMM_AUTO_PROGRESS === '1';   // demo only: orders move on by themselves
-const state = { mode: { offline: false, slowMs: 0, garbled: false, hang: false }, nextId: 70001, orders: {}, requests: [] };
+const state = { mode: { offline: false, slowMs: 0, garbled: false, hang: false, currency: 'INR' }, nextId: 70001, orders: {}, requests: [] };
 const SERVICES = [
   { service: '1001', name: 'Instagram Followers [Non Drop]', category: 'Instagram', rate: '0.9000', min: '10', max: '100000', type: 'Default' },
   { service: '1002', name: 'Instagram Likes', category: 'Instagram', rate: '0.2500', min: '10', max: '50000', type: 'Default' },
@@ -60,7 +61,7 @@ http.createServer(async (req, res) => {
   const key = p.get('key');
   if (key !== 'smm-key-ok' && key !== 'smm-key-poor') return send(res, 200, { error: 'Invalid API key' });
   switch (p.get('action')) {
-    case 'balance': return send(res, 200, { balance: key === 'smm-key-poor' ? '0.00' : '100.84292', currency: 'USD' });
+    case 'balance': return send(res, 200, { balance: key === 'smm-key-poor' ? '0.00' : '8421.50', currency: state.mode.currency });
     case 'services': return send(res, 200, SERVICES);
     case 'add': {
       if (key === 'smm-key-poor') return send(res, 200, { error: 'Not enough funds on balance' });
@@ -68,13 +69,13 @@ http.createServer(async (req, res) => {
       if ((p.get('link') || '').includes('badlink')) return send(res, 200, { error: 'Incorrect link' });
       const q = Number(p.get('quantity')); if (!Number.isInteger(q) || q < 1) return send(res, 200, { error: 'Incorrect quantity' });
       const id = String(state.nextId++);
-      state.orders[id] = { id, service: p.get('service'), link: p.get('link'), quantity: q, status: 'Pending', charge: '0.27819', start_count: '100', remains: String(q), created: Date.now() };
+      state.orders[id] = { id, service: p.get('service'), link: p.get('link'), quantity: q, status: 'Pending', charge: '23.23', start_count: '100', remains: String(q), created: Date.now() };
       return send(res, 200, { order: Number(id) });
     }
     case 'status': {
       const o = state.orders[p.get('order')];
       if (!o) return send(res, 200, { error: 'Incorrect order ID' });
-      return send(res, 200, { charge: o.charge, start_count: o.start_count, status: o.status, remains: o.remains, currency: 'USD' });
+      return send(res, 200, { charge: o.charge, start_count: o.start_count, status: o.status, remains: o.remains, currency: state.mode.currency });
     }
     default: return send(res, 200, { error: 'Incorrect action' });
   }
