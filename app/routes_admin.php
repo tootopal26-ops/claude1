@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-use App\Controllers\Admin\{AccountController, AuthController, DashboardController, IntegrationsController, OrdersController, PageController, ServicesController, SettingsController};
+use App\Controllers\Admin\{AccountController, AuthController, DashboardController, IntegrationsController, OrdersController, PageController, ServicesController, SettingsController, TagsController};
 use App\Core\Middleware;
 use App\Core\Router;
 
@@ -50,6 +50,12 @@ return static function (Router $r): void {
     $r->patch("/admin/api/platforms/{$id}", [ServicesController::class, 'platform'], $api);
     $r->post("/admin/api/platforms/{$id}/logo", [ServicesController::class, 'platformLogo'], $api);
     $r->delete("/admin/api/platforms/{$id}/logo", [ServicesController::class, 'platformLogoReset'], $api);
+
+    // ── service tags & badges ──
+    $r->get('/admin/api/tags', [TagsController::class, 'list'], $api);
+    $r->post('/admin/api/tags', [TagsController::class, 'create'], $api);
+    $r->put("/admin/api/tags/{$id}", [TagsController::class, 'update'], $api);
+    $r->delete("/admin/api/tags/{$id}", [TagsController::class, 'delete'], $api);
 
     // ── website / advertising ──
     $r->get('/admin/api/website', [SettingsController::class, 'website'], $api);

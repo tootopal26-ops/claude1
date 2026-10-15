@@ -125,7 +125,6 @@ final class Status
 
     public const SERVICE_TYPES = ['followers', 'likes', 'views', 'verification', 'subscribers', 'watch_time'];
     public const TARGET_KINDS  = ['profile', 'post', 'video', 'channel'];
-    public const BADGE_COLORS  = ['red', 'green', 'blue', 'amber', 'pink', 'purple', 'gray'];
 
     public static function serviceTypeLabel(string $t): string
     {

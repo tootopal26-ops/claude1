@@ -2,7 +2,7 @@
 /** Admin navigation (rendered twice: desktop sidebar and mobile drawer). Expects: $page, $admin, $site, $idp */
 $groups = [
     ['Overview', [['dashboard', 'Dashboard', 'layout-dashboard']]],
-    ['Sales', [['orders', 'Orders', 'package'], ['payments', 'Payments', 'credit-card'], ['services', 'Services', 'layers']]],
+    ['Sales', [['orders', 'Orders', 'package'], ['payments', 'Payments', 'credit-card'], ['services', 'Services', 'layers'], ['tags', 'Tags & Badges', 'tags', true]]],
     ['Configuration', [['website', 'Website', 'globe'], ['gateway', 'Payment gateway', 'wallet'], ['smm', 'SMM API', 'server'], ['advertising', 'Advertising', 'megaphone']]],
     ['Account', [['security', 'Security', 'shield-check'], ['audit', 'Audit log', 'history'], ['system', 'System', 'activity']]],
 ];
@@ -17,8 +17,8 @@ $groups = [
     <?php foreach ($groups as [$label, $items]): ?>
     <div class="adm-group">
       <p class="adm-group-label"><?= e($label) ?></p>
-      <?php foreach ($items as [$key, $text, $ico]): ?>
-      <a class="adm-link<?= $page === $key ? ' is-active' : '' ?>" href="<?= e(url('/admin/' . $key)) ?>"<?= $page === $key ? ' aria-current="page"' : '' ?>>
+      <?php foreach ($items as $item): [$key, $text, $ico] = $item; $sub = $item[3] ?? false; ?>
+      <a class="adm-link<?= $page === $key ? ' is-active' : '' ?><?= $sub ? ' adm-sub' : '' ?>" href="<?= e(url('/admin/' . $key)) ?>"<?= $page === $key ? ' aria-current="page"' : '' ?>>
         <?= icon($ico) ?><span><?= e($text) ?></span>
         <?php if ($key === 'orders'): ?><span class="adm-count" data-approve-count hidden title="Manual orders waiting for approval">0</span><?php endif; ?>
       </a>

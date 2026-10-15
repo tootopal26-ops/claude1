@@ -10,6 +10,7 @@ use App\Core\Response;
 use App\Core\View;
 use App\Services\Catalog;
 use App\Services\Settings;
+use App\Services\Tags;
 
 final class SiteController
 {
@@ -45,7 +46,7 @@ final class SiteController
         $html = View::render('site/home', ['site' => $site, 'platforms' => $platforms]);
         $page = View::render('layouts/site', [
             'content' => $html, 'site' => $site, 'title' => $site['seo_title'], 'page' => 'home', 'jsonLd' => $jsonLd,
-            'scripts' => ['site', 'track'], 'canonical' => absolute_url('/'),
+            'scripts' => ['site', 'track'], 'canonical' => absolute_url('/'), 'withTags' => true,
             'ogImage' => $site['has_custom_logo'] && !str_ends_with(strtok($site['logo_url'], '?'), '.svg') ? $site['logo_url'] : asset('img/og-default.png'),
         ]);
         return $this->cached($req, $page);
@@ -67,6 +68,12 @@ final class SiteController
         $s = Settings::site();
         $css = ":root{--accent-from:{$s['accent_from']};--accent-to:{$s['accent_to']}}\n";
         return Response::text($css, 200, 'text/css')->header('Cache-Control', 'public, max-age=86400')->header('X-Content-Type-Options', 'nosniff');
+    }
+
+    /** Colours of the service tags / badges as CSS variables, one `.tag-<id>` rule per enabled tag (CSP forbids inline styles, so they cannot sit in the HTML). */
+    public function tagsCss(Request $req, array $p): Response
+    {
+        return Response::text(Tags::css(), 200, 'text/css')->header('Cache-Control', 'public, max-age=86400')->header('X-Content-Type-Options', 'nosniff');
     }
 
     /** Web app manifest (installable shortcut): name and description follow the admin's website settings. */

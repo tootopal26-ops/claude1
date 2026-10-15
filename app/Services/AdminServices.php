@@ -32,8 +32,11 @@ final class AdminServices
             'providers' => array_map(static fn(array $p): array => ['id' => $p['id'], 'name' => $p['name'], 'is_active' => $p['is_active'], 'is_default' => $p['is_default'], 'currency' => $p['currency']], SmmProviders::all()),
             'types' => array_map(static fn(string $t): array => ['value' => $t, 'label' => Status::serviceTypeLabel($t)], Status::SERVICE_TYPES),
             'target_kinds' => self::KINDS,
-            'badge_colors' => Status::BADGE_COLORS,
-            'trial_pack' => ['label' => Catalog::TRIAL_BADGE, 'price_paise' => Catalog::TRIAL_PRICE_PAISE, 'price' => Money::inr(Catalog::TRIAL_PRICE_PAISE)],
+            'tags' => array_values(array_map(static fn(array $t): array => [
+                'id' => $t['id'], 'name' => $t['name'], 'bg_color' => $t['bg_color'], 'text_color' => $t['text_color'],
+                'is_active' => $t['is_active'], 'is_system' => $t['is_system'], 'is_auto' => $t['code'] === Tags::TRIAL_CODE,
+            ], Tags::all())),
+            'tag_rule' => Tags::meta()['trial'],
             'cpc_paise' => Ads::cpcPaise(),
             'est_ad_cost_paise' => $est['paise'],
             'est_ad_cost_basis' => $est['basis'],
@@ -74,7 +77,7 @@ final class AdminServices
         $price = (int) $r['price_paise'];
         $cost = (int) $r['smm_cost_paise'];
         $preview = Profit::servicePreview($price, $cost, (string) $r['mode'], $estAdPaise);
-        $badge = Catalog::customBadge($r['badge'] ?? null);   // the automatic TRIAL PACK is derived from the price, never edited as text
+        $tagId = $r['tag_id'] !== null ? (int) $r['tag_id'] : null;
         return [
             'id' => (int) $r['id'], 'code' => $r['code'], 'platform_id' => (int) $r['platform_id'], 'platform' => $r['platform_slug'], 'platform_name' => $r['platform_name'],
             'type' => $r['type'], 'type_label' => Status::serviceTypeLabel((string) $r['type']), 'target_kind' => $r['target_kind'],
@@ -82,7 +85,7 @@ final class AdminServices
             'price_paise' => $price, 'price' => Money::plain($price), 'quantity' => (int) $r['quantity'], 'min_quantity' => (int) $r['min_quantity'], 'max_quantity' => (int) $r['max_quantity'],
             'mode' => $r['mode'], 'smm_provider_id' => $r['smm_provider_id'] !== null ? (int) $r['smm_provider_id'] : null, 'provider_name' => $r['provider_name'],
             'smm_service_id' => (string) ($r['smm_service_id'] ?? ''), 'smm_cost_paise' => $cost, 'smm_cost' => Money::plain($cost),
-            'badge' => (string) $badge, 'badge_color' => $badge !== null ? (string) ($r['badge_color'] ?? '') : '', 'trial_pack' => Catalog::isTrial($price), 'is_premium' => (bool) $r['is_premium'],
+            'tag_id' => $tagId, 'effective_tag' => Tags::effective($price, $tagId), 'is_premium' => (bool) $r['is_premium'],
             'icon_url' => upload_url($r['icon_path'] ?? null), 'status' => $r['status'], 'sort_order' => (int) $r['sort_order'],
             'paid_orders' => (int) $r['paid_orders'], 'updated_at' => (string) $r['updated_at'], 'preview' => $preview,
         ];
@@ -140,19 +143,27 @@ final class AdminServices
         if (mb_strlen($description) > 2000) {
             $errors['description'] = 'At most 2000 characters.';
         }
-        $badge = trim((string) ($val('badge', '') ?? ''));
-        if (mb_strlen($badge) > 40) {
-            $errors['badge'] = 'At most 40 characters.';
-        } elseif (Catalog::isTrialText($badge)) {
-            // TRIAL PACK comes from the price (every service sold at exactly ₹5), so a typed copy would outlive a price change
-            if (array_key_exists('badge', $in)) {
-                $errors['badge'] = Catalog::TRIAL_BADGE . ' is added automatically to every service priced at exactly ' . Money::inr(Catalog::TRIAL_PRICE_PAISE) . ', so it cannot be typed here. Leave this empty or use another text.';
+        // ── tag (the badge on the card). TRIAL PACK is automatic at exactly ₹5 and cannot be assigned by hand; a disabled tag can stay but not be newly assigned ──
+        $tagId = $existing !== null && $existing['tag_id'] !== null ? (int) $existing['tag_id'] : null;
+        if (array_key_exists('tag_id', $in)) {
+            $raw = $in['tag_id'];
+            if ($raw === null || $raw === '' || $raw === 0 || $raw === '0') {
+                $tagId = null;
+            } elseif (!(is_int($raw) && $raw > 0) && !(is_string($raw) && preg_match('/^\d{1,10}$/D', $raw))) {
+                $errors['tag_id'] = 'Choose a tag from the list.';
+            } else {
+                $want = (int) $raw;
+                $tag = Tags::get($want);
+                if ($tag === null) {
+                    $errors['tag_id'] = 'That tag no longer exists. Reload the page.';
+                } elseif ($tag['code'] === Tags::TRIAL_CODE) {
+                    $errors['tag_id'] = $tag['name'] . ' is automatic: it appears on every service priced at exactly ' . Money::inr(Tags::TRIAL_PRICE_PAISE) . ', so it cannot be assigned by hand.';
+                } elseif (!$tag['is_active'] && $want !== $tagId) {
+                    $errors['tag_id'] = 'That tag is disabled. Enable it in Tags & Badges first.';
+                } else {
+                    $tagId = $want;
+                }
             }
-            $badge = '';                                   // a stored legacy copy is dropped on the next save
-        }
-        $badgeColor = (string) ($val('badge_color', '') ?? '');
-        if ($badge !== '' && !in_array($badgeColor, Status::BADGE_COLORS, true)) {
-            $badgeColor = 'red';
         }
 
         // ── money & quantities (rupee strings → integer paise) ──
@@ -225,7 +236,7 @@ final class AdminServices
             'subtitle' => $subtitle !== '' ? $subtitle : null, 'description' => $description !== '' ? $description : null,
             'price_paise' => $price, 'quantity' => $quantity, 'min_quantity' => $min, 'max_quantity' => $max,
             'mode' => $mode, 'smm_provider_id' => $providerId, 'smm_service_id' => $smmId !== '' ? $smmId : null, 'smm_cost_paise' => $cost,
-            'badge' => $badge !== '' ? $badge : null, 'badge_color' => $badge !== '' ? $badgeColor : null, 'icon_path' => $iconPath,
+            'tag_id' => $tagId, 'icon_path' => $iconPath,
             'is_premium' => (int) (bool) $val('is_premium', false), 'status' => $status, 'sort_order' => (int) $sort, 'updated_at' => $now,
         ];
 

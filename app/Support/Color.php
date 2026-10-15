@@ -16,6 +16,34 @@ final class Color
         return (bool) preg_match('/^#[0-9a-f]{6}$/iD', $s);
     }
 
+    /** Upper-case #RRGGBB from `#RGB`, `RGB`, `#RRGGBB` or `RRGGBB` (any case); null for anything else (names, rgb(), alpha …). */
+    public static function normalizeHex(mixed $v): ?string
+    {
+        if (!is_string($v)) {
+            return null;
+        }
+        $s = ltrim(trim($v), '#');
+        if (preg_match('/^[0-9a-f]{3}$/iD', $s)) {
+            $s = $s[0] . $s[0] . $s[1] . $s[1] . $s[2] . $s[2];
+        }
+        return preg_match('/^[0-9a-f]{6}$/iD', $s) ? '#' . strtoupper($s) : null;
+    }
+
+    /** WCAG relative luminance of a #RRGGBB colour. */
+    public static function relativeLuminance(string $hex): float
+    {
+        [$r, $g, $b] = array_map([self::class, 'toLinear'], self::rgb($hex));
+        return self::luminance($r, $g, $b);
+    }
+
+    /** WCAG contrast ratio (1..21) between two #RRGGBB colours. */
+    public static function contrast(string $a, string $b): float
+    {
+        $la = self::relativeLuminance($a);
+        $lb = self::relativeLuminance($b);
+        return (max($la, $lb) + 0.05) / (min($la, $lb) + 0.05);
+    }
+
     /** @return array{0:float,1:float,2:float} sRGB 0..1 */
     public static function rgb(string $hex): array
     {

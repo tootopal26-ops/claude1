@@ -42,7 +42,7 @@ export async function layoutReport(page) {
       const cs = getComputedStyle(el);
       if (cs.visibility === 'hidden' || cs.display === 'none') continue;
       if (r.right > vw + 1 && !el.closest('.tbl-scroll, .chips, .seg, dialog:not([open]), .toasts, .skip-link') && cs.position !== 'fixed') out.wide.push(`${el.tagName.toLowerCase()}.${String(el.className).split(' ').slice(0, 2).join('.')} right=${Math.round(r.right)}`);
-      if (['A', 'BUTTON', 'INPUT', 'SELECT'].includes(el.tagName) && !el.disabled && (r.width < 24 || r.height < 24) && !el.closest('dialog:not([open])') && el.type !== 'checkbox' && el.type !== 'hidden' && !el.closest('.switch')) out.small.push(`${el.tagName.toLowerCase()} "${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 24)}" ${Math.round(r.width)}x${Math.round(r.height)}`);
+      if (['A', 'BUTTON', 'INPUT', 'SELECT'].includes(el.tagName) && !el.disabled && (r.width < 24 || r.height < 24) && !el.closest('dialog:not([open])') && el.type !== 'checkbox' && el.type !== 'hidden' && !el.closest('.switch, .sr-only') && !el.matches('p a, li a, label a')) out.small.push(`${el.tagName.toLowerCase()} "${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 24)}" ${Math.round(r.width)}x${Math.round(r.height)}`);
     }
     out.wide = [...new Set(out.wide)].slice(0, 12);
     out.small = [...new Set(out.small)].slice(0, 12);

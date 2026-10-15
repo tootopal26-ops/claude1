@@ -26,12 +26,12 @@ await t.step('unauthenticated admin API returns 401 JSON (no data leaks)', async
 });
 
 await t.step('every admin API endpoint is closed to anonymous callers', async () => {
-  const paths = ['dashboard', 'status', 'orders', 'orders/1', 'orders/approvable', 'payments', 'services', 'services/meta', 'services/1', 'website', 'advertising', 'gateway', 'smm', 'account/sessions', 'audit', 'system'];
+  const paths = ['dashboard', 'status', 'orders', 'orders/1', 'orders/approvable', 'payments', 'services', 'services/meta', 'services/1', 'tags', 'website', 'advertising', 'gateway', 'smm', 'account/sessions', 'audit', 'system'];
   for (const p of paths) {
     const r = await page.request.get(`${BASE}/admin/api/${p}`, { headers: { Accept: 'application/json', 'X-Requested-With': 'smb' } });
     t.eq(r.status(), 401, `GET ${p}`);
   }
-  for (const [m, p] of [['POST', 'orders/approve-all'], ['POST', 'orders/1/action'], ['POST', 'services'], ['PUT', 'services/1'], ['DELETE', 'services/1'], ['PUT', 'website'], ['PUT', 'gateway/1'], ['POST', 'smm'], ['POST', 'account/password'], ['POST', 'system/cron']]) {
+  for (const [m, p] of [['POST', 'orders/approve-all'], ['POST', 'orders/1/action'], ['POST', 'services'], ['PUT', 'services/1'], ['DELETE', 'services/1'], ['POST', 'tags'], ['PUT', 'tags/1'], ['DELETE', 'tags/1'], ['PUT', 'website'], ['PUT', 'gateway/1'], ['POST', 'smm'], ['POST', 'account/password'], ['POST', 'system/cron']]) {
     const r = await page.request.fetch(`${BASE}/admin/api/${p}`, { method: m, headers: { Accept: 'application/json', 'X-Requested-With': 'smb', 'Content-Type': 'application/json' }, data: '{}' });
     t.ok([401, 403].includes(r.status()), `${m} ${p} → ${r.status()}`);
   }

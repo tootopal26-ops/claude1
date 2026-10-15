@@ -7,6 +7,7 @@ import {
   modeChip, skeletonTable, emptyState, errorState, showFieldErrors, clearFieldErrors, autoClearErrors, withBusy,
 } from './ui.js';
 import { reloadStatus } from './shell.js';
+import { applyTags, pill, cardPreview, effectiveTag } from './tagui.js';
 
 let services = [];
 let meta = null;
@@ -35,7 +36,7 @@ function marginCell(s) {
 function row(s) {
   const img = s.icon_url || meta.platforms.find((p) => p.id === s.platform_id)?.logo_url || '';
   return html`<tr data-id="${s.id}" class="${s.status === 'inactive' ? 'opacity-60' : ''}">
-    <td data-label="Service" class="span2"><span class="cell-svc">${img ? html`<img src="${img}" alt="" width="30" height="30" loading="lazy">` : ''}<span class="cell-main"><b>${s.title}${s.trial_pack ? html` <span class="badge badge-red align-middle" title="Shown automatically on the store because this service costs ${meta.trial_pack.price}">${meta.trial_pack.label}</span>` : ''}${s.badge ? html` <span class="badge badge-${s.badge_color || 'red'} align-middle">${s.badge}</span>` : ''}${s.is_premium ? html` <span class="chip chip-purple align-middle">premium</span>` : ''}</b><small class="mono" title="${s.type_label}">${s.code}</small></span></span></td>
+    <td data-label="Service" class="span2"><span class="cell-svc">${img ? html`<img src="${img}" alt="" width="30" height="30" loading="lazy">` : ''}<span class="cell-main"><b>${s.title}${s.effective_tag ? html` ${pill(s.effective_tag, 'align-middle')}` : ''}${s.is_premium ? html` <span class="chip chip-purple align-middle">premium</span>` : ''}</b><small class="mono" title="${s.type_label}">${s.code}</small></span></span></td>
     <td data-label="Price" class="num"><span class="cell-main"><b>${inr(s.price_paise)}</b><small>${num(s.quantity)} ${s.quantity === 1 ? 'unit' : 'units'}</small></span></td>
     <td data-label="Mode"><span class="stackcell">${modeChip(s.mode)}${s.mode === 'AUTO' && !s.provider_name ? html`<small class="text-bad-700">no provider</small>` : ''}</span></td>
     <td data-label="Provider cost" class="num">${s.mode === 'AUTO' ? html`<span class="cell-main"><b>${inr(s.smm_cost_paise)}</b><small>${s.provider_name || ''}</small></span>` : html`<span class="amt-mute">—</span>`}</td>
@@ -61,6 +62,7 @@ function renderList() {
       <thead><tr><th>Service</th><th class="num">Price</th><th>Mode</th><th class="num">Provider cost</th><th class="num">Profit / order</th><th class="num">Paid orders</th><th>Active</th><th><span class="sr-only">Actions</span></th></tr></thead>
       <tbody>${items.map(row)}</tbody></table></div></div></section>`)}
     <p class="text-[13px] text-muted">${inactive ? `${inactive} service${inactive === 1 ? ' is' : 's are'} hidden from the store. ` : ''}Profit / order = price − provider cost (AUTO only), before advertising. Open a service to see the estimate after the average ad cost per order (${inr(meta.est_ad_cost_paise, true)} · ${meta.est_ad_cost_basis}).</p>`);
+  applyTags(root());
 }
 
 async function load() {
@@ -124,8 +126,7 @@ function editorHtml(s) {
 
     <div class="form-section"><h3>Price &amp; quantity</h3>
       <div class="field-row"><div class="field"><label class="label req" for="f-price">Price customers pay</label>
-        <div class="input-affix"><span class="affix">₹</span><input class="input" id="f-price" name="price" inputmode="decimal" value="${s ? plain(s.price_paise).replace(/\.00$/, '') : ''}" placeholder="99"></div>
-        <p class="field-hint" id="trial-hint" role="status" hidden>At ${meta.trial_pack.price} this service gets the red ${meta.trial_pack.label} badge on the store automatically.</p></div>
+        <div class="input-affix"><span class="affix">₹</span><input class="input" id="f-price" name="price" inputmode="decimal" value="${s ? plain(s.price_paise).replace(/\.00$/, '') : ''}" placeholder="99"></div></div>
         <div class="field"><label class="label req" for="f-quantity">Units delivered per purchase</label>
         <input class="input" id="f-quantity" name="quantity" inputmode="numeric" value="${s?.quantity ?? ''}" placeholder="100000"></div></div>
       <div class="field-row"><div class="field"><label class="label" for="f-min_quantity">Minimum quantity</label><input class="input" id="f-min_quantity" name="min_quantity" inputmode="numeric" value="${s?.min_quantity ?? 1}"></div>
@@ -158,11 +159,11 @@ function editorHtml(s) {
       <p class="field-hint">Estimate only — the real figures are calculated on the server from each paid order. Ad cost uses ${esc(meta.est_ad_cost_basis)}.</p></div>
 
     <div class="form-section"><h3>Appearance</h3>
-      <div class="field-row"><div class="field"><label class="label" for="f-badge">Badge text</label>
-        <input class="input" id="f-badge" name="badge" maxlength="40" value="${s?.badge || ''}" placeholder="e.g. BEST SELLER" aria-describedby="badge-hint">
-        <p class="field-hint" id="badge-hint">${meta.trial_pack.label} is added automatically to any service priced at exactly ${meta.trial_pack.price} — don't type it here. Use this field for any other label.</p></div>
-        <div class="field"><label class="label" for="f-badge_color">Badge colour</label>
-        <select class="select" id="f-badge_color" name="badge_color">${meta.badge_colors.map((c) => html`<option value="${c}" ${(s?.badge_color || 'red') === c ? 'selected' : ''}>${c[0].toUpperCase() + c.slice(1)}</option>`)}</select></div></div>
+      <div class="field"><label class="label" for="f-tag_id">Tag (badge on the card)</label>
+        <select class="select" id="f-tag_id" name="tag_id" aria-describedby="tag-hint">${tagOptions(s?.tag_id ?? null)}</select>
+        <p class="field-hint" id="tag-hint" role="status"></p></div>
+      <div class="field"><span class="label">Preview on the service card</span><div id="tag-preview"></div>
+        <p class="field-hint">The real card, as customers see it. Manage the tags themselves in <a class="link" href="${url('/admin/tags')}">Tags &amp; Badges</a>.</p></div>
       <div class="field-row"><div class="field"><label class="label" for="f-sort_order">Sort order</label>
         <input class="input" id="f-sort_order" name="sort_order" inputmode="numeric" value="${s?.sort_order ?? 0}"><p class="field-hint">Lower numbers appear first.</p></div>
         <div class="field"><div class="switch-row"><div><b>Premium styling</b><small>Gold highlight on the card</small></div><label class="switch"><input type="checkbox" name="is_premium" ${s?.is_premium ? 'checked' : ''} aria-label="Premium styling"><span></span></label></div>
@@ -180,11 +181,36 @@ function footHtml(s) {
     <button type="button" class="btn btn-primary btn-shine" id="svc-save">${icon('check')}<span>${s ? 'Save changes' : 'Create service'}</span></button>`;
 }
 
+/** The badge dropdown: "No tag", every enabled tag, the tag already assigned (even if disabled), and TRIAL PACK as an explanation, not a choice. */
+function tagOptions(current) {
+  const auto = meta.tags.find((t) => t.is_auto);
+  const items = meta.tags.filter((t) => !t.is_auto && (t.is_active || t.id === current));
+  return html`<option value="">No tag</option>${items.map((t) => html`<option value="${t.id}" ${t.id === current ? 'selected' : ''}>${t.name}${t.is_active ? '' : ' (disabled)'}</option>`)}${auto ? html`<option value="" disabled>${auto.name} — automatic at ${meta.tag_rule.price}</option>` : ''}`;
+}
+
+/** The live card preview and the sentence under the dropdown: what the storefront will show for this price and tag. */
+function paintTagPreview() {
+  const box = $('#tag-preview');
+  if (!box) return;
+  const price = parseRupees(val('price'));
+  const assigned = Number(val('tag_id')) || null;
+  const eff = effectiveTag(price ?? -1, assigned, meta);
+  const sel = assigned ? meta.tags.find((t) => t.id === assigned) : null;
+  const plat = meta.platforms.find((p) => p.id === Number(val('platform_id')));
+  box.innerHTML = String(cardPreview({ title: val('title'), subtitle: val('subtitle'), pricePaise: price ?? 0, tag: eff, platform: plat?.slug || 'instagram', type: val('type') || 'followers' }));
+  applyTags(box);
+  const hint = $('#tag-hint');
+  if (eff?.auto) hint.textContent = `${eff.name} is shown automatically while the price is ${meta.tag_rule.price}${sel ? `, ahead of ${sel.name}, which comes back when the price changes.` : '.'}`;
+  else if (sel && !sel.is_active) hint.textContent = `${sel.name} is disabled, so no badge is shown. Enable it in Tags & Badges to show it.`;
+  else if (sel) hint.textContent = `${sel.name} is shown at the top of the card.`;
+  else hint.textContent = `No badge. Services priced at exactly ${meta.tag_rule.price} get the automatic ${meta.tags.find((t) => t.is_auto)?.name ?? 'TRIAL PACK'} badge.`;
+}
+
 function updatePreview() {
+  paintTagPreview();
   const box = $('#profit-preview');
   if (!box) return;
   const price = parseRupees(val('price'));
-  $('#trial-hint').hidden = price !== meta.trial_pack.price_paise;
   const mode = val('mode');
   const cost = mode === 'AUTO' ? parseRupees(val('smm_cost') || '0') : 0;
   if (price === null || (mode === 'AUTO' && cost === null)) { box.className = 'profit-box'; box.innerHTML = '<span class="text-sm text-muted">Enter a valid price' + (mode === 'AUTO' ? ' and provider cost' : '') + ' to see the estimated profit.</span>'; return; }
@@ -294,7 +320,7 @@ function collect() {
   const body = {
     platform_id: Number(val('platform_id')), type: val('type'), target_kind: val('target_kind'), title: val('title'), subtitle: val('subtitle'), description: val('description'),
     code: val('code'), price: val('price'), quantity: val('quantity'), min_quantity: val('min_quantity'), max_quantity: val('max_quantity'), mode: val('mode'),
-    smm_provider_id: val('smm_provider_id') || null, smm_service_id: val('smm_service_id'), smm_cost: val('smm_cost') || '0', badge: val('badge'), badge_color: val('badge_color'),
+    smm_provider_id: val('smm_provider_id') || null, smm_service_id: val('smm_service_id'), smm_cost: val('smm_cost') || '0', tag_id: val('tag_id') ? Number(val('tag_id')) : null,
     sort_order: val('sort_order') || '0', is_premium: checked('is_premium'), status: checked('active') ? 'active' : 'inactive',
   };
   if (body.mode !== 'AUTO') { body.smm_cost = val('smm_cost') || '0'; }

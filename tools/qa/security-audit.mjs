@@ -74,7 +74,7 @@ const ROUTES = execFileSync('php', ['tools/qa/dump-routes.php'], { cwd: ROOT, en
 
 // ═════════════════════════ 1. Can a normal user access Admin? ═════════════════════════
 await t.step('Q1 · can a normal user access Admin? NO — every admin page redirects to sign-in, path tricks and forged cookies change nothing', async () => {
-  const pages = ['', 'dashboard', 'orders', 'payments', 'services', 'website', 'advertising', 'gateway', 'smm', 'security', 'audit', 'system', 'doesnotexist'];
+  const pages = ['', 'dashboard', 'orders', 'payments', 'services', 'tags', 'website', 'advertising', 'gateway', 'smm', 'security', 'audit', 'system', 'doesnotexist'];
   for (const p of pages) {
     let r = await req('GET', '/admin' + (p ? '/' + p : ''));
     if (r.status === 302 && /\/admin\/dashboard$/.test(r.headers.get('location') || '')) r = await req('GET', '/admin/dashboard');   // "/admin" itself just forwards to the dashboard
@@ -472,7 +472,7 @@ await t.step('admin API (signed in): CSRF + origin enforced, secrets never retur
   const A = (method, path, json, headers = {}) => req(method, path, { json, cookie, headers: { 'x-csrf-token': token, 'idempotency-key': randomUUID(), ...headers } });
   // every admin GET: no secrets in the response
   for (const r of ROUTES.filter((x) => x.mw.includes('adminApi') && x.method === 'GET')) { const res = await A('GET', r.path); t.ok(res.status < 500, `${r.path} → ${res.status}`); noSecrets(res.text, `admin GET ${r.path}`, { paths: true }); }
-  for (const p of ['dashboard', 'orders', 'payments', 'services', 'website', 'advertising', 'gateway', 'smm', 'security', 'audit', 'system']) { const res = await req('GET', '/admin/' + p, { cookie }); t.eq(res.status, 200, p); noSecrets(res.text, `admin page ${p}`, { paths: true }); }
+  for (const p of ['dashboard', 'orders', 'payments', 'services', 'tags', 'website', 'advertising', 'gateway', 'smm', 'security', 'audit', 'system']) { const res = await req('GET', '/admin/' + p, { cookie }); t.eq(res.status, 200, p); noSecrets(res.text, `admin page ${p}`, { paths: true }); }
   const gw = await A('GET', '/admin/api/gateway'); t.ok(/\*|•|hint|masked|configured/i.test(gw.text), 'secrets are shown masked/as configured-only: ' + gw.text.slice(0, 160));
   // CSRF
   t.eq((await req('POST', '/admin/api/orders/approve-all', { json: {}, cookie, headers: { 'idempotency-key': randomUUID() } })).status, 403, 'missing CSRF token');

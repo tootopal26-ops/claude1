@@ -8,6 +8,7 @@ const pages = {
   orders: () => import('./admin/orders.js'),
   payments: () => import('./admin/payments.js'),
   services: () => import('./admin/services.js'),
+  tags: () => import('./admin/tags.js'),
   website: () => import('./admin/website.js'),
   gateway: () => import('./admin/gateway.js'),
   smm: () => import('./admin/smm.js'),

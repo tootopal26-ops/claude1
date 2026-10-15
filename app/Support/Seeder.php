@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Core\Db;
 use App\Services\Password;
+use App\Services\Tags;
 
 /**
  * Idempotent data seeding: safe to run on every deploy. It only INSERTS what is
@@ -13,7 +14,7 @@ use App\Services\Password;
  */
 final class Seeder
 {
-    /** @return array{platforms:int,services:int} rows created */
+    /** @return array{platforms:int,services:int} rows created (the predefined service tags are made sure of first) */
     public static function catalog(): array
     {
         $cat = require SMB_ROOT . '/database/seeds/catalog.php';
@@ -31,11 +32,17 @@ final class Seeder
             $platformIds[$r['slug']] = (int) $r['id'];
         }
 
-        foreach ($cat['services'] as [$code, $platform, $type, $kind, $title, $subtitle, $price, $qty, $badge, $badgeColor, $premium, $sort]) {
+        Tags::seedPredefined();
+        $tagIds = [];
+        foreach (Db::all('SELECT id, code FROM service_tags WHERE code IS NOT NULL') as $r) {
+            $tagIds[$r['code']] = (int) $r['id'];
+        }
+
+        foreach ($cat['services'] as [$code, $platform, $type, $kind, $title, $subtitle, $price, $qty, $tag, $premium, $sort]) {
             $n = Db::exec(
                 'INSERT IGNORE INTO services (code, platform_id, type, target_kind, title, subtitle, price_paise, quantity, min_quantity, max_quantity, '
-                . "mode, smm_cost_paise, badge, badge_color, is_premium, status, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'MANUAL', 0, ?, ?, ?, 'active', ?, ?, ?)",
-                [$code, $platformIds[$platform], $type, $kind, $title, $subtitle, $price, $qty, $qty, $qty, $badge, $badgeColor, $premium, $sort, $now, $now]
+                . "mode, smm_cost_paise, tag_id, is_premium, status, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'MANUAL', 0, ?, ?, 'active', ?, ?, ?)",
+                [$code, $platformIds[$platform], $type, $kind, $title, $subtitle, $price, $qty, $qty, $qty, $tag !== null ? ($tagIds[$tag] ?? null) : null, $premium, $sort, $now, $now]
             );
             if ($n === 1) {
                 $created['services']++;

@@ -41,6 +41,8 @@
     -webkit-tap-highlight-color: transparent;
   }
   .adm-link .icon { color: var(--color-muted); transition: color 0.2s; }
+  .adm-link.adm-sub { margin-left: 1.1rem; min-height: 2.3rem; font-size: 0.8125rem; }
+  .adm-link.adm-sub .icon { width: 1.05rem; height: 1.05rem; }
   .adm-link:hover { background: rgb(15 16 32 / 0.05); color: var(--color-ink); }
   .adm-link:hover .icon { color: var(--color-ink); }
   .adm-link.is-active { background: linear-gradient(100deg, rgb(255 45 135 / 0.12), rgb(255 59 59 / 0.06)); color: var(--color-ink); box-shadow: inset 0 0 0 1px rgb(255 45 135 / 0.16); }
@@ -490,4 +492,13 @@
   .install-foot { font-size: 0.75rem; color: var(--color-muted); text-align: center; }
   #install-alert { margin-bottom: 1rem; }
   #install-alert[hidden], #env-help[hidden] { display: none; }
+
+  /* ───────────── Tags & Badges ───────────── */
+  .tag-swatch { display: inline-flex; align-items: center; gap: 0.45rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8125rem; color: var(--color-ink-soft); }
+  .tag-swatch > i { flex: none; width: 1.15rem; height: 1.15rem; border-radius: 0.35rem; background: var(--sw, #d4d6e2); box-shadow: inset 0 0 0 1px rgb(15 16 32 / 0.18); }
+  /* a miniature of the real storefront card: the same .svc markup, only frozen (no hover lift, no clicks) and as wide as a desktop card */
+  .tagprev { padding: 1.3rem 0.35rem 0.4rem; pointer-events: none; user-select: none; }
+  .tagprev .svc { max-width: 23.5rem; box-shadow: var(--shadow-sm), inset 0 1px 0 rgb(255 255 255 / 0.9); }
+  .tagprev .svc:hover { transform: none; }
+  .tagprev-pill { padding: 0.35rem 0 0.9rem; }
 }

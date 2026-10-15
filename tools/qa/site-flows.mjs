@@ -172,12 +172,11 @@ for (const [slug, spec] of Object.entries(CATALOG)) {
   });
 }
 
-await t.step('TRIAL PACK badge is red; the 4,000-hour watch-time card is visually distinct (premium dark card)', async () => {
+await t.step('TRIAL PACK badge is exactly #DC2626 with white text; the 4,000-hour watch-time card is visually distinct (premium dark card)', async () => {
   await page.click('[data-platform-tab="instagram"]');
-  // the badge is a red GRADIENT now: every colour stop must be red (the full badge rules live in site-badges.mjs)
-  const bg = await page.$eval(`[data-id="${serviceId('ig-followers-50')}"] .svc-badge`, (e) => getComputedStyle(e).backgroundImage);
-  const stops = [...bg.matchAll(/rgb\((\d+), (\d+), (\d+)\)/g)].map((m) => m.slice(1, 4).map(Number));
-  t.ok(stops.length >= 2 && stops.every(([r, g, b]) => r > 150 && g < 70 && b < 80), 'badge gradient ' + bg);
+  // the colours come from the tag (generated /tags.css); the full badge rules live in site-badges.mjs and admin-tags.mjs
+  const badge = await page.$eval(`[data-id="${serviceId('ig-followers-50')}"] .svc-badge`, (e) => { const cs = getComputedStyle(e); return { bg: cs.backgroundColor, fg: cs.color }; });
+  t.eq(badge, { bg: 'rgb(220, 38, 38)', fg: 'rgb(255, 255, 255)' }, 'TRIAL PACK colours');
   await page.click('[data-platform-tab="youtube"]');
   const id = serviceId('yt-watch-4000h');
   const prem = await page.$eval(`[data-id="${id}"]`, (e) => { const cs = getComputedStyle(e); return { cls: e.className, bg: cs.backgroundImage + cs.backgroundColor, wide: e.getBoundingClientRect().width, title: getComputedStyle(e.querySelector('.svc-title')).color }; });

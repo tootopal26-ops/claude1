@@ -20,6 +20,7 @@ return static function (Router $r): void {
     // ── storefront ──
     $r->get('/', [SiteController::class, 'home']);
     $r->get('/theme.css', [SiteController::class, 'themeCss']);
+    $r->get('/tags.css', [SiteController::class, 'tagsCss']);
     $r->get('/manifest.webmanifest', [SiteController::class, 'manifest']);
     $r->get('/robots.txt', [SiteController::class, 'robots']);
     $r->get('/sitemap.xml', [SiteController::class, 'sitemap']);

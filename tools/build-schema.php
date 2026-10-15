@@ -4,7 +4,8 @@
  * tables with phpMyAdmin (cPanel → phpMyAdmin → Import) instead of letting the installer create them.
  * The file also records the migrations as applied, so the installer / bin/migrate.php will not run them twice.
  *
- *   php tools/build-schema.php
+ *   php tools/build-schema.php            write database/schema.sql
+ *   php tools/build-schema.php --check    write nothing; exit 1 if database/schema.sql is not the current build (a test runs this)
  */
 declare(strict_types=1);
 
@@ -24,6 +25,14 @@ $out .= "SET FOREIGN_KEY_CHECKS = 1;\n\n"
     . "CREATE TABLE IF NOT EXISTS `schema_migrations` (`version` VARCHAR(64) NOT NULL, `applied_at` DATETIME NOT NULL, PRIMARY KEY (`version`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;\n";
 foreach ($versions as $v) {
     $out .= "INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('{$v}', UTC_TIMESTAMP());\n";
+}
+if (in_array('--check', $argv ?? [], true)) {
+    if ((string) @file_get_contents($root . '/database/schema.sql') === $out) {
+        echo "database/schema.sql is up to date\n";
+        exit(0);
+    }
+    fwrite(STDERR, "database/schema.sql is out of date — run: php tools/build-schema.php\n");
+    exit(1);
 }
 file_put_contents($root . '/database/schema.sql', $out);
 echo 'database/schema.sql written (' . count($versions) . ' migration(s), ' . strlen($out) . " bytes)\n";

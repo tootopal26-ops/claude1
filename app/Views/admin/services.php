@@ -4,6 +4,7 @@
     'sub' => 'Prices, delivery mode and provider costs. Customers only ever see the public price — profit is calculated from the cost you enter here.',
     'actions' => '<button type="button" class="btn btn-primary btn-shine" id="add-service">' . icon('plus') . '<span>Add service</span></button>',
 ]) ?>
+<?= View::partial('admin-subnav', ['active' => 'services']) ?>
 <div id="services-root" aria-live="polite" aria-busy="true"><div class="skeleton h-72"></div></div>
 
 <dialog class="dlg dlg-drawer dlg-wide" id="service-drawer" aria-labelledby="sd-title">

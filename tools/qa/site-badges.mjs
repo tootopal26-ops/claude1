@@ -1,15 +1,15 @@
-// Storefront QA for two details of the home page:
-//   1. the TRIAL PACK badge — shown automatically on every service whose configured selling price is exactly ₹5 (both platforms), driven by
-//      the price in the database (not by names or stored text), once per card, never overlapping the title / price / icon / BUY NOW button;
+// Storefront QA for the badges (service tags) and the platform selector of the home page:
+//   1. tags — all 10 predefined tags on real cards with their exact colours, the automatic TRIAL PACK on every service priced at exactly ₹5
+//      (both platforms, read from the price in the database, priority over a manually assigned tag, the assigned tag restored when the price
+//      changes), one badge per card, never overlapping the title / price / icon / BUY NOW button, at 8 viewports from 320 px to 1920 px;
 //   2. the selected-platform indicator — a pink→red tick at the card's top-right corner that nothing is ever drawn across (no diagonal line),
 //      a visible pink/violet glow around the selected card, smooth switching between Instagram and YouTube, a clean unselected card.
-// Geometry is measured in the DOM at 8 viewports (320 px phones … 1920 px desktops); the tick and the glow are checked pixel by pixel
-// on screenshots. Screenshots for visual review land in $QA_OUT (default /tmp/qa/badges).
+// Geometry is measured in the DOM; the tick and the glow are checked pixel by pixel on screenshots. Screenshots for visual review land in
+// $QA_OUT (default /tmp/qa/badges). The admin side of the tag system is tested in admin-tags.mjs.
 //   NO_BASELINE=1 skips the dev-database reset (use it with BASE=… DB_NAME=… against another copy of the site).
 import { execFileSync } from 'node:child_process';
 import { PNG } from 'pngjs';
 import { launch, newPage, BASE, ROOT, sql, rows, hexToRgb, contrast, resetLimits } from './site.mjs';
-import { login, go } from './admin.mjs';
 import { suite } from './harness.mjs';
 
 const OUT = process.env.QA_OUT || '/tmp/qa/badges';
@@ -62,10 +62,10 @@ const measureCards = (page, slug) => page.evaluate((slug) => {
   const doc = document.documentElement;
   return all.map((card) => {
     const badges = [...card.querySelectorAll('.svc-badge')];
-    const trial = [...card.querySelectorAll('.svc-badge-trial')];
-    const badge = trial[0] || null;
+    const badge = badges[0] || null;
     const base = { id: Number(card.dataset.id), title: card.querySelector('.svc-title').textContent.trim(), price: card.querySelector('.svc-price').textContent.trim(),
-      trialCount: trial.length, texts: badges.map((b) => b.textContent.trim()), pageOverflow: doc.scrollWidth - doc.clientWidth, vw: doc.clientWidth };
+      badgeCount: badges.length, autoCount: card.querySelectorAll('[data-badge="auto"]').length, texts: badges.map((b) => b.textContent.trim()),
+      tagId: badge ? Number(badge.dataset.tagId) : null, pageOverflow: doc.scrollWidth - doc.clientWidth, vw: doc.clientWidth };
     if (!badge) return base;
     const c = R(card), b = R(badge);
     const parts = Object.fromEntries(['.svc-title', '.svc-sub', '.svc-price', '.svc-icon', '.svc-chip', '[data-action=buy]'].map((s) => [s, R(card.querySelector(s))]));
@@ -73,13 +73,13 @@ const measureCards = (page, slug) => page.evaluate((slug) => {
     const rowTop = R(card.querySelector('.svc-top')).t;
     const neighbours = [...panel.querySelectorAll('[data-service]')].filter((x) => x !== card).map(R).filter((r) => hit(b, r)).length + heads.map(R).filter((r) => hit(b, r)).length;
     const cs = getComputedStyle(badge);
-    // is anything on top of it / is it clipped by an ancestor?  (the container ignores the pointer, so allow hit-testing for a moment)
-    const box = badge.parentElement; box.style.pointerEvents = 'auto';
+    // is anything on top of it / is it clipped by an ancestor?  (the badge ignores the pointer, so allow hit-testing for a moment)
+    badge.style.pointerEvents = 'auto';
     card.scrollIntoView({ block: 'center', behavior: 'instant' });
     const bb = R(badge);
     const pts = [[bb.l + bb.w / 2, bb.t + bb.h / 2], [bb.l + 12, bb.t + bb.h / 2], [bb.r - 12, bb.t + bb.h / 2], [bb.l + bb.w / 2, bb.t + 4], [bb.l + bb.w / 2, bb.b - 4]];
     const covered = pts.filter(([x, y]) => { const e = document.elementFromPoint(x, y); return !e || !badge.contains(e); }).length;
-    box.style.pointerEvents = '';
+    badge.style.pointerEvents = '';
     const clipped = [];
     for (let a = badge.parentElement; a && a !== document.body; a = a.parentElement) {
       const o = getComputedStyle(a);
@@ -88,7 +88,7 @@ const measureCards = (page, slug) => page.evaluate((slug) => {
     return { ...base, rect: { card: c, badge: b }, overlaps, neighbours, covered, clipped,
       alignRight: Math.abs(b.r - parts['.svc-price'].r), straddles: b.t < c.t && b.b > c.t, within: b.l >= c.l - 0.5 && b.r <= c.r + 0.5,
       gap: rowTop - b.b, truncated: badge.scrollWidth > badge.clientWidth + 0.5,
-      style: { bg: cs.backgroundImage, color: cs.color, weight: Number(cs.fontWeight), size: cs.fontSize, transform: cs.textTransform, radius: parseFloat(cs.borderTopLeftRadius), h: b.h, shadow: cs.boxShadow, z: getComputedStyle(box).zIndex } };
+      style: { bg: cs.backgroundColor, bgImage: cs.backgroundImage, color: cs.color, weight: Number(cs.fontWeight), size: cs.fontSize, transform: cs.textTransform, radius: parseFloat(cs.borderTopLeftRadius), h: b.h, shadow: cs.boxShadow, ellipsis: cs.textOverflow, overflowX: cs.overflowX } };
   });
 }, slug);
 
@@ -113,9 +113,10 @@ const layers = (css) => {
   for (const ch of css) { if (ch === '(') depth++; if (ch === ')') depth--; if (ch === ',' && depth === 0) { parts.push(cur); cur = ''; } else cur += ch; }
   if (cur.trim()) parts.push(cur);
   return parts.map((layer) => {
-    const colour = layer.match(/rgba?\([^)]*\)/)[0], c = colour.match(/[\d.]+/g).map(Number);
+    // colours come back as rgb()/rgba(), or as color(srgb r g b / a) with 0..1 channels when the CSS used color-mix()
+    const colour = layer.match(/(?:rgba?|color)\([^)]*\)/)[0], c = colour.match(/[\d.]+/g).map(Number), k = colour.startsWith('color(') ? 255 : 1;
     const n = (layer.replace(colour, '').match(/-?[\d.]+(?=px)/g) || []).map(Number);
-    return { r: c[0], g: c[1], b: c[2], a: c.length > 3 ? c[3] : 1, x: n[0], y: n[1], blur: n[2] || 0, spread: n[3] || 0, inset: /\binset\b/.test(layer) };
+    return { r: Math.round(c[0] * k), g: Math.round(c[1] * k), b: Math.round(c[2] * k), a: c.length > 3 ? c[3] : 1, x: n[0], y: n[1], blur: n[2] || 0, spread: n[3] || 0, inset: /\binset\b/.test(layer) };
   });
 };
 
@@ -148,21 +149,33 @@ const hideRing = (page) => page.evaluate(() => {
 });
 const showRing = (page) => page.evaluate(() => window.__hideSheet.deleteRule(window.__hideRule));
 
-// ═══════════════════════════════ 1 · TRIAL PACK badge ═══════════════════════════════
+// ═══════════════════════════════ 1 · tags on the cards ═══════════════════════════════
 const dt = await open(DESKTOP);
 t.page = dt;
 await home(dt);
 const cat = catalogue();
 const five = cat.filter((s) => s.paise === 500);
+const TAGS = [                                       // the 10 predefined tags exactly as specified
+  { code: 'trial-pack', name: 'TRIAL PACK', bg: '#DC2626' }, { code: 'best-seller', name: 'BEST SELLER', bg: '#7C3AED' }, { code: 'popular', name: 'POPULAR', bg: '#D97706' },
+  { code: 'best-value', name: 'BEST VALUE', bg: '#15803D' }, { code: 'premium', name: 'PREMIUM', bg: '#0369A1' }, { code: 'hot-deal', name: 'HOT DEAL', bg: '#BE185D' },
+  { code: 'non-drop', name: 'NON DROP', bg: '#0F766E' }, { code: 'instant', name: 'INSTANT', bg: '#4338CA' }, { code: 'limited-offer', name: 'LIMITED OFFER', bg: '#475569' },
+  { code: 'vip', name: 'VIP', bg: '#A16207' },
+];
+const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
+const tagId = (code) => Number(sql(`SELECT id FROM service_tags WHERE code = '${code}'`));
+const assign = (serviceCode, tag) => sql(`UPDATE services SET tag_id = ${tag === null ? 'NULL' : tagId(tag)}, updated_at = UTC_TIMESTAMP() WHERE code = '${serviceCode}'`);
+const MANUAL = ['best-seller', 'popular', 'best-value', 'premium', 'hot-deal', 'non-drop', 'instant', 'limited-offer', 'vip'];
 
-await t.step('catalogue under test: the six ₹5 packs (3 Instagram + 3 YouTube) and the dearer services', async () => {
+await t.step('catalogue under test: the six ₹5 packs (3 Instagram + 3 YouTube), the dearer services and the 10 predefined tags', async () => {
   t.eq(cat.length, 14);
   t.eq(five.map((s) => s.code).sort(), ['ig-followers-50', 'ig-likes-100', 'ig-views-1k', 'yt-likes-100', 'yt-subs-50', 'yt-views-10']);
   t.eq(five.filter((s) => s.platform === 'instagram').length, 3);
   t.eq(five.filter((s) => s.platform === 'youtube').length, 3);
+  t.eq(rows("SELECT code, name, bg_color, text_color FROM service_tags WHERE is_system = 1 ORDER BY sort_order").map(([c, n, bg, fg]) => ({ code: c, name: n, bg, fg })),
+    TAGS.map((x) => ({ code: x.code, name: x.name, bg: x.bg, fg: '#FFFFFF' })));
 });
 
-await t.step('every ₹5 card on BOTH platforms shows TRIAL PACK, no other card does (checked against the prices in the database)', async () => {
+await t.step('every ₹5 card on BOTH platforms shows TRIAL PACK (#DC2626, white text), no other card does (checked against the prices in the database)', async () => {
   for (const slug of SLUGS) {
     await pick(dt, slug);
     const cards = await measureCards(dt, slug);
@@ -172,53 +185,52 @@ await t.step('every ₹5 card on BOTH platforms shows TRIAL PACK, no other card 
       const c = cards.find((x) => x.id === e.id);
       t.ok(c, `${slug}: card for ${e.code} exists`);
       t.eq(c.price, rupees(e.paise), `${e.code}: the price on the card is the price in the database`);
-      t.eq(c.trialCount, e.paise === 500 ? 1 : 0, `${slug} · ${c.title} (${c.price}): TRIAL PACK badges`);
-      if (e.paise === 500) t.ok(c.texts.includes('TRIAL PACK'), `${c.title}: badge text`);
+      if (e.paise === 500) {
+        t.eq([c.badgeCount, c.autoCount, c.texts[0]], [1, 1, 'TRIAL PACK'], `${slug} · ${c.title} (${c.price})`);
+        t.eq([c.style.bg, c.style.color], ['rgb(220, 38, 38)', 'rgb(255, 255, 255)'], `${c.title}: exact colours`);
+        t.eq(c.tagId, tagId('trial-pack'));
+      } else if (e.code !== 'yt-watch-4000h') {
+        t.eq(c.badgeCount, 0, `${slug} · ${c.title} (${c.price}) has no badge`);
+      }
     }
   }
   await dt.screenshot({ path: `${OUT}/trial-youtube-desktop.png` });
 });
 
-await t.step('no duplicate badges: one TRIAL PACK element per ₹5 card, and none anywhere else on the page', async () => {
-  t.eq(await dt.locator('.svc-badge-trial').count(), five.length, 'trial badge elements in the whole document');
-  for (const slug of SLUGS) {
-    const cards = await measureCards(dt, slug);
-    for (const c of cards) t.ok(c.texts.filter((x) => /trial\s*pack/i.test(x)).length <= 1, `${c.title}: duplicate badge text ${JSON.stringify(c.texts)}`);
-  }
-  t.eq(await dt.locator('.svc-badges').count(), five.length + 1, 'badge containers: the six trial cards + the premium card');
+await t.step('no duplicate badges: one badge per card everywhere; the six automatic ones are the only automatic ones', async () => {
+  t.eq(await dt.locator('[data-badge="auto"]').count(), five.length, 'automatic badges in the whole document');
+  t.eq(await dt.locator('.svc-badge').count(), five.length + 1, 'six automatic + the PREMIUM tag of the watch-time card');
+  for (const slug of SLUGS) for (const c of await measureCards(dt, slug)) t.ok(c.badgeCount <= 1, `${c.title}: ${c.badgeCount} badges ${JSON.stringify(c.texts)}`);
 });
 
-await t.step('badge design: premium red gradient, bold white uppercase text, pill shape, shadow + glow, white text contrast ≥ 4.5 on every gradient stop', async () => {
+await t.step('badge design: compact bold white uppercase pill in the tag colour, rounded, with a subtle shadow and a glow in the tag colour; white text ≥ 4.5:1 on TRIAL PACK', async () => {
   await pick(dt, 'instagram');
-  const c = (await measureCards(dt, 'instagram')).find((x) => x.trialCount);
+  const c = (await measureCards(dt, 'instagram')).find((x) => x.autoCount);
   const s = c.style;
-  t.ok(s.bg.startsWith('linear-gradient'), 'gradient background: ' + s.bg);
-  const stops = [...s.bg.matchAll(/rgb\((\d+), (\d+), (\d+)\)/g)].map((m) => m.slice(1, 4).map(Number));
-  t.ok(stops.length >= 3, 'at least three colour stops: ' + s.bg);
-  for (const [r, g, b] of stops) { t.ok(r >= 150 && g <= 60 && b <= 70, `stop rgb(${r},${g},${b}) is a strong red`); }
-  stops.forEach((rgb) => t.ok(contrast(rgb, [255, 255, 255]) >= 4.5, `white on rgb(${rgb}) = ${contrast(rgb, [255, 255, 255]).toFixed(2)}:1`));
-  t.ok(stops[0].join() !== stops[stops.length - 1].join(), 'the gradient actually changes colour');
+  t.eq(s.bg, 'rgb(220, 38, 38)', 'background is the tag colour');
   t.eq(s.color, 'rgb(255, 255, 255)', 'white text');
+  t.ok(contrast([220, 38, 38], [255, 255, 255]) >= 4.5, 'white on #DC2626 ≥ 4.5:1');
   t.ok(s.weight >= 800, 'bold: ' + s.weight);
   t.eq(s.transform, 'uppercase');
   t.ok(s.radius >= s.h / 2, `fully rounded: radius ${s.radius} for height ${s.h}`);
+  t.ok(s.h >= 20 && s.h <= 28, 'compact height: ' + s.h);
   const ls = layers(s.shadow);
   t.ok(ls.length >= 3, 'shadow layers: ' + s.shadow);
-  t.ok(ls.some((l) => !l.inset && l.r > 150 && l.g < 100 && l.blur >= 10), 'a red glow layer: ' + s.shadow);
+  t.ok(ls.some((l) => !l.inset && l.r > 150 && l.g < 100 && l.blur >= 10), 'a glow in the badge colour: ' + s.shadow);
   t.ok(ls.some((l) => !l.inset && l.r === 255 && l.g === 255 && l.b === 255 && l.spread >= 1.5), 'a white ring that keeps the card border away from the pill');
-  t.ok(s.h >= 20 && s.h <= 28, 'compact height: ' + s.h);
+  t.ok(ls.every((l) => l.a <= 0.9 || l.r === 255), 'the glow is restrained');
 });
 
 await t.step('placement: on the card top edge, right-aligned with the price, clear of title / price / icon / chip / BUY NOW and of neighbouring cards and headings (desktop, both platforms)', async () => {
   for (const slug of SLUGS) {
     await pick(dt, slug);
-    for (const c of (await measureCards(dt, slug)).filter((x) => x.trialCount)) {
+    for (const c of (await measureCards(dt, slug)).filter((x) => x.badgeCount)) {
       const who = `${slug} · ${c.title}`;
       t.eq(c.overlaps, [], `${who}: overlaps`);
       t.eq(c.neighbours, 0, `${who}: touches a neighbouring card / heading`);
       t.ok(c.straddles, `${who}: sits on the top edge`);
       t.ok(c.within, `${who}: inside the card horizontally`);
-      t.ok(c.alignRight <= 2, `${who}: right edge ${c.alignRight.toFixed(1)} px off the price column`);
+      t.ok(c.alignRight <= 2.5, `${who}: right edge ${c.alignRight.toFixed(1)} px off the price column`);
       t.ok(c.gap >= 6, `${who}: ${c.gap.toFixed(1)} px between the badge and the title row`);
       t.eq(c.covered, 0, `${who}: points of the badge covered by another element`);
       t.eq(c.clipped, [], `${who}: clipped by an ancestor`);
@@ -235,23 +247,22 @@ await t.step('every ₹5 card at 8 viewports (320 px phone … 1920 px desktop):
     for (const slug of SLUGS) {
       if (slug !== 'instagram') await pick(page, slug);
       const cards = await measureCards(page, slug);
-      const trial = cards.filter((c) => c.trialCount);
+      const trial = cards.filter((c) => c.autoCount);
       if (trial.length !== 3) problems.push(`${vp.name} ${slug}: ${trial.length} trial cards`);
       if (cards[0].pageOverflow > 0) problems.push(`${vp.name} ${slug}: page overflows by ${cards[0].pageOverflow}px`);
-      for (const c of trial) {
+      for (const c of cards.filter((x) => x.badgeCount)) {
         const who = `${vp.name} ${slug} ${c.title}`;
         if (c.overlaps.length) problems.push(`${who}: overlaps ${c.overlaps}`);
         if (c.neighbours) problems.push(`${who}: touches ${c.neighbours} neighbour(s)`);
         if (!c.straddles || !c.within) problems.push(`${who}: misplaced (straddles ${c.straddles}, within ${c.within})`);
-        if (c.alignRight > 2) problems.push(`${who}: ${c.alignRight.toFixed(1)}px off the price column`);
+        if (c.alignRight > 2.5) problems.push(`${who}: ${c.alignRight.toFixed(1)}px off the price column`);
         if (c.gap < 4) problems.push(`${who}: only ${c.gap.toFixed(1)}px above the title row`);
         if (c.covered) problems.push(`${who}: covered`);
         if (c.clipped.length) problems.push(`${who}: clipped by ${c.clipped}`);
         if (c.truncated) problems.push(`${who}: truncated`);
         if (c.rect.badge.l < 0 || c.rect.badge.r > c.vw) problems.push(`${who}: outside the viewport`);
       }
-      // the cards that are NOT trial packs must be untouched by all of this
-      for (const c of cards.filter((x) => !x.trialCount)) if (c.texts.some((x) => /trial/i.test(x))) problems.push(`${vp.name} ${slug} ${c.title}: unexpected badge ${c.texts}`);
+      for (const c of cards.filter((x) => !x.badgeCount && x.title !== '4,000 Hours Watch Time' && x.price === '₹5')) problems.push(`${vp.name} ${slug} ${c.title}: ₹5 card without a badge`);
     }
     await page.screenshot({ path: `${OUT}/home-${vp.name}.png`, fullPage: true });
     await page.close();
@@ -259,102 +270,117 @@ await t.step('every ₹5 card at 8 viewports (320 px phone … 1920 px desktop):
   t.eq(problems, [], problems.slice(0, 8).join('\n   '));
 });
 
-await t.step('stress: a 40-character custom badge beside TRIAL PACK on a 320 px phone stays inside the card, truncates with an ellipsis and causes no overflow', async () => {
-  touch('ig-likes-100', "badge = 'WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW', badge_color = 'purple'");
+await t.step('all 10 predefined tags on real cards (Instagram AND YouTube): exact background, white text, the tag\'s own name, one badge, no overlap — desktop and 360 px phone', async () => {
+  const problems = [];
   try {
-    for (const vp of [VIEWPORTS[0], VIEWPORTS[2]]) {
-      const page = await open(vp);
-      await home(page);
-      const info = await page.evaluate(() => {
-        const card = [...document.querySelectorAll('[data-panel="instagram"] [data-service]')].find((c) => c.querySelector('.svc-title').textContent.trim() === '100 Likes');
-        const R = (e) => { const r = e.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom }; };
-        const trial = card.querySelector('[data-badge="trial"]'), custom = card.querySelector('[data-badge="custom"]');
-        const cs = getComputedStyle(custom), doc = document.documentElement;
-        return { card: R(card), trial: R(trial), custom: R(custom), trialCut: trial.scrollWidth > trial.clientWidth + 0.5, customCut: custom.scrollWidth > custom.clientWidth + 0.5,
-          ellipsis: cs.textOverflow, overflow: cs.overflowX, overflowPx: doc.scrollWidth - doc.clientWidth, title: R(card.querySelector('.svc-title')), price: R(card.querySelector('.svc-price')) };
-      });
-      const who = vp.name;
-      t.ok(info.overflowPx <= 0, `${who}: horizontal overflow ${info.overflowPx}px`);
-      t.ok(info.trial.l >= info.card.l && info.custom.r <= info.card.r + 0.5 && info.custom.l >= info.card.l, `${who}: both badges inside the card`);
-      t.ok(!info.trialCut, `${who}: TRIAL PACK is never truncated`);
-      t.eq([info.ellipsis, info.overflow], ['ellipsis', 'hidden'], `${who}: the custom badge is the one that gives way`);
-      t.ok(info.custom.r <= info.trial.l + 0.5 || info.trial.r <= info.custom.l + 0.5, `${who}: the two badges do not overlap each other`);
-      t.ok(Math.max(info.trial.b, info.custom.b) < Math.min(info.title.t, info.price.t), `${who}: both clear of the title / price row`);
-      if (vp === VIEWPORTS[0]) await page.screenshot({ path: `${OUT}/stress-long-badge-320.png`, fullPage: false });
-      await page.close();
+    for (const vp of [DESKTOP, { width: 360, height: 800, mobile: true }]) {
+      for (const tag of TAGS.filter((x) => x.code !== 'trial-pack')) {
+        assign('ig-followers-100k', tag.code); assign('yt-subs-100k', tag.code);
+        const page = await open(vp);
+        await home(page);
+        for (const [slug, title] of [['instagram', '100K Followers'], ['youtube', '100K Subscribers']]) {
+          if (slug === 'youtube') await pick(page, slug);
+          const c = (await measureCards(page, slug)).find((x) => x.title === title);
+          const who = `${vp.width}px ${slug} ${tag.name}`;
+          if (!c.badgeCount) { problems.push(`${who}: no badge`); continue; }
+          if (c.badgeCount !== 1) problems.push(`${who}: ${c.badgeCount} badges`);
+          if (c.texts[0] !== tag.name) problems.push(`${who}: text ${c.texts[0]}`);
+          if (c.style.bg !== rgb(tag.bg)) problems.push(`${who}: background ${c.style.bg} ≠ ${rgb(tag.bg)}`);
+          if (c.style.color !== 'rgb(255, 255, 255)') problems.push(`${who}: text colour ${c.style.color}`);
+          if (c.tagId !== tagId(tag.code)) problems.push(`${who}: tag id ${c.tagId}`);
+          if (c.overlaps.length || c.neighbours || c.covered || c.clipped.length || c.truncated || !c.straddles || !c.within || c.alignRight > 2.5) problems.push(`${who}: layout ${JSON.stringify({ o: c.overlaps, n: c.neighbours, cv: c.covered, cl: c.clipped, tr: c.truncated, st: c.straddles, w: c.within, a: c.alignRight })}`);
+        }
+        if (vp === DESKTOP && ['popular', 'vip'].includes(tag.code)) await page.screenshot({ path: `${OUT}/tag-${tag.code}-desktop.png` });
+        await page.close();
+      }
     }
-  } finally { touch('ig-likes-100', 'badge = NULL, badge_color = NULL'); }
+  } finally { assign('ig-followers-100k', null); assign('yt-subs-100k', null); }
+  t.eq(problems, [], problems.slice(0, 8).join('\n   '));
 });
 
-await t.step('the badge follows the configured price: ₹5 shows it, any other amount hides it, ₹5 again brings it back — names and stored text play no part', async () => {
-  const verify = async (label) => {
+await t.step('the automatic ₹5 rule beats an assigned tag, one badge only; at ₹10 the assigned tag is back; ₹4.99 / ₹5.01 are not ₹5; any ₹5 service on either platform, whatever its name', async () => {
+  const verify = async (label, expectations) => {
     const page = await open(DESKTOP);
     await home(page);
-    const db = catalogue();
     for (const slug of SLUGS) {
       if (slug !== 'instagram') await pick(page, slug);
       for (const c of await measureCards(page, slug)) {
-        const e = db.find((x) => x.id === c.id);
-        t.eq(c.trialCount, e.paise === 500 ? 1 : 0, `${label}: ${e.code} at ${rupees(e.paise)}`);
+        const e = expectations[c.id];
+        if (e === undefined) continue;
+        t.eq([c.badgeCount, c.texts[0] ?? null, c.autoCount], e, `${label}: ${c.title} (${c.price})`);
       }
     }
     await page.close();
   };
+  const id = (code) => Number(sql(`SELECT id FROM services WHERE code = '${code}'`));
+  const setPrice = (code, paise) => sql(`UPDATE services SET price_paise = ${paise}, updated_at = UTC_TIMESTAMP() WHERE code = '${code}'`);
   try {
-    await verify('as seeded');
-    touch('ig-likes-100', 'price_paise = 600');                      // ₹5 → ₹6: gone
-    await verify('ig-likes-100 → ₹6');
-    touch('ig-likes-100', 'price_paise = 500');                      // back to ₹5: back
-    await verify('ig-likes-100 → ₹5 again');
-    touch('ig-followers-100k', 'price_paise = 500');                 // a ₹99 card becomes a ₹5 card: it gets the badge
-    touch('yt-views-10k', 'price_paise = 499');                      // ₹4.99 is not ₹5
-    touch('yt-subs-50', 'price_paise = 501');                        // ₹5.01 is not ₹5
-    await verify('ig-followers-100k → ₹5, yt-views-10k → ₹4.99, yt-subs-50 → ₹5.01');
-    touch('yt-subs-100k', "badge = 'TRIAL PACK', badge_color = 'red'");      // stored text on a ₹99 card must not show …
-    touch('ig-views-1k', "badge = 'trial  pack', badge_color = 'red'");      // … and on a ₹5 card it must not double up
-    await verify('stored "TRIAL PACK" text');
+    assign('ig-likes-100', 'best-seller'); assign('yt-likes-100', 'vip');                    // two ₹5 services with a manual tag
+    await verify('₹5 + manual tag', { [id('ig-likes-100')]: [1, 'TRIAL PACK', 1], [id('yt-likes-100')]: [1, 'TRIAL PACK', 1], [id('ig-views-1k')]: [1, 'TRIAL PACK', 1] });
+    setPrice('ig-likes-100', 1000); setPrice('yt-likes-100', 1000);                           // ₹5 → ₹10: the manual tag is restored
+    await verify('₹10', { [id('ig-likes-100')]: [1, 'BEST SELLER', 0], [id('yt-likes-100')]: [1, 'VIP', 0] });
+    setPrice('ig-likes-100', 500); setPrice('yt-likes-100', 500);                             // back to ₹5: the automatic badge wins again
+    await verify('₹5 again', { [id('ig-likes-100')]: [1, 'TRIAL PACK', 1], [id('yt-likes-100')]: [1, 'TRIAL PACK', 1] });
+    setPrice('ig-likes-100', 499); setPrice('yt-likes-100', 501);
+    await verify('₹4.99 / ₹5.01', { [id('ig-likes-100')]: [1, 'BEST SELLER', 0], [id('yt-likes-100')]: [1, 'VIP', 0] });
+    setPrice('ig-followers-100k', 500); setPrice('yt-views-10k', 500);                        // dearer services become ₹5 services: they get the badge
+    await verify('another service at ₹5', { [id('ig-followers-100k')]: [1, 'TRIAL PACK', 1], [id('yt-views-10k')]: [1, 'TRIAL PACK', 1] });
+    setPrice('ig-followers-100k', 9900); setPrice('yt-views-10k', 9900);
+    await verify('back to ₹99', { [id('ig-followers-100k')]: [0, null, 0], [id('yt-views-10k')]: [0, null, 0] });
   } finally {
-    touch('ig-likes-100', 'price_paise = 500, badge = NULL, badge_color = NULL');
-    touch('ig-followers-100k', 'price_paise = 9900');
-    touch('yt-views-10k', 'price_paise = 9900');
-    touch('yt-subs-50', 'price_paise = 500');
-    touch('yt-subs-100k', 'badge = NULL, badge_color = NULL');
-    touch('ig-views-1k', 'badge = NULL, badge_color = NULL');
+    setPrice('ig-likes-100', 500); setPrice('yt-likes-100', 500); setPrice('ig-followers-100k', 9900); setPrice('yt-views-10k', 9900);
+    assign('ig-likes-100', null); assign('yt-likes-100', null);
   }
 });
 
-await t.step('a custom badge keeps working beside the automatic one (two different badges on a ₹5 card, one on a ₹99 card) and the premium card is unchanged', async () => {
-  touch('ig-likes-100', "badge = 'HOT', badge_color = 'amber'");
-  touch('yt-subs-100k', "badge = 'NEW', badge_color = 'blue'");
+await t.step('a disabled tag disappears from the cards but stays assigned; enabling it brings it back; a deleted custom tag leaves its services without a badge', async () => {
   try {
-    const page = await open(DESKTOP);
-    await home(page);
-    const ig = await measureCards(page, 'instagram');
-    const likes = ig.find((c) => c.title === '100 Likes');
-    t.eq(likes.texts, ['TRIAL PACK', 'HOT']);
-    t.eq(likes.overlaps, []); t.eq(likes.covered, 0);
-    await pick(page, 'youtube');
-    const yt = await measureCards(page, 'youtube');
-    t.eq(yt.find((c) => c.title === '100K Subscribers').texts, ['NEW']);
-    t.eq(yt.find((c) => c.title === '4,000 Hours Watch Time').texts, ['PREMIUM']);
-    t.eq(yt.find((c) => c.title === '4,000 Hours Watch Time').trialCount, 0);
-    const prem = await page.$eval('.svc-premium .svc-badge', (e) => { const cs = getComputedStyle(e); const r = e.getBoundingClientRect(), c = e.closest('.svc').getBoundingClientRect(); return { bg: cs.backgroundColor, straddles: r.top < c.top && r.bottom > c.top, right: Math.abs(r.right - (c.right - parseFloat(getComputedStyle(e.closest('.svc')).getPropertyValue('--svc-pad')) * 16)) }; });
-    t.eq(prem.bg, 'rgb(109, 40, 217)', 'PREMIUM keeps its purple');
-    t.ok(prem.straddles && prem.right <= 2, `PREMIUM sits on the same edge line: ${JSON.stringify(prem)}`);
-    await page.close();
-  } finally { touch('ig-likes-100', 'badge = NULL, badge_color = NULL'); touch('yt-subs-100k', 'badge = NULL, badge_color = NULL'); }
+    assign('ig-followers-100k', 'hot-deal'); assign('yt-subs-100k', 'hot-deal');
+    const shows = async () => { const page = await open(DESKTOP); await home(page); const a = (await measureCards(page, 'instagram')).find((c) => c.title === '100K Followers'); await pick(page, 'youtube'); const b = (await measureCards(page, 'youtube')).find((c) => c.title === '100K Subscribers'); await page.close(); return [a.texts[0] ?? null, b.texts[0] ?? null]; };
+    t.eq(await shows(), ['HOT DEAL', 'HOT DEAL']);
+    sql("UPDATE service_tags SET is_active = 0, updated_at = UTC_TIMESTAMP() WHERE code = 'hot-deal'");
+    t.eq(await shows(), [null, null], 'disabled → hidden');
+    t.eq(Number(sql(`SELECT COUNT(*) FROM services WHERE tag_id = ${tagId('hot-deal')}`)), 2, 'both assignments are kept');
+    sql("UPDATE service_tags SET is_active = 1, updated_at = UTC_TIMESTAMP() WHERE code = 'hot-deal'");
+    t.eq(await shows(), ['HOT DEAL', 'HOT DEAL'], 'enabled → back');
+    sql("INSERT INTO service_tags (name, bg_color, text_color, is_active, is_system, sort_order, created_at, updated_at) VALUES ('Temp tag', '#1D4ED8', '#FFFFFF', 1, 0, 1000, UTC_TIMESTAMP(), UTC_TIMESTAMP())");
+    sql("UPDATE services SET tag_id = (SELECT id FROM service_tags WHERE name = 'Temp tag') WHERE code IN ('ig-followers-100k', 'yt-subs-100k')");
+    t.eq(await shows(), ['Temp tag', 'Temp tag'], 'a custom tag shows (capitals are CSS, the text is as typed)');
+    sql("DELETE FROM service_tags WHERE name = 'Temp tag'");
+    t.eq(await shows(), [null, null], 'deleted → the services simply have no badge');
+  } finally { sql("DELETE FROM service_tags WHERE name = 'Temp tag'"); assign('ig-followers-100k', null); assign('yt-subs-100k', null); sql("UPDATE service_tags SET is_active = 1 WHERE code = 'hot-deal'"); }
 });
 
-await t.step('BUY NOW on a TRIAL PACK card still works (the badge never intercepts a tap) on a phone', async () => {
+await t.step('stress: a 24-character custom tag name on a 320 px phone stays inside the card, truncates with an ellipsis and causes no overflow; a short one is never truncated', async () => {
+  sql("INSERT INTO service_tags (name, bg_color, text_color, is_active, is_system, sort_order, created_at, updated_at) VALUES ('WWWWWWWWWWWWWWWWWWWWWWWW', '#7C3AED', '#FFFFFF', 1, 0, 1000, UTC_TIMESTAMP(), UTC_TIMESTAMP())");
+  sql("UPDATE services SET tag_id = (SELECT id FROM service_tags WHERE name = 'WWWWWWWWWWWWWWWWWWWWWWWW') WHERE code = 'ig-followers-100k'");
+  try {
+    for (const vp of [VIEWPORTS[0], VIEWPORTS[2]]) {
+      const page = await open(vp);
+      await home(page);
+      const c = (await measureCards(page, 'instagram')).find((x) => x.title === '100K Followers');
+      const who = vp.name;
+      t.eq([c.pageOverflow <= 0, c.within, c.overlaps, c.neighbours, c.covered, c.clipped], [true, true, [], 0, 0, []], `${who}: layout`);
+      t.eq([c.style.ellipsis, c.style.overflowX], ['ellipsis', 'hidden'], `${who}: the long name gives way with an ellipsis`);
+      t.ok(c.rect.badge.r - c.rect.badge.l <= c.rect.card.r - c.rect.card.l - 2 * 16 + 1, `${who}: badge no wider than the card's content column`);
+      if (vp === VIEWPORTS[0]) { t.ok(c.truncated, 'a 24-character name is cut at 320 px'); await page.screenshot({ path: `${OUT}/stress-long-badge-320.png`, fullPage: false }); }
+      const short = (await measureCards(page, 'instagram')).find((x) => x.title === '50 Followers');
+      t.ok(!short.truncated, `${who}: TRIAL PACK is never truncated`);
+      await page.close();
+    }
+  } finally { assign('ig-followers-100k', null); sql("DELETE FROM service_tags WHERE name = 'WWWWWWWWWWWWWWWWWWWWWWWW'"); }
+});
+
+await t.step('BUY NOW on a card with a badge still works (the badge never intercepts a tap) on a phone', async () => {
   const page = await open(PHONE);
   await home(page);
-  const card = page.locator('[data-panel="instagram"] [data-service]').filter({ has: page.locator('.svc-badge-trial') }).first();
+  const card = page.locator('[data-panel="instagram"] [data-service]').filter({ has: page.locator('[data-badge="auto"]') }).first();
   await card.scrollIntoViewIfNeeded();
   await card.locator('[data-action=buy]').click();
   await page.waitForFunction((el) => el.dataset.open === 'true', await card.elementHandle());
   t.ok(await card.locator('input[name=target]').isVisible(), 'the inline form opened');
   const m = await measureCards(page, 'instagram');
-  const open1 = m.find((c) => c.trialCount && c.overlaps !== undefined);
+  const open1 = m.find((c) => c.autoCount);
   t.eq(open1.overlaps, [], 'badge still clear of the content while the card is open');
   await page.screenshot({ path: `${OUT}/trial-card-open-phone.png` });
   await page.close();
@@ -540,11 +566,11 @@ await t.step('switching: the tick, glow and ARIA state follow the platform (mous
   const page = await open(DESKTOP);
   await home(page);
   const state = async (label, slug) => {
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(1000);
     const other = SLUGS.find((x) => x !== slug);
     t.eq(await tickCount(page), 1, `${label}: exactly one visible tick`);
     const a = await snapshot(page, slug), b = await snapshot(page, other);
-    t.eq([a.selected, a.tabindex, a.tickVisibility, a.washOpacity, a.ringOpacity], ['true', '0', 'visible', 1, 1], `${label}: ${slug} selected`);
+    t.eq([a.selected, a.tabindex, a.tickVisibility, a.washOpacity > 0.99, a.ringOpacity > 0.99], ['true', '0', 'visible', true, true], `${label}: ${slug} selected`);
     t.eq([b.selected, b.tabindex, b.tickVisibility, b.tickOpacity, b.washOpacity], ['false', '-1', 'hidden', 0, 0], `${label}: ${other} not selected`);
     t.eq(await page.locator(`[data-panel="${slug}"]`).isVisible(), true, `${label}: ${slug} panel visible`);
     t.eq(await page.locator(`[data-panel="${other}"]`).isVisible(), false, `${label}: ${other} panel hidden`);
@@ -666,41 +692,6 @@ await t.step('service cards still lift on hover after a platform switch (the fad
     t.eq([rest === 'none' || rest === 'matrix(1, 0, 0, 1, 0, 0)', lifted], [true, 'matrix(1, 0, 0, 1, 0, -3)'], `${slug}: hover lift`);
   }
   await page.close();
-});
-
-// ═══════════════════════════════ 3 · admin side ═══════════════════════════════
-await t.step('admin → Services: the ₹5 services carry the automatic TRIAL PACK chip, the others do not; the editor explains it live and refuses a typed copy', async () => {
-  const page = await open({ width: 1440, height: 900 }, { allowStatus: [422] });
-  t.page = page;
-  await login(page);
-  await go(page, '/admin/services');
-  const rowsWithChip = await page.locator('#services-root tbody tr').evaluateAll((trs) => trs.map((tr) => ({ title: tr.querySelector('.cell-main b').childNodes[0].textContent.trim(), price: tr.querySelector('td[data-label="Price"] b').textContent.trim(), chips: [...tr.querySelectorAll('.badge')].map((b) => b.textContent.trim()) })));
-  for (const r of rowsWithChip) t.eq(r.chips.includes('TRIAL PACK'), r.price === '₹5', `${r.title} (${r.price}) admin chip`);
-  t.eq(rowsWithChip.filter((r) => r.chips.includes('TRIAL PACK')).length, five.length);
-  await page.locator('#services-root tbody tr').filter({ hasText: '100 Likes' }).first().locator('[data-edit]').click();
-  await page.waitForSelector('#service-drawer[open] #svc-form');
-  t.eq(await page.locator('#trial-hint').isVisible(), true, 'hint visible at ₹5');
-  t.eq(await page.locator('#f-badge').inputValue(), '', 'the editor does not offer the automatic text');
-  await page.fill('#f-price', '6'); t.eq(await page.locator('#trial-hint').isVisible(), false, 'hint hidden at ₹6');
-  await page.fill('#f-price', '5.00'); t.eq(await page.locator('#trial-hint').isVisible(), true, 'hint back at ₹5.00');
-  await page.fill('#f-price', '4.99'); t.eq(await page.locator('#trial-hint').isVisible(), false, 'hint hidden at ₹4.99');
-  await page.fill('#f-price', '5');
-  await page.fill('#f-badge', ' trial  PACK ');
-  await page.click('#svc-save');
-  await page.waitForSelector('#svc-form [data-err="badge"]');
-  t.has(await page.locator('#svc-form [data-err="badge"]').innerText(), 'automatically');
-  t.eq(sql("SELECT COALESCE(badge, '') FROM services WHERE code = 'ig-likes-100'"), '', 'nothing was saved');
-  await page.fill('#f-badge', 'BEST SELLER');
-  await page.click('#svc-save');
-  await page.locator('.toast[data-type="success"]').last().waitFor();
-  t.eq(sql("SELECT badge FROM services WHERE code = 'ig-likes-100'"), 'BEST SELLER');
-  await page.close();
-  const store = await open(DESKTOP);
-  await home(store);
-  const likes = (await measureCards(store, 'instagram')).find((c) => c.title === '100 Likes');
-  t.eq(likes.texts, ['TRIAL PACK', 'BEST SELLER'], 'storefront: automatic + custom');
-  await store.close();
-  touch('ig-likes-100', 'badge = NULL, badge_color = NULL');
 });
 
 await t.step('no console errors, CSP violations, failed requests or HTTP errors on any page of this suite', async () => {

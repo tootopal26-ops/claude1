@@ -31,6 +31,8 @@ $ogImage = str_starts_with($ogImage, 'http') ? $ogImage : absolute_url(strtok($o
 <link rel="preload" href="<?= e(url('assets/fonts/inter-rupee.woff2')) ?>" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
 <link rel="stylesheet" href="<?= e(url('theme.css')) ?>?v=<?= e(substr(md5($site['accent_from'] . $site['accent_to']), 0, 8)) ?>">
+<?php if (!empty($withTags)): ?><link rel="stylesheet" href="<?= e(url('tags.css')) ?>?v=<?= e(\App\Services\Tags::cssVersion()) ?>">
+<?php endif; ?>
 <?php if (!empty($jsonLd)): ?><script type="application/ld+json"><?= json_encode($jsonLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script><?php endif; ?>
 </head>
 <body class="ambient" data-page="<?= e($page ?? '') ?>" data-base="<?= e(base_path()) ?>">

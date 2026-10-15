@@ -5,15 +5,11 @@ $typeIcon = match ($s['type']) {
     'followers' => 'user-plus', 'likes' => 'heart-fill', 'views' => 'eye', 'verification' => 'verified',
     'subscribers' => 'bell-ring', 'watch_time' => 'clock', default => 'sparkles',
 };
-$badgeColor = in_array($s['badge_color'], \App\Support\Status::BADGE_COLORS, true) ? $s['badge_color'] : 'red';
 $classes = 'svc glass' . ($s['is_premium'] ? ' svc-premium svc-wide' : '');
 ?>
 <article class="<?= e($classes) ?>" data-service data-id="<?= $id ?>" data-platform="<?= e($p['slug']) ?>" data-kind="<?= e($s['target_kind']) ?>" data-title="<?= e($s['title']) ?>" data-price="<?= e($s['price']) ?>" data-open="false">
-  <?php if ($s['trial'] || $s['badge'] !== null): ?>
-  <div class="svc-badges">
-    <?php if ($s['trial']): ?><span class="badge svc-badge svc-badge-trial" data-badge="trial"><?= e(\App\Services\Catalog::TRIAL_BADGE) ?></span><?php endif; ?>
-    <?php if ($s['badge'] !== null): ?><span class="badge badge-<?= e($badgeColor) ?> svc-badge" data-badge="custom"><?= e($s['badge']) ?></span><?php endif; ?>
-  </div>
+  <?php if ($s['tag'] !== null): $tag = $s['tag']; ?>
+  <span class="badge svc-badge tag-<?= (int) $tag['id'] ?>" data-badge="<?= $tag['auto'] ? 'auto' : 'tag' ?>" data-tag-id="<?= (int) $tag['id'] ?>"><?= e($tag['name']) ?></span>
   <?php endif; ?>
   <div class="svc-top">
     <div class="svc-icon" data-platform="<?= e($p['slug']) ?>" data-type="<?= e($s['type']) ?>">

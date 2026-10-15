@@ -22,6 +22,7 @@ final class PageController extends BaseController
         'orders'      => ['Orders', 'admin/orders'],
         'payments'    => ['Payments', 'admin/payments'],
         'services'    => ['Services', 'admin/services'],
+        'tags'        => ['Tags & Badges', 'admin/tags'],
         'website'     => ['Website', 'admin/website'],
         'gateway'     => ['Payment gateway', 'admin/gateway'],
         'smm'         => ['SMM API', 'admin/smm'],
