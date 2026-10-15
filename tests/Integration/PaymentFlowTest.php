@@ -18,7 +18,7 @@ function pf_setup(): int
 {
     T::startMocks();
     T::freshDb();
-    T::alpha('POST', '/__control', ['reset' => true, 'apiKey' => 'test-api-key-123', 'webhookSecret' => 'test-webhook-secret-456', 'webhookUrl' => '',
+    T::alpha('POST', '/__control', ['reset' => true, 'style' => 'bearer', 'apiKey' => 'test-api-key-123', 'apiSecret' => 'test-api-secret-789', 'webhookSecret' => 'test-webhook-secret-456', 'webhookUrl' => '',
         'mode' => ['offline' => false, 'failCreate' => false, 'quota' => false, 'slowMs' => 0, 'noAmount' => false]]);
     T::smm('POST', '/__reset');
     T::smm('POST', '/__control', ['offline' => false, 'slowMs' => 0, 'garbled' => false, 'hang' => false]);

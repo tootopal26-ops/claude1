@@ -40,11 +40,31 @@ final class Gateways
     public static function adapter(array $row): PaymentGateway
     {
         $config = json_decode((string) ($row['config_json'] ?? ''), true);
+        $config = is_array($config) ? $config : [];
         $secrets = Crypto::decryptJson($row['secrets_enc'] ?? null);
         return match ($row['provider']) {
-            AlphaUpiGateway::PROVIDER => new AlphaUpiGateway(is_array($config) ? $config : [], $secrets),
+            AlphaUpiGateway::PROVIDER => new AlphaUpiGateway(['api_style' => self::style($row, $config, $secrets)] + $config, $secrets),
             default => throw new \RuntimeException('Unknown payment provider: ' . $row['provider']),
         };
+    }
+
+    /**
+     * Which flavour of the Alpha UPI API this gateway uses: "headers" (X-API-Key + X-API-Secret — the current API) or "bearer" (one key —
+     * the older SDK API). Chosen in the admin form; until then a gateway that is already live with just an API key keeps working as an
+     * older setup, and every new or unfinished one uses the current API.
+     *
+     * @param array<string,mixed> $row
+     * @param array<string,mixed> $config
+     * @param array<string,mixed> $secrets
+     */
+    public static function style(array $row, array $config, array $secrets): string
+    {
+        $s = $config['api_style'] ?? null;
+        if ($s === AlphaUpiGateway::STYLE_HEADERS || $s === AlphaUpiGateway::STYLE_BEARER) {
+            return $s;
+        }
+        $liveWithKeyOnly = (int) ($row['is_active'] ?? 0) === 1 && !empty($secrets['api_key']) && empty($secrets['api_secret']);
+        return $liveWithKeyOnly ? AlphaUpiGateway::STYLE_BEARER : AlphaUpiGateway::STYLE_HEADERS;
     }
 
     /** Shape for the admin form — never includes secrets. */
@@ -62,8 +82,11 @@ final class Gateways
             'environment'        => $row['environment'],
             'base_url'           => (string) ($config['base_url'] ?? ''),
             'provider_pref'      => (string) ($config['provider_pref'] ?? 'auto'),
+            'api_style'          => self::style($row, $config, $secrets),
             'has_api_key'        => !empty($secrets['api_key']),
             'api_key_hint'       => Crypto::mask($secrets['api_key'] ?? null),
+            'has_api_secret'     => !empty($secrets['api_secret']),
+            'api_secret_hint'    => Crypto::mask($secrets['api_secret'] ?? null),
             'has_webhook_secret' => !empty($secrets['webhook_secret']),
             'webhook_secret_hint' => Crypto::mask($secrets['webhook_secret'] ?? null),
             'webhook_url'        => absolute_url('/webhooks/payments/' . (int) $row['id']),
@@ -99,12 +122,20 @@ final class Gateways
             } else {
                 try {
                     $url = NetGuard::assertSafeUrl($url, 'gateway URL');
-                    $url = (string) preg_replace('#/api$#i', '', $url);   // the SDK appends /api/... itself
+                    $url = (string) preg_replace('#/+api/*$#i', '', rtrim($url, '/'));   // /api/... is appended by the client itself
                     $config['base_url'] = $url;
                     $changed[] = 'base_url';
                 } catch (\InvalidArgumentException $e) {
                     $errors['base_url'] = $e->getMessage();
                 }
+            }
+        }
+        if (array_key_exists('api_style', $in)) {
+            if (!in_array($in['api_style'], [AlphaUpiGateway::STYLE_HEADERS, AlphaUpiGateway::STYLE_BEARER], true)) {
+                $errors['api_style'] = 'Choose the API type from the list.';
+            } else {
+                $config['api_style'] = (string) $in['api_style'];
+                $changed[] = 'api_style';
             }
         }
         if (array_key_exists('provider_pref', $in)) {
@@ -125,7 +156,7 @@ final class Gateways
                 $changed[] = 'environment';
             }
         }
-        foreach (['api_key' => 'API key', 'webhook_secret' => 'Webhook secret'] as $field => $label) {
+        foreach (['api_key' => 'API key', 'api_secret' => 'API secret', 'webhook_secret' => 'Webhook secret'] as $field => $label) {
             $v = isset($in[$field]) && is_string($in[$field]) ? trim($in[$field]) : '';
             if ($v !== '') {
                 if (strlen($v) < 8 || strlen($v) > 500 || preg_match('/\s/', $v)) {
@@ -144,6 +175,9 @@ final class Gateways
             }
             if (empty($secrets['api_key'])) {
                 $errors['api_key'] = 'An API key is required to activate the gateway.';
+            }
+            if (self::style($row, $config, $secrets) === AlphaUpiGateway::STYLE_HEADERS && empty($secrets['api_secret'])) {
+                $errors['api_secret'] = 'An API secret is required to activate the gateway.';
             }
             if (empty($secrets['webhook_secret'])) {
                 $errors['webhook_secret'] = 'A webhook secret is required so payments can be confirmed securely.';

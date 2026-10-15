@@ -18,6 +18,7 @@ function resultBox(r) {
 function render(gw, testResult = null) {
   g = gw;
   const live = g.environment === 'production';
+  const headers = g.api_style !== 'bearer';        // "current" API: X-API-Key + X-API-Secret; "bearer": the older single-key API
   root().innerHTML = String(html`
   <form id="gw-form" class="stack" novalidate autocomplete="off">
     <section class="card" aria-labelledby="h-gw">
@@ -32,16 +33,20 @@ function render(gw, testResult = null) {
           <button type="button" role="radio" data-env="test" aria-checked="${live ? 'false' : 'true'}">Test</button>
           <button type="button" role="radio" data-env="production" aria-checked="${live ? 'true' : 'false'}">Production</button></div>
         <input type="hidden" name="environment" value="${g.environment}">
-        <p class="field-hint">Test mode is only a label for you — it does not change the gateway URL. Use your provider’s sandbox URL while testing, then switch both to production.</p></div>
+        <p class="field-hint">This is only a label for you — it does not change the gateway URL. Alpha UPI has no sandbox and takes real payments only, so your test is a real ₹5 order (the money goes to your own account).</p></div>
 
       <div class="form-section"><h3>Connection</h3>
         <div class="field-row"><div class="field"><label class="label req" for="gw-url">Gateway base URL</label>
-          <input class="input mono" id="gw-url" name="base_url" value="${g.base_url}" placeholder="https://your-alpha-upi-host" spellcheck="false" autocapitalize="none">
-          <p class="field-hint">Without a trailing <span class="kbd">/api</span>. Must be https:// in production.</p></div>
-        <div class="field"><label class="label" for="gw-pref">Preferred UPI provider</label>
-          <select class="select" id="gw-pref" name="provider_pref"><option value="auto" ${g.provider_pref === 'auto' ? 'selected' : ''}>Automatic</option><option value="bharatpe" ${g.provider_pref === 'bharatpe' ? 'selected' : ''}>BharatPe</option><option value="paytm" ${g.provider_pref === 'paytm' ? 'selected' : ''}>Paytm</option></select></div></div>
-        ${secretField({ name: 'api_key', label: 'API key', has: g.has_api_key, hint: g.api_key_hint, placeholder: 'Paste the API key from your Alpha UPI dashboard', help: 'Stored encrypted on the server. It is never shown again after saving.' })}
-        ${secretField({ name: 'webhook_secret', label: 'Webhook secret', has: g.has_webhook_secret, hint: g.webhook_secret_hint, placeholder: 'Paste the webhook secret', help: 'Used to verify that payment notifications really come from the gateway.' })}
+          <input class="input mono" id="gw-url" name="base_url" value="${g.base_url}" placeholder="https://alphaupi.site" spellcheck="false" autocapitalize="none">
+          <p class="field-hint">The API host only — for Alpha UPI: <span class="kbd">https://alphaupi.site</span>. A trailing <span class="kbd">/api</span> is removed for you. Must be https:// in production.</p></div>
+        <div class="field"><label class="label" for="gw-style">API type</label>
+          <select class="select" id="gw-style" name="api_style"><option value="headers" ${headers ? 'selected' : ''}>Current — API key + API secret</option><option value="bearer" ${headers ? '' : 'selected'}>Older — API key only (Bearer)</option></select>
+          <p class="field-hint">Choose “Current” when your Alpha UPI dashboard shows a <b>Production API Key</b> (<span class="kbd">X-API-Key</span>) and a <b>Production API Secret</b> (<span class="kbd">X-API-Secret</span>).</p></div></div>
+        <div class="field" data-style-only="bearer" ${headers ? 'hidden' : ''}><label class="label" for="gw-pref">Preferred UPI provider</label>
+          <select class="select" id="gw-pref" name="provider_pref"><option value="auto" ${g.provider_pref === 'auto' ? 'selected' : ''}>Automatic</option><option value="bharatpe" ${g.provider_pref === 'bharatpe' ? 'selected' : ''}>BharatPe</option><option value="paytm" ${g.provider_pref === 'paytm' ? 'selected' : ''}>Paytm</option></select></div>
+        ${secretField({ name: 'api_key', label: 'API key', has: g.has_api_key, hint: g.api_key_hint, placeholder: 'Paste the Production API Key from your Alpha UPI dashboard', help: 'Stored encrypted on the server. It is never shown again after saving.' })}
+        <div data-style-only="headers" ${headers ? '' : 'hidden'}>${secretField({ name: 'api_secret', label: 'API secret', has: g.has_api_secret, hint: g.api_secret_hint, placeholder: 'Paste the Production API Secret', help: 'Sent with the API key on every request. Stored encrypted; never shown again after saving.' })}</div>
+        ${secretField({ name: 'webhook_secret', label: 'Webhook secret', has: g.has_webhook_secret, hint: g.webhook_secret_hint, placeholder: 'Paste the webhook secret', help: 'The “webhook” key from your Alpha UPI dashboard. Used to verify that payment notifications really come from the gateway.' })}
       </div>
 
       <div class="form-actions"><span class="spacer text-sm text-muted">${g.last_tested_at ? 'Last tested ' + fmtDateTime(g.last_tested_at) : 'Not tested yet'}</span>
@@ -67,8 +72,8 @@ function render(gw, testResult = null) {
 
 function body() {
   const f = $('#gw-form');
-  const out = { base_url: f.elements.base_url.value, provider_pref: f.elements.provider_pref.value, environment: f.elements.environment.value, is_active: f.elements.is_active.checked };
-  for (const k of ['api_key', 'webhook_secret']) { const el = f.elements[k]; if (el && !el.disabled && el.value.trim()) out[k] = el.value.trim(); }
+  const out = { base_url: f.elements.base_url.value, api_style: f.elements.api_style.value, provider_pref: f.elements.provider_pref.value, environment: f.elements.environment.value, is_active: f.elements.is_active.checked };
+  for (const k of ['api_key', 'api_secret', 'webhook_secret']) { const el = f.elements[k]; if (el && !el.disabled && el.value.trim()) out[k] = el.value.trim(); }
   return out;
 }
 
@@ -80,6 +85,7 @@ export default async function init() {
     $('[name="environment"]').value = b.dataset.env;
     r.querySelectorAll('[data-env]').forEach((x) => { const on_ = x === b; x.setAttribute('aria-checked', String(on_)); });
   });
+  on(r, 'change', '#gw-style', (e, sel) => r.querySelectorAll('[data-style-only]').forEach((el) => { el.hidden = el.dataset.styleOnly !== (sel.value === 'bearer' ? 'bearer' : 'headers'); }));
   on(r, 'click', '[data-copy-url]', () => copyText(g.webhook_url, 'Webhook URL copied'));
   on(r, 'click', '[data-retry]', () => location.reload());
   r.addEventListener('submit', async (e) => {
@@ -101,7 +107,7 @@ export default async function init() {
       try {
         // save first when the form has unsaved connection details, so the test uses what is on screen
         const b0 = body();
-        const changed = b0.base_url !== g.base_url || b0.api_key || b0.webhook_secret || b0.provider_pref !== g.provider_pref;
+        const changed = b0.base_url !== g.base_url || b0.api_key || b0.api_secret || b0.webhook_secret || b0.api_style !== g.api_style || b0.provider_pref !== g.provider_pref;
         if (changed) await put(`gateway/${g.id}`, { ...b0, is_active: g.is_active }, { idempotency: true });
         const res = await post(`gateway/${g.id}/test`);
         render(res.gateway, res.result);

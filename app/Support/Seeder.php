@@ -77,7 +77,7 @@ final class Seeder
         $now = Clock::sql();
         Db::insert('payment_gateways', [
             'provider' => 'alpha_upi', 'name' => 'Alpha UPI', 'is_active' => 0, 'environment' => 'test',
-            'config_json' => json_encode(['base_url' => '', 'provider_pref' => 'auto']),
+            'config_json' => json_encode(['base_url' => '', 'api_style' => 'headers', 'provider_pref' => 'auto']),
             'created_at' => $now, 'updated_at' => $now,
         ]);
         return true;

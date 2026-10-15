@@ -12,9 +12,11 @@ use App\Core\{Crypto, Db};
 use App\Support\Clock;
 
 $gw = Db::one('SELECT id FROM payment_gateways ORDER BY id LIMIT 1');
+// DEV_GATEWAY_STYLE=headers → the current Alpha UPI API (X-API-Key + X-API-Secret, what tools/local-demo.php shows); default: the older Bearer API
+$style = getenv('DEV_GATEWAY_STYLE') === 'headers' ? 'headers' : 'bearer';
 Db::update('payment_gateways', [
-    'is_active' => 1, 'environment' => 'test', 'config_json' => json_encode(['base_url' => 'http://127.0.0.1:4010', 'provider_pref' => 'auto']),
-    'secrets_enc' => Crypto::encryptJson(['api_key' => 'test-api-key-123', 'webhook_secret' => 'test-webhook-secret-456']),
+    'is_active' => 1, 'environment' => 'test', 'config_json' => json_encode(['base_url' => 'http://127.0.0.1:4010', 'api_style' => $style, 'provider_pref' => 'auto']),
+    'secrets_enc' => Crypto::encryptJson(['api_key' => 'test-api-key-123', 'webhook_secret' => 'test-webhook-secret-456'] + ($style === 'headers' ? ['api_secret' => 'test-api-secret-789'] : [])),
 ], 'id = ?', [$gw['id']]);
 $gid = (int) $gw['id'];
 

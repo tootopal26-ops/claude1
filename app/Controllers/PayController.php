@@ -42,7 +42,7 @@ final class PayController
             'qr_url' => url('pay/' . $payment['ref'] . '/qr.png'), 'download_url' => url('pay/' . $payment['ref'] . '/qr.png') . '?download=1',
             'pay_url' => $state === 'pending' ? (string) $payment['payment_url'] : '#',
             'track_url' => url('order/' . $order['access_token']), 'status_url' => url('api/pay/' . $payment['ref'] . '/status'),
-            'instructions' => $site['payment_instructions'], 'returned' => !empty($req->query['returned']),
+            'instructions' => $site['payment_instructions'], 'returned' => !empty($req->query['returned']) || !empty($req->query['status']),   // the gateway's redirect adds status=…&order_id=…
         ];
         $html = View::render('layouts/site', [
             'content' => View::render('pay/show', ['site' => $site, 'pay' => $pay]),

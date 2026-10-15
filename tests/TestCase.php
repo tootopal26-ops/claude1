@@ -93,14 +93,14 @@ final class T
     }
 
     /** Configure the (inactive-by-default) gateway to talk to the mock Alpha UPI server and activate it. */
-    public static function configureGateway(string $key = 'test-api-key-123', string $secret = 'test-webhook-secret-456', int $port = 4010): int
+    public static function configureGateway(string $key = 'test-api-key-123', string $secret = 'test-webhook-secret-456', int $port = 4010, string $style = 'bearer', string $apiSecret = 'test-api-secret-789'): int
     {
         $row = Db::one('SELECT id FROM payment_gateways ORDER BY id LIMIT 1');
         $id = (int) $row['id'];
         Db::update('payment_gateways', [
             'is_active' => 1, 'environment' => 'test',
-            'config_json' => json_encode(['base_url' => "http://127.0.0.1:{$port}", 'provider_pref' => 'auto']),
-            'secrets_enc' => \App\Core\Crypto::encryptJson(['api_key' => $key, 'webhook_secret' => $secret]),
+            'config_json' => json_encode(['base_url' => "http://127.0.0.1:{$port}", 'api_style' => $style, 'provider_pref' => 'auto']),
+            'secrets_enc' => \App\Core\Crypto::encryptJson(['api_key' => $key, 'webhook_secret' => $secret] + ($style === 'headers' ? ['api_secret' => $apiSecret] : [])),
         ], 'id = ?', [$id]);
         return $id;
     }

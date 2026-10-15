@@ -18,6 +18,7 @@ SUITES=(
   "node tools/qa/admin-catalog.mjs"
   "node tools/qa/admin-tags.mjs"
   "node tools/qa/admin-integrations.mjs"
+  "node tools/qa/pay-alpha-api.mjs"
   "node tools/qa/admin-mobile.mjs"
   "node tools/qa/install-e2e.mjs"
   "node tools/qa/site-flows.mjs"

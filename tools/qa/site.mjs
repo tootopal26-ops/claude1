@@ -55,7 +55,7 @@ export function useMockProviderIds() {
 /** Put both mocks into their healthy state and point the gateway webhook at the dev server. */
 export async function mocksReset() {
   await alpha('/__control', {
-    reset: true, apiKey: 'test-api-key-123', webhookSecret: 'test-webhook-secret-456',
+    reset: true, style: 'bearer', apiKey: 'test-api-key-123', apiSecret: 'test-api-secret-789', webhookSecret: 'test-webhook-secret-456',
     webhookUrl: `${BASE}/webhooks/payments/${gatewayId()}`,
     mode: { offline: false, failCreate: false, quota: false, slowMs: 0, noAmount: false },
   });

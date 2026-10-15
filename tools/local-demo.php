@@ -152,7 +152,7 @@ if ($already) {
     $say('[ok] tables created, catalogue and admin account added');
 
     $step('Adding demo data (about 75 days of orders, visitors and payments — takes a little while)');
-    $rc = runCli([PHP_BINARY, 'tools/dev-setup.php', 'demo'], ['APP_ENV' => 'local']);   // dev tools insist on APP_ENV=local; the site itself runs as production
+    $rc = runCli([PHP_BINARY, 'tools/dev-setup.php', 'demo'], ['APP_ENV' => 'local', 'DEV_GATEWAY_STYLE' => 'headers']);   // dev tools insist on APP_ENV=local; the site itself runs as production
     if ($rc !== 0) {
         $die('The demo data could not be created (see the messages above).');
     }
@@ -212,7 +212,7 @@ if ($node !== null) {
         $ready('http://127.0.0.1:' . GATEWAY_PORT . '/__state', 15);
         // tell the fake gateway where to send its "payment received" webhook
         $gid = (int) \App\Core\Db::val('SELECT id FROM payment_gateways ORDER BY id LIMIT 1');
-        $r = httpRequest('POST', 'http://127.0.0.1:' . GATEWAY_PORT . '/__control', ['apiKey' => 'test-api-key-123', 'webhookSecret' => 'test-webhook-secret-456', 'webhookUrl' => "http://127.0.0.1:{$cfg['web']}/webhooks/payments/{$gid}"]);
+        $r = httpRequest('POST', 'http://127.0.0.1:' . GATEWAY_PORT . '/__control', ['style' => 'headers', 'apiKey' => 'test-api-key-123', 'apiSecret' => 'test-api-secret-789', 'webhookSecret' => 'test-webhook-secret-456', 'webhookUrl' => "http://127.0.0.1:{$cfg['web']}/webhooks/payments/{$gid}"]);
         $say($r['status'] === 200 ? '[ok] fake payment gateway connected to the website' : '[!!] the fake payment gateway did not answer (see storage/logs/demo-gateway.log)');
     }
     $ready('http://127.0.0.1:' . SMM_PORT . '/__state', 15);
