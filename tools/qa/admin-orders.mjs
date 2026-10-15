@@ -98,7 +98,8 @@ await t.step('pagination: Next loads page 2, Prev returns; buttons disable at th
 });
 
 await t.step('order drawer: opens by click, shows all sections, closes with ESC and returns focus', async () => {
-  const row = rows().first();
+  // the newest demo order can be an unpaid / expired one (it depends on the time of day the demo data was generated): those have no Money section
+  const row = rows().filter({ hasText: /Completed|Submitted|In progress|Manual|Partial/i }).first();
   await row.click();
   await page.waitForSelector('#order-drawer[open] .od-hero');
   const body = await t.text(page.locator('#od-body'));
