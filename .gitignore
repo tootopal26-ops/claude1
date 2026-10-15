@@ -23,3 +23,6 @@ tools/**/state.json
 .idea/
 .vscode/
 /vendor/
+
+# local demo (tools/local-demo.php)
+storage/local-demo-login.txt

@@ -126,6 +126,8 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { status: true, message: 'ok', result: { status: o.status, amount: state.mode.noAmount ? undefined : o.amount, utr: o.status === 'SUCCESS' ? o.utr : undefined, provider: 'bharatpe', paid_at: o.paid_at } });
   }
 
+  if (path === '/favicon.ico') { res.writeHead(204); return res.end(); }   // keeps the browser console free of a pointless 404 on the fake payment page
+
   // ── fake hosted payment page ──────────────────────────────────────────────
   if ((m = path.match(/^\/pay\/([\w-]+)$/))) {
     const o = state.orders[m[1]];

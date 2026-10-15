@@ -10,10 +10,11 @@
  *   garbled  → 200 OK with non-JSON body               (client sees: ambiguous)
  *   hang     → never answers                           (client sees: timeout → ambiguous)
  *
- * Run:  node tools/mock-smm/server.js [port]
+ * Run:  node tools/mock-smm/server.js [port] [--auto-progress]
  */
 const http = require('http');
-const PORT = Number(process.argv[2] || process.env.PORT || 4020);
+const PORT = Number(process.argv.slice(2).find((a) => /^\d+$/.test(a)) || process.env.PORT || 4020);
+const AUTO_PROGRESS = process.argv.includes('--auto-progress') || process.env.MOCK_SMM_AUTO_PROGRESS === '1';   // demo only: orders move on by themselves
 const state = { mode: { offline: false, slowMs: 0, garbled: false, hang: false }, nextId: 70001, orders: {}, requests: [] };
 const SERVICES = [
   { service: '1001', name: 'Instagram Followers [Non Drop]', category: 'Instagram', rate: '0.9000', min: '10', max: '100000', type: 'Default' },
@@ -23,6 +24,18 @@ const SERVICES = [
 
 const send = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(typeof obj === 'string' ? obj : JSON.stringify(obj)); };
 const body = (req) => new Promise((r) => { let b = ''; req.on('data', (c) => (b += c)); req.on('end', () => r(b)); });
+
+// demo mode: Pending → In progress (after 15 s, remains shrink) → Completed (after 60 s), like a real panel would
+if (AUTO_PROGRESS) {
+  setInterval(() => {
+    for (const o of Object.values(state.orders)) {
+      const age = (Date.now() - (o.created || Date.now())) / 1000;
+      if (['Completed', 'Canceled', 'Partial'].includes(o.status)) continue;
+      if (age >= 60) Object.assign(o, { status: 'Completed', remains: '0' });
+      else if (age >= 15) Object.assign(o, { status: 'In progress', remains: String(Math.max(0, Math.round(o.quantity * (1 - (age - 15) / 45)))) });
+    }
+  }, 3000).unref();
+}
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -55,7 +68,7 @@ http.createServer(async (req, res) => {
       if ((p.get('link') || '').includes('badlink')) return send(res, 200, { error: 'Incorrect link' });
       const q = Number(p.get('quantity')); if (!Number.isInteger(q) || q < 1) return send(res, 200, { error: 'Incorrect quantity' });
       const id = String(state.nextId++);
-      state.orders[id] = { id, service: p.get('service'), link: p.get('link'), quantity: q, status: 'Pending', charge: '0.27819', start_count: '100', remains: String(q) };
+      state.orders[id] = { id, service: p.get('service'), link: p.get('link'), quantity: q, status: 'Pending', charge: '0.27819', start_count: '100', remains: String(q), created: Date.now() };
       return send(res, 200, { order: Number(id) });
     }
     case 'status': {

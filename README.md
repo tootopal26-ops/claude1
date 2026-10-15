@@ -40,6 +40,16 @@ Strict CSP (no inline scripts or styles), CSRF protection, same-origin checks, s
 
 ---
 
+## Try it on your own computer (one command)
+
+```bash
+php tools/local-demo.php
+```
+
+Installs the whole site with ~75 days of demo data, starts a **fake payment gateway** and a **fake SMM panel** (so you can place and pay an order end to end) and prints your admin login. Needs PHP 8.1+, a running MySQL/MariaDB (XAMPP, MAMP, Homebrew …) and, for the fake gateway, Node.js 18+. Details and troubleshooting: **[docs/RUN-LOCALLY.md](docs/RUN-LOCALLY.md)**.
+
+---
+
 ## Install in 5 minutes (cPanel)
 
 1. Create a MySQL database and user in cPanel → **MySQL® Databases**; pick **PHP 8.1+** in **MultiPHP Manager**.
@@ -120,6 +130,7 @@ Everything lives in `.env` (see [.env.example](.env.example)) plus the admin pan
 ## Documentation
 | | |
 |---|---|
+| [docs/RUN-LOCALLY.md](docs/RUN-LOCALLY.md) | run everything on your own computer with demo data and a fake gateway (one command) |
 | [docs/DEPLOY-CPANEL.md](docs/DEPLOY-CPANEL.md) | production deployment on cPanel / shared hosting (layouts, installer, cron, HTTPS, upgrades, backups, troubleshooting) |
 | [docs/API.md](docs/API.md) | every HTTP route, request/response shapes, auth, CSRF, idempotency, the webhook contract |
 | [docs/DATABASE.md](docs/DATABASE.md) | tables, relationships, money/time conventions, migrations and seeding |
