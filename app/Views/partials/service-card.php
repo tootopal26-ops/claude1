@@ -9,7 +9,12 @@ $badgeColor = in_array($s['badge_color'], \App\Support\Status::BADGE_COLORS, tru
 $classes = 'svc glass' . ($s['is_premium'] ? ' svc-premium svc-wide' : '');
 ?>
 <article class="<?= e($classes) ?>" data-service data-id="<?= $id ?>" data-platform="<?= e($p['slug']) ?>" data-kind="<?= e($s['target_kind']) ?>" data-title="<?= e($s['title']) ?>" data-price="<?= e($s['price']) ?>" data-open="false">
-  <?php if ($s['badge'] !== null): ?><span class="badge badge-<?= e($badgeColor) ?> svc-badge"><?= e($s['badge']) ?></span><?php endif; ?>
+  <?php if ($s['trial'] || $s['badge'] !== null): ?>
+  <div class="svc-badges">
+    <?php if ($s['trial']): ?><span class="badge svc-badge svc-badge-trial" data-badge="trial"><?= e(\App\Services\Catalog::TRIAL_BADGE) ?></span><?php endif; ?>
+    <?php if ($s['badge'] !== null): ?><span class="badge badge-<?= e($badgeColor) ?> svc-badge" data-badge="custom"><?= e($s['badge']) ?></span><?php endif; ?>
+  </div>
+  <?php endif; ?>
   <div class="svc-top">
     <div class="svc-icon" data-platform="<?= e($p['slug']) ?>" data-type="<?= e($s['type']) ?>">
       <?php if ($s['icon_url']): ?>

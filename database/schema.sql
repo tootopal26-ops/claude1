@@ -555,7 +555,21 @@ CREATE TABLE IF NOT EXISTS `rate_limits` (
   KEY `idx_rate_expires` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ── 002_trial_pack_is_automatic.sql ──
+-- ============================================================================
+-- TRIAL PACK is now automatic.
+--
+-- The storefront shows the red TRIAL PACK badge on every service whose selling price is exactly 5.00 INR (see App\Services\Catalog::isTrial)
+-- and takes it away as soon as the price changes. The badge is derived from the price on every render, so a stored copy of the same text
+-- is redundant, and worse: it would keep showing on a service after its price is changed. Clear it. Any other badge text is left alone.
+-- ============================================================================
+
+UPDATE `services`
+   SET `badge` = NULL, `badge_color` = NULL
+ WHERE UPPER(TRIM(`badge`)) = 'TRIAL PACK';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE IF NOT EXISTS `schema_migrations` (`version` VARCHAR(64) NOT NULL, `applied_at` DATETIME NOT NULL, PRIMARY KEY (`version`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('001_initial', UTC_TIMESTAMP());
+INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('002_trial_pack_is_automatic', UTC_TIMESTAMP());

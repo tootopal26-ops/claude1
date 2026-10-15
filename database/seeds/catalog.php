@@ -4,6 +4,9 @@
  * Everything here is editable in Admin → Services; the seeder only inserts rows
  * that do not exist yet, so re-running it never overwrites admin edits.
  *
+ * The red TRIAL PACK badge is NOT stored here: the storefront derives it from the price
+ * (every service sold at exactly 5.00 INR gets it — see App\Services\Catalog::isTrial).
+ *
  * All services start in MANUAL mode so a fresh install never tries to call an
  * SMM provider that has not been configured. Switch a service to AUTO (and set
  * its SMM service ID + cost) once Admin → Settings → SMM API is connected.
@@ -18,7 +21,7 @@ return [
     // code, platform, type, target_kind, title, subtitle, price_paise, quantity, badge, badge_color, premium, sort
     'services' => [
         // ── Instagram · Followers ──
-        ['ig-followers-50',   'instagram', 'followers', 'profile', '50 Followers',   'Instagram Non Drop Followers', 500,   50,      'TRIAL PACK', 'red', 0, 10],
+        ['ig-followers-50',   'instagram', 'followers', 'profile', '50 Followers',   'Instagram Non Drop Followers', 500,   50,      null, null, 0, 10],
         ['ig-followers-100k', 'instagram', 'followers', 'profile', '100K Followers', 'Instagram Non Drop Followers', 9900,  100000,  null, null, 0, 20],
         // ── Instagram · Likes ──
         ['ig-likes-100',      'instagram', 'likes',     'post',    '100 Likes',      'Instagram Post Likes',         500,   100,     null, null, 0, 30],

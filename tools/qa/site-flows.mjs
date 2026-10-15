@@ -22,17 +22,17 @@ const CATALOG = {
     cards: [
       ['50 Followers', '₹5', 'Instagram Non Drop Followers', 'TRIAL PACK'],
       ['100K Followers', '₹99', 'Instagram Non Drop Followers', null],
-      ['100 Likes', '₹5', null, null], ['50K Likes', '₹25', null, null],
-      ['1,000 Views', '₹5', null, null], ['1 Million Views', '₹99', null, null],
+      ['100 Likes', '₹5', null, 'TRIAL PACK'], ['50K Likes', '₹25', null, null],
+      ['1,000 Views', '₹5', null, 'TRIAL PACK'], ['1 Million Views', '₹99', null, null],
       ['Permanent Blue Tick', '₹199', null, null],
     ],
   },
   youtube: {
     sections: ['SUBSCRIBERS', 'LIKES', 'VIEWS', 'WATCH TIME'],
     cards: [
-      ['50 Subscribers', '₹5', null, null], ['100K Subscribers', '₹99', null, null],
-      ['100 Likes', '₹5', null, null], ['50K Likes', '₹49', null, null],
-      ['10 Views', '₹5', null, null], ['10,000 Views', '₹99', null, null],
+      ['50 Subscribers', '₹5', null, 'TRIAL PACK'], ['100K Subscribers', '₹99', null, null],
+      ['100 Likes', '₹5', null, 'TRIAL PACK'], ['50K Likes', '₹49', null, null],
+      ['10 Views', '₹5', null, 'TRIAL PACK'], ['10,000 Views', '₹99', null, null],
       ['4,000 Hours Watch Time', '₹199', null, 'PREMIUM'],
     ],
   },
@@ -174,8 +174,10 @@ for (const [slug, spec] of Object.entries(CATALOG)) {
 
 await t.step('TRIAL PACK badge is red; the 4,000-hour watch-time card is visually distinct (premium dark card)', async () => {
   await page.click('[data-platform-tab="instagram"]');
-  const bg = await page.$eval(`[data-id="${serviceId('ig-followers-50')}"] .svc-badge`, (e) => getComputedStyle(e).backgroundColor);
-  const [r, g, b] = hexToRgb(bg); t.ok(r > 180 && g < 80 && b < 80, 'badge colour ' + bg);
+  // the badge is a red GRADIENT now: every colour stop must be red (the full badge rules live in site-badges.mjs)
+  const bg = await page.$eval(`[data-id="${serviceId('ig-followers-50')}"] .svc-badge`, (e) => getComputedStyle(e).backgroundImage);
+  const stops = [...bg.matchAll(/rgb\((\d+), (\d+), (\d+)\)/g)].map((m) => m.slice(1, 4).map(Number));
+  t.ok(stops.length >= 2 && stops.every(([r, g, b]) => r > 150 && g < 70 && b < 80), 'badge gradient ' + bg);
   await page.click('[data-platform-tab="youtube"]');
   const id = serviceId('yt-watch-4000h');
   const prem = await page.$eval(`[data-id="${id}"]`, (e) => { const cs = getComputedStyle(e); return { cls: e.className, bg: cs.backgroundImage + cs.backgroundColor, wide: e.getBoundingClientRect().width, title: getComputedStyle(e.querySelector('.svc-title')).color }; });

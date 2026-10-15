@@ -19,6 +19,31 @@ final class Catalog
     private const TYPE_ORDER = ['followers', 'subscribers', 'likes', 'views', 'verification', 'watch_time'];
 
     /**
+     * Every service sold at EXACTLY this price (₹5) carries the red TRIAL PACK badge. The badge is derived from the configured selling price on
+     * every render — it is not stored per service — so it appears on any service priced ₹5 and disappears the moment the price changes.
+     */
+    public const TRIAL_PRICE_PAISE = 500;
+    public const TRIAL_BADGE = 'TRIAL PACK';
+
+    public static function isTrial(int $pricePaise): bool
+    {
+        return $pricePaise === self::TRIAL_PRICE_PAISE;
+    }
+
+    /** Is this badge text the reserved (price-driven) one? Case, spacing and surrounding blanks do not matter. */
+    public static function isTrialText(string $text): bool
+    {
+        return mb_strtoupper((string) preg_replace('/\s+/u', ' ', trim($text))) === self::TRIAL_BADGE;
+    }
+
+    /** The admin-typed badge to show next to the automatic one: null when empty, and never the reserved TRIAL PACK text (no duplicates). */
+    public static function customBadge(?string $text): ?string
+    {
+        $text = trim((string) $text);
+        return $text === '' || self::isTrialText($text) ? null : $text;
+    }
+
+    /**
      * Never sell what cannot be routed: an AUTO service needs its SMM service id AND an active provider (its own, or the default one).
      * MANUAL services are always sellable. (Alias `s` = services.)
      */
@@ -97,6 +122,7 @@ final class Catalog
     /** @return array<string,mixed> one storefront card (public fields only) */
     public static function card(array $r, string $platformSlug): array
     {
+        $custom = self::customBadge($r['badge'] ?? null);
         return [
             'id'          => (int) $r['id'],
             'type'        => (string) $r['type'],
@@ -107,7 +133,8 @@ final class Catalog
             'price_paise' => (int) $r['price_paise'],
             'price'       => Money::inr((int) $r['price_paise']),
             'quantity'    => (int) $r['quantity'],
-            'badge'       => $r['badge'] !== null && $r['badge'] !== '' ? (string) $r['badge'] : null,
+            'trial'       => self::isTrial((int) $r['price_paise']),
+            'badge'       => $custom,
             'badge_color' => (string) ($r['badge_color'] ?: 'red'),
             'is_premium'  => (bool) $r['is_premium'],
             'icon_url'    => upload_url($r['icon_path'] ?? null),

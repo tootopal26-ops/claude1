@@ -33,6 +33,7 @@ final class AdminServices
             'types' => array_map(static fn(string $t): array => ['value' => $t, 'label' => Status::serviceTypeLabel($t)], Status::SERVICE_TYPES),
             'target_kinds' => self::KINDS,
             'badge_colors' => Status::BADGE_COLORS,
+            'trial_pack' => ['label' => Catalog::TRIAL_BADGE, 'price_paise' => Catalog::TRIAL_PRICE_PAISE, 'price' => Money::inr(Catalog::TRIAL_PRICE_PAISE)],
             'cpc_paise' => Ads::cpcPaise(),
             'est_ad_cost_paise' => $est['paise'],
             'est_ad_cost_basis' => $est['basis'],
@@ -73,6 +74,7 @@ final class AdminServices
         $price = (int) $r['price_paise'];
         $cost = (int) $r['smm_cost_paise'];
         $preview = Profit::servicePreview($price, $cost, (string) $r['mode'], $estAdPaise);
+        $badge = Catalog::customBadge($r['badge'] ?? null);   // the automatic TRIAL PACK is derived from the price, never edited as text
         return [
             'id' => (int) $r['id'], 'code' => $r['code'], 'platform_id' => (int) $r['platform_id'], 'platform' => $r['platform_slug'], 'platform_name' => $r['platform_name'],
             'type' => $r['type'], 'type_label' => Status::serviceTypeLabel((string) $r['type']), 'target_kind' => $r['target_kind'],
@@ -80,7 +82,7 @@ final class AdminServices
             'price_paise' => $price, 'price' => Money::plain($price), 'quantity' => (int) $r['quantity'], 'min_quantity' => (int) $r['min_quantity'], 'max_quantity' => (int) $r['max_quantity'],
             'mode' => $r['mode'], 'smm_provider_id' => $r['smm_provider_id'] !== null ? (int) $r['smm_provider_id'] : null, 'provider_name' => $r['provider_name'],
             'smm_service_id' => (string) ($r['smm_service_id'] ?? ''), 'smm_cost_paise' => $cost, 'smm_cost' => Money::plain($cost),
-            'badge' => (string) ($r['badge'] ?? ''), 'badge_color' => (string) ($r['badge_color'] ?? ''), 'is_premium' => (bool) $r['is_premium'],
+            'badge' => (string) $badge, 'badge_color' => $badge !== null ? (string) ($r['badge_color'] ?? '') : '', 'trial_pack' => Catalog::isTrial($price), 'is_premium' => (bool) $r['is_premium'],
             'icon_url' => upload_url($r['icon_path'] ?? null), 'status' => $r['status'], 'sort_order' => (int) $r['sort_order'],
             'paid_orders' => (int) $r['paid_orders'], 'updated_at' => (string) $r['updated_at'], 'preview' => $preview,
         ];
@@ -141,6 +143,12 @@ final class AdminServices
         $badge = trim((string) ($val('badge', '') ?? ''));
         if (mb_strlen($badge) > 40) {
             $errors['badge'] = 'At most 40 characters.';
+        } elseif (Catalog::isTrialText($badge)) {
+            // TRIAL PACK comes from the price (every service sold at exactly ₹5), so a typed copy would outlive a price change
+            if (array_key_exists('badge', $in)) {
+                $errors['badge'] = Catalog::TRIAL_BADGE . ' is added automatically to every service priced at exactly ' . Money::inr(Catalog::TRIAL_PRICE_PAISE) . ', so it cannot be typed here. Leave this empty or use another text.';
+            }
+            $badge = '';                                   // a stored legacy copy is dropped on the next save
         }
         $badgeColor = (string) ($val('badge_color', '') ?? '');
         if ($badge !== '' && !in_array($badgeColor, Status::BADGE_COLORS, true)) {

@@ -35,7 +35,7 @@ function marginCell(s) {
 function row(s) {
   const img = s.icon_url || meta.platforms.find((p) => p.id === s.platform_id)?.logo_url || '';
   return html`<tr data-id="${s.id}" class="${s.status === 'inactive' ? 'opacity-60' : ''}">
-    <td data-label="Service" class="span2"><span class="cell-svc">${img ? html`<img src="${img}" alt="" width="30" height="30" loading="lazy">` : ''}<span class="cell-main"><b>${s.title}${s.badge ? html` <span class="badge badge-${s.badge_color || 'red'} align-middle">${s.badge}</span>` : ''}${s.is_premium ? html` <span class="chip chip-purple align-middle">premium</span>` : ''}</b><small class="mono" title="${s.type_label}">${s.code}</small></span></span></td>
+    <td data-label="Service" class="span2"><span class="cell-svc">${img ? html`<img src="${img}" alt="" width="30" height="30" loading="lazy">` : ''}<span class="cell-main"><b>${s.title}${s.trial_pack ? html` <span class="badge badge-red align-middle" title="Shown automatically on the store because this service costs ${meta.trial_pack.price}">${meta.trial_pack.label}</span>` : ''}${s.badge ? html` <span class="badge badge-${s.badge_color || 'red'} align-middle">${s.badge}</span>` : ''}${s.is_premium ? html` <span class="chip chip-purple align-middle">premium</span>` : ''}</b><small class="mono" title="${s.type_label}">${s.code}</small></span></span></td>
     <td data-label="Price" class="num"><span class="cell-main"><b>${inr(s.price_paise)}</b><small>${num(s.quantity)} ${s.quantity === 1 ? 'unit' : 'units'}</small></span></td>
     <td data-label="Mode"><span class="stackcell">${modeChip(s.mode)}${s.mode === 'AUTO' && !s.provider_name ? html`<small class="text-bad-700">no provider</small>` : ''}</span></td>
     <td data-label="Provider cost" class="num">${s.mode === 'AUTO' ? html`<span class="cell-main"><b>${inr(s.smm_cost_paise)}</b><small>${s.provider_name || ''}</small></span>` : html`<span class="amt-mute">—</span>`}</td>
@@ -124,7 +124,8 @@ function editorHtml(s) {
 
     <div class="form-section"><h3>Price &amp; quantity</h3>
       <div class="field-row"><div class="field"><label class="label req" for="f-price">Price customers pay</label>
-        <div class="input-affix"><span class="affix">₹</span><input class="input" id="f-price" name="price" inputmode="decimal" value="${s ? plain(s.price_paise).replace(/\.00$/, '') : ''}" placeholder="99"></div></div>
+        <div class="input-affix"><span class="affix">₹</span><input class="input" id="f-price" name="price" inputmode="decimal" value="${s ? plain(s.price_paise).replace(/\.00$/, '') : ''}" placeholder="99"></div>
+        <p class="field-hint" id="trial-hint" hidden>${icon('check', 'icon-sm')} At ${meta.trial_pack.price} this service gets the red ${meta.trial_pack.label} badge on the store automatically.</p></div>
         <div class="field"><label class="label req" for="f-quantity">Units delivered per purchase</label>
         <input class="input" id="f-quantity" name="quantity" inputmode="numeric" value="${s?.quantity ?? ''}" placeholder="100000"></div></div>
       <div class="field-row"><div class="field"><label class="label" for="f-min_quantity">Minimum quantity</label><input class="input" id="f-min_quantity" name="min_quantity" inputmode="numeric" value="${s?.min_quantity ?? 1}"></div>
@@ -158,7 +159,8 @@ function editorHtml(s) {
 
     <div class="form-section"><h3>Appearance</h3>
       <div class="field-row"><div class="field"><label class="label" for="f-badge">Badge text</label>
-        <input class="input" id="f-badge" name="badge" maxlength="40" value="${s?.badge || ''}" placeholder="e.g. TRIAL PACK"></div>
+        <input class="input" id="f-badge" name="badge" maxlength="40" value="${s?.badge || ''}" placeholder="e.g. BEST SELLER" aria-describedby="badge-hint">
+        <p class="field-hint" id="badge-hint">${meta.trial_pack.label} is automatic: every service priced at exactly ${meta.trial_pack.price} shows it, so don't type it here. Use this for any other label.</p></div>
         <div class="field"><label class="label" for="f-badge_color">Badge colour</label>
         <select class="select" id="f-badge_color" name="badge_color">${meta.badge_colors.map((c) => html`<option value="${c}" ${(s?.badge_color || 'red') === c ? 'selected' : ''}>${c[0].toUpperCase() + c.slice(1)}</option>`)}</select></div></div>
       <div class="field-row"><div class="field"><label class="label" for="f-sort_order">Sort order</label>
@@ -182,6 +184,7 @@ function updatePreview() {
   const box = $('#profit-preview');
   if (!box) return;
   const price = parseRupees(val('price'));
+  $('#trial-hint').hidden = price !== meta.trial_pack.price_paise;
   const mode = val('mode');
   const cost = mode === 'AUTO' ? parseRupees(val('smm_cost') || '0') : 0;
   if (price === null || (mode === 'AUTO' && cost === null)) { box.className = 'profit-box'; box.innerHTML = '<span class="text-sm text-muted">Enter a valid price' + (mode === 'AUTO' ? ' and provider cost' : '') + ' to see the estimated profit.</span>'; return; }
