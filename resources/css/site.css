@@ -219,6 +219,20 @@
   .qr-frame[data-dead="true"] img { filter: blur(9px) grayscale(1); opacity: 0.35; }
   .qr-dead { position: absolute; inset: 0; display: none; place-content: center; justify-items: center; gap: 0.5rem; text-align: center; padding: 1rem; font-weight: 800; color: var(--color-ink); }
   .qr-frame[data-dead="true"] .qr-dead { display: grid; }
+  .pay-payee { margin-top: 0.75rem; font-size: 0.8125rem; line-height: 1.5; color: var(--color-muted); overflow-wrap: anywhere; }
+  .pay-payee b { color: var(--color-ink); }
+  .pay-payee .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; }
+
+  /* hosted checkout: what the card shows instead of a QR when the gateway only offers its own payment page */
+  .hosted-card { position: relative; margin: 1.25rem auto 0; width: 100%; padding: 1.15rem 1rem 1rem; border-radius: var(--radius-xl); background: rgb(255 255 255 / 0.82); box-shadow: var(--shadow-md), 0 0 0 1px var(--color-line); text-align: left; }
+  .hosted-icon { display: grid; place-items: center; width: 3rem; height: 3rem; margin: 0 auto 0.6rem; border-radius: 9999px; color: #fff; background: linear-gradient(135deg, var(--accent-from), var(--accent-to)); box-shadow: 0 6px 18px -6px var(--accent-from); }
+  .hosted-icon .icon { width: 1.6rem; height: 1.6rem; }
+  .hosted-lead { text-align: center; font-size: 1rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.3; text-wrap: balance; }
+  .hosted-steps { margin: 0.9rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.7rem; }
+  .hosted-steps li { display: flex; align-items: flex-start; gap: 0.7rem; font-size: 0.875rem; line-height: 1.45; color: var(--color-ink-soft); }
+  .hosted-steps li b { flex: none; display: grid; place-items: center; width: 1.65rem; height: 1.65rem; border-radius: 9999px; font-size: 0.8125rem; font-weight: 800; color: var(--color-brand-700); background: var(--color-brand-100); }
+  .hosted-card[data-dead="true"] > :not(.qr-dead) { filter: blur(6px) grayscale(1); opacity: 0.35; }
+  .hosted-card[data-dead="true"] .qr-dead { display: grid; }
 
   .timer { margin-top: 1.25rem; }
   .timer-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); }

@@ -645,9 +645,24 @@ UPDATE `services` s
    SET s.tag_id = t.id
  WHERE s.tag_id IS NULL AND s.badge IS NOT NULL AND TRIM(s.badge) <> '' AND (t.code IS NULL OR t.code <> 'trial-pack');
 
+-- ── 004_payment_page_instructions.sql ──
+-- ============================================================================
+-- Payment page instructions: drop the old default wording.
+--
+-- The old default text told customers to scan the QR code with their phone camera and then open the gateway's page. That is the
+-- flow this release removes: a QR now only ever carries a real UPI payment request, and a gateway's hosted checkout is opened with a
+-- button instead. Only a text that STILL EQUALS the old default is replaced, anything an admin wrote is left exactly as it is.
+-- ============================================================================
+
+UPDATE `admin_settings`
+   SET `v` = '"Pay with any UPI app. Keep this page open until your payment is confirmed."'
+ WHERE `k` = 'site.payment_instructions'
+   AND `v` = '"Scan the QR code with your phone camera. The secure payment page opens — pay with any UPI app. Keep this page open until your payment is confirmed."';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE IF NOT EXISTS `schema_migrations` (`version` VARCHAR(64) NOT NULL, `applied_at` DATETIME NOT NULL, PRIMARY KEY (`version`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('001_initial', UTC_TIMESTAMP());
 INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('002_trial_pack_is_automatic', UTC_TIMESTAMP());
 INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('003_service_tags', UTC_TIMESTAMP());
+INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('004_payment_page_instructions', UTC_TIMESTAMP());

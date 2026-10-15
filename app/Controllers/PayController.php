@@ -17,6 +17,7 @@ use App\Support\Clock;
 use App\Support\Money;
 use App\Support\Qr;
 use App\Support\Status;
+use App\Support\Upi;
 
 /**
  * The payment page (/pay/{ref}), its QR image and the status endpoint the page polls.
@@ -34,13 +35,18 @@ final class PayController
         $site = Settings::site();
         $state = self::state($payment);
         $now = Clock::now();
+        // A QR exists only for a real UPI payment request for exactly this order and amount (see App\Support\Upi). Otherwise the page is
+        // "hosted": a button opens the gateway's checkout page. A hosted page's URL is never drawn as a QR.
+        $upi = $state === 'pending' ? self::upiOf($payment) : null;
 
         $pay = [
             'ref' => $payment['ref'], 'state' => $state, 'amount' => Money::inr((int) $payment['amount_paise']), 'amount_paise' => (int) $payment['amount_paise'],
             'service' => $order['service_title'], 'order_id' => $order['public_id'],
             'expires_at' => (int) Clock::fromSql($payment['expires_at']) * 1000, 'server_now' => $now * 1000, 'ttl' => Orders::PAYMENT_TTL,
+            'mode' => $upi !== null ? 'upi' : 'hosted',
             'qr_url' => url('pay/' . $payment['ref'] . '/qr.png'), 'download_url' => url('pay/' . $payment['ref'] . '/qr.png') . '?download=1',
-            'pay_url' => $state === 'pending' ? (string) $payment['payment_url'] : '#',
+            'pay_url' => $state === 'pending' ? ($upi['uri'] ?? (string) $payment['payment_url']) : '#',
+            'payee' => $upi !== null ? ['name' => $upi['name'], 'vpa' => $upi['payee']] : null,
             'track_url' => url('order/' . $order['access_token']), 'status_url' => url('api/pay/' . $payment['ref'] . '/status'),
             'instructions' => $site['payment_instructions'], 'returned' => !empty($req->query['returned']) || !empty($req->query['status']),   // the gateway's redirect adds status=…&order_id=…
         ];
@@ -73,16 +79,21 @@ final class PayController
         return $response;
     }
 
-    /** The QR image. Served only while the payment is still open — an expired or paid session never shows a usable QR. */
+    /**
+     * The QR image: the UPI payment request of this order, and nothing else. Served only while the payment is still open — an expired or
+     * paid session never shows a usable QR — and only when a valid `upi://pay` request for exactly this amount is stored. A payment that
+     * only has the gateway's hosted checkout page has no QR (410): that page's https URL is never encoded.
+     */
     public function qr(Request $req, array $p): Response
     {
         RateLimiter::enforce('pay-qr', $req->ip(), 60, 60);
         $payment = Orders::paymentByRef($p['ref']) ?? throw new HttpException(404);
-        if (self::state($payment) !== 'pending' || empty($payment['qr_payload'])) {
-            throw new HttpException(410, 'This payment session is no longer active.', 'gone');
+        $upi = self::state($payment) === 'pending' ? self::upiOf($payment) : null;
+        if ($upi === null) {
+            throw new HttpException(410, 'This payment has no QR code, or its session is no longer active.', 'gone');
         }
         $order = Orders::byId((int) $payment['order_id']);
-        $png = Qr::png((string) $payment['qr_payload'], 10, 4, 'M');
+        $png = Qr::png($upi['uri'], 10, 4, 'M');
         $res = Response::binary($png, 'image/png', ['Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff']);
         if (!empty($req->query['download'])) {
             $res->header('Content-Disposition', 'attachment; filename="' . $order['public_id'] . '-payment-qr.png"');
@@ -90,6 +101,12 @@ final class PayController
             $res->header('Content-Disposition', 'inline');
         }
         return $res;
+    }
+
+    /** The stored UPI payment request, re-validated against this payment's own amount on every use. @return array{uri:string,payee:string,name:?string,amount_paise:int,reference:?string,note:?string}|null */
+    private static function upiOf(array $payment): ?array
+    {
+        return Upi::validateFor($payment['qr_payload'] ?? null, (int) $payment['amount_paise']);
     }
 
     /** Collapses the many payment states into what the page can show. */

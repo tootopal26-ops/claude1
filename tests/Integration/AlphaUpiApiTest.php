@@ -105,7 +105,7 @@ T::test('alpha-api: connection test — reachable / wrong key / wrong secret / w
 
 // ═════════════════════════════ create order ═════════════════════════════
 
-T::test('alpha-api: checkout sends the documented request and shows the hosted payment URL as the QR', function () {
+T::test('alpha-api: checkout sends the documented request and keeps the hosted payment URL as the checkout link (no QR)', function () {
     aa_setup();
     $p = pf_place('ig-followers-50');            // ₹5
     $calls = array_values(array_filter(aa_requests(), fn($c) => $c['path'] === '/api/create-order'));
@@ -122,7 +122,7 @@ T::test('alpha-api: checkout sends the documented request and shows the hosted p
 
     T::same('pending', $p['payment']['status']);
     T::contains('/pay/' . $p['payment']['gateway_order_id'], (string) $p['payment']['payment_url']);
-    T::same($p['payment']['payment_url'], $p['payment']['qr_payload'], 'the QR encodes the gateway-provided URL');
+    T::same(null, $p['payment']['qr_payload'], 'no QR: the hosted page is opened with a button, never encoded');
     $stored = (string) $p['payment']['create_response'];
     T::contains('payment_url', $stored);
     foreach ([AA_KEY, AA_SECRET, AA_WEBHOOK] as $secret) {

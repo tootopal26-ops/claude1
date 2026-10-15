@@ -19,6 +19,20 @@ use App\Support\NetGuard;
  */
 final class Gateways
 {
+    /** @var array<string,\Closure(array<string,mixed>,array<string,mixed>,array<string,mixed>):PaymentGateway> adapters of other providers, by provider key */
+    private static array $factories = [];
+
+    /**
+     * Make another provider's adapter available. `$provider` is what payment_gateways.provider holds; the factory receives the gateway
+     * row, its decoded config and its decrypted secrets. (Alpha UPI is built in.)
+     *
+     * @param \Closure(array<string,mixed>,array<string,mixed>,array<string,mixed>):PaymentGateway $factory
+     */
+    public static function register(string $provider, \Closure $factory): void
+    {
+        self::$factories[$provider] = $factory;
+    }
+
     /** @return array<string,mixed>|null the active gateway row */
     public static function activeRow(): ?array
     {
@@ -42,6 +56,9 @@ final class Gateways
         $config = json_decode((string) ($row['config_json'] ?? ''), true);
         $config = is_array($config) ? $config : [];
         $secrets = Crypto::decryptJson($row['secrets_enc'] ?? null);
+        if (isset(self::$factories[(string) $row['provider']])) {
+            return (self::$factories[(string) $row['provider']])($row, $config, $secrets);
+        }
         return match ($row['provider']) {
             AlphaUpiGateway::PROVIDER => new AlphaUpiGateway(['api_style' => self::style($row, $config, $secrets)] + $config, $secrets),
             default => throw new \RuntimeException('Unknown payment provider: ' . $row['provider']),

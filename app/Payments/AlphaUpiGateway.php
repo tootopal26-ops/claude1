@@ -21,8 +21,9 @@ use App\Support\NetGuard;
  *   bearer   the older API of the vendor SDK in app/Vendor/AlphaUpi (used unmodified): Authorization: Bearer <key>,
  *              /api/create-order and /api/check-order-status, {status:true, result:{…}}.
  *
- * Both give us a hosted payment page URL (there is no raw UPI / QR field), so the QR we show encodes that URL: scanning it
- * opens the gateway's page where the customer pays with any UPI app.
+ * Both give us ONE thing to pay with: a hosted checkout page URL (`payment_url`). Neither API documents a UPI intent (`upi://pay?…`),
+ * a QR image or a QR string, so this adapter never reports one — the payment page sends the customer to the hosted page instead of
+ * drawing a QR for it (a QR of an https page opens that page, which draws a second QR). See CreatePaymentResult::$upiIntent.
  *
  * Webhooks are the same in both: HMAC-SHA256(rawBody, webhookSecret) as a hex digest in a signature header, JSON body. The header
  * name differs between gateway versions (X-Alpha-Signature, X-PayIndia-Signature, …) and so does the payload
@@ -176,7 +177,7 @@ final class AlphaUpiGateway implements PaymentGateway
             Log::error('Alpha UPI returned an unusable payment_url');
             return new CreatePaymentResult(false, message: 'The gateway did not return a valid payment page URL.', code: 'bad_payment_url', raw: $raw);
         }
-        return new CreatePaymentResult(true, paymentUrl: $url, qrPayload: $url, message: $message, raw: $raw);
+        return new CreatePaymentResult(true, paymentUrl: $url, message: $message, raw: $raw);
     }
 
     // ── status ───────────────────────────────────────────────────────────────

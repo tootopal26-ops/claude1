@@ -24,11 +24,13 @@ function showView(name) {
 
 function killQr() {
   $('#qr-frame')?.setAttribute('data-dead', 'true');
+  $('#hosted-frame')?.setAttribute('data-dead', 'true');
   for (const id of ['btn-download', 'btn-open']) {
     const a = $('#' + id);
     if (!a) continue;
     a.setAttribute('aria-disabled', 'true');
     a.removeAttribute('href');
+    a.removeAttribute('target');
     a.removeAttribute('download');
     a.tabIndex = -1;
   }

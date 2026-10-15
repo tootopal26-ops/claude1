@@ -17,6 +17,7 @@ use App\Support\Money;
 use App\Support\Status;
 use App\Support\Targets;
 use App\Support\Tz;
+use App\Support\Upi;
 
 /**
  * Order lifecycle: checkout, the status state machine and its history.
@@ -196,8 +197,21 @@ final class Orders
             remark2: mb_substr((string) $service['title'], 0, 60),
         ));
 
-        if (!$result->ok) {
-            $reason = mb_substr($result->message !== '' ? $result->message : 'Payment could not be created.', 0, 255);
+        // A QR may only carry a UPI intent for exactly this order and amount (INR). The gateway's hosted checkout URL is stored as
+        // payment_url and is where the customer is sent; it is never turned into a QR.
+        $upi = null;
+        if ($result->ok && $result->upiIntent !== null) {
+            $upi = Upi::validateFor($result->upiIntent, (int) $service['price_paise']);
+            if ($upi === null) {
+                Log::warning('The gateway returned a UPI intent that does not match the order (format, currency or amount); it is not used', ['order' => $created['public_id']]);
+            }
+        }
+        $hosted = $result->paymentUrl !== null && preg_match('#^https?://#i', $result->paymentUrl) === 1 ? $result->paymentUrl : null;
+
+        if (!$result->ok || ($hosted === null && $upi === null)) {
+            $reason = $result->message !== '' ? $result->message
+                : ($result->ok ? 'The gateway returned neither a payment page nor a valid UPI payment request for this amount.' : 'Payment could not be created.');
+            $reason = mb_substr($reason, 0, 255);
             Db::tx(static function () use ($created, $reason): void {
                 Db::update('payments', ['status' => Status::PAY_FAILED, 'failure_reason' => $reason, 'updated_at' => Clock::sql()], 'id = ?', [$created['payment_id']]);
                 Db::update('orders', ['payment_status' => 'failed', 'last_error' => $reason], 'id = ?', [$created['order_id']]);
@@ -207,7 +221,7 @@ final class Orders
         }
 
         Db::update('payments', [
-            'status' => Status::PAY_PENDING, 'payment_url' => $result->paymentUrl, 'qr_payload' => $result->qrPayload,
+            'status' => Status::PAY_PENDING, 'payment_url' => $hosted, 'qr_payload' => $upi['uri'] ?? null,
             'create_response' => json_encode($result->raw, JSON_UNESCAPED_SLASHES), 'updated_at' => Clock::sql(),
         ], "id = ? AND status = 'creating'", [$created['payment_id']]);
 

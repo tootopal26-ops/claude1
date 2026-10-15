@@ -122,7 +122,7 @@ T::test('checkout: creates a pending order + 5-minute payment with the gateway-h
     T::same(32, strlen($o['access_token']));
     T::same('pending', $p['payment']['status']);
     T::true(str_starts_with((string) $p['payment']['payment_url'], 'http://127.0.0.1:4010/pay/SMB'));
-    T::same($p['payment']['payment_url'], $p['payment']['qr_payload'], 'QR encodes the gateway-provided URL');
+    T::same(null, $p['payment']['qr_payload'], 'no QR: the gateway only offers a hosted page, and a QR of that page is the bug this avoids');
     T::same(Clock::sql(1_800_000_300), $p['payment']['expires_at'], 'session lasts exactly 5:00');
     T::same(1, (int) Db::val('SELECT COUNT(*) FROM order_status_history WHERE order_id = ?', [$o['id']]));
     // the gateway received the amount in rupees and OUR order id

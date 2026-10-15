@@ -26,7 +26,7 @@ final class Settings
             'site.favicon'              => null,
             'site.footer_text'          => '© {year} {name}. All rights reserved.',
             'site.support_link'         => '',
-            'site.payment_instructions' => 'Scan the QR code with your phone camera. The secure payment page opens — pay with any UPI app. Keep this page open until your payment is confirmed.',
+            'site.payment_instructions' => 'Pay with any UPI app. Keep this page open until your payment is confirmed.',
             'site.maintenance'          => false,
             'site.maintenance_message'  => 'We are upgrading our systems and will be back shortly.',
             'seo.title'                 => 'SOCIAL MEDIA BOOSTER — Instagram & YouTube Growth Services',

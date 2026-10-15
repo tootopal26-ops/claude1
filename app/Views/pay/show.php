@@ -8,18 +8,35 @@ $state = $pay['state'];
 <div class="pay-wrap">
   <div class="pay-card glass-strong" id="pay-root" data-ref="<?= e($pay['ref']) ?>" data-state="<?= e($state) ?>">
 
-    <!-- ───────── pending: SCAN AND PAY ───────── -->
-    <section data-view="pending"<?= $state === 'pending' ? '' : ' hidden' ?> aria-live="polite">
+    <!-- ───────── pending ─────────
+         upi    : a real UPI payment request for exactly this order → a QR a UPI app can scan straight into its payment screen
+         hosted : the gateway only offers its own checkout page → no QR here (a QR of that page would open it in a browser, which
+                  draws a second QR): one button opens the checkout, which has the QR / UPI-app choice ───────── -->
+    <?php $upi = $pay['mode'] === 'upi'; $live = $state === 'pending'; /* an expired / paid / failed / under-review session never ships its QR or payment link */ ?>
+    <section data-view="pending" data-mode="<?= e($pay['mode']) ?>"<?= $state === 'pending' ? '' : ' hidden' ?> aria-live="polite">
       <p class="pay-kicker"><?= icon('shield-check', 'icon icon-sm') ?> Secure payment</p>
-      <h1 class="pay-title">SCAN AND PAY</h1>
+      <h1 class="pay-title"><?= $upi ? 'SCAN AND PAY' : 'PAY SECURELY' ?></h1>
       <p class="pay-summary"><b class="num"><?= e($pay['amount']) ?></b><span><?= e($pay['service']) ?></span></p>
 
-      <?php $live = $state === 'pending'; /* an expired / paid / failed / under-review session never ships its QR or payment link */ ?>
+      <?php if ($upi): ?>
       <div class="qr-frame rgb-ring" id="qr-frame" data-dead="<?= $live ? 'false' : 'true' ?>">
-        <img id="qr-img"<?= $live ? ' src="' . e($pay['qr_url']) . '"' : '' ?> width="280" height="280" alt="Payment QR code for <?= e($pay['amount']) ?>" decoding="async">
+        <img id="qr-img"<?= $live ? ' src="' . e($pay['qr_url']) . '"' : '' ?> width="280" height="280" alt="UPI payment QR code for <?= e($pay['amount']) ?>" decoding="async">
         <span class="qr-corner tl"></span><span class="qr-corner tr"></span><span class="qr-corner bl"></span><span class="qr-corner br"></span>
         <div class="qr-dead"><?= icon('clock', 'icon icon-xl mx-auto') ?><span>Payment session expired</span></div>
       </div>
+      <p class="pay-payee" id="pay-payee">Scan with any UPI app<?php if ($pay['payee'] !== null): ?> · paying <b><?= e($pay['payee']['name'] ?? $pay['payee']['vpa']) ?></b><?php if (!empty($pay['payee']['name'])): ?> <span class="mono"><?= e($pay['payee']['vpa']) ?></span><?php endif; ?><?php endif; ?></p>
+      <?php else: ?>
+      <div class="hosted-card" id="hosted-frame" data-dead="<?= $live ? 'false' : 'true' ?>">
+        <span class="hosted-icon" aria-hidden="true"><?= icon('shield-check') ?></span>
+        <p class="hosted-lead">You finish paying on our payment partner’s secure page</p>
+        <ol class="hosted-steps">
+          <li><b aria-hidden="true">1</b><span>Tap <strong>PAY <?= e(strtoupper($pay['amount'])) ?> NOW</strong>. The secure payment page opens in a new tab.</span></li>
+          <li><b aria-hidden="true">2</b><span>On that page, scan its QR code with any UPI app — or tap your UPI app.</span></li>
+          <li><b aria-hidden="true">3</b><span>Come back to this page. We confirm your payment automatically.</span></li>
+        </ol>
+        <div class="qr-dead"><?= icon('clock', 'icon icon-xl mx-auto') ?><span>Payment session expired</span></div>
+      </div>
+      <?php endif; ?>
 
       <div class="timer" id="timer" data-level="ok" role="timer" aria-label="Time left to pay">
         <div class="timer-label">Time left to pay</div>
@@ -28,8 +45,12 @@ $state = $pay['state'];
       </div>
 
       <div class="pay-actions">
+        <?php if ($upi): ?>
         <a class="btn btn-lg" id="btn-download"<?= $live ? ' href="' . e($pay['download_url']) . '" download' : ' aria-disabled="true" tabindex="-1"' ?>><?= icon('download') ?> DOWNLOAD QR</a>
-        <a class="btn btn-success btn-lg" id="btn-open"<?= $live ? ' href="' . e($pay['pay_url']) . '"' : ' aria-disabled="true" tabindex="-1"' ?> rel="noopener noreferrer"><?= icon('smartphone') ?> PAY ON THIS DEVICE</a>
+        <a class="btn btn-success btn-lg" id="btn-open"<?= $live ? ' href="' . e($pay['pay_url']) . '"' : ' aria-disabled="true" tabindex="-1"' ?>><?= icon('smartphone') ?> OPEN UPI APP</a>
+        <?php else: ?>
+        <a class="btn btn-success btn-lg btn-shine" id="btn-open"<?= $live ? ' href="' . e($pay['pay_url']) . '" target="_blank"' : ' aria-disabled="true" tabindex="-1"' ?> rel="noopener noreferrer"><?= icon('lock') ?> PAY <?= e(strtoupper($pay['amount'])) ?> NOW</a>
+        <?php endif; ?>
       </div>
       <p class="pay-status" id="pay-status"><i></i><span>Waiting for your payment…</span></p>
       <p class="pay-note"><?= e($pay['instructions']) ?></p>
@@ -59,7 +80,7 @@ $state = $pay['state'];
     <section data-view="expired"<?= $state === 'expired' ? '' : ' hidden' ?> aria-live="assertive">
       <div class="state-icon state-warn"><?= icon('clock') ?></div>
       <h1 class="pay-title">Payment session expired</h1>
-      <p class="pay-note">The 5-minute payment window has ended and no payment was received for order <b class="text-ink"><?= e($pay['order_id']) ?></b>. <b class="text-ink">Please do not pay using this QR code.</b> Start again to get a fresh one.</p>
+      <p class="pay-note">The 5-minute payment window has ended and no payment was received for order <b class="text-ink"><?= e($pay['order_id']) ?></b>. <b class="text-ink">Please do not pay for this order any more.</b> Start again to get a fresh payment session.</p>
       <div class="pay-actions"><a class="btn btn-primary btn-lg" href="<?= e(url('/')) ?>#services"><?= icon('refresh-cw') ?> START AGAIN</a></div>
     </section>
 

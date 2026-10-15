@@ -69,7 +69,7 @@ function render(site) {
     <section class="card" aria-labelledby="h-content"><div class="card-head"><h2 class="card-title" id="h-content">${icon('file-text')}Content</h2></div>
       ${field('w-support', 'Support link', html`<input class="input" id="w-support" name="support_link" value="${w.support_link}" maxlength="300" placeholder="https://wa.me/91XXXXXXXXXX or mailto:help@example.com">`, 'Shown in the footer and on payment problems. Must start with https:// or mailto:.')}
       ${field('w-footer', 'Footer text', html`<input class="input" id="w-footer" name="footer_text" value="${w.footer_text}" maxlength="200">`, 'You can use {year} and {name}.')}
-      ${field('w-instr', 'Payment page instructions', html`<textarea class="textarea" id="w-instr" name="payment_instructions" rows="3" maxlength="600">${w.payment_instructions}</textarea>`, 'Shown under the QR code on the payment page.')}
+      ${field('w-instr', 'Payment page instructions', html`<textarea class="textarea" id="w-instr" name="payment_instructions" rows="3" maxlength="600">${w.payment_instructions}</textarea>`, 'Shown at the bottom of the payment page, under the timer and the pay button.')}
     </section>
 
     <section class="card" aria-labelledby="h-seo"><div class="card-head"><h2 class="card-title" id="h-seo">${icon('search')}Search appearance (SEO)</h2></div>
