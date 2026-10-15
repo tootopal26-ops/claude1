@@ -271,6 +271,7 @@ await t.step('system: "Database updates" — up to date; a pending migration rai
     t.has(await t.text(page.locator('#banners')), 'database update is waiting');
     t.has(await t.text(card.locator('.chip')), '1 pending'); t.has(await t.text(card), '998_qa_tmp');
     await page.click('#run-migrate'); await toast('success').waitFor();
+    await page.waitForFunction(() => /Up to date/.test(document.querySelector('[aria-labelledby="h-db"] .chip')?.textContent || ''), null, { timeout: 8000 });   // the card repaints just after the toast
     t.has(await t.text(card.locator('.chip')), 'Up to date');
     t.eq(sql("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'smb_dev' AND TABLE_NAME = 'qa_tmp_migration2'"), '1', 'the migration ran');
     t.eq(sql("SELECT COUNT(*) FROM audit_logs WHERE action = 'system.migrated'"), '1', 'and was audited');

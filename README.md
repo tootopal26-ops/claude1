@@ -97,7 +97,7 @@ npm run build        # icons sprite + Tailwind CSS + JS bundles → public/asset
 
 ### Tests
 ```bash
-php tests/run.php                 # 140 unit + integration tests (payments, webhooks, both Alpha UPI APIs, fulfilment, analytics, admin services, tags & badges …)
+php tests/run.php                 # 169 unit + integration tests (payments, webhooks, both Alpha UPI APIs, the UPI payment-request / QR rules, link validation, INR only, fulfilment, analytics, admin services, tags & badges …)
 bash tools/qa/run-all.sh          # every browser/HTTP QA suite (Playwright, axe-core, real Apache) — see docs/QA-REPORT.md
 ```
 
