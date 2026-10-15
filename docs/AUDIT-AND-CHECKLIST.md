@@ -75,8 +75,8 @@ The existing values stay (they are stored in rows, used by the UI, 185 tests and
 ## 5. Implementation checklist (phases; each is committed separately)
 
 - [x] **Phase 1** — this audit.
-- [ ] **Phase 2** — migrations (finance, risk, jobs, alerts, reports, support, ads, pricing), RBAC, audit helper, job runner, state mapping.
-- [ ] **Phase 3** — payment risk flags, thresholds, monitoring screen, safe reconcile actions.
+- [x] **Phase 2** — migrations (finance, risk, jobs, alerts, reports, support, ads, pricing), RBAC, audit helper, job runner, state mapping. *(commit `6259e03`)*
+- [x] **Phase 3** — payment risk flags, thresholds, monitoring screen, safe reconcile actions, webhook cross-check, role enforcement on the existing admin. See [PAYMENT-CHECKS.md](PAYMENT-CHECKS.md).
 - [ ] **Phase 4** — recovery queue + actions, per-job cron entry points with locks and run history.
 - [ ] **Phase 5** — Profit Intelligence and Ads Intelligence (calculations, screens, reconciliation).
 - [ ] **Phase 6** — Business Watchdog, alerts, deterministic Daily Report.

@@ -22,16 +22,19 @@ final class ServicesController extends BaseController
 
     public function list(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         return $this->ok(['services' => AdminServices::list(), 'meta' => AdminServices::meta()]);
     }
 
     public function show(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         return $this->ok(['service' => AdminServices::get($this->id($p))]);
     }
 
     public function create(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         $in = $req->json();
         $admin = $this->admin($req);
         return $this->once($req, 'service-save', static fn(): array => ['service' => AdminServices::save(null, $in, $req, $admin)]);
@@ -39,6 +42,7 @@ final class ServicesController extends BaseController
 
     public function update(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         $id = $this->id($p);
         $in = $req->json();
         $admin = $this->admin($req);
@@ -47,6 +51,7 @@ final class ServicesController extends BaseController
 
     public function delete(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         AdminServices::delete($this->id($p), $req, $this->admin($req));
         return $this->ok(['message' => 'Service deleted.']);
     }
@@ -54,6 +59,7 @@ final class ServicesController extends BaseController
     /** POST /admin/api/services/icon — multipart upload; returns the stored path for the service form to save. */
     public function icon(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         $file = $req->files['file'] ?? null;
         if (!is_array($file)) {
             throw new HttpException(422, 'Choose an image to upload.', 'upload_failed');
@@ -66,12 +72,14 @@ final class ServicesController extends BaseController
     /** PATCH /admin/api/platforms/{id} */
     public function platform(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         return $this->ok(['platform' => AdminSettings::savePlatform($this->id($p), $req->json(), $req, $this->admin($req)), 'platforms' => Catalog::platforms(false)]);
     }
 
     /** POST /admin/api/platforms/{id}/logo (multipart) */
     public function platformLogo(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         $file = $req->files['file'] ?? null;
         if (!is_array($file)) {
             throw new HttpException(422, 'Choose an image to upload.', 'upload_failed');
@@ -81,6 +89,7 @@ final class ServicesController extends BaseController
 
     public function platformLogoReset(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         return $this->ok(['platform' => AdminSettings::resetPlatformLogo($this->id($p), $req, $this->admin($req))]);
     }
 }

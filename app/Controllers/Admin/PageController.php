@@ -16,20 +16,21 @@ use App\Support\Tz;
  */
 final class PageController extends BaseController
 {
-    /** page key → [title, view, group] */
+    /** page key → [title, view, permission needed to open it (null = every signed-in admin)] */
     public const PAGES = [
-        'dashboard'   => ['Dashboard', 'admin/dashboard'],
-        'orders'      => ['Orders', 'admin/orders'],
-        'payments'    => ['Payments', 'admin/payments'],
-        'services'    => ['Services', 'admin/services'],
-        'tags'        => ['Tags & Badges', 'admin/tags'],
-        'website'     => ['Website', 'admin/website'],
-        'gateway'     => ['Payment gateway', 'admin/gateway'],
-        'smm'         => ['SMM API', 'admin/smm'],
-        'advertising' => ['Advertising', 'admin/advertising'],
-        'security'    => ['Security', 'admin/security'],
-        'audit'       => ['Audit log', 'admin/audit'],
-        'system'      => ['System', 'admin/system'],
+        'dashboard'      => ['Dashboard', 'admin/dashboard', 'dashboard.view'],
+        'orders'         => ['Orders', 'admin/orders', 'orders.view'],
+        'payments'       => ['Payments', 'admin/payments', 'payments.view'],
+        'payment-checks' => ['Payment checks', 'admin/payment-checks', 'payments.view'],
+        'services'       => ['Services', 'admin/services', 'catalog.manage'],
+        'tags'           => ['Tags & Badges', 'admin/tags', 'catalog.manage'],
+        'website'        => ['Website', 'admin/website', 'catalog.manage'],
+        'gateway'        => ['Payment gateway', 'admin/gateway', 'integrations.manage'],
+        'smm'            => ['SMM API', 'admin/smm', 'integrations.manage'],
+        'advertising'    => ['Advertising', 'admin/advertising', 'ads.view'],
+        'security'       => ['Security', 'admin/security', null],
+        'audit'          => ['Audit log', 'admin/audit', 'audit.view'],
+        'system'         => ['System', 'admin/system', 'jobs.view'],
     ];
 
     public function index(Request $req, array $p): Response
@@ -43,7 +44,10 @@ final class PageController extends BaseController
         if (!isset(self::PAGES[$page])) {
             throw new \App\Core\HttpException(404, 'Page not found.');
         }
-        [$title, $view] = self::PAGES[$page];
+        [$title, $view, $permission] = self::PAGES[$page];
+        if ($permission !== null) {
+            $this->authorize($req, $permission);
+        }
         $auth = $this->auth($req);
         $site = Settings::site();
         $content = View::render($view, ['site' => $site, 'admin' => $auth['admin'], 'force' => $req->queryString('force') === '1']);

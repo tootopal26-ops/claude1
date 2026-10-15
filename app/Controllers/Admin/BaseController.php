@@ -28,8 +28,9 @@ abstract class BaseController
     protected function authorize(Request $req, string $permission): array
     {
         $admin = $this->admin($req);
-        if (!Permissions::can((string) $admin['role'], $permission)) {
-            throw new HttpException(403, 'Your role (' . $admin['role'] . ') does not allow this: ' . (Permissions::ALL[$permission] ?? $permission) . '.', 'forbidden');
+        $role = (string) ($admin['role'] ?? '');
+        if (!Permissions::can($role, $permission)) {
+            throw new HttpException(403, 'Your role (' . ($role !== '' ? $role : 'none') . ') does not allow this: ' . (Permissions::ALL[$permission] ?? $permission) . '.', 'forbidden');
         }
         return $admin;
     }

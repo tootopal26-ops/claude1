@@ -57,6 +57,21 @@ MySQL 5.7+ / MariaDB 10.3+, InnoDB, `utf8mb4`. No CTEs, window functions, `CONVE
 | `rate_limits` | Fixed-window counters `k = sha1(bucket|identity|window)`; purged by cron. |
 | `schema_migrations` | Applied migration versions. |
 
+### Operations, risk, finance, ads, reports and pricing (migrations 005–010)
+Additive only: nothing above was changed or removed (the new columns are nullable or default-off). Rollback notes are at the top of each migration file.
+
+| Table / columns | Purpose |
+|---|---|
+| `job_runs` *(006)* | One row per run of a scheduled job: `job`, `trigger_source` (cron\|admin\|web), `dry_run`, `status` (running\|ok\|failed\|timeout\|abandoned), start / finish / duration, small `result_json`, `error_category` (database\|network\|timeout\|logic) and a sanitised message — never a stack trace, path or secret. Kept 90 days. |
+| `business_alerts` *(006)* | What the watchdog (and the payment checks) found. `dedupe_key` + a unique `active_key` (set while open / acknowledged, `NULL` once resolved) → **one live alert per problem**; `occurrences`, severity (info\|warning\|critical), first / last detected, acknowledged / resolved by, `resolution` (auto\|admin), `last_notified_at` (e-mail cooldown). |
+| `payment_flags` *(006)* | Suspicious-payment findings ([PAYMENT-CHECKS.md §4](PAYMENT-CHECKS.md)): `flag_type`, `severity` (low\|medium\|high), `payment_id`, `order_id`, `gateway_id`, `webhook_event_id`, `dedupe_key` + unique `active_key` (one open flag per problem), `status` (open\|reviewed\|dismissed\|resolved), `occurrences`, first / last seen, `details_json` (plain facts only), `reviewed_by` / `reviewed_at` / `review_note`. Closed flags are deleted after a year. |
+| `orders.last_attempt_at`, `recovery_status`, `escalated_at`, `escalated_by` *(006)* | Recovery bookkeeping (used by the recovery queue). |
+| `webhook_events.last_attempt_at` *(010)* | When the latest repeated delivery of an event arrived (`attempts` counts every delivery). |
+| `services.fulfil_cost_paise`, `order_costs`, `expenses` *(005)* | What delivering a MANUAL order costs (NULL = not stated → profit is labelled incomplete), append-only per-order cost lines (`fulfilment`, `payment_fee`, `other`; a correction ends the old row), and business expenses / chargebacks by IST day. |
+| `daily_reports`, `ai_usage_logs`, `support_conversations`, `support_messages` *(007)* | One deterministic report per IST day (AI commentary stored apart from the numbers), a log of AI calls (no prompts, no answers, no secrets), and short-lived support chats. |
+| `visitor_sessions.utm_content / utm_term / page_views / service_views / engaged_at / returning_visitor`, `ad_daily_spend`, `campaign_attribution` *(008)* | Finer visitor measurement, **actual** ad spend per IST day (pre-tax and GST apart; the CPC estimate is never added on top of a day that has actual spend) and one attribution row per verified order. |
+| `service_price_versions`, `pricing_experiments`, `pricing_experiment_cohorts`, `pricing_assignments`, `pricing_decision_logs`, `price_audit_logs`, `ad_campaign_settings`, `services.adaptive_*`, `services.pricing_paused`, `orders.price_version_id / experiment_id / price_cohort`, `visitor_sessions.platform_pref` *(009)* | Adaptive pricing: `services.price_paise` stays the default price; every price an order was sold at is kept; experiments, stable pseudonymous cohorts, decision and price audit logs, and the budget / CPC / GST settings history. Everything defaults to **off**. |
+
 ## Relationships (simplified)
 
 ```
@@ -76,4 +91,4 @@ Foreign keys protect history: a service or platform that has orders cannot be ha
 * `003_service_tags.sql` creates `service_tags` + `services.tag_id`, inserts the 10 predefined tags (TRIAL PACK `#DC2626`, BEST SELLER `#7C3AED`, POPULAR `#D97706`, BEST VALUE `#15803D`, PREMIUM `#0369A1`, HOT DEAL `#BE185D`, NON DROP `#0F766E`, INSTANT `#4338CA`, LIMITED OFFER `#475569`, VIP `#A16207`; all with white text) and converts the old free-text badges: text that names a predefined tag is assigned to it, any other text becomes a custom tag coloured like the old colour name; `TRIAL PACK` text is never assigned (the tag is automatic). Nothing is dropped. **Money comparison:** the storefront decides *TRIAL PACK* with `Tags::isTrialPrice()` — `price_paise === 500`, an integer comparison, so there is no floating-point doubt (₹4.99 = 499 and ₹5.01 = 501 are not trial prices). The tag is one row, so seeding (`Tags::seedPredefined()`, also run by `bin/seed.php`) and the migration both use `INSERT IGNORE` and never overwrite an admin's edit; a test keeps the PHP list, the seeder and the SQL in agreement, and another one that `database/schema.sql` is the current build of the migrations (`php tools/build-schema.php --check`).
 
 ## Retention
-Cron purges rate-limit and idempotency rows, expired admin sessions, webhook events older than 180 days, log files older than 30 days and raw visitor sessions older than 400 days. Money-relevant aggregates (`orders`, `payments`, `visitor_days`, `analytics_daily`) are kept.
+Cron purges rate-limit and idempotency rows, expired admin sessions, webhook events older than 180 days, job history older than 90 days, closed payment flags older than a year, support conversations past their retention, log files older than 30 days and raw visitor sessions older than 400 days. Money-relevant aggregates (`orders`, `payments`, `visitor_days`, `analytics_daily`) are kept.

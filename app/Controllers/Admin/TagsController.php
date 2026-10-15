@@ -25,12 +25,14 @@ final class TagsController extends BaseController
 
     public function list(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         $this->ready();
         return $this->ok(['tags' => Tags::adminList(), 'meta' => Tags::meta()]);
     }
 
     public function create(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         $this->ready();
         $in = $req->json();
         $admin = $this->admin($req);
@@ -39,6 +41,7 @@ final class TagsController extends BaseController
 
     public function update(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         $this->ready();
         $id = $this->id($p);
         $in = $req->json();
@@ -48,6 +51,7 @@ final class TagsController extends BaseController
 
     public function delete(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         $this->ready();
         $r = Tags::delete($this->id($p), $req, $this->admin($req));
         return $this->ok(['message' => 'Tag deleted.', 'unassigned' => $r['unassigned']]);

@@ -14,11 +14,13 @@ final class SettingsController extends BaseController
 {
     public function website(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         return $this->ok(['website' => AdminSettings::website()]);
     }
 
     public function saveWebsite(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         $in = $req->json();
         $admin = $this->admin($req);
         return $this->once($req, 'settings-website', static fn(): array => ['website' => AdminSettings::saveWebsite($in, $req, $admin)]);
@@ -27,6 +29,7 @@ final class SettingsController extends BaseController
     /** POST /admin/api/branding/{kind:site_logo|favicon} (multipart) */
     public function uploadBranding(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         $file = $req->files['file'] ?? null;
         if (!is_array($file)) {
             throw new HttpException(422, 'Choose an image to upload.', 'upload_failed');
@@ -36,6 +39,7 @@ final class SettingsController extends BaseController
 
     public function resetBranding(Request $req, array $p): Response
     {
+        $this->authorize($req, 'catalog.manage');
         return $this->ok(AdminSettings::resetBranding((string) $p['kind'], $req, $this->admin($req)));
     }
 
@@ -43,11 +47,13 @@ final class SettingsController extends BaseController
 
     public function advertising(Request $req, array $p): Response
     {
+        $this->authorize($req, 'ads.view');
         return $this->ok(['ads' => $this->adsView()]);
     }
 
     public function saveAdvertising(Request $req, array $p): Response
     {
+        $this->authorize($req, 'ads.manage');
         $in = $req->json();
         $admin = $this->admin($req);
         return $this->once($req, 'settings-ads', function () use ($in, $req, $admin): array {

@@ -52,6 +52,10 @@ final class Settlement
                     $status = (string) Db::val('SELECT status FROM orders WHERE id = ?', [$orderId], '');
                     Orders::history($orderId, $status, $status, 'system', null, 'Duplicate payment received (bank ref ' . mb_substr($again, 0, 40) . ') for an order that was already paid. Refund the duplicate.');
                     Log::warning('Duplicate payment for an already-paid order', ['payment' => $paymentId, 'utr' => $again]);
+                    Risk::record('duplicate_payment', [
+                        'payment_id' => $paymentId, 'order_id' => $orderId, 'gateway_id' => $p['gateway_id'], 'key' => 'p' . $paymentId . ':' . substr(sha1($again), 0, 12),
+                        'details' => ['kind' => 'second_reference', 'new_reference' => $again, 'first_reference' => (string) $p['provider_txn_id'], 'paid_via' => $source],
+                    ]);
                 }
                 return self::out(self::ALREADY, $orderId, $paymentId, null, 'Payment was already confirmed.');
             }
@@ -67,13 +71,13 @@ final class Settlement
                 // The shop is INR-only. A gateway that says the payment is in another currency has not paid ₹ — a human decides.
                 $currency = isset($evidence['currency']) ? strtoupper(trim((string) $evidence['currency'])) : '';
                 if ($currency !== '' && $currency !== 'INR') {
-                    return self::flag($p, 'The gateway reported the payment in ' . mb_substr($currency, 0, 8) . ', not INR, so the amount cannot be verified automatically.');
+                    return self::flag($p, 'currency_mismatch', 'The gateway reported the payment in ' . mb_substr($currency, 0, 8) . ', not INR, so the amount cannot be verified automatically.', null, ['gateway_currency' => mb_substr($currency, 0, 8)]);
                 }
                 if ($reported === null) {
-                    return self::flag($p, 'The gateway did not report the paid amount, so it cannot be verified automatically.');
+                    return self::flag($p, 'missing_amount', 'The gateway did not report the paid amount, so it cannot be verified automatically.');
                 }
                 if ($reported !== $expected) {
-                    return self::flag($p, 'Amount mismatch: expected ' . Money::inr($expected, true) . ' but the gateway reported ' . Money::inr($reported, true) . '.', $reported);
+                    return self::flag($p, 'amount_mismatch', 'Amount mismatch: expected ' . Money::inr($expected, true) . ' but the gateway reported ' . Money::inr($reported, true) . '.', $reported);
                 }
             }
 
@@ -81,11 +85,12 @@ final class Settlement
             if ($utr !== null && $p['gateway_id'] !== null) {
                 $dup = Db::val('SELECT id FROM payments WHERE gateway_id = ? AND provider_txn_id = ? AND id <> ? LIMIT 1', [$p['gateway_id'], $utr, $paymentId]);
                 if ($dup !== null) {
-                    return self::flag($p, 'The bank reference ' . $utr . ' was already used by another payment.');
+                    return self::flag($p, 'duplicate_reference', 'The bank reference ' . $utr . ' was already used by another payment.', null, ['reference' => $utr, 'other_payment_id' => (int) $dup]);
                 }
             }
 
-            $late = $now > (int) Clock::fromSql($p['expires_at']) + 120;
+            $expiresAt = (int) Clock::fromSql($p['expires_at']);
+            $late = $now > $expiresAt + 120;
             $day = Tz::today();
             Db::update('payments', [
                 'status' => Status::PAY_SUCCESS, 'paid_at' => Clock::sql($now), 'paid_day' => $day,
@@ -98,12 +103,23 @@ final class Settlement
             if ($o === null) {
                 return self::out(self::IGNORED, $orderId, $paymentId, null, 'Order not found.');
             }
+            if ($late && Risk::thresholds()['flag_late_payments']) {
+                Risk::record('late_payment', [
+                    'payment_id' => $paymentId, 'order_id' => $orderId, 'gateway_id' => $p['gateway_id'],
+                    'details' => ['seconds_after_expiry' => $now - $expiresAt, 'confirmed_via' => $source, 'order_status_before' => (string) $o['status']],
+                ]);
+            }
 
             if (!in_array($o['status'], [Status::PENDING_PAYMENT, Status::EXPIRED, Status::FAILED], true)) {
                 // Money arrived for an order that was already cancelled/refunded/etc: record it, let a human decide.
                 Orders::history($orderId, (string) $o['status'], (string) $o['status'], 'system', null,
                     'Payment confirmed (' . Money::inr($expected, true) . ') but the order was already “' . Status::orderLabel((string) $o['status']) . '”. Needs review.');
                 Log::warning('Payment settled for an order that was not payable', ['order' => $o['public_id'], 'status' => $o['status']]);
+                // an order that was already paid by another payment: the customer paid twice; anything else (cancelled, refunded …) is a mapping a person must look at
+                Risk::record($o['paid_at'] !== null ? 'duplicate_payment' : 'mapping_inconsistent', [
+                    'payment_id' => $paymentId, 'order_id' => $orderId, 'gateway_id' => $p['gateway_id'], 'key' => 'p' . $paymentId . ':order_not_payable',
+                    'details' => ['kind' => 'order_not_payable', 'order_status' => (string) $o['status'], 'paid_via' => $source],
+                ]);
                 return self::out(self::SETTLED, $orderId, $paymentId, null, 'Payment recorded; the order needs review.');
             }
 
@@ -136,6 +152,7 @@ final class Settlement
         });
 
         // Side effects that must not run inside the transaction.
+        Risk::flush();
         if ($out['result'] === self::SETTLED && isset($out['day'])) {
             Tracking::onPaymentSucceeded($out['visitor_id'] ?? null, $out['session_id'] ?? null);
             Analytics::markDirty((string) $out['day']);
@@ -146,15 +163,23 @@ final class Settlement
         return $out;
     }
 
-    /** Mark the payment for human review instead of fulfilling it. */
-    private static function flag(array $p, string $reason, ?int $reportedPaise = null): array
+    /**
+     * Mark the payment for human review instead of fulfilling it, and record WHY as a payment flag (the flag is part of the same transaction).
+     *
+     * @param array<string,scalar> $facts
+     */
+    private static function flag(array $p, string $type, string $reason, ?int $reportedPaise = null, array $facts = []): array
     {
         Db::update('payments', [
             'status' => Status::PAY_MISMATCH, 'failure_reason' => mb_substr($reason, 0, 255),
             'paid_amount_paise' => $reportedPaise, 'updated_at' => Clock::sql(),
         ], 'id = ?', [$p['id']]);
         Orders::history((int) $p['order_id'], null, 'PENDING_PAYMENT', 'system', null, 'Payment flagged for review: ' . $reason);
-        Log::warning('Payment flagged', ['payment' => $p['id'], 'reason' => $reason]);
+        Log::warning('Payment flagged', ['payment' => $p['id'], 'type' => $type, 'reason' => $reason]);
+        Risk::record($type, [
+            'payment_id' => (int) $p['id'], 'order_id' => (int) $p['order_id'], 'gateway_id' => $p['gateway_id'] !== null ? (int) $p['gateway_id'] : null,
+            'details' => $facts + ['expected_paise' => (int) $p['amount_paise']] + ($reportedPaise !== null ? ['reported_paise' => $reportedPaise] : []),
+        ]);
         return self::out(self::MISMATCH, (int) $p['order_id'], (int) $p['id'], null, $reason);
     }
 

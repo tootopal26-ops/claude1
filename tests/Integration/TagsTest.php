@@ -494,7 +494,9 @@ T::test('tags migration 003: old free-text badges become tags (predefined by nam
     }
     T::same('', Tags::css(), 'no tag stylesheet rules');
     try {
-        (new \App\Controllers\Admin\TagsController())->list(Request::fake('GET', '/admin/api/tags'), []);
+        $req = Request::fake('GET', '/admin/api/tags');
+        $req->attributes['admin'] = ['id' => 1, 'username' => 'root', 'email' => 'r@x.test', 'role' => 'owner'];
+        (new \App\Controllers\Admin\TagsController())->list($req, []);
         T::true(false, 'the tags API must refuse while the table is missing');
     } catch (HttpException $e) {
         T::same([409, 'migration_pending'], [$e->status, $e->errorCode], 'a plain "apply the database update" answer');

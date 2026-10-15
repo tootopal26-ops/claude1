@@ -7,6 +7,7 @@ const pages = {
   dashboard: () => import('./admin/dashboard.js'),
   orders: () => import('./admin/orders.js'),
   payments: () => import('./admin/payments.js'),
+  'payment-checks': () => import('./admin/payment-checks.js'),
   services: () => import('./admin/services.js'),
   tags: () => import('./admin/tags.js'),
   website: () => import('./admin/website.js'),

@@ -1162,6 +1162,26 @@ ALTER TABLE `orders`
   ADD COLUMN `price_cohort`     VARCHAR(10) NULL AFTER `experiment_id`,
   ADD KEY `idx_orders_experiment` (`experiment_id`, `price_cohort`);
 
+-- ── 010_webhook_duplicates.sql ──
+-- ============================================================================
+-- Webhook deliveries: remember WHEN the last repeated delivery of an event arrived.
+--
+-- `webhook_events` already holds one row per event (unique `dedupe_key`) and `attempts` counts every delivery of it, so a repeated delivery is
+-- acknowledged, not processed again, and is visible as attempts > 1. What was missing for the audit trail ("keep a record of ignored
+-- duplicates") is when the most recent repeat came in; the payment-checks screen shows it next to the delivery count.
+--
+-- Additive and nullable: nothing existing changes.
+--
+-- Rollback:
+--   ALTER TABLE `webhook_events` DROP COLUMN `last_attempt_at`;
+--   DELETE FROM `schema_migrations` WHERE `version` = '010_webhook_duplicates';
+-- ============================================================================
+
+SET NAMES utf8mb4;
+
+ALTER TABLE `webhook_events`
+  ADD COLUMN `last_attempt_at` DATETIME NULL AFTER `attempts`;
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE IF NOT EXISTS `schema_migrations` (`version` VARCHAR(64) NOT NULL, `applied_at` DATETIME NOT NULL, PRIMARY KEY (`version`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -1174,3 +1194,4 @@ INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('006_op
 INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('007_reports_ai_support', UTC_TIMESTAMP());
 INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('008_ads_intelligence', UTC_TIMESTAMP());
 INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('009_adaptive_pricing', UTC_TIMESTAMP());
+INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('010_webhook_duplicates', UTC_TIMESTAMP());

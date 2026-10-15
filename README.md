@@ -137,6 +137,8 @@ Everything lives in `.env` (see [.env.example](.env.example)) plus the admin pan
 | [docs/API.md](docs/API.md) | every HTTP route, request/response shapes, auth, CSRF, idempotency, the webhook contract |
 | [docs/DATABASE.md](docs/DATABASE.md) | tables, relationships, money/time conventions, migrations and seeding |
 | [docs/ORDERS.md](docs/ORDERS.md) | order & payment lifecycles, AUTO vs MANUAL, failure handling table |
+| [docs/PAYMENT-CHECKS.md](docs/PAYMENT-CHECKS.md) | how a payment becomes paid, what is flagged and why, the webhook cross-check, thresholds, roles, what was tested |
+| [docs/AUDIT-AND-CHECKLIST.md](docs/AUDIT-AND-CHECKLIST.md) | the business-intelligence / pricing programme: what existed, the gaps, gateway capabilities, the phase checklist |
 | [docs/PROFIT-AND-ANALYTICS.md](docs/PROFIT-AND-ANALYTICS.md) | profit maths, KPI definitions, visitor tracking and CPC |
 | [docs/SECURITY.md](docs/SECURITY.md) | security model, the 13-point audit, operator checklist |
 | [docs/QA-REPORT.md](docs/QA-REPORT.md) | final QA: what was tested, results, known limitations |

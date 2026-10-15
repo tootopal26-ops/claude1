@@ -2,10 +2,19 @@
 /** Admin navigation (rendered twice: desktop sidebar and mobile drawer). Expects: $page, $admin, $site, $idp */
 $groups = [
     ['Overview', [['dashboard', 'Dashboard', 'layout-dashboard']]],
-    ['Sales', [['orders', 'Orders', 'package'], ['payments', 'Payments', 'credit-card'], ['services', 'Services', 'layers'], ['tags', 'Tags & Badges', 'tags', true]]],
+    ['Sales', [['orders', 'Orders', 'package'], ['payments', 'Payments', 'credit-card'], ['payment-checks', 'Payment checks', 'shield-alert', true], ['services', 'Services', 'layers'], ['tags', 'Tags & Badges', 'tags', true]]],
     ['Configuration', [['website', 'Website', 'globe'], ['gateway', 'Payment gateway', 'wallet'], ['smm', 'SMM API', 'server'], ['advertising', 'Advertising', 'megaphone']]],
     ['Account', [['security', 'Security', 'shield-check'], ['audit', 'Audit log', 'history'], ['system', 'System', 'activity']]],
 ];
+// A role only sees the pages it may open (the server enforces the same rule on every page and API call).
+$allowed = static function (string $key) use ($admin): bool {
+    $perm = \App\Controllers\Admin\PageController::PAGES[$key][2] ?? null;
+    return $perm === null || \App\Support\Permissions::can((string) $admin['role'], $perm);
+};
+$groups = array_values(array_filter(array_map(
+    static fn(array $g): array => [$g[0], array_values(array_filter($g[1], static fn(array $i): bool => $allowed($i[0])))],
+    $groups
+), static fn(array $g): bool => $g[1] !== []));
 ?>
 <div class="adm-nav">
   <a class="adm-brand" href="<?= e(url('/admin/dashboard')) ?>" aria-label="<?= e($site['name']) ?> admin home">
@@ -21,6 +30,7 @@ $groups = [
       <a class="adm-link<?= $page === $key ? ' is-active' : '' ?><?= $sub ? ' adm-sub' : '' ?>" href="<?= e(url('/admin/' . $key)) ?>"<?= $page === $key ? ' aria-current="page"' : '' ?>>
         <?= icon($ico) ?><span><?= e($text) ?></span>
         <?php if ($key === 'orders'): ?><span class="adm-count" data-approve-count hidden title="Manual orders waiting for approval">0</span><?php endif; ?>
+        <?php if ($key === 'payment-checks'): ?><span class="adm-count" data-flag-count hidden title="Payment flags that need a person to look">0</span><?php endif; ?>
       </a>
       <?php endforeach; ?>
     </div>

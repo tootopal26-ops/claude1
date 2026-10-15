@@ -1,7 +1,7 @@
 <?php use App\Core\View; ?>
 <?= View::partial('admin-head', [
     'h1' => 'Payments',
-    'sub' => 'Gateway payments and webhook deliveries. Every payment is verified with the gateway before an order is paid.',
+    'sub' => 'Gateway payments and webhook deliveries. An order is only paid from the gateway’s signed notification or our own status lookup, for exactly the order’s amount — see <a href="' . e(url('/admin/payment-checks')) . '">Payment checks</a> for flags and re-checks.',
 ]) ?>
 <section class="panel toolbar" aria-label="Payment filters">
   <div class="chips" id="pay-chips" role="group" aria-label="Payment status"></div>

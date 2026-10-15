@@ -110,13 +110,15 @@ Pipeline: verify the signature (constant-time) → de-duplicate by event id (the
 | `401 invalid signature` | stored as an `invalid` webhook event (visible in Admin → Payments); nothing else happens |
 | `404` | unknown gateway id |
 
-`SUCCESS` with a different amount → the payment is flagged **mismatch** for a human and the order is *not* fulfilled. `FAILED` / `EXPIRED` events can never undo a successful payment. A second payment with a *different* bank reference for an already-paid order is noted on the order ("Duplicate payment received … refund the duplicate").
+`SUCCESS` with a different amount (or currency, or no amount, or a bank reference another payment already used) → the payment is flagged **mismatch** (REVIEW_REQUIRED) for a human and the order is *not* fulfilled. `FAILED` / `EXPIRED` events can never undo a successful payment (they are recorded as a *gateway answers disagree* flag). A second payment with a *different* bank reference for an already-paid order is noted on the order ("Duplicate payment received … refund the duplicate") and flagged. A signed event for an unknown order is acknowledged and flagged. A repeated delivery is acknowledged (`200 duplicate`) and counted on the original event (`attempts`, `last_attempt_at`).
+
+After a webhook has been accepted the shop can ask the gateway whether it agrees (`risk.webhook_double_check`: `off` / `flag` — default / `require`, where `require` credits only from the shop's own lookup and answers `503 try again later` when the gateway cannot be asked, so it re-delivers). See [PAYMENT-CHECKS.md](PAYMENT-CHECKS.md).
 
 ---
 
 ## 3. Admin routes
 
-HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|orders|payments|services|website|advertising|gateway|smm|security|audit|system}`) redirect to the sign-in page when signed out. The pages load their data from the JSON API below.
+HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|orders|payments|payment-checks|services|tags|website|advertising|gateway|smm|security|audit|system}`) redirect to the sign-in page when signed out. The pages load their data from the JSON API below.
 
 ### Auth
 | Method & path | Purpose |
@@ -128,7 +130,7 @@ HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|orders|payments|se
 | | |
 |---|---|
 | `GET /admin/api/dashboard?range=today\|7d\|30d\|90d\|lifetime\|custom&from=YYYY-MM-DD&to=YYYY-MM-DD&platform=&mode=&payment=` (default `7d`; custom ranges are capped) | Everything the dashboard shows: `meta` (range, time zone, `cpc_paise`, `qualify_seconds`), `kpis.today/lifetime` (14 KPIs with previous-period deltas), `breakdown` (revenue − SMM − ads = net, margin), `series` (chart data), `visitors`, `performance`, `smm`, `payments`, `recent`. Filtered views show profit **before** ads (ads are site-wide: `meta.ads_attributable=false`). |
-| `GET /admin/api/status` | Header badge + setup notices: approvable count, gateway/SMM/cron/password status, pending migrations. |
+| `GET /admin/api/status` | Header badges + setup notices: approvable count, open payment flags (medium + high), gateway/SMM/cron/password status, pending migrations. |
 
 ### Orders & payments
 | | |
@@ -138,6 +140,16 @@ HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|orders|payments|se
 | `POST /admin/api/orders/{id}/action` | `{action, note?, amount?, reference?}` — `approve` · `complete` · `cancel` · `retry_submit` · `move_to_manual` · `sync` · `refund` (`amount` in ₹, `reference`) · `confirm_payment` (`reference` = the bank/UPI reference you verified) · `note`. Illegal transitions answer `409`. |
 | `GET /admin/api/orders/approvable` · `POST /admin/api/orders/approve-all` | Count of eligible manual orders · approve them all in one transaction. Body `{"confirm": true}` **and** an `Idempotency-Key` are required. |
 | `GET /admin/api/payments?status=&q=&page=` | Payments + the latest webhook events. |
+
+### Payment checks (permission in brackets; a role without it gets `403 {error:{code:"forbidden"}}`)
+| Method & path | Purpose |
+|---|---|
+| `GET /admin/api/payment-checks/summary` *(payments.view)* | `summary` (payments by requested state for 30 days, held-for-review count, open flags by severity, webhooks in 24 h, cross-check mode) and `can` (what this role may do). |
+| `GET /admin/api/payment-checks?state=&flag=&q=&page=` *(payments.view)* | The monitor: 25 payments per page with expected / verified amount, currency, state (stored + requested name), verification source, created / verified / expires, last gateway check, flags, latest webhook (status, signature, deliveries, repeats ignored). `state` = `CREATED\|PENDING\|PAID\|FAILED\|EXPIRED\|REVIEW_REQUIRED\|REFUNDED\|FLAGGED`. |
+| `GET /admin/api/payment-flags?status=open\|closed\|all&severity=&type=&page=` *(payments.view)* | Flags with meaning, advice, facts, occurrences, first / last seen and review. |
+| `POST /admin/api/payment-flags/{id}/review` `{status:"reviewed"\|"dismissed", note?}` *(payments.review)* | Close a flag (a note is required to dismiss). Audited. `409` when already closed. |
+| `POST /admin/api/payments/{id}/recheck` *(payments.review)* | Ask the gateway about that payment now. 30 per 5 min per admin (`429`), `502 gateway_unreachable`, `409` for a refunded payment. Returns `action` (`settled\|confirmed\|flagged\|failed\|expired\|none`), `message`, the gateway's `status` / `amount_paise` / `reference`, and the refreshed row. Audited. |
+| `GET` / `PUT /admin/api/payment-checks/settings` *(payments.view / alerts.manage)* | Thresholds (validated, bounded, audited). |
 
 ### Catalogue
 | | |

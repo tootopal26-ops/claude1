@@ -14,6 +14,7 @@ final class DashboardController extends BaseController
     /** GET /admin/api/dashboard?range=today|7d|30d|90d|lifetime|custom&from&to&platform&mode&payment */
     public function data(Request $req, array $p): Response
     {
+        $this->authorize($req, 'dashboard.view');
         $filters = [];
         foreach (['range', 'from', 'to', 'platform', 'mode', 'payment'] as $k) {
             $filters[$k] = $req->queryString($k, '', 32);

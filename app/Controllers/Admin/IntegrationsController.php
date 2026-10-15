@@ -20,6 +20,7 @@ final class IntegrationsController extends BaseController
 
     public function gateway(Request $req, array $p): Response
     {
+        $this->authorize($req, 'integrations.manage');
         $row = Db::one('SELECT * FROM payment_gateways ORDER BY is_active DESC, id LIMIT 1');
         if ($row === null) {
             throw new HttpException(404, 'No payment gateway is installed.');
@@ -29,6 +30,7 @@ final class IntegrationsController extends BaseController
 
     public function saveGateway(Request $req, array $p): Response
     {
+        $this->authorize($req, 'integrations.manage');
         $id = $this->id($p);
         $in = $req->json();
         $admin = $this->admin($req);
@@ -37,6 +39,7 @@ final class IntegrationsController extends BaseController
 
     public function testGateway(Request $req, array $p): Response
     {
+        $this->authorize($req, 'integrations.manage');
         $id = $this->id($p);
         RateLimiter::enforce('admin-test-gateway', (string) $this->admin($req)['id'], 12, 300, 'Too many connection tests. Please wait a moment.');
         return $this->ok(['result' => Gateways::test($id, $req, $this->admin($req)), 'gateway' => Gateways::adminView(Gateways::row($id))]);
@@ -45,6 +48,7 @@ final class IntegrationsController extends BaseController
     /** Creates a ₹1 test order at the gateway (never paid) to see whether its checkout page exposes the UPI request behind its QR. */
     public function qrCheckGateway(Request $req, array $p): Response
     {
+        $this->authorize($req, 'integrations.manage');
         $id = $this->id($p);
         $admin = $this->admin($req);
         RateLimiter::enforce('admin-qr-check', (string) $admin['id'], 6, 600, 'Too many QR checks. Please wait a few minutes.');
@@ -55,11 +59,13 @@ final class IntegrationsController extends BaseController
 
     public function providers(Request $req, array $p): Response
     {
+        $this->authorize($req, 'integrations.manage');
         return $this->ok(['providers' => SmmProviders::all()]);
     }
 
     public function createProvider(Request $req, array $p): Response
     {
+        $this->authorize($req, 'integrations.manage');
         $in = $req->json();
         $admin = $this->admin($req);
         return $this->once($req, 'smm-save', static fn(): array => ['provider' => SmmProviders::save(null, $in, $req, $admin), 'providers' => SmmProviders::all()]);
@@ -67,6 +73,7 @@ final class IntegrationsController extends BaseController
 
     public function updateProvider(Request $req, array $p): Response
     {
+        $this->authorize($req, 'integrations.manage');
         $id = $this->id($p);
         $in = $req->json();
         $admin = $this->admin($req);
@@ -75,6 +82,7 @@ final class IntegrationsController extends BaseController
 
     public function testProvider(Request $req, array $p): Response
     {
+        $this->authorize($req, 'integrations.manage');
         $id = $this->id($p);
         RateLimiter::enforce('admin-test-smm', (string) $this->admin($req)['id'], 12, 300, 'Too many connection tests. Please wait a moment.');
         $result = SmmProviders::test($id, $req, $this->admin($req));
@@ -83,6 +91,7 @@ final class IntegrationsController extends BaseController
 
     public function providerServices(Request $req, array $p): Response
     {
+        $this->authorize($req, 'integrations.manage');
         $id = $this->id($p);
         RateLimiter::enforce('admin-smm-services', (string) $this->admin($req)['id'], 30, 300, 'Too many lookups. Please wait a moment.');
         return $this->ok(['result' => SmmProviders::searchServices($id, $req->queryString('q', '', 80))]);
@@ -90,6 +99,7 @@ final class IntegrationsController extends BaseController
 
     public function deleteProvider(Request $req, array $p): Response
     {
+        $this->authorize($req, 'integrations.manage');
         $id = $this->id($p);
         $row = SmmProviders::row($id) ?? throw new HttpException(404, 'Provider not found.');
         $using = (int) Db::val('SELECT COUNT(*) FROM services WHERE smm_provider_id = ? AND deleted_at IS NULL', [$id]);

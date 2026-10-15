@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-use App\Controllers\Admin\{AccountController, AuthController, DashboardController, IntegrationsController, OrdersController, PageController, ServicesController, SettingsController, TagsController};
+use App\Controllers\Admin\{AccountController, AuthController, DashboardController, IntegrationsController, OrdersController, PageController, PaymentChecksController, ServicesController, SettingsController, TagsController};
 use App\Core\Middleware;
 use App\Core\Router;
 
@@ -25,7 +25,7 @@ return static function (Router $r): void {
 
     // ── pages ──
     $r->get('/admin', [PageController::class, 'index']);
-    $r->get('/admin/{page:[a-z]{3,20}}', [PageController::class, 'show'], $page);
+    $r->get('/admin/{page:[a-z][a-z\-]{2,28}}', [PageController::class, 'show'], $page);
 
     // ── dashboard ──
     $r->get('/admin/api/dashboard', [DashboardController::class, 'data'], $api);
@@ -38,6 +38,15 @@ return static function (Router $r): void {
     $r->get("/admin/api/orders/{$id}", [OrdersController::class, 'show'], $api);
     $r->post("/admin/api/orders/{$id}/action", [OrdersController::class, 'act'], $api);
     $r->get('/admin/api/payments', [OrdersController::class, 'payments'], $api);
+
+    // ── payment checks: monitor, flags, thresholds, re-check ──
+    $r->get('/admin/api/payment-checks/summary', [PaymentChecksController::class, 'summary'], $api);
+    $r->get('/admin/api/payment-checks', [PaymentChecksController::class, 'monitor'], $api);
+    $r->get('/admin/api/payment-checks/settings', [PaymentChecksController::class, 'settings'], $api);
+    $r->put('/admin/api/payment-checks/settings', [PaymentChecksController::class, 'saveSettings'], $api);
+    $r->get('/admin/api/payment-flags', [PaymentChecksController::class, 'flags'], $api);
+    $r->post("/admin/api/payment-flags/{$id}/review", [PaymentChecksController::class, 'review'], $api);
+    $r->post("/admin/api/payments/{$id}/recheck", [PaymentChecksController::class, 'recheck'], $api);
 
     // ── services & platforms ──
     $r->get('/admin/api/services', [ServicesController::class, 'list'], $api);

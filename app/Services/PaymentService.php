@@ -57,7 +57,7 @@ final class PaymentService
     /**
      * Ask the gateway about this payment and act on the answer.
      *
-     * @return array{route:?string,order_id:?int}|null null when the gateway could not be reached
+     * @return array{route:?string,order_id:?int,gateway_status?:string}|null null when the gateway could not be reached
      */
     public static function checkGateway(array $payment): ?array
     {
@@ -78,7 +78,7 @@ final class PaymentService
         switch ($r->status) {
             case PaymentStatusResult::SUCCESS:
                 $s = Settlement::settle($id, ['source' => 'poll', 'amount_paise' => $r->amountPaise, 'currency' => $r->currency, 'utr' => $r->utr, 'method' => $r->method]);
-                return ['route' => $s['route'], 'order_id' => $s['order_id']];
+                return ['route' => $s['route'], 'order_id' => $s['order_id'], 'gateway_status' => $r->status];
             case PaymentStatusResult::FAILED:
                 self::fail($id, 'The payment failed at the gateway.');
                 break;
@@ -86,7 +86,7 @@ final class PaymentService
                 self::expire($id, true);
                 break;
         }
-        return ['route' => null, 'order_id' => null];
+        return ['route' => null, 'order_id' => null, 'gateway_status' => $r->status];
     }
 
     /**

@@ -20,8 +20,8 @@ final class JobHandlers
     /** @return array<string,mixed> */
     public static function payments(JobContext $c): array
     {
-        $out = ['sweep' => PaymentService::sweep()];
-        if (!$c->expired() && class_exists(Risk::class)) {
+        $out = ['sweep' => $c->dryRun ? ['skipped' => 'dry run: no payment is expired, failed or settled'] : PaymentService::sweep()];
+        if (!$c->expired()) {
             $out['risk'] = Risk::scan($c);
         }
         return $out;
@@ -61,6 +61,7 @@ final class JobHandlers
             'visitor_sessions'     => Tracking::purgeOld(400),
             'webhook_events'       => Db::exec('DELETE FROM webhook_events WHERE received_at < ?', [Clock::sql($now - 180 * 86400)]),
             'job_runs'             => Db::exec('DELETE FROM job_runs WHERE started_at < ?', [Clock::sql($now - 90 * 86400)]),
+            'payment_flags'        => Db::exec('DELETE FROM payment_flags WHERE active_key IS NULL AND last_seen_at < ?', [Clock::sql($now - 365 * 86400)]),
             'ai_usage_logs'        => Db::exec('DELETE FROM ai_usage_logs WHERE created_at < ?', [Clock::sql($now - 180 * 86400)]),
             'support_conversations' => Db::exec('DELETE FROM support_conversations WHERE expires_at < ?', [Clock::sql()]),
             'pricing_assignments'  => Db::exec('DELETE FROM pricing_assignments WHERE expires_at < ?', [Clock::sql($now - 30 * 86400)]),

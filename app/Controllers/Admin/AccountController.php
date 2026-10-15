@@ -63,6 +63,7 @@ final class AccountController extends BaseController
 
     public function audit(Request $req, array $p): Response
     {
+        $this->authorize($req, 'audit.view');
         return $this->ok(AdminAccount::audit([
             'group' => $req->queryString('group', 'all', 20), 'q' => $req->queryString('q', '', 80), 'page' => $req->queryInt('page', 1, 1, 100000),
         ]));
@@ -72,6 +73,7 @@ final class AccountController extends BaseController
 
     public function system(Request $req, array $p): Response
     {
+        $this->authorize($req, 'jobs.view');
         $dbVersion = (string) Db::val('SELECT VERSION()');
         $exts = [];
         foreach (['pdo_mysql', 'curl', 'mbstring', 'openssl', 'gd', 'fileinfo', 'json', 'sodium'] as $e) {
@@ -111,6 +113,7 @@ final class AccountController extends BaseController
      */
     public function migrate(Request $req, array $p): Response
     {
+        $this->authorize($req, 'admins.manage');
         $admin = $this->admin($req);
         RateLimiter::enforce('admin-migrate', (string) $admin['id'], 6, 300, 'Database updates were started a moment ago. Please wait a little.');
         if (!Db::tryLock('migrate', 5)) {
@@ -133,6 +136,7 @@ final class AccountController extends BaseController
     /** POST /admin/api/system/cron — run the background tasks right now. */
     public function runCron(Request $req, array $p): Response
     {
+        $this->authorize($req, 'jobs.run');
         RateLimiter::enforce('admin-run-cron', (string) $this->admin($req)['id'], 6, 300, 'Background tasks were started a moment ago. Please wait a little.');
         $result = Cron::run();
         return $this->ok(['result' => $result, 'message' => isset($result['skipped']) ? 'Another run is already in progress.' : 'Background tasks finished in ' . $result['took_ms'] . ' ms.']);

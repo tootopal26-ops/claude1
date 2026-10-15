@@ -490,7 +490,7 @@ T::test('admin: the QR check is an admin-only, rate-limited, confirmed-once API 
     };
     T::throws(HttpException::class, fn() => $call(null), 401);
 
-    $admin = ['id' => 7, 'username' => 'root', 'email' => 'r@x.test'];
+    $admin = ['id' => 7, 'username' => 'root', 'email' => 'r@x.test', 'role' => 'owner'];
     $first = json_decode($call($admin, 'qr-check-key-0001')->body, true);
     T::same([true, true], [$first['ok'], $first['result']['found']]);
     $made = count(T::alpha('GET', '/__state')['orders'] ?? []);

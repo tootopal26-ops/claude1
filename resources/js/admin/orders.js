@@ -79,6 +79,7 @@ function renderList(d) {
 
   syncApprove(d.approvable);
   const ab = $('#approve-all');
+  ab.hidden = d.can?.bulk === false;     // a role without the bulk permission does not see a button the server would refuse
   const badge = $('#approve-all-count');
   badge.hidden = d.approvable === 0;
   badge.textContent = String(d.approvable);

@@ -10,7 +10,7 @@ use App\Services\Ads;
 use App\Services\Settings;
 use App\Support\Tz;
 
-const AC_ADMIN = ['id' => 1, 'username' => 'tester', 'email' => 't@example.test'];
+const AC_ADMIN = ['id' => 1, 'username' => 'tester', 'email' => 't@example.test', 'role' => 'owner'];
 function ac_req(): Request { return Request::fake('PUT', '/admin/api/x'); }
 function ac_base(array $over = []): array
 {

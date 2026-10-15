@@ -51,6 +51,7 @@ final class Permissions
         'integrations.manage' => 'Edit the payment gateway and SMM API credentials',
         'jobs.view'          => 'See scheduled-job health',
         'jobs.run'           => 'Run a scheduled job now',
+        'audit.view'         => 'See the audit log',
         'admins.manage'      => 'Manage admin accounts and roles',
     ];
 
@@ -58,7 +59,7 @@ final class Permissions
         'manager' => [
             'dashboard.view', 'orders.view', 'orders.act', 'orders.bulk', 'orders.recover', 'payments.view', 'payments.review',
             'finance.view', 'finance.adjust', 'ads.view', 'ads.manage', 'alerts.view', 'alerts.manage', 'reports.view', 'reports.generate',
-            'support.view', 'support.configure', 'pricing.view', 'pricing.propose', 'pricing.pause', 'catalog.manage', 'jobs.view', 'jobs.run',
+            'support.view', 'support.configure', 'pricing.view', 'pricing.propose', 'pricing.pause', 'catalog.manage', 'jobs.view', 'jobs.run', 'audit.view',
         ],
         'support' => [
             'dashboard.view', 'orders.view', 'payments.view', 'alerts.view', 'support.view', 'jobs.view',

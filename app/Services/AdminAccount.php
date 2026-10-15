@@ -117,8 +117,14 @@ final class AdminAccount
             ['key' => 'cron', 'ok' => $cronOk, 'label' => 'Background tasks (cron)', 'detail' => $cronAge === null ? 'Has never run — add the cron job (see Deploy guide)' : ($cronOk ? 'Last run ' . self::ago($cronAge) : 'Last run ' . self::ago($cronAge) . ' — check your cron job'), 'href' => url('/admin/gateway'), 'level' => $cronOk ? 'ok' : 'warn'],
             ['key' => 'password', 'ok' => !$mustChange, 'label' => 'Admin password', 'detail' => $mustChange ? 'Change the temporary password now' : 'Secure', 'href' => url('/admin/security'), 'level' => $mustChange ? 'error' : 'ok'],
         ];
+        try {
+            $flags = Risk::openCounts()['attention'];
+        } catch (\Throwable) {
+            $flags = 0;        // the table arrives with a database update that may not be applied yet: the banner below says so
+        }
         return [
             'approvable' => Fulfilment::approvableCount(),
+            'payment_flags' => $flags,
             'setup' => $items,
             'auto_services' => $autoServices,
             'smm_ok' => $provider !== null,

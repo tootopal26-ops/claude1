@@ -23,7 +23,7 @@
  *                       tez:// links) | wrong_amount | no_amount | foreign_currency | none (a canvas and an image, no UPI text) | down (HTTP 500) |
  *                       slow (answers after 8 s) | huge (a 2 MB page, the request at the very end)
  *   GET  /__state
- *   POST /__pay/:id/success   {amount?, utr?, noWebhook?}   → marks SUCCESS (+ sends signed webhook)
+ *   POST /__pay/:id/success   {amount?, lookupAmount?, utr?, noWebhook?}   → marks SUCCESS (+ sends signed webhook); `amount` is the webhook's, `lookupAmount` what check-status reports
  *   POST /__pay/:id/fail
  *   POST /__pay/:id/expire
  *   POST /__resend/:id        → re-sends the last webhook for that order (duplicate-delivery test)
@@ -111,6 +111,7 @@ const server = http.createServer(async (req, res) => {
     const b = JSON.parse((await readBody(req)) || '{}');
     if (m[2] === 'success') {
       order.status = 'SUCCESS'; order.utr = b.utr || 'UTR' + rid(5).toUpperCase(); order.paid_at = new Date().toISOString().replace('T', ' ').slice(0, 19);
+      if (b.lookupAmount !== undefined) order.lookupAmount = String(b.lookupAmount);   // what check-status reports (the webhook body keeps using `amount`)
       const body = webhookBody(order, 'SUCCESS', b.amount !== undefined ? { amount: String(b.amount) } : {});
       if (b.noWebhook) return json(res, 200, { ok: true, webhook: 'skipped' });
       return json(res, 200, { ok: true, webhook: await sendWebhook(order, body) });
@@ -160,7 +161,7 @@ const server = http.createServer(async (req, res) => {
     const o = state.orders[b.order_id];
     if (!o) return err(404, 'Order not found');
     return json(res, 200, { status: 'success', data: {
-      order_id: o.order_id, ...(state.mode.noAmount ? {} : { amount: Number(o.amount) }), currency: state.mode.currency || 'INR', payment_status: o.status.toLowerCase(),
+      order_id: o.order_id, ...(state.mode.noAmount ? {} : { amount: Number(o.lookupAmount ?? o.amount) }), currency: state.mode.currency || 'INR', payment_status: o.status.toLowerCase(),
       customer_name: o.customer_name, utr: o.status === 'SUCCESS' ? o.utr : null, payment_method: 'UPI QR', provider: 'paytm', gateway_txn_id: o.status === 'SUCCESS' ? 'TXN_' + rid(5) : null,
       paid_at: o.status === 'SUCCESS' ? o.paid_at : null, payment_url: `http://127.0.0.1:${PORT}/pay/${o.order_id}`, callback_url: o.redirect_url, created_at: iso(o.created) } });
   }
@@ -184,7 +185,7 @@ const server = http.createServer(async (req, res) => {
     }
     const o = state.orders[b.order_id];
     if (!o) return json(res, 200, { status: false, message: 'Order not found', result: {} });
-    return json(res, 200, { status: true, message: 'ok', result: { status: o.status, amount: state.mode.noAmount ? undefined : o.amount, utr: o.status === 'SUCCESS' ? o.utr : undefined, provider: 'bharatpe', paid_at: o.paid_at } });
+    return json(res, 200, { status: true, message: 'ok', result: { status: o.status, amount: state.mode.noAmount ? undefined : (o.lookupAmount ?? o.amount), utr: o.status === 'SUCCESS' ? o.utr : undefined, provider: 'bharatpe', paid_at: o.paid_at } });
   }
 
   if (path === '/favicon.ico') { res.writeHead(204); return res.end(); }   // keeps the browser console free of a pointless 404 on the fake payment page
