@@ -7,6 +7,7 @@
  *   php bin/admin.php reset-password --username=NAME [--password=…] [--must-change-password]
  *   php bin/admin.php unlock --username=NAME
  *   php bin/admin.php sessions-revoke --username=NAME
+ *   php bin/admin.php role --username=NAME --role=owner|manager|support|analyst     (owner = everything; see docs/SECURITY.md)
  *
  * Without --password a strong one is generated and printed once. Every command is recorded in the audit log.
  */
@@ -17,6 +18,7 @@ use App\Core\Db;
 use App\Services\Audit;
 use App\Services\Password;
 use App\Support\Clock;
+use App\Support\Permissions;
 
 $cmd = $argv[1] ?? 'help';
 // getopt() stops at the first non-option (the sub-command), so parse "--key=value", "--key value" and "--flag" by hand
@@ -96,6 +98,23 @@ switch ($cmd) {
         Db::exec('DELETE FROM rate_limits');
         $audit('admin.unlocked', $a);
         echo "'{$a['username']}' unlocked and sign-in rate limits cleared.\n";
+        break;
+
+    case 'role':
+        $a = $find();
+        $role = (string) ($o['role'] ?? '');
+        if (!Permissions::isRole($role)) {
+            fwrite(STDERR, 'Choose a role: ' . implode(', ', Permissions::ROLES) . "\n");
+            exit(1);
+        }
+        if ($a['role'] === 'owner' && $role !== 'owner' && (int) Db::val("SELECT COUNT(*) FROM admins WHERE role = 'owner' AND is_active = 1 AND id <> ?", [$a['id']]) === 0) {
+            fwrite(STDERR, "Refusing to change the last active owner — the shop would have nobody who can do everything.\n");
+            exit(1);
+        }
+        Db::update('admins', ['role' => $role, 'updated_at' => Clock::sql()], 'id = ?', [$a['id']]);
+        Db::exec('UPDATE sessions SET revoked_at = ? WHERE admin_id = ? AND revoked_at IS NULL', [Clock::sql(), $a['id']]);   // the new role applies from the next sign-in
+        Audit::log('admin.role_changed', 'admin', $a['id'], ['from' => $a['role'], 'to' => $role, 'via' => 'cli'], null, ['id' => (int) $a['id'], 'username' => 'cli', 'email' => '']);
+        echo "'{$a['username']}' is now '{$role}' (their sessions were signed out so the change applies at the next sign-in).\n";
         break;
 
     case 'sessions-revoke':

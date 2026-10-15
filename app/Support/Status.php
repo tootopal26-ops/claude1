@@ -119,6 +119,52 @@ final class Status
     /** Payment states in which money was actually received. */
     public const PAY_RECEIVED = [self::PAY_SUCCESS, self::PAY_REFUNDED, self::PAY_PART_REFUNDED];
 
+    // ── the requested vocabulary, mapped onto the existing (tested, stored) states ───────────────────────────────────────────
+    // Reports, the payment-monitoring screen and the recovery queue speak this vocabulary; the database keeps the values above.
+    // See docs/AUDIT-AND-CHECKLIST.md §4. REFUND_PENDING does not exist: Alpha UPI has no refund API, so a refund is recorded when it is done.
+
+    /** CREATED | PENDING | PAID | FAILED | EXPIRED | REVIEW_REQUIRED | REFUNDED */
+    public static function specPayment(string $paymentStatus): string
+    {
+        return match ($paymentStatus) {
+            self::PAY_CREATING                      => 'CREATED',
+            self::PAY_PENDING                       => 'PENDING',
+            self::PAY_SUCCESS                       => 'PAID',
+            self::PAY_FAILED                        => 'FAILED',
+            self::PAY_EXPIRED                       => 'EXPIRED',
+            self::PAY_MISMATCH                      => 'REVIEW_REQUIRED',
+            self::PAY_REFUNDED, self::PAY_PART_REFUNDED => 'REFUNDED',
+            default                                 => strtoupper($paymentStatus),
+        };
+    }
+
+    /**
+     * AWAITING_PAYMENT | PAID | QUEUED | SUBMITTING | PROCESSING | PARTIAL | COMPLETED | FAILED | CANCELLED | NEEDS_REVIEW (+ EXPIRED, REFUNDED, which
+     * the requested list has no word for).
+     *
+     * @param array{status:string,failure_kind?:?string,recovery_status?:?string,next_attempt_at?:?string} $order
+     */
+    public static function specOrder(array $order): string
+    {
+        $s = (string) $order['status'];
+        if ($s === self::FAILED) {
+            $needsHuman = in_array($order['failure_kind'] ?? null, ['ambiguous', 'misconfigured'], true)
+                || in_array($order['recovery_status'] ?? null, ['needs_review', 'escalated'], true);
+            return $needsHuman ? 'NEEDS_REVIEW' : 'FAILED';
+        }
+        return match ($s) {
+            self::PENDING_PAYMENT                                      => 'AWAITING_PAYMENT',
+            self::PAID                                                 => empty($order['next_attempt_at']) ? 'PAID' : 'QUEUED',
+            self::MANUAL_PENDING                                       => 'QUEUED',
+            self::PROCESSING                                           => 'SUBMITTING',
+            self::SUBMITTED, self::IN_PROGRESS, self::MANUAL_APPROVED  => 'PROCESSING',
+            self::PARTIAL                                              => 'PARTIAL',
+            self::COMPLETED                                            => 'COMPLETED',
+            self::CANCELLED                                            => 'CANCELLED',
+            default                                                    => $s,   // EXPIRED, REFUNDED
+        };
+    }
+
     // ── service modes / types ────────────────────────────────────────────────
     public const AUTO   = 'AUTO';
     public const MANUAL = 'MANUAL';

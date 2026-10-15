@@ -5,20 +5,22 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Core\Db;
-use App\Core\Idempotency;
-use App\Core\Log;
-use App\Core\RateLimiter;
 use App\Support\Clock;
-use App\Support\Tz;
 
 /**
  * Background work, safe to call every minute from cPanel "Cron Jobs"
  * (php /home/USER/…/bin/cron.php), from an external pinger
  * (GET /cron/run?key=…), or — as a last resort for hosts without cron — from
  * visitor traffic (maybeRun). A MySQL advisory lock stops overlapping runs.
+ *
+ * The work itself is a set of named jobs (App\Services\Jobs): this entry point runs the quick ones every time and every other job when it is
+ * due, so one cron line is enough. Hosts that prefer one cron line per job call `php bin/cron.php <job>` instead (docs/OPERATIONS.md).
  */
 final class Cron
 {
+    /** Jobs that run on every call (they are quick and are what keeps payments and orders moving). */
+    private const EVERY_CALL = ['payments', 'recovery', 'analytics'];
+
     /** @return array<string,mixed> */
     public static function run(): array
     {
@@ -28,18 +30,12 @@ final class Cron
         $t0 = microtime(true);
         $out = [];
         try {
-            foreach ([
-                'payments'  => static fn() => PaymentService::sweep(),
-                'submit'    => static fn() => Fulfilment::submitDue(),
-                'sync'      => static fn() => Fulfilment::syncDue(),
-                'analytics' => static fn() => ['days_refreshed' => Analytics::ensureFresh(Tz::addDays(Tz::today(), -3), Tz::addDays(Tz::today(), -1))],
-                'purge'     => static fn() => self::purge(),
-            ] as $name => $task) {
-                try {
-                    $out[$name] = $task();
-                } catch (\Throwable $e) {
-                    Log::exception($e, "Cron task '{$name}' failed");
-                    $out[$name] = ['error' => $e->getMessage()];
+            foreach (self::EVERY_CALL as $job) {
+                $out[$job] = self::brief(Jobs::run($job));
+            }
+            foreach (Jobs::runDue() as $job => $r) {
+                if (!in_array($job, self::EVERY_CALL, true)) {
+                    $out[$job] = self::brief($r);
                 }
             }
             Settings::set('cron.last_run', Clock::now());
@@ -57,23 +53,11 @@ final class Cron
         return Clock::now() - $last >= $maxAge ? self::run() : null;
     }
 
-    /** @return array<string,int> */
-    private static function purge(): array
+    /** @param array<string,mixed> $r @return array<string,mixed> */
+    private static function brief(array $r): array
     {
-        $now = Clock::now();
-        $n = [
-            'rate_limits'   => RateLimiter::purgeExpired(),
-            'idempotency'   => Idempotency::purgeExpired(),
-            'admin_sessions' => Db::exec('DELETE FROM sessions WHERE expires_at < ? OR (revoked_at IS NOT NULL AND revoked_at < ?)', [Clock::sql(), Clock::sql($now - 7 * 86400)]),
-            'visitor_sessions' => Tracking::purgeOld(400),
-            'webhook_events' => Db::exec('DELETE FROM webhook_events WHERE received_at < ?', [Clock::sql($now - 180 * 86400)]),
-            'old_logs'      => 0,
-        ];
-        foreach (glob(SMB_ROOT . '/storage/logs/app-*.log') ?: [] as $f) {
-            if (filemtime($f) < $now - 30 * 86400 && @unlink($f)) {
-                $n['old_logs']++;
-            }
-        }
-        return $n;
+        return $r['status'] === 'ok' || $r['status'] === 'timeout'
+            ? ($r['result'] ?: ['status' => $r['status']]) + ($r['status'] === 'timeout' ? ['status' => 'timeout'] : [])
+            : ['status' => $r['status'], 'error' => $r['error'] ?? ($r['result']['reason'] ?? null)];
     }
 }

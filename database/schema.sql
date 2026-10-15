@@ -659,6 +659,509 @@ UPDATE `admin_settings`
  WHERE `k` = 'site.payment_instructions'
    AND `v` = '"Scan the QR code with your phone camera. The secure payment page opens — pay with any UPI app. Keep this page open until your payment is confirmed."';
 
+-- ── 005_finance.sql ──
+-- ============================================================================
+-- Finance: costs that were not recorded before, so profit stops assuming they are zero.
+--
+-- Until now a MANUAL order counted as 100 % gross profit and no payment fee, chargeback or other expense could be recorded. This adds:
+--
+--   services.fulfil_cost_paise   what delivering ONE purchase of a MANUAL service costs us directly (staff time, a supplier, ...).
+--                                NULL = not stated yet  → profit for those orders is labelled "incomplete", never silently ₹0.
+--                                0    = stated: it costs nothing directly.
+--   order_costs                  per-order cost lines, APPEND-ONLY: a correction ends the old row (superseded_at) and adds a new one, so a
+--                                later change of a service's cost never rewrites an old order. Types: fulfilment, payment_fee, other.
+--                                The provider (SMM panel) cost stays where it is (orders.provider_cost_paise + provider_cost_final), so
+--                                it can never be subtracted twice.
+--   expenses                     business expenses and chargebacks by IST day (advertising lives in ad_daily_spend).
+--
+-- All money is integer paise. Nothing existing is changed or removed.
+--
+-- Rollback (only if nothing has been recorded yet; the tables are new):
+--   DROP TABLE `expenses`; DROP TABLE `order_costs`; ALTER TABLE `services` DROP COLUMN `fulfil_cost_paise`;
+--   DELETE FROM `schema_migrations` WHERE `version` = '005_finance';
+-- ============================================================================
+
+SET NAMES utf8mb4;
+
+ALTER TABLE `services`
+  ADD COLUMN `fulfil_cost_paise` INT UNSIGNED NULL AFTER `smm_cost_paise`;
+
+CREATE TABLE IF NOT EXISTS `order_costs` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `order_id`      BIGINT UNSIGNED NOT NULL,
+  `cost_type`     VARCHAR(16)  NOT NULL,                 -- fulfilment | payment_fee | other
+  `amount_paise`  INT UNSIGNED NOT NULL,
+  `source`        VARCHAR(16)  NOT NULL,                 -- service_default | rate | admin
+  `is_estimate`   TINYINT(1)   NOT NULL DEFAULT 1,       -- 1 = configured or estimated, 0 = a recorded actual
+  `note`          VARCHAR(255) NULL,
+  `recorded_by`   INT UNSIGNED NULL,
+  `effective_at`  DATETIME     NOT NULL,
+  `created_at`    DATETIME     NOT NULL,
+  `superseded_at` DATETIME     NULL,                     -- set when a correction replaces this row; the row itself is never edited
+  `active_key`    VARCHAR(40)  NULL,                     -- "<order>:<type>" while active (fulfilment, payment_fee), NULL otherwise → one live row per order and type
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_order_costs_active` (`active_key`),
+  KEY `idx_order_costs_order` (`order_id`, `cost_type`),
+  KEY `idx_order_costs_effective` (`effective_at`),
+  CONSTRAINT `fk_order_costs_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `expenses` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `expense_day`   DATE         NOT NULL,                 -- the Asia/Kolkata business day the cost belongs to
+  `category`      VARCHAR(24)  NOT NULL,                 -- tools | hosting | payment_fee | chargeback | other
+  `amount_paise`  INT UNSIGNED NOT NULL,
+  `order_id`      BIGINT UNSIGNED NULL,                  -- a chargeback or an order-specific cost may name its order
+  `description`   VARCHAR(255) NULL,
+  `reference`     VARCHAR(120) NULL,
+  `source`        VARCHAR(16)  NOT NULL DEFAULT 'manual',
+  `created_by`    INT UNSIGNED NULL,
+  `created_at`    DATETIME     NOT NULL,
+  `voided_at`     DATETIME     NULL,                     -- a wrong entry is voided (with a reason), never deleted
+  `voided_by`     INT UNSIGNED NULL,
+  `void_reason`   VARCHAR(255) NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_expenses_day` (`expense_day`, `category`),
+  KEY `idx_expenses_order` (`order_id`),
+  CONSTRAINT `fk_expenses_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── 006_operations_risk.sql ──
+-- ============================================================================
+-- Operations and payment risk: scheduled-job history, business alerts, payment flags, order recovery fields.
+--
+--   job_runs          one row per run of a scheduled job (recovery, payments, health, daily-report, cleanup, pricing-…): when it started and
+--                     finished, the result, and an error CATEGORY (never a stack trace). Shown in Admin → System / Watchdog.
+--   business_alerts   what the Business Watchdog found. A problem that is still happening updates ONE alert (occurrences, last detected) instead of
+--                     creating a new one each time: `active_key` holds the dedupe key while the alert is open or acknowledged and is NULL once it
+--                     is resolved, so a unique index enforces "one live alert per problem" and a later recurrence opens a fresh alert.
+--   payment_flags     suspicious-payment findings (amount / currency mismatch, unknown reference, duplicate bank reference, bad signatures,
+--                     repeated failures, late payment, …). Same one-live-row-per-problem rule. A flag is a signal for a human, never a punishment.
+--   orders.*          recovery bookkeeping: when the provider was last tried, whether the order is under automatic retry, needs review or was
+--                     escalated, and by whom.
+--
+-- Nothing existing is changed or removed.
+--
+-- Rollback (the tables are new; the order columns are nullable):
+--   DROP TABLE `payment_flags`; DROP TABLE `business_alerts`; DROP TABLE `job_runs`;
+--   ALTER TABLE `orders` DROP COLUMN `escalated_by`, DROP COLUMN `escalated_at`, DROP COLUMN `recovery_status`, DROP COLUMN `last_attempt_at`;
+--   DELETE FROM `schema_migrations` WHERE `version` = '006_operations_risk';
+-- ============================================================================
+
+SET NAMES utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `job_runs` (
+  `id`             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `job`            VARCHAR(40)  NOT NULL,
+  `trigger_source` VARCHAR(8)   NOT NULL DEFAULT 'cron',     -- cron | admin | web
+  `dry_run`        TINYINT(1)   NOT NULL DEFAULT 0,
+  `status`         VARCHAR(10)  NOT NULL DEFAULT 'running',  -- running | ok | failed | timeout | abandoned
+  `started_at`     DATETIME     NOT NULL,
+  `finished_at`    DATETIME     NULL,
+  `duration_ms`    INT UNSIGNED NULL,
+  `result_json`    TEXT NULL,                                -- small counters only
+  `error_category` VARCHAR(16)  NULL,                        -- database | network | timeout | logic
+  `error_message`  VARCHAR(300) NULL,                        -- sanitised: no paths, no secrets
+  PRIMARY KEY (`id`),
+  KEY `idx_job_runs_job` (`job`, `started_at`),
+  KEY `idx_job_runs_status` (`status`, `started_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `business_alerts` (
+  `id`               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `alert_type`       VARCHAR(40)  NOT NULL,
+  `severity`         VARCHAR(10)  NOT NULL DEFAULT 'warning', -- info | warning | critical
+  `title`            VARCHAR(160) NOT NULL,
+  `description`      VARCHAR(1000) NOT NULL,                  -- sanitised: numbers and ids, no secrets, no stack traces
+  `entity_type`      VARCHAR(24)  NULL,
+  `entity_id`        VARCHAR(40)  NULL,
+  `dedupe_key`       VARCHAR(120) NOT NULL,
+  `active_key`       VARCHAR(120) NULL,                       -- = dedupe_key while open / acknowledged, NULL when resolved
+  `status`           VARCHAR(14)  NOT NULL DEFAULT 'open',    -- open | acknowledged | resolved
+  `occurrences`      INT UNSIGNED NOT NULL DEFAULT 1,
+  `first_detected_at` DATETIME    NOT NULL,
+  `last_detected_at` DATETIME     NOT NULL,
+  `acknowledged_by`  INT UNSIGNED NULL,
+  `acknowledged_at`  DATETIME     NULL,
+  `resolved_at`      DATETIME     NULL,
+  `resolved_by`      INT UNSIGNED NULL,
+  `resolution`       VARCHAR(8)   NULL,                       -- auto | admin
+  `last_notified_at` DATETIME     NULL,
+  `details_json`     TEXT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_alerts_active` (`active_key`),
+  KEY `idx_alerts_status` (`status`, `severity`, `last_detected_at`),
+  KEY `idx_alerts_type` (`alert_type`, `last_detected_at`),
+  KEY `idx_alerts_dedupe` (`dedupe_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `payment_flags` (
+  `id`               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `flag_type`        VARCHAR(32)  NOT NULL,
+  `severity`         VARCHAR(8)   NOT NULL DEFAULT 'medium',  -- low | medium | high
+  `payment_id`       BIGINT UNSIGNED NULL,
+  `order_id`         BIGINT UNSIGNED NULL,
+  `gateway_id`       INT UNSIGNED NULL,
+  `webhook_event_id` BIGINT UNSIGNED NULL,
+  `dedupe_key`       VARCHAR(160) NOT NULL,
+  `active_key`       VARCHAR(160) NULL,                       -- = dedupe_key while open, NULL once reviewed / dismissed / resolved
+  `status`           VARCHAR(10)  NOT NULL DEFAULT 'open',    -- open | reviewed | dismissed | resolved
+  `occurrences`      INT UNSIGNED NOT NULL DEFAULT 1,
+  `first_seen_at`    DATETIME     NOT NULL,
+  `last_seen_at`     DATETIME     NOT NULL,
+  `details_json`     TEXT NULL,
+  `reviewed_by`      INT UNSIGNED NULL,
+  `reviewed_at`      DATETIME     NULL,
+  `review_note`      VARCHAR(255) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_payment_flags_active` (`active_key`),
+  KEY `idx_payment_flags_status` (`status`, `severity`, `last_seen_at`),
+  KEY `idx_payment_flags_payment` (`payment_id`),
+  KEY `idx_payment_flags_order` (`order_id`),
+  KEY `idx_payment_flags_type` (`flag_type`, `last_seen_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `orders`
+  ADD COLUMN `last_attempt_at` DATETIME NULL AFTER `next_attempt_at`,
+  ADD COLUMN `recovery_status` VARCHAR(16) NULL AFTER `failure_kind`,     -- NULL | auto_retry | needs_review | escalated | resolved
+  ADD COLUMN `escalated_at`    DATETIME NULL AFTER `recovery_status`,
+  ADD COLUMN `escalated_by`    INT UNSIGNED NULL AFTER `escalated_at`,
+  ADD KEY `idx_orders_recovery` (`recovery_status`, `status`);
+
+-- ── 007_reports_ai_support.sql ──
+-- ============================================================================
+-- Daily reports, AI usage and the customer support assistant.
+--
+--   daily_reports          one row per Asia/Kolkata calendar day (UNIQUE report_date → a repeated run updates the row, never adds a second).
+--                          `snapshot_json` holds the DETERMINISTIC numbers computed from the database; `ai_summary` is optional commentary
+--                          from an AI provider, stored apart from the numbers so it can never overwrite them.
+--   ai_usage_logs          every call to an AI provider: feature, provider, model, status, token counts, latency, error category.
+--                          No prompt, no answer, no secret is stored here.
+--   support_conversations  a customer chat (a random key in the customer's own browser; the visitor id when known). Rows past
+--                          `expires_at` are deleted by the cleanup job (retention is configurable, default 30 days).
+--   support_messages       what was said — kept short and only as long as the conversation exists.
+--
+-- Rollback (all four tables are new): DROP TABLE `support_messages`; DROP TABLE `support_conversations`; DROP TABLE `ai_usage_logs`;
+--   DROP TABLE `daily_reports`; DELETE FROM `schema_migrations` WHERE `version` = '007_reports_ai_support';
+-- ============================================================================
+
+SET NAMES utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `daily_reports` (
+  `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `report_date`       DATE         NOT NULL,                 -- the IST day the numbers describe
+  `calc_version`      VARCHAR(12)  NOT NULL,
+  `snapshot_json`     MEDIUMTEXT   NOT NULL,
+  `generated_at`      DATETIME     NOT NULL,
+  `generated_by`      VARCHAR(8)   NOT NULL DEFAULT 'cron',  -- cron | admin
+  `regenerated_count` INT UNSIGNED NOT NULL DEFAULT 0,
+  `ai_status`         VARCHAR(12)  NOT NULL DEFAULT 'none',  -- none | ok | unavailable | invalid
+  `ai_provider`       VARCHAR(24)  NULL,
+  `ai_model`          VARCHAR(60)  NULL,
+  `ai_summary`        TEXT NULL,
+  `ai_generated_at`   DATETIME     NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_daily_reports_date` (`report_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ai_usage_logs` (
+  `id`             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `feature`        VARCHAR(24)  NOT NULL,                    -- report | support | pricing
+  `provider`       VARCHAR(24)  NOT NULL,
+  `model`          VARCHAR(60)  NULL,
+  `status`         VARCHAR(12)  NOT NULL,                    -- ok | error | invalid | limited
+  `http_status`    SMALLINT UNSIGNED NULL,
+  `input_tokens`   INT UNSIGNED NULL,
+  `output_tokens`  INT UNSIGNED NULL,
+  `latency_ms`     INT UNSIGNED NULL,
+  `error_category` VARCHAR(16)  NULL,                        -- network | timeout | auth | rate_limit | server | format
+  `created_at`     DATETIME     NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_ai_usage_created` (`created_at`),
+  KEY `idx_ai_usage_feature` (`feature`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `support_conversations` (
+  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `public_key`      CHAR(32)     NOT NULL,                   -- random, kept in the customer's browser
+  `visitor_id`      BIGINT UNSIGNED NULL,
+  `status`          VARCHAR(8)   NOT NULL DEFAULT 'open',
+  `message_count`   INT UNSIGNED NOT NULL DEFAULT 0,
+  `ai_messages`     INT UNSIGNED NOT NULL DEFAULT 0,
+  `created_at`      DATETIME     NOT NULL,
+  `last_message_at` DATETIME     NOT NULL,
+  `expires_at`      DATETIME     NOT NULL,                   -- retention: the cleanup job deletes the conversation after this
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_support_conv_key` (`public_key`),
+  KEY `idx_support_conv_last` (`last_message_at`),
+  KEY `idx_support_conv_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `support_messages` (
+  `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `conversation_id` BIGINT UNSIGNED NOT NULL,
+  `role`            VARCHAR(10)  NOT NULL,                   -- customer | assistant
+  `body`            VARCHAR(1200) NOT NULL,
+  `intent`          VARCHAR(24)  NULL,
+  `order_id`        BIGINT UNSIGNED NULL,                    -- the order a verified answer was about
+  `mode`            VARCHAR(8)   NOT NULL DEFAULT 'rules',   -- rules | ai
+  `created_at`      DATETIME     NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_support_msg_conv` (`conversation_id`, `id`),
+  CONSTRAINT `fk_support_msg_conv` FOREIGN KEY (`conversation_id`) REFERENCES `support_conversations` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── 008_ads_intelligence.sql ──
+-- ============================================================================
+-- Ads Intelligence: more precise visitor measurement, ACTUAL ad spend, and campaign attribution of verified orders.
+--
+--   visitor_sessions.*   utm_content / utm_term; page_views (page loads in the session, counted from this migration on — older rows are 0 =
+--                        "not measured"); service_views (a service card was opened); engaged_at (stayed the qualifying time AND opened a
+--                        service); returning_visitor (the visitor had an earlier session).
+--   ad_daily_spend       what was actually spent (entered by an admin or imported), per IST day and campaign, pre-tax amount and GST apart.
+--                        The CPC-based figure (qualified visitors × CPC, visitor_days.cpc_paise) is an ESTIMATE and stays where it is; for a
+--                        day that has actual spend the estimate is NOT added on top (see App\Services\AdSpend).
+--   campaign_attribution one row per verified order: which campaign gets the credit, under which model and window, and when the touch happened.
+--                        Written once when the payment is verified; never overwritten by anything the browser sends afterwards.
+--
+-- Rollback: DROP TABLE `campaign_attribution`; DROP TABLE `ad_daily_spend`;
+--   ALTER TABLE `visitor_sessions` DROP COLUMN `returning_visitor`, DROP COLUMN `engaged_at`, DROP COLUMN `service_views`, DROP COLUMN `page_views`,
+--   DROP COLUMN `utm_term`, DROP COLUMN `utm_content`; DELETE FROM `schema_migrations` WHERE `version` = '008_ads_intelligence';
+-- ============================================================================
+
+SET NAMES utf8mb4;
+
+ALTER TABLE `visitor_sessions`
+  ADD COLUMN `utm_content`       VARCHAR(80) NULL AFTER `utm_campaign`,
+  ADD COLUMN `utm_term`          VARCHAR(80) NULL AFTER `utm_content`,
+  ADD COLUMN `page_views`        SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER `active_seconds`,
+  ADD COLUMN `service_views`     SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER `page_views`,
+  ADD COLUMN `engaged_at`        DATETIME NULL AFTER `qualified_at`,
+  ADD COLUMN `returning_visitor` TINYINT(1) NOT NULL DEFAULT 0 AFTER `engaged_at`,
+  ADD KEY `idx_vsessions_campaign` (`utm_campaign`, `started_at`);
+
+CREATE TABLE IF NOT EXISTS `ad_daily_spend` (
+  `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `spend_day`    DATE         NOT NULL,                      -- the Asia/Kolkata day the spend belongs to
+  `campaign`     VARCHAR(80)  NOT NULL DEFAULT '',           -- '' = not split by campaign (the day's total)
+  `platform`     VARCHAR(24)  NOT NULL DEFAULT '',           -- the advertising platform (free text, e.g. meta, google); '' = unspecified
+  `amount_paise` BIGINT UNSIGNED NOT NULL,                   -- pre-tax spend
+  `gst_paise`    BIGINT UNSIGNED NOT NULL DEFAULT 0,         -- the tax component, kept apart (its accounting treatment is a setting)
+  `currency`     CHAR(3)      NOT NULL DEFAULT 'INR',
+  `clicks`       INT UNSIGNED NULL,                          -- billable clicks the platform reported, when known
+  `impressions`  INT UNSIGNED NULL,
+  `source`       VARCHAR(8)   NOT NULL DEFAULT 'manual',     -- manual | import
+  `note`         VARCHAR(255) NULL,
+  `entered_by`   INT UNSIGNED NULL,
+  `imported_at`  DATETIME     NOT NULL,
+  `voided_at`    DATETIME     NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ad_spend_day` (`spend_day`, `campaign`, `platform`),
+  KEY `idx_ad_spend_campaign` (`campaign`, `spend_day`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `campaign_attribution` (
+  `id`                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `order_id`           BIGINT UNSIGNED NOT NULL,
+  `visitor_session_id` BIGINT UNSIGNED NULL,
+  `model`              VARCHAR(24)  NOT NULL,                -- last_non_direct
+  `window_days`        TINYINT UNSIGNED NOT NULL,
+  `touch_kind`         VARCHAR(10)  NOT NULL,                -- campaign | source | direct
+  `utm_source`         VARCHAR(80)  NULL,
+  `utm_medium`         VARCHAR(80)  NULL,
+  `utm_campaign`       VARCHAR(80)  NULL,
+  `utm_content`        VARCHAR(80)  NULL,
+  `utm_term`           VARCHAR(80)  NULL,
+  `source`             VARCHAR(16)  NOT NULL DEFAULT 'direct',
+  `touch_at`           DATETIME     NULL,
+  `attributed_at`      DATETIME     NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_attribution_order` (`order_id`),
+  KEY `idx_attribution_campaign` (`utm_campaign`, `attributed_at`),
+  CONSTRAINT `fk_attribution_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── 009_adaptive_pricing.sql ──
+-- ============================================================================
+-- Adaptive pricing: price versions, controlled experiments, stable cohort assignments, decision and price audit logs.
+--
+-- Principles encoded here:
+--   * `services.price_paise` stays THE default (control) price and the source of truth. An experiment shows a candidate price only to its
+--     treatment cohort; a winning candidate becomes the default only through an audited, admin-approved change.
+--   * Every order keeps the exact price it was sold at (`orders.amount_paise`, as before) plus which price version / experiment / cohort it was
+--     sold under, so an old order is never re-priced and results can always be traced to real orders.
+--   * An assignment key is a keyed hash of a first-party random cookie — never an IP address, never a name — and expires.
+--   * Nothing here changes a price by itself: the engine starts in dry-run, a service must be switched on (`adaptive_enabled`), AUTO (API) services
+--     are excluded unless an admin opts in, and a global pause + per-service pause exist (`pricing_paused`, setting `pricing.global_pause`).
+--
+--   ad_campaign_settings        append-only history of the advertising-intelligence settings: the DEFAULT row, and daily OVERRIDEs with an end day
+--   service_price_versions      every price a service has been sold at (default / control / candidate / snapshot taken before a change)
+--   pricing_experiments         one controlled experiment: control vs candidate price, policy snapshot, status, decision, metrics
+--   pricing_experiment_cohorts  per-cohort rollups written by the evaluator (live counts are always re-derivable from orders)
+--   pricing_assignments         which cohort a pseudonymous visitor is in, and the price it was shown
+--   pricing_decision_logs       every evaluation (also dry runs) with its metrics and reason
+--   price_audit_logs            every change of a service's price, from any source
+--
+-- Rollback (all tables are new; the columns are nullable / default off):
+--   DROP TABLE price_audit_logs, pricing_decision_logs, pricing_assignments, pricing_experiment_cohorts, pricing_experiments,
+--     service_price_versions, ad_campaign_settings;  (drop the foreign keys of orders first if you added experiment rows)
+--   ALTER TABLE orders DROP COLUMN price_cohort, DROP COLUMN experiment_id, DROP COLUMN price_version_id;
+--   ALTER TABLE visitor_sessions DROP COLUMN platform_pref;
+--   ALTER TABLE services DROP COLUMN pricing_paused, DROP COLUMN adaptive_max_paise, DROP COLUMN adaptive_min_paise, DROP COLUMN adaptive_enabled;
+--   DELETE FROM schema_migrations WHERE version = '009_adaptive_pricing';
+-- ============================================================================
+
+SET NAMES utf8mb4;
+
+ALTER TABLE `services`
+  ADD COLUMN `adaptive_enabled`   TINYINT(1)   NOT NULL DEFAULT 0 AFTER `fulfil_cost_paise`,
+  ADD COLUMN `adaptive_min_paise` INT UNSIGNED NULL AFTER `adaptive_enabled`,
+  ADD COLUMN `adaptive_max_paise` INT UNSIGNED NULL AFTER `adaptive_min_paise`,
+  ADD COLUMN `pricing_paused`     TINYINT(1)   NOT NULL DEFAULT 0 AFTER `adaptive_max_paise`;
+
+ALTER TABLE `visitor_sessions`
+  ADD COLUMN `platform_pref` VARCHAR(16) NULL AFTER `platform_viewed`;      -- the platform the visitor chose in the first-visit popup (analytics only)
+
+CREATE TABLE IF NOT EXISTS `ad_campaign_settings` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `kind`          VARCHAR(10)  NOT NULL,                     -- default | override
+  `period_start`  DATE         NULL,                         -- override only
+  `period_end`    DATE         NULL,                         -- override only: the last IST day it applies; it expires after that
+  `settings_json` TEXT         NOT NULL,
+  `note`          VARCHAR(255) NULL,
+  `set_by`        INT UNSIGNED NULL,
+  `created_at`    DATETIME     NOT NULL,
+  `revoked_at`    DATETIME     NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_ad_campaign_kind` (`kind`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `service_price_versions` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `service_id`    INT UNSIGNED NOT NULL,
+  `price_paise`   INT UNSIGNED NOT NULL,
+  `kind`          VARCHAR(10)  NOT NULL,                     -- default | control | candidate | snapshot
+  `experiment_id` BIGINT UNSIGNED NULL,
+  `note`          VARCHAR(255) NULL,
+  `created_by`    INT UNSIGNED NULL,
+  `created_at`    DATETIME     NOT NULL,
+  `retired_at`    DATETIME     NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_price_versions_service` (`service_id`, `created_at`),
+  KEY `idx_price_versions_experiment` (`experiment_id`),
+  CONSTRAINT `fk_price_versions_service` FOREIGN KEY (`service_id`) REFERENCES `services` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pricing_experiments` (
+  `id`                    BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `service_id`            INT UNSIGNED NOT NULL,
+  `status`                VARCHAR(12)  NOT NULL DEFAULT 'proposed',   -- proposed | approved | running | paused | concluded | rolled_back | cancelled
+  `mode`                  VARCHAR(8)   NOT NULL DEFAULT 'dry_run',    -- dry_run | live
+  `control_paise`         INT UNSIGNED NOT NULL,
+  `candidate_paise`       INT UNSIGNED NOT NULL,
+  `control_version_id`    BIGINT UNSIGNED NULL,
+  `candidate_version_id`  BIGINT UNSIGNED NULL,
+  `treatment_share_bps`   SMALLINT UNSIGNED NOT NULL DEFAULT 5000,    -- share of visitors who see the candidate price (5000 = 50 %)
+  `min_sample_per_cohort` INT UNSIGNED NOT NULL,
+  `max_duration_days`     SMALLINT UNSIGNED NOT NULL,
+  `profit_floor_paise`    INT NULL,                                   -- minimum contribution per order at the candidate price (policy snapshot)
+  `decision`              VARCHAR(18)  NULL,                          -- winner | loser | inconclusive | insufficient_data | rolled_back
+  `decision_reason`       VARCHAR(500) NULL,
+  `confidence_bps`        SMALLINT UNSIGNED NULL,                     -- confidence of the last evaluation, in basis points
+  `metrics_json`          MEDIUMTEXT   NULL,
+  `last_evaluated_at`     DATETIME     NULL,
+  `approved_by`           INT UNSIGNED NULL,
+  `approved_at`           DATETIME     NULL,
+  `started_at`            DATETIME     NULL,
+  `ends_at`               DATETIME     NULL,
+  `ended_at`              DATETIME     NULL,
+  `rolled_back_at`        DATETIME     NULL,
+  `rollback_reason`       VARCHAR(255) NULL,
+  `cooldown_until`        DATETIME     NULL,
+  `created_by`            INT UNSIGNED NULL,
+  `created_at`            DATETIME     NOT NULL,
+  `updated_at`            DATETIME     NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_experiments_service` (`service_id`, `status`),
+  KEY `idx_experiments_status` (`status`, `last_evaluated_at`),
+  CONSTRAINT `fk_experiments_service` FOREIGN KEY (`service_id`) REFERENCES `services` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pricing_experiment_cohorts` (
+  `id`                 BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `experiment_id`      BIGINT UNSIGNED NOT NULL,
+  `cohort`             VARCHAR(10)  NOT NULL,                -- control | treatment
+  `price_version_id`   BIGINT UNSIGNED NULL,
+  `price_paise`        INT UNSIGNED NOT NULL,
+  `assigned`           INT UNSIGNED NOT NULL DEFAULT 0,
+  `qualified`          INT UNSIGNED NOT NULL DEFAULT 0,
+  `service_views`      INT UNSIGNED NOT NULL DEFAULT 0,
+  `checkout_starts`    INT UNSIGNED NOT NULL DEFAULT 0,
+  `purchases`          INT UNSIGNED NOT NULL DEFAULT 0,
+  `revenue_paise`      BIGINT       NOT NULL DEFAULT 0,
+  `contribution_paise` BIGINT       NOT NULL DEFAULT 0,
+  `computed_at`        DATETIME     NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_experiment_cohort` (`experiment_id`, `cohort`),
+  CONSTRAINT `fk_cohorts_experiment` FOREIGN KEY (`experiment_id`) REFERENCES `pricing_experiments` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pricing_assignments` (
+  `id`               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `experiment_id`    BIGINT UNSIGNED NOT NULL,
+  `assignment_key`   CHAR(32)     NOT NULL,                  -- keyed hash of the first-party cookie: pseudonymous, never an IP address
+  `cohort`           VARCHAR(10)  NOT NULL,
+  `price_version_id` BIGINT UNSIGNED NULL,
+  `price_paise`      INT UNSIGNED NOT NULL,                  -- the price this visitor is shown while the assignment lives
+  `platform_pref`    VARCHAR(16)  NULL,
+  `consent_state`    VARCHAR(12)  NOT NULL DEFAULT 'implied',
+  `assigned_at`      DATETIME     NOT NULL,
+  `expires_at`       DATETIME     NOT NULL,
+  `qualified_at`     DATETIME     NULL,                      -- the same 3-second rule as visitors
+  `service_viewed_at` DATETIME    NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_assignment` (`experiment_id`, `assignment_key`),
+  KEY `idx_assignment_expires` (`expires_at`),
+  KEY `idx_assignment_cohort` (`experiment_id`, `cohort`),
+  CONSTRAINT `fk_assignments_experiment` FOREIGN KEY (`experiment_id`) REFERENCES `pricing_experiments` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `pricing_decision_logs` (
+  `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `experiment_id` BIGINT UNSIGNED NULL,
+  `service_id`    INT UNSIGNED NULL,
+  `decision`      VARCHAR(24)  NOT NULL,
+  `dry_run`       TINYINT(1)   NOT NULL DEFAULT 1,
+  `reason`        VARCHAR(500) NULL,
+  `metrics_json`  MEDIUMTEXT   NULL,
+  `actor`         VARCHAR(8)   NOT NULL DEFAULT 'cron',      -- cron | admin | system
+  `created_at`    DATETIME     NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_decision_experiment` (`experiment_id`, `created_at`),
+  KEY `idx_decision_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `price_audit_logs` (
+  `id`               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `service_id`       INT UNSIGNED NOT NULL,
+  `old_price_paise`  INT UNSIGNED NULL,
+  `new_price_paise`  INT UNSIGNED NOT NULL,
+  `reason`           VARCHAR(255) NULL,
+  `actor_type`       VARCHAR(10)  NOT NULL,                  -- admin | experiment | rollback | system
+  `actor_id`         INT UNSIGNED NULL,
+  `experiment_id`    BIGINT UNSIGNED NULL,
+  `price_version_id` BIGINT UNSIGNED NULL,
+  `created_at`       DATETIME     NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_price_audit_service` (`service_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `orders`
+  ADD COLUMN `price_version_id` BIGINT UNSIGNED NULL AFTER `amount_paise`,
+  ADD COLUMN `experiment_id`    BIGINT UNSIGNED NULL AFTER `price_version_id`,
+  ADD COLUMN `price_cohort`     VARCHAR(10) NULL AFTER `experiment_id`,
+  ADD KEY `idx_orders_experiment` (`experiment_id`, `price_cohort`);
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE IF NOT EXISTS `schema_migrations` (`version` VARCHAR(64) NOT NULL, `applied_at` DATETIME NOT NULL, PRIMARY KEY (`version`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -666,3 +1169,8 @@ INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('001_in
 INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('002_trial_pack_is_automatic', UTC_TIMESTAMP());
 INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('003_service_tags', UTC_TIMESTAMP());
 INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('004_payment_page_instructions', UTC_TIMESTAMP());
+INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('005_finance', UTC_TIMESTAMP());
+INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('006_operations_risk', UTC_TIMESTAMP());
+INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('007_reports_ai_support', UTC_TIMESTAMP());
+INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('008_ads_intelligence', UTC_TIMESTAMP());
+INSERT IGNORE INTO `schema_migrations` (`version`, `applied_at`) VALUES ('009_adaptive_pricing', UTC_TIMESTAMP());

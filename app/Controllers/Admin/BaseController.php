@@ -8,6 +8,7 @@ use App\Core\HttpException;
 use App\Core\Idempotency;
 use App\Core\Request;
 use App\Core\Response;
+use App\Support\Permissions;
 
 /** Shared helpers for admin controllers. */
 abstract class BaseController
@@ -16,6 +17,21 @@ abstract class BaseController
     protected function admin(Request $req): array
     {
         return $req->attributes['admin'] ?? throw new HttpException(401, 'Your session has expired. Please sign in again.', 'unauthenticated');
+    }
+
+    /**
+     * Require a permission for the signed-in admin (role-based; see App\Support\Permissions). The server decides — hiding a button in the
+     * browser is a convenience, never the protection.
+     *
+     * @return array{id:int,username:string,email:string,role:string,must_change_password:bool}
+     */
+    protected function authorize(Request $req, string $permission): array
+    {
+        $admin = $this->admin($req);
+        if (!Permissions::can((string) $admin['role'], $permission)) {
+            throw new HttpException(403, 'Your role (' . $admin['role'] . ') does not allow this: ' . (Permissions::ALL[$permission] ?? $permission) . '.', 'forbidden');
+        }
+        return $admin;
     }
 
     /** @return array{admin:array<string,mixed>,session:array<string,mixed>,csrf:string} */

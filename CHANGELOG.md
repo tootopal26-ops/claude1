@@ -1,5 +1,18 @@
 # Changelog
 
+## Business intelligence, payment risk, recovery, AI and adaptive pricing (programme — landing phase by phase)
+
+The plan and what already exists is in [docs/AUDIT-AND-CHECKLIST.md](docs/AUDIT-AND-CHECKLIST.md). Each phase below is committed separately; a feature is listed only when its tests ran.
+
+### Phase 2 — foundation
+**Upgrading:** upload the files, then **Admin → System → Apply database updates** (or `php bin/migrate.php`). The five migrations only *add* tables and nullable / default-off columns; nothing is changed or removed. Rollback notes are at the top of each file.
+* **Migrations** `005_finance` (`services.fulfil_cost_paise`, `order_costs`, `expenses`), `006_operations_risk` (`job_runs`, `business_alerts`, `payment_flags`, order recovery columns), `007_reports_ai_support` (`daily_reports`, `ai_usage_logs`, `support_conversations`, `support_messages`), `008_ads_intelligence` (`utm_content/term`, page / service views, engaged + returning flags, `ad_daily_spend`, `campaign_attribution`), `009_adaptive_pricing` (price versions, experiments, cohorts, assignments, decision and price audit logs, `orders.price_version_id / experiment_id / price_cohort`, per-service switches that default to **off**). All money is integer paise.
+* **Roles and permissions** (`App\Support\Permissions`): `owner` (everything — every existing admin is one, so nothing changes), `manager`, `support`, `analyst`; sensitive actions name a permission and the **server** enforces it (`403 forbidden`). Assign with `php bin/admin.php role --username=… --role=…` (audited; the last active owner cannot be demoted).
+* **Scheduled jobs** (`App\Services\Jobs`): a per-job advisory lock (no two processes run the same job), a bounded time budget, a run history (`job_runs`: start, finish, duration, small result, error *category* — never a stack trace, path or secret), stale `running` rows closed as `abandoned`, clean exit on failure. `php bin/cron.php` (one every-minute line, jobs run when due), `php bin/cron.php <job>`, `php bin/cron.php list`, `--dry-run`, exit code 1 on failure. The legacy HTTP cron and "Run background tasks now" keep working.
+* **Business alerts** (`App\Services\Alerts`): one live alert per problem (a unique index, not a hope): re-detection counts up, severity only escalates, acknowledging keeps it live, resolving closes it, a check that sees the problem gone resolves it automatically, a recurrence opens a fresh one; sanitised text; optional e-mail through the host's `mail()` with a minimum severity and a cooldown (off by default).
+* **State vocabulary**: the requested payment / order state names are provided as a mapping (`Status::specPayment()`, `Status::specOrder()`) over the existing, tested states. `REFUND_PENDING` is **not** supported (Alpha UPI has no refund API).
+* Tests: PHP 212 passed (3,481 assertions, MariaDB); `admin-auth` 15/15 and `admin-integrations` 22/22 re-run.
+
 ## Payment page: the real QR, directly in the card (this release)
 
 **Upgrading:** upload the files. No database change (migration `004` from the previous release is still the latest) and no asset rebuild (the compiled CSS/JS is included).
