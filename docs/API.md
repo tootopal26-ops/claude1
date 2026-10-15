@@ -52,6 +52,7 @@ Exceeding a limit returns `429` with `Retry-After`.
 |---|---|
 | `GET /` | Storefront (server-rendered; every service and price is in the HTML). |
 | `GET /theme.css` | The admin-chosen accent colours as CSS variables (validated `#rrggbb` + contrast-checked). |
+| `GET /tags.css` | One rule per **enabled** tag, `.tag-<id>{--tag-bg:#RRGGBB;--tag-fg:#RRGGBB;--tag-ts:…}` — the badge colours (the CSP forbids inline styles, so they live here). Every value is a validated HEX colour; the link carries `?v=<hash>` so a change shows at once. |
 | `GET /manifest.webmanifest` · `/robots.txt` · `/sitemap.xml` · `/health` | Web manifest, crawler files, liveness probe (`200 {"ok":true}`; `503` when the database is unreachable). |
 | `POST /api/checkout` | Create a pending order + payment session. See below. |
 | `GET /pay/{ref}` | The **SCAN AND PAY** page. `{ref}` is 32 hex chars (128-bit capability). `?returned=1` (set by the gateway redirect) makes the server verify with the gateway before rendering. |
@@ -140,9 +141,21 @@ HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|orders|payments|se
 | | |
 |---|---|
 | `GET /admin/api/services` · `GET /admin/api/services/meta` · `GET /admin/api/services/{id}` | List (grouped by platform, with profit/order), form metadata, one service. |
-| `POST /admin/api/services` · `PUT /admin/api/services/{id}` · `DELETE /admin/api/services/{id}` | Create / update / soft-delete. Fields: `code, platform_id, type, target_kind, title, subtitle, description, price (₹ string), quantity, min_quantity, max_quantity, mode (AUTO\|MANUAL), smm_provider_id, smm_service_id, smm_cost (₹), badge, badge_color, is_premium, status (active\|inactive), sort_order, icon_path`. Price must be ₹1–₹1,00,000, quantities ≥ 1, `min ≤ quantity ≤ max`; AUTO needs `smm_service_id`. Violations → `422` with `fields`. `badge` is an *extra* label: the red **TRIAL PACK** badge is derived from the price (every service sold at exactly ₹5), so that text is reserved — typing it is refused with `422` / `fields.badge`. Service objects carry `trial_pack` (true at ₹5) and `meta` carries `trial_pack {label, price_paise, price}`. |
+| `POST /admin/api/services` · `PUT /admin/api/services/{id}` · `DELETE /admin/api/services/{id}` | Create / update / soft-delete. Fields: `code, platform_id, type, target_kind, title, subtitle, description, price (₹ string), quantity, min_quantity, max_quantity, mode (AUTO\|MANUAL), smm_provider_id, smm_service_id, smm_cost (₹), tag_id, is_premium, status (active\|inactive), sort_order, icon_path`. Price must be ₹1–₹1,00,000, quantities ≥ 1, `min ≤ quantity ≤ max`; AUTO needs `smm_service_id`. Violations → `422` with `fields`. `tag_id` is the badge shown on the card: an id from `GET /admin/api/tags`, or `null` / `0` / `""` for no tag (omit it on a partial update to leave the tag alone). The automatic **TRIAL PACK** tag cannot be assigned (`422` / `fields.tag_id`) — it is derived from the price (see below) — and a disabled tag cannot be newly assigned, but a service that already has one keeps it. Service objects carry `tag_id` (the assignment) and `effective_tag` (`{id, name, bg, fg, auto}` — what the storefront really shows: the enabled TRIAL PACK tag when `price_paise` is exactly 500, else the assigned tag if enabled, else `null`). `meta` carries `tags` (every tag: `id, name, bg_color, text_color, is_active, is_system, is_auto`) and `tag_rule {code, tag_id, price_paise, price}`. |
 | `POST /admin/api/services/icon` | Multipart icon upload (PNG/JPG/WebP ≤ 2 MB, re-encoded) → `{path}`. |
 | `PATCH /admin/api/platforms/{id}` · `POST\|DELETE /admin/api/platforms/{id}/logo` | Platform name/tagline/visibility/order · upload or reset the platform logo. |
+
+### Tags & Badges
+| | |
+|---|---|
+| `GET /admin/api/tags` | `{tags, meta}` — every tag in display order (`id, code, name, bg_color, text_color, is_active, is_system, is_auto, usage, default, contrast, sort_order`; `usage` = live services using it, `default` = the factory name/colours of a predefined tag, `contrast` = text-on-background ratio) and the rules (`meta.trial`, `meta.limits`, `meta.defaults`). |
+| `POST /admin/api/tags` | Create a custom tag. Body `{name, bg_color, text_color?, is_active?}` (text defaults to white, enabled to true). → `{tag}`. |
+| `PUT /admin/api/tags/{id}` | Partial update: send only what changes (`name`, `bg_color`, `text_color`, `is_active`). Predefined tags can be edited and disabled too. → `{tag}`. |
+| `DELETE /admin/api/tags/{id}` | Delete a **custom** tag; the services that used it have no tag afterwards (`unassigned` = how many). Predefined tags → `422` / `code: "protected"` (disable them instead). |
+
+Validation (server-side, `422` with `fields`): **name** 2–24 characters after collapsing whitespace, at least one letter or digit, no `<` `>` or control characters, unique case-insensitively (also against the predefined tags); **colours** `#RGB` or `#RRGGBB` only (stored as upper-case `#RRGGBB`) — no names, `rgb()`, alpha or anything that could carry CSS; text on background must reach a contrast ratio of 2:1 (the editor warns below the WCAG 4.5:1 AA level but lets you keep the colours); at most 100 tags. All four routes sit behind the admin session, the same-origin check and the CSRF token, use prepared statements and write an audit-log entry (`tag.created`, `tag.updated`, `tag.deleted`). A concurrent double-click on Save creates one tag (idempotency key).
+
+**What a card shows** (`App\Services\Tags::effective`) — never more than one badge: the enabled TRIAL PACK tag if the selling price is exactly **500 paise** (₹5.00, integer comparison — ₹4.99 and ₹5.01 are not ₹5); otherwise the service's assigned tag if that tag is enabled; otherwise nothing. Disabling a tag hides it without touching assignments; deleting a custom tag clears them; moving a price away from ₹5 brings the assigned tag back on the next page load.
 
 ### Settings
 | | |

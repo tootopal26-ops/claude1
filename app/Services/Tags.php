@@ -54,10 +54,20 @@ final class Tags
 
     /** @var array<int,array<string,mixed>>|null every tag by id, in display order */
     private static ?array $all = null;
+    /** True while the service_tags table does not exist (a code update was uploaded before migration 003 was applied). */
+    private static bool $unmigrated = false;
 
     public static function flush(): void
     {
         self::$all = null;
+        self::$unmigrated = false;
+    }
+
+    /** False until migration 003 has been applied: the storefront then simply shows no badges and the service editor leaves the tag alone. */
+    public static function available(): bool
+    {
+        self::all();
+        return !self::$unmigrated;
     }
 
     // ───────────────────────────── reading ─────────────────────────────
@@ -67,8 +77,15 @@ final class Tags
     {
         if (self::$all === null) {
             self::$all = [];
-            foreach (Db::all('SELECT * FROM service_tags ORDER BY sort_order, id') as $r) {
-                self::$all[(int) $r['id']] = self::row($r);
+            try {
+                foreach (Db::all('SELECT * FROM service_tags ORDER BY sort_order, id') as $r) {
+                    self::$all[(int) $r['id']] = self::row($r);
+                }
+            } catch (\PDOException $e) {
+                if ($e->getCode() !== '42S02') {          // anything but "table does not exist" is a real error
+                    throw $e;
+                }
+                self::$unmigrated = true;                 // keep the shop selling; Admin → System → Apply database updates adds the table
             }
         }
         return self::$all;

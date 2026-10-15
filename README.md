@@ -15,7 +15,7 @@ one-click **Approve All**, and an admin panel whose analytics dashboard shows re
 ### Customer website
 * Header with a circular, glowing logo, an **admin-editable site name** and a black filled **Shop** icon (opens "Your orders").
 * Two large platform buttons — **Instagram** and **YouTube** — with admin-uploadable logos, spring/glow animations and a platform-specific service list.
-* Service cards exactly as specified (Followers, Likes, Views, Blue Tick, Subscribers, Watch Time; ₹5 trial packs with the red **TRIAL PACK** badge — shown **automatically on every service priced at exactly ₹5**, on both platforms, and gone as soon as the price changes — and the premium watch-time card).
+* Service cards exactly as specified (Followers, Likes, Views, Blue Tick, Subscribers, Watch Time; ₹5 trial packs; the premium watch-time card). Each card can carry one coloured **badge** at its top edge — one of the 10 predefined tags (**TRIAL PACK, BEST SELLER, POPULAR, BEST VALUE, PREMIUM, HOT DEAL, NON DROP, INSTANT, LIMITED OFFER, VIP**) or a custom one — chosen per service in the admin. **TRIAL PACK** is automatic: it is shown on **every service priced at exactly ₹5** (both platforms, decided from the database price in integer paise) and takes priority over the assigned tag; change the price and the assigned tag comes back.
 * **BUY NOW** expands an inline form (slide-down, no navigation): **ENTER USERNAME OR LINK** with live **✓ Valid input / ⚠ Invalid username/link** validation, then **PROCEED TO PAYMENT**.
 * Payment page: **SCAN AND PAY**, the gateway's QR, a real **05:00** countdown, **DOWNLOAD QR**, and an honest **"Payment session expired"** state (never a misleading success).
 * Order tracking page and a "Your orders" drawer, both keyed by an unguessable token — customers never need an account.
@@ -26,7 +26,8 @@ one-click **Approve All**, and an admin panel whose analytics dashboard shows re
 * **Dashboard:** 14 KPI cards (Today / Lifetime × revenue, profit, orders, visitors, successful payments, ads spend, SMM spend), charts for Today / 7 / 30 / 90 days / Lifetime / custom range, filters by platform / mode / payment, and the profit breakdown **REVENUE − SMM − ADS = NET PROFIT (+ margin)**.
 * **Visitor analytics:** privacy-conscious, one visitor per day, *qualified* after 3 s of visible time, CPC (default **₹1.08**) charged once per qualified visitor-day.
 * **Orders:** filters, search, detail drawer with timeline, every action (approve, complete, cancel, refund, retry, move to manual…), and **APPROVE ALL** (with confirmation: "Approve all eligible manual orders?").
-* **Services:** AUTO / MANUAL, SMM service ID, provider cost, extra badge label (TRIAL PACK is automatic at ₹5), icon upload, min/max, sort order, live profit preview.
+* **Services:** AUTO / MANUAL, SMM service ID, provider cost, tag dropdown ("No Tag" or any enabled tag) with a live preview on the real service card, icon upload, min/max, sort order, live profit preview.
+* **Services → Tags & Badges:** create custom tags, rename them, change the background (colour picker **and** HEX box) and text colour, enable / disable (a disabled tag is hidden on the store but keeps its assignments), delete custom tags (services that used one simply lose the badge), preview every badge before saving. The 10 predefined tags can be edited and disabled, not deleted.
 * **Website settings** (name, logos, colours, SEO, support link), **payment gateway** configuration, **SMM provider** configuration with **TEST CONNECTION**, advertising/CPC settings, password change & session management, audit log, system health.
 
 ### Payments & orders
@@ -95,7 +96,7 @@ npm run build        # icons sprite + Tailwind CSS + JS bundles → public/asset
 
 ### Tests
 ```bash
-php tests/run.php                 # 118 unit + integration tests (payments, webhooks, fulfilment, analytics, admin services, trial-pack badge …)
+php tests/run.php                 # 128 unit + integration tests (payments, webhooks, fulfilment, analytics, admin services, tags & badges …)
 bash tools/qa/run-all.sh          # every browser/HTTP QA suite (Playwright, axe-core, real Apache) — see docs/QA-REPORT.md
 ```
 

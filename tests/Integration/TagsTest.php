@@ -216,11 +216,11 @@ T::test('tags: each of the 9 manual predefined tags can be assigned to an Instag
             T::contains('tag-' . tg_id($code), $html);
             T::contains('data-badge="tag"', $html);
         }
-        // "No tag"
+        // "No Tag"
         foreach ([null, '', 0, '0'] as $none) {
             AdminServices::save(tg_svc($svc), ['tag_id' => tg_id('vip')], tg_req(), TG_ADMIN);
             $saved = AdminServices::save(tg_svc($svc), ['tag_id' => $none], tg_req(), TG_ADMIN);
-            T::same(null, $saved['tag_id'], 'No tag via ' . json_encode($none));
+            T::same(null, $saved['tag_id'], 'No Tag via ' . json_encode($none));
             T::same(null, tg_card($svc)['tag']);
             T::same(0, tg_badges(tg_html(tg_card($svc))));
         }
@@ -483,8 +483,32 @@ T::test('tags migration 003: old free-text badges become tags (predefined by nam
     Db::exec("UPDATE services SET badge = 'Odd one', badge_color = 'sparkly' WHERE code = 'yt-views-10k'");           // unknown colour name → red
     Db::exec("UPDATE services SET badge = 'TRIAL PACK', badge_color = 'red' WHERE code = 'ig-blue-tick'");           // automatic only: never assigned
     Db::exec("UPDATE services SET badge = '', badge_color = NULL WHERE code = 'yt-watch-4000h'");                    // empty → no tag
+    // a shop whose code was updated before the database was (migration 003 pending) keeps selling: cards render, just without badges,
+    // and the admin can still edit a service (the tag is left alone) until Admin → System → Apply database updates has run
+    T::same(false, Tags::available(), 'the tags table does not exist yet');
+    $cards = tg_cards();
+    T::same(14, count($cards), 'every service is still on the storefront');
+    foreach ($cards as $code => $card) {
+        T::same(null, $card['tag'], "{$code} has no badge before the update");
+        T::same(0, tg_badges(tg_html($card)), "{$code} renders without a badge element");
+    }
+    T::same('', Tags::css(), 'no tag stylesheet rules');
+    try {
+        (new \App\Controllers\Admin\TagsController())->list(Request::fake('GET', '/admin/api/tags'), []);
+        T::true(false, 'the tags API must refuse while the table is missing');
+    } catch (HttpException $e) {
+        T::same([409, 'migration_pending'], [$e->status, $e->errorCode], 'a plain "apply the database update" answer');
+        T::contains('Apply database updates', $e->getMessage());
+    }
+    $saved = AdminServices::save(tg_svc('ig-followers-100k'), ['price' => '120'], tg_req(), TG_ADMIN);
+    T::same(12000, $saved['price_paise'], 'a service can still be saved');
+    T::same(null, $saved['tag_id'], 'tag_id is not written while the column does not exist');
+    T::contains('no longer exists', tg_fields(fn() => AdminServices::save(tg_svc('ig-followers-100k'), ['tag_id' => 3], tg_req(), TG_ADMIN))['tag_id'] ?? '', 'there are no tags to choose from yet');
+    T::same(14, count(AdminServices::list()), 'the admin list works too');
+    Db::exec("UPDATE services SET price_paise = 9900 WHERE code = 'ig-followers-100k'");
     T::same(['003_service_tags'], Migrator::run());
     Tags::flush();
+    T::same(true, Tags::available());
     $tag = static fn(string $code): ?string => ($r = Db::one('SELECT t.name FROM services s JOIN service_tags t ON t.id = s.tag_id WHERE s.code = ?', [$code])) ? (string) $r['name'] : null;
     T::same('POPULAR', $tag('ig-followers-100k'));
     T::same('HOT DEAL', $tag('yt-subs-100k'));

@@ -163,7 +163,7 @@ As a last resort the site also runs the tasks from visitor traffic (at most ever
 
 1. Back up (§10).
 2. Upload the new files over the old ones, **keeping** `.env`, `storage/` and `public/uploads/`.
-3. If the release contains new files in `database/migrations/`, apply them: `php bin/migrate.php` (or **Admin → System → Apply database updates**).
+3. If the release contains new files in `database/migrations/`, apply them: `php bin/migrate.php` (or **Admin → System → Apply database updates** — the admin header shows a banner while updates are pending). The store keeps selling in the meantime; the release that adds **Tags & Badges** (`003_service_tags.sql`) simply shows no badges, and the Tags page asks for the update, until it has been applied. The migration keeps what you had: an old free-text badge such as `PREMIUM` becomes an assignment of the matching tag, any other text becomes a custom tag, and nothing is deleted.
 4. Hard-refresh your browser (asset URLs carry a `?v=` version, so visitors get the new CSS/JS automatically).
 
 ---

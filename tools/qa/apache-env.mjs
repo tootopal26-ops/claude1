@@ -63,6 +63,15 @@ ErrorLog ${W}/error.log
 LogLevel warn
 ${modules.map((m) => `LoadModule ${m}_module /usr/lib/apache2/modules/mod_${m}.so`).join('\n')}
 LoadModule php_module ${MOD_PHP}
+# A shared host has plenty of idle workers. Prefork's default (5, then +1 per second) made the very first page load of a run wait up to 2 s for a
+# free worker whenever the browser opened a sixth parallel connection — a delayed image looked like a slow page (perf.mjs LCP 1.0 s / 2.0 s flip-flop).
+<IfModule mpm_prefork_module>
+    StartServers 16
+    MinSpareServers 12
+    MaxSpareServers 32
+    ServerLimit 64
+    MaxRequestWorkers 64
+</IfModule>
 TypesConfig /etc/mime.types
 AddType application/x-httpd-php .php
 DirectoryIndex index.php index.html

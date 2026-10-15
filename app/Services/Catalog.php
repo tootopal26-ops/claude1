@@ -108,7 +108,7 @@ final class Catalog
             'price'       => Money::inr((int) $r['price_paise']),
             'quantity'    => (int) $r['quantity'],
             // the ONE badge this card shows (the automatic TRIAL PACK at exactly ₹5, else the assigned tag if it is enabled): see Tags::effective()
-            'tag'         => Tags::effective((int) $r['price_paise'], $r['tag_id'] !== null ? (int) $r['tag_id'] : null),
+            'tag'         => Tags::effective((int) $r['price_paise'], ($r['tag_id'] ?? null) !== null ? (int) $r['tag_id'] : null),
             'is_premium'  => (bool) $r['is_premium'],
             'icon_url'    => upload_url($r['icon_path'] ?? null),
             'placeholder' => Targets::placeholder($platformSlug, (string) $r['target_kind']),

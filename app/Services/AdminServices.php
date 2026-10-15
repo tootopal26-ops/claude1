@@ -77,7 +77,7 @@ final class AdminServices
         $price = (int) $r['price_paise'];
         $cost = (int) $r['smm_cost_paise'];
         $preview = Profit::servicePreview($price, $cost, (string) $r['mode'], $estAdPaise);
-        $tagId = $r['tag_id'] !== null ? (int) $r['tag_id'] : null;
+        $tagId = ($r['tag_id'] ?? null) !== null ? (int) $r['tag_id'] : null;
         return [
             'id' => (int) $r['id'], 'code' => $r['code'], 'platform_id' => (int) $r['platform_id'], 'platform' => $r['platform_slug'], 'platform_name' => $r['platform_name'],
             'type' => $r['type'], 'type_label' => Status::serviceTypeLabel((string) $r['type']), 'target_kind' => $r['target_kind'],
@@ -144,7 +144,7 @@ final class AdminServices
             $errors['description'] = 'At most 2000 characters.';
         }
         // ── tag (the badge on the card). TRIAL PACK is automatic at exactly ₹5 and cannot be assigned by hand; a disabled tag can stay but not be newly assigned ──
-        $tagId = $existing !== null && $existing['tag_id'] !== null ? (int) $existing['tag_id'] : null;
+        $tagId = ($existing['tag_id'] ?? null) !== null ? (int) $existing['tag_id'] : null;
         if (array_key_exists('tag_id', $in)) {
             $raw = $in['tag_id'];
             if ($raw === null || $raw === '' || $raw === 0 || $raw === '0') {
@@ -239,6 +239,9 @@ final class AdminServices
             'tag_id' => $tagId, 'icon_path' => $iconPath,
             'is_premium' => (int) (bool) $val('is_premium', false), 'status' => $status, 'sort_order' => (int) $sort, 'updated_at' => $now,
         ];
+        if (!Tags::available()) {
+            unset($data['tag_id']);                       // database update 003 is still pending: everything else can be saved meanwhile
+        }
 
         $changed = [];
         if ($existing !== null) {

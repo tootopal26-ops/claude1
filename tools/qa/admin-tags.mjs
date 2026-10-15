@@ -1,6 +1,6 @@
 // Admin → Tags & Badges, driven through the real UI in Chromium, with what customers then see on the storefront:
 //   the 10 predefined tags; create / edit / disable / enable / delete a custom tag (colour picker + HEX box, live previews, validation); assign, change
-//   and remove tags on Instagram AND YouTube services from the service editor (dropdown, "No tag", live preview on a real card); the automatic ₹5
+//   and remove tags on Instagram AND YouTube services from the service editor (dropdown, "No Tag", live preview on a real card); the automatic ₹5
 //   TRIAL PACK (priority over the assigned tag, the assigned tag restored when the price changes, no duplicates); disabled / deleted tags;
 //   persistence after a refresh; authentication, CSRF and hostile input; phone and tablet layouts.
 // Screenshots for visual review land in $QA_OUT (default /tmp/qa/admin-tags).
@@ -246,10 +246,10 @@ await t.step('enable / disable a tag from the list: dims the row, persists after
 });
 
 // ═══════════════════════════════ 2 · assigning tags to services ═══════════════════════════════
-await t.step('the service editor offers "No tag", every enabled tag and TRIAL PACK only as a disabled explanation; the preview is the real card', async () => {
+await t.step('the service editor offers "No Tag", every enabled tag and TRIAL PACK only as a disabled explanation; the preview is the real card', async () => {
   await openService('ig-followers-100k');
   const o = await optionTexts();
-  t.eq(o[0], { label: 'No tag', value: '', disabled: false, selected: true });
+  t.eq(o[0], { label: 'No Tag', value: '', disabled: false, selected: true });
   t.eq(o.slice(1, 10).map((x) => x.label), MANUAL.map(([, n]) => n), 'the 9 manual predefined tags, in order');
   t.has(o.find((x) => x.label === 'Flash deal')?.label ?? '', 'Flash deal');
   const auto = o.at(-1);
@@ -265,7 +265,7 @@ await t.step('the service editor offers "No tag", every enabled tag and TRIAL PA
   await page.screenshot({ path: `${OUT}/service-editor-tag.png` });
 });
 
-await t.step('assign tags to an Instagram and a YouTube service, change them and choose "No tag": the store follows each time, one badge, exact colours', async () => {
+await t.step('assign tags to an Instagram and a YouTube service, change them and choose "No Tag": the store follows each time, one badge, exact colours', async () => {
   const cases = [['ig-followers-100k', 'BEST SELLER', '#7C3AED'], ['yt-subs-100k', 'HOT DEAL', '#BE185D']];
   for (const [code, label, bg] of cases) {
     await openService(code);
@@ -284,10 +284,10 @@ await t.step('assign tags to an Instagram and a YouTube service, change them and
   t.eq(await storeText('ig-followers-100k'), 'NON DROP');
   // remove
   for (const code of ['ig-followers-100k', 'yt-subs-100k']) {
-    await openService(code); await page.selectOption('#f-tag_id', { label: 'No tag' });
+    await openService(code); await page.selectOption('#f-tag_id', { label: 'No Tag' });
     t.eq(await previewBadge(), null);
     await saveService();
-    t.eq(await store(code), { count: 0, badge: null }, `${code} → No tag`);
+    t.eq(await store(code), { count: 0, badge: null }, `${code} → No Tag`);
     t.eq(sql(`SELECT COALESCE(tag_id, 'none') FROM services WHERE code = '${code}'`), 'none');
   }
 });
@@ -367,7 +367,7 @@ await t.step('a disabled tag is hidden on the store but stays assigned (and show
   t.eq([await storeText('ig-followers-100k'), await storeText('yt-subs-100k')], ['Flash deal', 'Flash deal'], 'enabled → back on both');
 });
 
-await t.step('deleting a custom tag asks first (naming how many services use it), then clears it from every service: the store shows no badge, the editor "No tag"', async () => {
+await t.step('deleting a custom tag asks first (naming how many services use it), then clears it from every service: the store shows no badge, the editor "No Tag"', async () => {
   await go(page, '/admin/tags');
   await tagRow('Flash deal').locator('[data-delete]').click();
   await page.waitForSelector('dialog[open] [data-act="yes"]');
@@ -384,7 +384,7 @@ await t.step('deleting a custom tag asks first (naming how many services use it)
   t.eq(sql("SELECT COUNT(*) FROM services WHERE tag_id IS NOT NULL"), '1', 'only the watch-time card is still tagged');
   t.eq([await storeText('ig-followers-100k'), await storeText('yt-subs-100k')], [null, null], 'the store: no badge on either service');
   await openService('ig-followers-100k');
-  t.eq((await optionTexts()).find((x) => x.selected).label, 'No tag');
+  t.eq((await optionTexts()).find((x) => x.selected).label, 'No Tag');
   t.eq(await page.locator('#f-tag_id option', { hasText: 'Flash deal' }).count(), 0);
   t.eq(Number(sql("SELECT COUNT(*) FROM audit_logs WHERE action = 'tag.deleted'")), 1, 'audit log');
 });

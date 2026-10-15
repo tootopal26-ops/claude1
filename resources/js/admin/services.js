@@ -181,11 +181,11 @@ function footHtml(s) {
     <button type="button" class="btn btn-primary btn-shine" id="svc-save">${icon('check')}<span>${s ? 'Save changes' : 'Create service'}</span></button>`;
 }
 
-/** The badge dropdown: "No tag", every enabled tag, the tag already assigned (even if disabled), and TRIAL PACK as an explanation, not a choice. */
+/** The badge dropdown: "No Tag", every enabled tag, the tag already assigned (even if disabled), and TRIAL PACK as an explanation, not a choice. */
 function tagOptions(current) {
   const auto = meta.tags.find((t) => t.is_auto);
   const items = meta.tags.filter((t) => !t.is_auto && (t.is_active || t.id === current));
-  return html`<option value="">No tag</option>${items.map((t) => html`<option value="${t.id}" ${t.id === current ? 'selected' : ''}>${t.name}${t.is_active ? '' : ' (disabled)'}</option>`)}${auto ? html`<option value="" disabled>${auto.name} — automatic at ${meta.tag_rule.price}</option>` : ''}`;
+  return html`<option value="">No Tag</option>${items.map((t) => html`<option value="${t.id}" ${t.id === current ? 'selected' : ''}>${t.name}${t.is_active ? '' : ' (disabled)'}</option>`)}${auto ? html`<option value="" disabled>${auto.name} — automatic at ${meta.tag_rule.price}</option>` : ''}`;
 }
 
 /** The live card preview and the sentence under the dropdown: what the storefront will show for this price and tag. */

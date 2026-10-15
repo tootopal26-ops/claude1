@@ -41,7 +41,7 @@
     -webkit-tap-highlight-color: transparent;
   }
   .adm-link .icon { color: var(--color-muted); transition: color 0.2s; }
-  .adm-link.adm-sub { margin-left: 1.1rem; min-height: 2.3rem; font-size: 0.8125rem; }
+  .adm-link.adm-sub { margin-left: 1.1rem; min-height: 2.6rem; font-size: 0.8125rem; }
   .adm-link.adm-sub .icon { width: 1.05rem; height: 1.05rem; }
   .adm-link:hover { background: rgb(15 16 32 / 0.05); color: var(--color-ink); }
   .adm-link:hover .icon { color: var(--color-ink); }
