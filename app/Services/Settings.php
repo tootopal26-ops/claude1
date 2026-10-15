@@ -96,9 +96,9 @@ final class Settings
         return [
             'name'                 => $name,
             'tagline'              => (string) $a['site.tagline'],
-            'logo_url'             => upload_url($a['site.logo'] ?: null) ?? asset('img/logo-mark.svg'),
+            'logo_url'             => upload_url($a['site.logo'] ?: null) ?? asset('img/logo-mark.webp'),
             'has_custom_logo'      => !empty($a['site.logo']),
-            'favicon_url'          => upload_url($a['site.favicon'] ?: null) ?? asset('img/favicon.svg'),
+            'favicon_url'          => upload_url($a['site.favicon'] ?: null) ?? asset('img/favicon-48.png'),
             'footer_text'          => $footer,
             'support_link'         => (string) $a['site.support_link'],
             'payment_instructions' => (string) $a['site.payment_instructions'],

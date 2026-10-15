@@ -37,7 +37,7 @@ final class Catalog
     {
         $slug = (string) $r['slug'];
         $custom = upload_url($r['logo_path'] ?? null);
-        $builtin = in_array($slug, ['instagram', 'youtube'], true) ? asset('img/platforms/' . $slug . '.svg') : asset('img/platforms/generic.svg');
+        $builtin = in_array($slug, ['instagram', 'youtube'], true) ? asset('img/platforms/' . $slug . '.webp') : asset('img/platforms/generic.svg');
         return [
             'id'         => (int) $r['id'],
             'slug'       => $slug,

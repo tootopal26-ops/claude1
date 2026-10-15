@@ -10,9 +10,9 @@
   @media (min-width: 640px) { .site-header-bar { height: 4.5rem; } }
 
   .brand { display: flex; align-items: center; gap: 0.7rem; min-width: 0; text-decoration: none; color: var(--color-ink); }
-  .brand-logo { width: 2.6rem; height: 2.6rem; border-radius: 9999px; flex: none; background: #fff; }
-  @media (min-width: 640px) { .brand-logo { width: 2.9rem; height: 2.9rem; } }
-  .brand-logo img { width: 100%; height: 100%; border-radius: inherit; object-fit: contain; background: #fff; padding: 0.18rem; }
+  .brand-logo { width: 2.9rem; height: 2.9rem; border-radius: 9999px; flex: none; background: #fff; }
+  @media (min-width: 640px) { .brand-logo { width: 3.4rem; height: 3.4rem; } }
+  .brand-logo img { width: 100%; height: 100%; border-radius: inherit; object-fit: contain; background: #fff; padding: 0.08rem; }
   .brand-name {
     font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.1; font-size: 0.8125rem;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

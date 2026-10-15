@@ -126,4 +126,4 @@ All 13 questions answered **No** — see the table in [SECURITY.md](SECURITY.md#
 * **Scale:** no load test beyond concurrency tests (12–20 parallel requests). The design (indexed queries, 3 queries per storefront hit, MySQL-backed limits) is built for small-to-medium shops on shared hosting, not for thousands of requests per second.
 * **Alpha UPI has no refund API**, so refunds are recorded, not executed.
 * **Email / SMS notifications** are not part of the brief and are not implemented; admins see everything in the panel.
-* The Instagram/YouTube/site logos supplied for the project arrived as images in the chat, not files, so clean SVG recreations ship; upload your originals in the admin panel.
+* Visual QA used the project owner's real logo and platform icons (recovered byte-exact from the chat attachments into `resources/brand/`); the favicon, app icons and sharing image are crops/resizes of that artwork, judged by eye at 16–512 px rather than on real devices (iOS home screen, Android launcher, social-network previews were not checked).

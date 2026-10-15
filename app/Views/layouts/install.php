@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="color-scheme" content="light">
 <?php if ($csrf !== ''): ?><meta name="csrf-token" content="<?= e($csrf) ?>"><?php endif; ?>
-<link rel="icon" href="<?= e(asset('img/favicon.svg')) ?>">
+<link rel="icon" href="<?= e(asset('img/favicon-48.png')) ?>">
 <link rel="preload" href="<?= e(url('assets/fonts/inter-latin.woff2')) ?>" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
 </head>

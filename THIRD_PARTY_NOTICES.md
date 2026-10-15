@@ -17,8 +17,8 @@ No other PHP or JavaScript libraries run on the server or in the visitor's brows
 
 ## Brand assets
 
-* The **site logo, favicon, app icons and Open Graph image** are original SVG/PNG artwork created for this project (`tools/build-brand-assets.mjs` renders the PNGs from the SVG sources). Replace them with your own in **Admin → Website** at any time.
-* The **Instagram** and **YouTube** marks in `public/assets/img/platforms/` are simplified SVG recreations used only to identify those platforms. *Instagram* is a trademark of Meta Platforms, Inc.; *YouTube* is a trademark of Google LLC. This project is not affiliated with or endorsed by either company. Upload your own approved logos in **Admin → Services** (platform logos) if you prefer.
+* The **logo** (`resources/brand/logo.webp`) and the **Instagram / YouTube icons** (`instagram.png`, `youtube.png`) are the files supplied by the project owner and are kept unmodified as build sources. Everything in `public/assets/img/` that carries them — the header / admin logo, favicon, app icons, social-sharing image and the platform buttons — is derived from those originals by cropping and resizing only (`tools/build-brand-images.py`, `tools/build-brand-assets.mjs`); the artwork is never redrawn. Replace the logo and favicon in **Admin → Website** and the platform logos in **Admin → Services** at any time.
+* The **Instagram** and **YouTube** icons are used only to identify those platforms. *Instagram* is a trademark of Meta Platforms, Inc.; *YouTube* is a trademark of Google LLC. This project is not affiliated with or endorsed by either company. Upload your own approved logos in **Admin → Services** (platform logos) if you prefer.
 * **Alpha UPI**, **BharatPe**, **Paytm** and **UPI** are trademarks of their respective owners and are named only to describe compatibility.
 
 ## Build-time and QA tools (not deployed)

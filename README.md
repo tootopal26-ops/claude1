@@ -118,7 +118,7 @@ config/                 (reserved) · .env.example documents every setting
 database/               schema.sql (full import), migrations/*.sql, seeds/catalog.php (the default service catalogue)
 docs/                   deployment, API, database, security, profit & analytics, orders, QA report, third-party notices
 public/                 the ONLY web-readable folder in the recommended layout: index.php, .htaccess, assets/ (compiled CSS/JS/fonts/icons), uploads/
-resources/              source for the compiled assets (Tailwind CSS, JS modules, SVG icons)
+resources/              source for the compiled assets (Tailwind CSS, JS modules, SVG icons) and the supplied brand files (brand/)
 storage/                logs, cache, install lock — never web-readable
 tests/                  PHP test suite (no framework: tests/run.php)
 tools/                  build scripts, mock gateway + mock SMM panel, QA suites (tools/qa)
@@ -143,7 +143,7 @@ Everything lives in `.env` (see [.env.example](.env.example)) plus the admin pan
 ## Honest notes
 * **What was run:** PHP 8.3, MariaDB 10.11 and MySQL 8.0 (the whole QA battery on each), Apache + mod_php (three folder layouts) and Chromium. PHP 8.1/8.2/8.4, MySQL 5.7, LiteSpeed, NGINX, PHP-FPM, Firefox and Safari are supported by design but were not run — see [docs/QA-REPORT.md](docs/QA-REPORT.md) §5.
 * The Alpha UPI and SMM integrations were verified against **faithful mock servers** that speak the real protocols (the QA suites use them); they were not run against live credentials — do a ₹5 test order in **test mode** first.
-* The Instagram / YouTube / site logos supplied for this project arrived as images in the chat, not as files, so clean **SVG recreations** are bundled; upload your originals in **Admin → Website** (logos) and **Admin → Services** (platform logos) at any time — no code change needed.
+* Your logo and your Instagram / YouTube icons are used exactly as supplied (kept in `resources/brand/`); the header logo, favicon, app icons, sharing image and platform buttons are cropped / resized from them (`python3 tools/build-brand-images.py`). Replace them any time in **Admin → Website** (logo, favicon) and **Admin → Services** (platform logos) — no code change needed.
 * Alpha UPI exposes no refund API, so refunds are *recorded* in the panel (you refund through your gateway/bank); the books stay correct.
 * New installs start with every service on **MANUAL**; switch a service to **AUTO** after adding its SMM service ID and provider cost.
 

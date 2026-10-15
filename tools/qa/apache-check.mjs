@@ -49,10 +49,10 @@ for (const [label, port] of [['A (everything in public_html)', PORT_A], ['B (cod
   });
 
   await t.step(`layout ${label}: static files — correct types, gzip, far-future caching, nosniff; no source maps`, async () => {
-    for (const [p, type] of [['/assets/css/app.css', 'text/css'], ['/assets/js/site.js', 'javascript'], ['/assets/fonts/inter-latin.woff2', 'font/woff2'], ['/assets/img/platforms/instagram.svg', 'image/svg+xml'], ['/favicon.ico', 'image'], ['/assets/img/og-default.png', 'image/png']]) {
+    for (const [p, type] of [['/assets/css/app.css', 'text/css'], ['/assets/js/site.js', 'javascript'], ['/assets/fonts/inter-latin.woff2', 'font/woff2'], ['/assets/img/platforms/instagram.webp', 'image/webp'], ['/assets/img/logo-mark.webp', 'image/webp'], ['/assets/img/favicon-48.png', 'image/png'], ['/favicon.ico', 'image'], ['/assets/img/og-default.png', 'image/png']]) {
       const r = await get(p, { 'accept-encoding': 'gzip' }); t.eq(r.status, 200, p); t.has(r.headers.get('content-type') || '', type, p);
       t.eq(r.headers.get('x-content-type-options'), 'nosniff', p + ' nosniff');
-      if (!/woff2|png|ico/.test(p)) t.eq(r.headers.get('content-encoding'), 'gzip', p + ' is compressed');   // (fetch already inflated the body)
+      if (!/woff2|png|webp|ico/.test(p)) t.eq(r.headers.get('content-encoding'), 'gzip', p + ' is compressed');   // images / fonts are already compressed formats   // (fetch already inflated the body)
       const cc = (r.headers.get('cache-control') || '') + ' ' + (r.headers.get('expires') || ''); t.ok(/max-age=\d{6,}|expires/i.test(cc) || r.headers.get('expires'), `${p} cache headers: ${cc}`);
     }
     const css = await get('/assets/css/app.css'); const home = await get('/');

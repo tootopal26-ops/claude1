@@ -27,8 +27,8 @@
   /* ───────────── navigation ───────────── */
   .adm-nav { display: flex; flex-direction: column; min-height: 100%; padding: 1.1rem 0.9rem 0.9rem; gap: 0.5rem; }
   .adm-brand { display: flex; align-items: center; gap: 0.75rem; padding: 0.25rem 0.5rem 0.9rem; text-decoration: none; color: var(--color-ink); }
-  .adm-brand-logo { width: 2.6rem; height: 2.6rem; border-radius: 9999px; flex: none; background: #fff; }
-  .adm-brand-logo img { width: 100%; height: 100%; border-radius: inherit; object-fit: contain; padding: 0.15rem; background: #fff; }
+  .adm-brand-logo { width: 3rem; height: 3rem; border-radius: 9999px; flex: none; background: #fff; }
+  .adm-brand-logo img { width: 100%; height: 100%; border-radius: inherit; object-fit: contain; padding: 0.08rem; background: #fff; }
   .adm-brand-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
   .adm-brand-text strong { font-size: 0.8125rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; }
   .adm-brand-text small { font-size: 0.6875rem; font-weight: 600; color: var(--color-muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 0.15rem; }
@@ -434,8 +434,8 @@
   .login-card { width: min(26rem, 100%); padding: 2rem 1.5rem 1.5rem; border-radius: var(--radius-2xl); background: rgb(255 255 255 / 0.9); }
   @media (min-width: 480px) { .login-card { padding: 2.5rem 2.25rem 1.75rem; } }
   .login-card.is-shake { animation: shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both, glow-hue 6s ease-in-out infinite; }
-  .login-logo { width: 4.75rem; height: 4.75rem; margin: 0 auto 1.1rem; border-radius: 9999px; background: #fff; }
-  .login-logo img { width: 100%; height: 100%; border-radius: inherit; object-fit: contain; padding: 0.3rem; }
+  .login-logo { width: 5.5rem; height: 5.5rem; margin: 0 auto 1.1rem; border-radius: 9999px; background: #fff; }
+  .login-logo img { width: 100%; height: 100%; border-radius: inherit; object-fit: contain; padding: 0.15rem; }
   .login-title { text-align: center; font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; }
   .login-sub { text-align: center; margin: 0.35rem 0 1.4rem; font-size: 0.9rem; color: var(--color-muted); }
   .login-sub strong { color: var(--color-ink-soft); }
@@ -463,8 +463,8 @@
   .install-head h1 { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
   @media (min-width: 640px) { .install-head h1 { font-size: 1.6rem; } }
   .install-head p { font-size: 0.875rem; color: var(--color-muted); margin-top: 0.2rem; }
-  .install-logo { width: 3.5rem; height: 3.5rem; flex: none; border-radius: 9999px; background: #fff; }
-  .install-logo img { width: 100%; height: 100%; border-radius: inherit; object-fit: contain; padding: 0.2rem; }
+  .install-logo { width: 4rem; height: 4rem; flex: none; border-radius: 9999px; background: #fff; }
+  .install-logo img { width: 100%; height: 100%; border-radius: inherit; object-fit: contain; padding: 0.1rem; }
   .install-steps { display: flex; gap: 0.25rem; list-style: none; padding: 0; margin: 0 0 1.5rem; overflow-x: auto; }
   .install-steps li { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; min-width: 3.2rem; font-size: 0.6875rem; font-weight: 700; color: var(--color-muted); position: relative; }
   .install-steps li::before { content: ""; position: absolute; top: 0.95rem; left: -50%; right: 50%; height: 2px; background: var(--color-line-strong); z-index: 0; }

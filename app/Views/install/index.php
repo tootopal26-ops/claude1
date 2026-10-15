@@ -5,7 +5,7 @@ $steps = $unlocked ? ['server' => 'Server', 'database' => 'Database', 'site' => 
 <section class="install-wrap">
   <div class="install-card glass-strong rgb-ring" id="install-card">
     <header class="install-head">
-      <span class="install-logo rgb-ring"><img src="<?= e(asset('img/logo-mark.svg')) ?>" width="56" height="56" alt=""></span>
+      <span class="install-logo rgb-ring"><img src="<?= e(asset('img/logo-mark.webp')) ?>" width="56" height="56" alt=""></span>
       <div>
         <h1>Install SOCIAL MEDIA BOOSTER</h1>
         <p>Takes about two minutes. You will need your MySQL database details.</p>
