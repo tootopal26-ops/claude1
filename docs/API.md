@@ -63,6 +63,10 @@ Exceeding a limit returns `429` with `Retry-After`.
 | `POST /api/track/hit` | `{path, first, ref, utm_source, utm_medium, utm_campaign}` → `{ok, tracked, qualified, qualify_ms}`; sets the first-party cookies `smb_v` (visitor, 400 days) and `smb_s` (session). Bots are answered `{"tracked":false,"reason":"bot"}` and never counted. |
 | `POST /api/track/qualify` | Sent after the visitor has been **visible** for `qualify_ms`; the server re-checks the clock → `{ok, qualified, charged}` or `{qualified:false, retry_ms}`. One CPC per visitor per business day. |
 | `POST /api/track/ping` | `{active_s, platform}` heartbeat on tab hide / unload. |
+| `GET /api/support/config` | `{ok, enabled}` — whether the owner has switched the support chat on, so the widget can hide itself with no failed POST. |
+| `POST /api/support/start` | Begins a chat: `{ok, key, retention_days}`. The 32-hex `key` is the only credential, kept client-side (`localStorage`), exactly like an order token. 20 per hour per IP. `404` if support is switched off. |
+| `POST /api/support/{key}/message` | `{text, order_token?}` → `{ok, reply, intent, mode: "rules"\|"ai", order_recognised}`. `order_token` is the **same 128-bit access token** `/order/{token}` requires — never a bare order id, which proves nothing and is refused the same as an unrecognised token (both simply mean "no order attached", never an error that could confirm or deny whose order it is). A reply that resolved a real order is always `mode: "rules"` — see [AI-AND-SUPPORT.md](AI-AND-SUPPORT.md). `text` is 1–1,000 characters (`422` otherwise); 20 messages / 10 min per chat and 60 / 10 min per IP (`429`); a chat closes itself after 200 messages; `404` for an unknown or expired chat, `410` for one explicitly closed. |
+| `GET /api/support/{key}/history` | `{ok, messages:[{role, body, created_at}]}` — replays the stored thread. 60 per minute per IP. |
 | `GET\|POST /cron/run?key=<CRON_KEY>` | Runs the background tasks (HTTP cron). `403` without the right key. |
 | `GET /install` … | The web installer (token-gated). **404 once installed.** |
 
@@ -173,6 +177,23 @@ HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|finance|ads|alerts
 | `GET /admin/api/reports?from=&to=&page=` *(reports.view)* | The daily-report history, newest first, 20 per page; each row carries the headline figures with their basis (`measured\|estimated\|incomplete\|unavailable`), the alerts that were open when it was built and when / by whom it was generated. Also `can.generate`, `timezone`, `latest_day`, and `missing_days` — finished days (up to 30) that have no report yet. `422` with `fields` for a malformed date. |
 | `GET /admin/api/reports/{YYYY-MM-DD}` *(reports.view)* | One report in full: every figure with its label, value, unit, basis and note; the comparison with the day before; services (most profitable, loss-making, **sold with an unknown cost**, and the count of idle services without a cost); API and payment failures; the alerts unresolved when it was built; the highlights (written by fixed rules); the caveats and the definition of each figure. `404` for a day without a report. |
 | `POST /admin/api/reports/{YYYY-MM-DD}/generate` `{force?}` *(reports.generate)* | Create the report of a **finished** day (`422` for today, the future, or a day before the shop's first data); with `force: true` rebuild it **in place** (never a second row) and answer which figures changed. Idempotent per `Idempotency-Key`; audited (`report.generated`, `report.regenerated` with the changes). |
+| `POST /admin/api/reports/{YYYY-MM-DD}/ai` *(reports.generate)* | The optional AI commentary ([AI-AND-SUPPORT.md](AI-AND-SUPPORT.md)): `{result:{status: "none"\|"ok"\|"unavailable"\|"invalid", message}, message, report}`. `none` when AI is off (for reports specifically, or entirely) — says so plainly, nothing is called. 10 per 10 minutes per admin (`429`); idempotent per `Idempotency-Key`; audited (`report.ai_generated`) only on success. `404` for a day with no report yet. |
+
+### AI provider (permission `ai.configure` — **owner only**; `403 forbidden` for every other role, `manager` included)
+| Method & path | Purpose |
+|---|---|
+| `GET /admin/api/ai/settings` | `{enabled, provider: "none"\|"anthropic"\|"openai_compatible", model, base_url, has_key, use_for_reports, use_for_support, providers, available}` — never the key itself. |
+| `PUT /admin/api/ai/settings` `{enabled?, provider?, model?, base_url?, api_key?, clear_key?, use_for_reports?, use_for_support?}` | Validated as a whole (`422` with `fields`); switching `enabled: true` with a provider needs a model **and** a key together, or both are named. `clear_key: true` empties the key — refused if that would leave the feature on with none. Audited (`ai.settings_changed`) with the provider, model and *whether* the key changed — never its value. |
+| `POST /admin/api/ai/test` | A trivial round trip against the **saved** settings → `{result:{ok, message}}` (never throws). 5 per 10 minutes per admin (`429`); audited (`ai.test`). |
+| `GET /admin/api/ai/usage?days=1-90` | Calls over the window, grouped by feature and status, with token counts and average latency — never a prompt or an answer. |
+
+### Support Assistant monitoring (permission in brackets; `403 forbidden` without it)
+| Method & path | Purpose |
+|---|---|
+| `GET /admin/api/support/overview` *(support.view)* | `{enabled, can:{configure}, counts:{open, closed, ai_messages, messages_today}, rows}` — the 5 most recently active conversations. |
+| `GET /admin/api/support/conversations?status=&page=` *(support.view)* | Every conversation (25 per page): status, message and AI-message counts, created / last-message / expiry times. No message bodies here. |
+| `GET /admin/api/support/conversations/{id}` *(support.view)* | One conversation's full transcript: role, body, matched intent, `mode` (`rules`/`ai`), the internal order id a reply was about (if any — never the customer's token). |
+| `PUT /admin/api/support/settings` `{enabled?, retention_days?}` *(support.configure)* | The on/off switch and retention (1–365 days, `422` otherwise). Audited (`support.settings_changed`). Does **not** touch the AI switches — those are `ai.configure`'s. |
 
 ### Finance — profit, costs, expenses, reconciliation (permission in brackets; `403 forbidden` without it)
 Full behaviour, definitions and the labels in [PROFIT-INTELLIGENCE.md](PROFIT-INTELLIGENCE.md). Writes are idempotent per `Idempotency-Key`, validated (`422` with `fields`) and audited.

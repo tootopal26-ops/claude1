@@ -5,22 +5,27 @@ declare(strict_types=1);
 namespace App\Controllers\Admin;
 
 use App\Core\HttpException;
+use App\Core\RateLimiter;
 use App\Core\Request;
 use App\Core\Response;
+use App\Services\AiService;
 use App\Services\DailyReport;
+use App\Services\ReportAi;
 use App\Support\Permissions;
 use App\Support\Tz;
 
 /**
  * Daily reports: the history and one report in full. Reading needs `reports.view` (owner, manager, analyst — the roles that may see profit);
- * generating a missing report or regenerating one needs `reports.generate` (owner, manager) and is audited.
+ * generating a missing report, regenerating one, or asking for its optional AI commentary needs `reports.generate` (owner, manager) and is audited.
  */
 final class ReportsController extends BaseController
 {
     /** @return array<string,bool> */
     private function can(Request $req): array
     {
-        return ['generate' => Permissions::can((string) $this->admin($req)['role'], 'reports.generate')];
+        $generate = Permissions::can((string) $this->admin($req)['role'], 'reports.generate');
+        $ai = AiService::settings();
+        return ['generate' => $generate, 'ai' => $generate && $ai['available'] && $ai['use_for_reports']];
     }
 
     /** GET /admin/api/reports?from&to&page */
@@ -55,6 +60,18 @@ final class ReportsController extends BaseController
                 ? ($r['changed'] ? 'Report rebuilt: ' . count($r['changed']) . ' figure' . (count($r['changed']) === 1 ? '' : 's') . ' changed.' : 'Report rebuilt: no figure changed.')
                 : 'This day already has a report. Use Regenerate to rebuild it.');
             return ['result' => $r, 'message' => $message, 'report' => DailyReport::get($day)];
+        });
+    }
+
+    /** POST /admin/api/reports/{date}/ai — the optional AI commentary (master prompt §6.2); 10 per 10 minutes per admin. */
+    public function generateAi(Request $req, array $p): Response
+    {
+        $admin = $this->authorize($req, 'reports.generate');
+        RateLimiter::enforce('report-ai', (string) $admin['id'], 10, 600, 'Too many AI requests. Wait a few minutes.');
+        $day = (string) ($p['date'] ?? '');
+        return $this->once($req, 'report-ai', static function () use ($day, $admin, $req): array {
+            $r = ReportAi::summarize($day, $admin, $req);
+            return ['result' => $r, 'message' => $r['message'], 'report' => DailyReport::get($day)];
         });
     }
 }

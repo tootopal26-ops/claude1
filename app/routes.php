@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-use App\Controllers\{CheckoutController, CronController, InstallController, OrderController, PayController, SiteController, TrackController, WebhookController};
+use App\Controllers\{CheckoutController, CronController, InstallController, OrderController, PayController, SiteController, SupportController, TrackController, WebhookController};
 use App\Core\Middleware;
 use App\Core\Router;
 
@@ -36,6 +36,12 @@ return static function (Router $r): void {
     $r->get('/order/{token:[a-f0-9]{32}}', [OrderController::class, 'show']);
     $r->get('/api/order/{token:[a-f0-9]{32}}', [OrderController::class, 'status']);
     $r->post('/api/orders/lookup', [OrderController::class, 'lookup'], $json);
+
+    // ── support assistant ──
+    $r->get('/api/support/config', [SupportController::class, 'config']);
+    $r->post('/api/support/start', [SupportController::class, 'start'], $json);
+    $r->post('/api/support/{key:[a-f0-9]{32}}/message', [SupportController::class, 'message'], $json);
+    $r->get('/api/support/{key:[a-f0-9]{32}}/history', [SupportController::class, 'history']);
 
     // ── analytics beacons ──
     $r->post('/api/track/hit', [TrackController::class, 'hit'], $beacon);

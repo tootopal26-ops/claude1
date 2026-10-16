@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-use App\Controllers\Admin\{AccountController, AdsController, AlertsController, AuthController, DashboardController, FinanceController, IntegrationsController, JobsController, OrdersController, PageController, PaymentChecksController, RecoveryController, ReportsController, ServicesController, SettingsController, TagsController};
+use App\Controllers\Admin\{AccountController, AdsController, AiController, AlertsController, AuthController, DashboardController, FinanceController, IntegrationsController, JobsController, OrdersController, PageController, PaymentChecksController, RecoveryController, ReportsController, ServicesController, SettingsController, SupportController, TagsController};
 use App\Core\Middleware;
 use App\Core\Router;
 
@@ -86,6 +86,19 @@ return static function (Router $r): void {
     $r->get('/admin/api/reports', [ReportsController::class, 'list'], $api);
     $r->get('/admin/api/reports/{date:\d{4}-\d{2}-\d{2}}', [ReportsController::class, 'show'], $api);
     $r->post('/admin/api/reports/{date:\d{4}-\d{2}-\d{2}}/generate', [ReportsController::class, 'generate'], $api);
+    $r->post('/admin/api/reports/{date:\d{4}-\d{2}-\d{2}}/ai', [ReportsController::class, 'generateAi'], $api);
+
+    // ── AI provider: settings, test, usage ──
+    $r->get('/admin/api/ai/settings', [AiController::class, 'settings'], $api);
+    $r->put('/admin/api/ai/settings', [AiController::class, 'saveSettings'], $api);
+    $r->post('/admin/api/ai/test', [AiController::class, 'test'], $api);
+    $r->get('/admin/api/ai/usage', [AiController::class, 'usage'], $api);
+
+    // ── support assistant: monitoring, settings ──
+    $r->get('/admin/api/support/overview', [SupportController::class, 'overview'], $api);
+    $r->get('/admin/api/support/conversations', [SupportController::class, 'conversations'], $api);
+    $r->get("/admin/api/support/conversations/{$id}", [SupportController::class, 'conversation'], $api);
+    $r->put('/admin/api/support/settings', [SupportController::class, 'saveSettings'], $api);
 
     // ── payment checks: monitor, flags, thresholds, re-check ──
     $r->get('/admin/api/payment-checks/summary', [PaymentChecksController::class, 'summary'], $api);

@@ -144,6 +144,7 @@ Everything lives in `.env` (see [.env.example](.env.example)) plus the admin pan
 | [docs/ORDER-RECOVERY.md](docs/ORDER-RECOVERY.md) | which paid orders are stuck and why, what is retried by itself and what never is, the safe actions, the retry policy, the cron job, what was tested |
 | [docs/PROFIT-INTELLIGENCE.md](docs/PROFIT-INTELLIGENCE.md) | what an order really cost, the profit statement, *actual / estimated / incomplete* labels, the fee model, expenses and chargebacks, reconciliation, who may see profit, what was tested |
 | [docs/ADS-INTELLIGENCE.md](docs/ADS-INTELLIGENCE.md) | campaign tracking, how a verified order is credited, actual vs estimated spend, the units of every figure, confidence labels, what was tested |
+| [docs/AI-AND-SUPPORT.md](docs/AI-AND-SUPPORT.md) | the optional AI provider, AI report commentary, and the rules-based Support Assistant — what each may and may never do, and what was tested |
 | [docs/WATCHDOG-AND-REPORTS.md](docs/WATCHDOG-AND-REPORTS.md) | the twelve watchdog checks and their thresholds, how alerts are raised, deduplicated and resolved, the optional e-mail, the daily report and how to read its labels, what was tested |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | the scheduled jobs, the cPanel cron lines, what each job guarantees, the time zone, retention, what to check when a job is overdue |
 | [docs/AUDIT-AND-CHECKLIST.md](docs/AUDIT-AND-CHECKLIST.md) | the business-intelligence / pricing programme: what existed, the gaps, gateway capabilities, the phase checklist |
