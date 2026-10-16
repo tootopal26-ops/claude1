@@ -139,6 +139,7 @@ Everything lives in `.env` (see [.env.example](.env.example)) plus the admin pan
 | [docs/ORDERS.md](docs/ORDERS.md) | order & payment lifecycles, AUTO vs MANUAL, failure handling table |
 | [docs/PAYMENT-CHECKS.md](docs/PAYMENT-CHECKS.md) | how a payment becomes paid, what is flagged and why, the webhook cross-check, thresholds, roles, what was tested |
 | [docs/ORDER-RECOVERY.md](docs/ORDER-RECOVERY.md) | which paid orders are stuck and why, what is retried by itself and what never is, the safe actions, the retry policy, the cron job, what was tested |
+| [docs/PROFIT-INTELLIGENCE.md](docs/PROFIT-INTELLIGENCE.md) | what an order really cost, the profit statement, *actual / estimated / incomplete* labels, the fee model, expenses and chargebacks, reconciliation, who may see profit, what was tested |
 | [docs/AUDIT-AND-CHECKLIST.md](docs/AUDIT-AND-CHECKLIST.md) | the business-intelligence / pricing programme: what existed, the gaps, gateway capabilities, the phase checklist |
 | [docs/PROFIT-AND-ANALYTICS.md](docs/PROFIT-AND-ANALYTICS.md) | profit maths, KPI definitions, visitor tracking and CPC |
 | [docs/SECURITY.md](docs/SECURITY.md) | security model, the 13-point audit, operator checklist |

@@ -54,6 +54,11 @@ This document describes what protects the shop, how each protection was **verifi
 * The provider URL passes the **SSRF guard** (`NetGuard`): http(s) only, no credentials in the URL, DNS (A and AAAA) resolved and checked so private / loopback / link-local / carrier-grade-NAT / metadata addresses are refused unless `ALLOW_PRIVATE_API_HOSTS=true` (local mocks only); **redirects are never followed**, so a provider cannot bounce the server to an internal address.
 * Orders are **claimed under a row lock** before the call; ambiguous outcomes are parked for a human instead of retried (no double-buying) ✔.
 
+### Money, profit and costs
+* **Profit and cost figures are for roles with `finance.view`** (owner, manager, analyst). For `support` they are **removed from the data** the server sends — the dashboard and the Orders list / drawer, including the provider's raw answers, which carry its charge — not merely hidden by the page ✔ (tested on the API and in the browser). Recording a cost, an expense, a chargeback or the fee model needs `finance.adjust` (owner, manager); a refused call changes nothing and writes no audit row ✔.
+* **Nothing is overwritten, nothing is deleted:** order cost lines are append-only (a correction ends the old line; a unique live key makes two live lines impossible), expenses are voided with a reason and stay visible, and every change is in the audit log and on the order's timeline ✔. Reconciliation fixes only ever add lines, dry run first, idempotent ✔.
+* Amounts are parsed from rupee strings into integer paise on the server with bounds (a line ≤ ₹1,00,000, an expense ≤ ₹10,00,000, a fee model ≤ 20 % or ₹1,000); a chargeback must name an existing order ✔. See [PROFIT-INTELLIGENCE.md](PROFIT-INTELLIGENCE.md).
+
 ### Abuse protection
 Database-backed rate limits (works on shared hosting, no Redis): checkout 8/10 min + 40/h per IP, lookups and polls per minute, beacons, webhook flood cap, admin sign-in. Order/payment tokens are 128-bit capabilities; guessing is rate-limited and tested ✔. Bots are excluded from analytics so they cannot generate ad cost.
 

@@ -20,6 +20,10 @@ use App\Support\Tz;
  *   payments_failed / payments_expired         → the day the payment was created
  *   visitors, qualified, ads spend             → visitor_days (one row per visitor per day)
  *
+ * Costs (Profit Intelligence, see Finance for the definitions): order cost lines (fulfilment, payment fee, other) go to the day the ORDER was paid;
+ * chargebacks and business expenses to the day they were recorded; advertising is the ACTUAL spend of the day when there is any, otherwise the CPC
+ * estimate (never both). gross_profit = revenue − provider − the order cost lines; net_profit = gross − chargebacks − expenses − advertising.
+ *
  * Rollup freshness: a stored day is trusted only if it is not dirty AND was
  * computed AFTER that day ended (so a half-finished day is recomputed once).
  * Anything that changes an order's money marks its day dirty.
@@ -28,11 +32,12 @@ final class Analytics
 {
     /** Metric keys == analytics_daily columns (minus day/dirty/computed_at). */
     public const KEYS = [
-        'orders_created', 'orders_paid', 'orders_completed', 'revenue_paise', 'refunds_paise', 'smm_spend_paise', 'gross_profit_paise',
-        'ads_spend_paise', 'net_profit_paise', 'auto_orders', 'manual_orders', 'auto_revenue_paise', 'manual_revenue_paise',
-        'auto_profit_paise', 'manual_profit_paise', 'payments_success', 'payments_failed', 'payments_expired', 'visitors',
-        'qualified_visitors', 'order_visitors', 'paid_visitors', 'desktop_visitors', 'mobile_visitors', 'tablet_visitors',
-        'src_instagram', 'src_youtube', 'src_direct', 'src_other',
+        'orders_created', 'orders_paid', 'orders_completed', 'orders_cost_estimated', 'orders_cost_incomplete', 'revenue_paise', 'refunds_paise',
+        'smm_spend_paise', 'fulfil_cost_paise', 'payment_fee_paise', 'other_cost_paise', 'chargebacks_paise', 'expenses_paise', 'gross_profit_paise',
+        'ads_spend_paise', 'ads_actual_paise', 'ads_estimated_paise', 'ads_actual_day', 'net_profit_paise', 'auto_orders', 'manual_orders',
+        'auto_revenue_paise', 'manual_revenue_paise', 'auto_profit_paise', 'manual_profit_paise', 'payments_success', 'payments_failed',
+        'payments_expired', 'visitors', 'qualified_visitors', 'order_visitors', 'paid_visitors', 'desktop_visitors', 'mobile_visitors',
+        'tablet_visitors', 'src_instagram', 'src_youtube', 'src_direct', 'src_other',
     ];
 
     /** @var array<string,true> */
@@ -42,6 +47,12 @@ final class Analytics
     public static function zero(): array
     {
         return array_fill_keys(self::KEYS, 0);
+    }
+
+    /** Forget which days this process already marked dirty (a day that was recomputed, or a test that emptied the table, must be markable again). */
+    public static function resetMemo(): void
+    {
+        self::$dirtyMemo = [];
     }
 
     public static function markDirty(string $day): void
@@ -72,7 +83,7 @@ final class Analytics
      *
      * @return array<string,array<string,int>> keyed by 'Y-m-d', every day present
      */
-    public static function computeDays(string $from, string $to, ?int $platformId = null, ?string $mode = null): array
+    public static function computeDays(string $from, string $to, ?int $platformId = null, ?string $mode = null, ?int $serviceId = null): array
     {
         $days = [];
         for ($d = $from; $d <= $to; $d = Tz::addDays($d, 1)) {
@@ -82,7 +93,7 @@ final class Analytics
             return [];
         }
 
-        [$of, $op] = self::orderFilter($platformId, $mode);
+        [$of, $op] = self::orderFilter($platformId, $mode, $serviceId);
 
         // ── paid orders → revenue / profit / SMM spend (by paid_day)
         $rows = Db::all(
@@ -110,6 +121,24 @@ final class Analytics
             $m['manual_profit_paise'] = (int) $r['manual_rev'];                       // MANUAL: 100 % is profit
             $m['auto_profit_paise'] = (int) $r['auto_rev'] - (int) $r['smm'];          // AUTO: revenue − provider cost
             unset($m);
+        }
+
+        // ── what the orders cost beyond the provider: fulfilment, payment fee, other lines (by the order's paid_day), and how complete that is
+        foreach (Finance::lineCostsByDay($from, $to, $of, $op) as $d => $byMode) {
+            $m = &$days[$d];
+            foreach ($byMode as $orderMode => $c) {
+                $lines = $c['fulfil'] + $c['fee'] + $c['other'];
+                $m['fulfil_cost_paise'] += $c['fulfil'];
+                $m['payment_fee_paise'] += $c['fee'];
+                $m['other_cost_paise'] += $c['other'];
+                $m['gross_profit_paise'] -= $lines;
+                $m[$orderMode === 'AUTO' ? 'auto_profit_paise' : 'manual_profit_paise'] -= $lines;
+            }
+            unset($m);
+        }
+        foreach (Finance::statusByDay($from, $to, $of, $op) as $d => $c) {
+            $days[$d]['orders_cost_incomplete'] = $c['incomplete'];
+            $days[$d]['orders_cost_estimated'] = $c['estimated'];
         }
 
         // ── orders created (by created_day)
@@ -158,8 +187,20 @@ final class Analytics
             unset($m);
         }
 
-        foreach ($days as &$m) {
-            $m['net_profit_paise'] = $m['gross_profit_paise'] - $m['ads_spend_paise'];
+        // ── advertising: actual spend replaces the CPC estimate for a day that has any (never both); chargebacks and expenses by the day recorded (site-wide)
+        $actual = AdSpend::byDay($from, $to);
+        foreach (Finance::expensesByDay($from, $to) as $d => $e) {
+            $days[$d]['chargebacks_paise'] = $e['chargebacks'];
+            $days[$d]['expenses_paise'] = $e['expenses'];
+        }
+        foreach ($days as $d => &$m) {
+            $m['ads_estimated_paise'] = $m['ads_spend_paise'];                    // what the visitors' CPC says (visitor_days)
+            if (isset($actual[$d])) {
+                $m['ads_actual_paise'] = $actual[$d];
+                $m['ads_actual_day'] = 1;
+                $m['ads_spend_paise'] = $actual[$d];                              // the day has real spend: the estimate is not added on top
+            }
+            $m['net_profit_paise'] = $m['gross_profit_paise'] - $m['chargebacks_paise'] - $m['expenses_paise'] - $m['ads_spend_paise'];
         }
         unset($m);
         return $days;
@@ -222,18 +263,23 @@ final class Analytics
             . implode(', ', array_map(static fn($k) => "`{$k}` = VALUES(`{$k}`)", $cols)) . ', dirty = 0, computed_at = VALUES(computed_at)';
         foreach ($stale as $d) {
             Db::exec($sql, array_merge([$d], array_values($computed[$d]), [$now]));
+            unset(self::$dirtyMemo[$d]);                 // clean again: a later change must be able to mark it dirty once more
         }
         return count($stale);
     }
 
     /** @return array{0:string,1:list<mixed>} extra WHERE fragment (alias o) + params */
-    public static function orderFilter(?int $platformId, ?string $mode): array
+    public static function orderFilter(?int $platformId, ?string $mode, ?int $serviceId = null): array
     {
         $sql = '';
         $params = [];
         if ($platformId !== null) {
             $sql .= ' AND o.platform_id = ?';
             $params[] = $platformId;
+        }
+        if ($serviceId !== null) {
+            $sql .= ' AND o.service_id = ?';
+            $params[] = $serviceId;
         }
         if ($mode === 'AUTO' || $mode === 'MANUAL') {
             $sql .= ' AND o.mode = ?';

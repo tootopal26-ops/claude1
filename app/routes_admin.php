@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-use App\Controllers\Admin\{AccountController, AuthController, DashboardController, IntegrationsController, JobsController, OrdersController, PageController, PaymentChecksController, RecoveryController, ServicesController, SettingsController, TagsController};
+use App\Controllers\Admin\{AccountController, AuthController, DashboardController, FinanceController, IntegrationsController, JobsController, OrdersController, PageController, PaymentChecksController, RecoveryController, ServicesController, SettingsController, TagsController};
 use App\Core\Middleware;
 use App\Core\Router;
 
@@ -48,6 +48,19 @@ return static function (Router $r): void {
     // ── scheduled jobs: health and "run now" ──
     $r->get('/admin/api/jobs', [JobsController::class, 'list'], $api);
     $r->post('/admin/api/jobs/{job:[a-z][a-z0-9\-]{2,24}}/run', [JobsController::class, 'run'], $api);
+
+    // ── finance: the profit statement, an order's cost lines, expenses and chargebacks, reconciliation, the fee model ──
+    $r->get('/admin/api/finance', [FinanceController::class, 'overview'], $api);
+    $r->get('/admin/api/finance/reconciliation', [FinanceController::class, 'reconciliation'], $api);
+    $r->post('/admin/api/finance/reconciliation/fix', [FinanceController::class, 'fix'], $api);
+    $r->get('/admin/api/finance/expenses', [FinanceController::class, 'expenses'], $api);
+    $r->post('/admin/api/finance/expenses', [FinanceController::class, 'addExpense'], $api);
+    $r->post("/admin/api/finance/expenses/{$id}/void", [FinanceController::class, 'voidExpense'], $api);
+    $r->get('/admin/api/finance/settings', [FinanceController::class, 'settings'], $api);
+    $r->put('/admin/api/finance/settings', [FinanceController::class, 'saveSettings'], $api);
+    $r->get("/admin/api/finance/orders/{$id}", [FinanceController::class, 'order'], $api);
+    $r->post("/admin/api/finance/orders/{$id}/costs", [FinanceController::class, 'recordCost'], $api);
+    $r->post("/admin/api/finance/costs/{$id}/void", [FinanceController::class, 'voidCost'], $api);
 
     // ── payment checks: monitor, flags, thresholds, re-check ──
     $r->get('/admin/api/payment-checks/summary', [PaymentChecksController::class, 'summary'], $api);

@@ -62,11 +62,12 @@ T::test('money: provider charge (rupees) → paise — INR only, no exchange rat
 });
 
 // ───────────────────────────── profit ─────────────────────────────
-T::test('profit: MANUAL counts 100% as profit, AUTO subtracts provider cost', function () {
+T::test('profit: a MANUAL order ignores provider cost, an AUTO order subtracts it, and the order\'s cost lines (fulfilment, fee, other) come off both', function () {
     $manual = Profit::forOrder(['mode' => 'MANUAL', 'amount_paise' => 9900, 'refunded_paise' => 0, 'provider_cost_paise' => 5000]);
-    T::same(['revenue' => 9900, 'cost' => 0, 'gross' => 9900], $manual, 'manual ignores provider cost');
+    T::same(['revenue' => 9900, 'cost' => 0, 'lines' => 0, 'gross' => 9900], $manual, 'manual ignores provider cost; with no cost line recorded nothing is subtracted (and Finance labels the order "incomplete")');
     $auto = Profit::forOrder(['mode' => 'AUTO', 'amount_paise' => 9900, 'refunded_paise' => 0, 'provider_cost_paise' => 3000]);
-    T::same(['revenue' => 9900, 'cost' => 3000, 'gross' => 6900], $auto);
+    T::same(['revenue' => 9900, 'cost' => 3000, 'lines' => 0, 'gross' => 6900], $auto);
+    T::same(['revenue' => 9900, 'cost' => 0, 'lines' => 1500, 'gross' => 8400], Profit::forOrder(['mode' => 'MANUAL', 'amount_paise' => 9900, 'refunded_paise' => 0, 'provider_cost_paise' => 0], 1500), 'a manual order is not 100 % profit once its cost is recorded');
     $refunded = Profit::forOrder(['mode' => 'AUTO', 'amount_paise' => 9900, 'refunded_paise' => 9900, 'provider_cost_paise' => 3000]);
     T::same(-3000, $refunded['gross'], 'a refunded AUTO order still carries the provider cost it incurred');
 });
@@ -86,7 +87,14 @@ T::test('profit: service preview', function () {
     T::same('47.5', $p['margin']);
     $m = Profit::servicePreview(9900, 2500, 'MANUAL', 2700);
     T::same(0, $m['provider_cost'], 'manual has no provider cost');
-    T::same(9900, $m['gross']);
+    T::same(9900, $m['gross'], 'no fulfilment cost stated: nothing is invented, and the preview says so');
+    T::false($m['fulfil_known']);
+    $m = Profit::servicePreview(9900, 2500, 'MANUAL', 2700, 400);
+    T::same([400, 9500, 6800, true], [$m['fulfil_cost'], $m['gross'], $m['net'], $m['fulfil_known']]);
+    $z = Profit::servicePreview(9900, 2500, 'MANUAL', 2700, 0);
+    T::same([9900, true], [$z['gross'], $z['fulfil_known']], 'a stated zero is known');
+    $a = Profit::servicePreview(9900, 2500, 'AUTO', 2700, 400);
+    T::same([0, 7400, true], [$a['fulfil_cost'], $a['gross'], $a['fulfil_known']], 'an AUTO service never carries the manual fulfilment cost');
 });
 
 // ───────────────────────────── state machine ─────────────────────────────
@@ -259,8 +267,8 @@ function random_bytes_ascii(int $n): string
 T::test('db: UNSIGNED money columns subtract to a NEGATIVE number (a loss) instead of an "out of range" error — on MySQL 8 and MariaDB alike', function () {
     T::same(-1, (int) Db::val('SELECT CAST(1 AS UNSIGNED) - CAST(2 AS UNSIGNED)'));
     Db::exec('DROP TEMPORARY TABLE IF EXISTS qa_unsigned_money');
-    Db::exec('CREATE TEMPORARY TABLE qa_unsigned_money (amount_paise INT UNSIGNED NOT NULL, refunded_paise INT UNSIGNED NOT NULL, provider_cost_paise INT UNSIGNED NOT NULL, mode VARCHAR(8) NOT NULL)');
-    Db::exec("INSERT INTO qa_unsigned_money VALUES (500, 500, 100, 'AUTO'), (500, 0, 700, 'AUTO'), (500, 0, 700, 'MANUAL')");
+    Db::exec('CREATE TEMPORARY TABLE qa_unsigned_money (id INT NOT NULL, amount_paise INT UNSIGNED NOT NULL, refunded_paise INT UNSIGNED NOT NULL, provider_cost_paise INT UNSIGNED NOT NULL, mode VARCHAR(8) NOT NULL)');
+    Db::exec("INSERT INTO qa_unsigned_money VALUES (-1, 500, 500, 100, 'AUTO'), (-2, 500, 0, 700, 'AUTO'), (-3, 500, 0, 700, 'MANUAL')");   // ids no order has: no cost lines
     // the exact expressions the dashboard sums: a refunded AUTO order still carries its provider cost, a pack sold below cost loses money
     $gross = Db::col('SELECT ' . Profit::SQL_GROSS . ' FROM qa_unsigned_money o ORDER BY o.refunded_paise DESC, o.mode');
     T::same([-100, -200, 500], array_map('intval', $gross));

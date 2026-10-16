@@ -83,41 +83,59 @@ function kpiCard(scope, def, k, all, spark) {
   </article>`;
 }
 
+const FIN_ONLY = ['profit', 'ads', 'smm'];            // profit, advertising and provider cost belong to roles with finance.view (the server removes them from the data too)
+const hasFinance = (d) => d.meta.finance !== false;
+
 function kpiSection(d) {
-  const mk = (scope) => KPI_DEFS.map((def) => kpiCard(scope, def, d.kpis[scope][def.id], d.kpis, d.kpis.spark[def.id]));
+  const defs = KPI_DEFS.filter((def) => hasFinance(d) || !FIN_ONLY.includes(def.id));
+  const mk = (scope) => defs.map((def) => kpiCard(scope, def, d.kpis[scope][def.id], d.kpis, d.kpis.spark[def.id]));
   return html`<h2 class="sec-title"><span class="live-dot" aria-hidden="true"></span>Today</h2>
     <div class="kpi-grid" data-scope="today">${mk('today')}</div>
     <h2 class="sec-title">Lifetime</h2>
     <div class="kpi-grid" data-scope="lifetime">${mk('lifetime')}</div>`;
 }
 
+const STATUS_NOTE = {
+  actual: ['Actual costs', 'chip-ok', 'Every cost behind this figure is a recorded actual.'],
+  estimated: ['Estimated costs', 'chip-info', 'Some costs are estimates (a service’s standard cost, the payment-fee model, a provider charge not yet final, or CPC-based advertising).'],
+  incomplete: ['Incomplete costs', 'chip-warn', 'Some paid orders have a cost that is not known yet. Unknown costs are not counted as zero: see Finance → Reconciliation.'],
+};
+
 function profitCard(d) {
   const b = d.breakdown;
   const m = d.meta;
+  const l = d.labels;
+  const costs = b.smm + (b.other_costs || 0) + (b.overheads || 0);          // everything except advertising
   const rev = Math.max(b.revenue, 0);
-  const smmPct = rev ? Math.min(100, Math.round((b.smm / rev) * 100)) : 0;
-  const adsPct = rev ? Math.min(100 - smmPct, Math.round((b.ads / rev) * 100)) : 0;
-  const netPct = Math.max(0, 100 - smmPct - adsPct);
+  const costPct = rev ? Math.min(100, Math.round((costs / rev) * 100)) : 0;
+  const adsPct = rev ? Math.min(100 - costPct, Math.round((b.ads / rev) * 100)) : 0;
+  const netPct = Math.max(0, 100 - costPct - adsPct);
   const neg = b.net < 0;
   const before = !m.ads_attributable;
+  const [stText, stCls, stWhy] = STATUS_NOTE[l?.status] || STATUS_NOTE.estimated;
+  const parts = [`SMM provider ${inr(b.smm)}`, `fulfilment, fees and other order costs ${inr(b.other_costs || 0)}`];
+  if (!before) parts.push(`chargebacks and expenses ${inr(b.overheads || 0)}`);
   return html`<section class="card" aria-labelledby="h-profit">
     <div class="card-head"><h2 class="card-title" id="h-profit">${icon('badge-indian-rupee')}Profit breakdown</h2>
       <span class="card-sub">${rangeText(m)}${m.filtered ? ' · filtered' : ''}</span></div>
-    <div class="eq" role="group" aria-label="Revenue minus SMM cost minus ads cost equals net profit">
+    <div class="eq" role="group" aria-label="Revenue minus costs minus ads cost equals net profit">
       <div class="eq-item"><small>Revenue</small><strong>${inr(b.revenue)}</strong></div>
       <div class="eq-op" aria-hidden="true">−</div>
-      <div class="eq-item"><small>SMM cost</small><strong>${inr(b.smm)}</strong></div>
+      <div class="eq-item"><small>Costs</small><strong>${inr(costs)}</strong></div>
       <div class="eq-op" aria-hidden="true">−</div>
       <div class="eq-item"><small>Ads cost</small><strong>${before ? '—' : inr(b.ads)}</strong></div>
       <div class="eq-op" aria-hidden="true">=</div>
       <div class="eq-item eq-net${neg ? ' is-neg' : ''}"><small>${before ? 'Profit before ads' : 'Net profit'} · margin ${tenths(b.margin_tenths)}%</small><strong>${inr(before ? b.gross : b.net)}</strong></div>
     </div>
-    ${rev > 0 ? html`<div class="stackbar" role="img" aria-label="Where revenue goes: ${smmPct}% SMM cost, ${adsPct}% ads, ${netPct}% profit">
-      <span class="bg-sky-500" data-w="${smmPct}"></span><span class="bg-amber-500" data-w="${adsPct}"></span><span class="bg-emerald-500" data-w="${netPct}"></span></div>
-      <div class="legend"><span><i class="bg-sky-500"></i>SMM cost ${smmPct}%</span><span><i class="bg-amber-500"></i>Ads ${adsPct}%</span><span><i class="bg-emerald-500"></i>${before ? 'Profit' : 'Net profit'} ${netPct}%</span></div>` : ''}
-    <p class="mt-3 text-[13px] text-muted">${before
-      ? 'Advertising spend is tracked for the whole site, so it is not subtracted while a platform or delivery filter is on. Clear the filters to see net profit after ads.'
-      : 'Manual orders count fully as profit (no provider cost). Ads cost = qualified visitors × cost per click, charged once per visitor per day.'}</p>
+    <p class="mt-3 text-[13px] text-ink-soft" data-cost-parts>Costs = ${parts.join(' + ')}.</p>
+    ${rev > 0 ? html`<div class="stackbar" role="img" aria-label="Where revenue goes: ${costPct}% costs, ${adsPct}% ads, ${netPct}% profit">
+      <span class="bg-sky-500" data-w="${costPct}"></span><span class="bg-amber-500" data-w="${adsPct}"></span><span class="bg-emerald-500" data-w="${netPct}"></span></div>
+      <div class="legend"><span><i class="bg-sky-500"></i>Costs ${costPct}%</span><span><i class="bg-amber-500"></i>Ads ${adsPct}%</span><span><i class="bg-emerald-500"></i>${before ? 'Profit' : 'Net profit'} ${netPct}%</span></div>` : ''}
+    <div class="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-muted"><span class="chip ${stCls}" data-profit-status="${l?.status || 'estimated'}">${stText}</span><span>${stWhy}</span>
+      <a class="ml-auto underline font-semibold" href="${url('/admin/finance')}">Full profit statement</a></div>
+    <p class="mt-2 text-[13px] text-muted">${before
+      ? 'Advertising, chargebacks and business expenses belong to the whole business, so they are not subtracted while a platform or delivery filter is on. Clear the filters to see net profit.'
+      : 'Advertising is the actual spend entered for a day, or the CPC estimate (qualified visitors × cost per click, once per visitor per day) for a day with none — never both.'}</p>
   </section>`;
 }
 
@@ -128,8 +146,8 @@ function chartCard(id, title, ico, sub, extra = '') {
   </section>`;
 }
 
-function toggles() {
-  const defs = [['revenue', 'Revenue', COLORS.revenue], ['net', 'Net profit', COLORS.net], ['gross', 'Gross profit', COLORS.gross], ['ads', 'Ads', COLORS.ads], ['smm', 'SMM', COLORS.smm]];
+function toggles(fin = true) {
+  const defs = [['revenue', 'Revenue', COLORS.revenue], ['net', 'Net profit', COLORS.net], ['gross', 'Contribution', COLORS.gross], ['ads', 'Ads', COLORS.ads], ['smm', 'SMM', COLORS.smm]].filter(([k]) => fin || k === 'revenue');
   return `<div class="series-toggles" role="group" aria-label="Series">${defs.map(([k, l, c]) => `<button type="button" class="stog" data-series="${k}" aria-pressed="${seriesOn[k]}"><i></i>${l}</button>`).join('')}</div>`;
 }
 
@@ -164,25 +182,27 @@ function visitorsCard(d) {
 }
 
 function perfCard(d) {
+  const fin = hasFinance(d);
   const p = d.performance;
   const maxO = Math.max(1, ...p.top_services.map((s) => s.orders));
   const tile = (label, s, f) => html`<div class="stat stat-text"><small>${label}</small><strong>${s ? s.title : '—'}</strong><span>${s ? f(s) : 'No paid orders yet'}</span></div>`;
   const am = p.auto_vs_manual;
-  const row = (label, o) => html`<div class="kv"><span>${label}</span><b>${num(o.orders)} orders · ${inr(o.revenue)} · <span class="${o.profit < 0 ? 'amt-neg' : 'amt-pos'}">${inr(o.profit)}</span></b></div>`;
+  const row = (label, o) => html`<div class="kv"><span>${label}</span><b>${num(o.orders)} orders · ${inr(o.revenue)}${fin ? html` · <span class="${o.profit < 0 ? 'amt-neg' : 'amt-pos'}">${inr(o.profit)}</span>` : ''}</b></div>`;
   return html`<section class="card" aria-labelledby="h-perf">
     <div class="card-head"><h2 class="card-title" id="h-perf">${icon('chart-column')}Top services &amp; performance</h2><span class="card-sub">${rangeText(d.meta)}</span></div>
     <div class="stat-grid">
       ${tile('Best platform', p.best_platform && { title: platName(p.best_platform.platform), r: p.best_platform }, (s) => `${inr(s.r.revenue)} revenue`)}
       ${tile('Best seller (revenue)', p.best_revenue, (s) => `${inr(s.revenue)} · ${num(s.orders)} orders`)}
-      ${tile('Most profitable', p.best_profit, (s) => `${inr(s.profit)} profit`)}
-      ${tile('Lowest profit', p.lowest_profit, (s) => `${inr(s.profit)} profit`)}
+      ${fin ? tile('Most profitable', p.best_profit, (s) => `${inr(s.profit)} profit`) : ''}
+      ${fin ? tile('Lowest profit', p.lowest_profit, (s) => `${inr(s.profit)} profit`) : ''}
       <div class="stat"><small>Average order value</small><strong>${inr(p.aov_paise)}</strong><span>${num(p.orders_paid)} paid orders</span></div>
-      <div class="stat"><small>Avg profit / order</small><strong class="${p.avg_profit_paise < 0 ? 'amt-neg' : ''}">${inr(p.avg_profit_paise)}</strong><span>Order success ${pct(p.order_success_tenths)}</span></div>
+      ${fin ? html`<div class="stat"><small>Avg profit / order</small><strong class="${p.avg_profit_paise < 0 ? 'amt-neg' : ''}">${inr(p.avg_profit_paise)}</strong><span>Order success ${pct(p.order_success_tenths)}</span></div>`
+        : html`<div class="stat"><small>Order success</small><strong>${pct(p.order_success_tenths)}</strong><span>${num(p.orders_completed)} completed</span></div>`}
     </div>
     <h3 class="mt-5 mb-2 text-[13px] font-bold text-ink-soft">Top services by orders</h3>
     ${p.top_services.length ? html`<div class="hbars">${p.top_services.map((s) => html`<div class="hbar"><span class="hbar-label">${s.title}<span class="font-medium text-muted"> · ${platName(s.platform)}</span></span><span class="hbar-value">${num(s.orders)} orders</span>
       <div class="hbar-track"><div class="hbar-fill" data-w="${Math.round((s.orders / maxO) * 100)}"></div></div>
-      <span class="hbar-meta">${platName(s.platform)} · ${s.mode} · ${inr(s.revenue)} revenue · <span class="${s.profit < 0 ? 'amt-neg' : ''}">${inr(s.profit)}</span> profit (${tenths(s.margin_tenths)}%)</span></div>`)}</div>`
+      <span class="hbar-meta">${platName(s.platform)} · ${s.mode} · ${inr(s.revenue)} revenue${fin ? html` · <span class="${s.profit < 0 ? 'amt-neg' : ''}">${inr(s.profit)}</span> profit (${tenths(s.margin_tenths)}%)` : ''}</span></div>`)}</div>`
       : emptyState({ ico: 'chart-column', title: 'No paid orders in this range', text: 'Top services appear after the first paid orders.' })}
     <h3 class="mt-5 mb-1 text-[13px] font-bold text-ink-soft">AUTO vs MANUAL</h3>
     ${row('AUTO (SMM provider)', am.auto)}${row('MANUAL (you deliver)', am.manual)}
@@ -246,13 +266,13 @@ function render(d) {
   const root = $('#dash-root');
   const parts = [
     kpiSection(d),
-    html`<h2 class="sec-title">Profit &amp; trends · ${rangeText(d.meta)}</h2>`,
-    profitCard(d),
-    html`<div class="stack mt-4"><section class="card" aria-labelledby="h-rev"><div class="card-head"><h2 class="card-title" id="h-rev">${icon('trending-up')}Revenue &amp; profit</h2>${raw(toggles())}</div><div data-chart="rev" aria-label="Revenue and profit over time"></div></section>
+    html`<h2 class="sec-title">${hasFinance(d) ? 'Profit &amp; trends' : 'Trends'} · ${rangeText(d.meta)}</h2>`,
+    hasFinance(d) ? profitCard(d) : '',
+    html`<div class="stack mt-4"><section class="card" aria-labelledby="h-rev"><div class="card-head"><h2 class="card-title" id="h-rev">${icon('trending-up')}${hasFinance(d) ? 'Revenue &amp; profit' : 'Revenue'}</h2>${raw(toggles(hasFinance(d)))}</div><div data-chart="rev" aria-label="Revenue and profit over time"></div></section>
       <div class="grid-2">${chartCard('orders', 'Orders', 'package', 'Created vs paid')}${chartCard('visitors', 'Visitors', 'users', 'Visitors vs qualified')}</div></div>`,
     html`<h2 class="sec-title">Audience &amp; conversion</h2>`,
     visitorsCard(d),
-    html`<h2 class="sec-title">Services &amp; costs</h2><div class="grid-2">${perfCard(d)}<div class="stack">${smmCard(d)}${paymentsCard(d)}</div></div>`,
+    html`<h2 class="sec-title">Services &amp; costs</h2><div class="grid-2">${perfCard(d)}<div class="stack">${hasFinance(d) ? smmCard(d) : ''}${paymentsCard(d)}</div></div>`,
     html`<h2 class="sec-title">Latest</h2>`,
     recentCard(d),
   ];
@@ -292,10 +312,12 @@ function paint(d) {
   const mk = (id, opts) => { const host = $(`[data-chart="${id}"]`, root); if (!host) return null; const c = lineChart(host, opts); charts.push(c); return c; };
   const revSeries = () => [
     { id: 'revenue', label: 'Revenue', color: COLORS.revenue, values: col('revenue'), type: 'area', format: rupee, hidden: !seriesOn.revenue },
-    { id: 'net', label: 'Net profit', color: COLORS.net, values: col('net_profit'), type: 'line', format: rupee, hidden: !seriesOn.net },
-    { id: 'gross', label: 'Gross profit', color: COLORS.gross, values: col('gross_profit'), type: 'line', format: rupee, hidden: !seriesOn.gross },
-    { id: 'ads', label: 'Ads spend', color: COLORS.ads, values: col('ads'), type: 'line', format: rupee, hidden: !seriesOn.ads },
-    { id: 'smm', label: 'SMM spend', color: COLORS.smm, values: col('smm'), type: 'line', format: rupee, hidden: !seriesOn.smm },
+    ...(hasFinance(d) ? [
+      { id: 'net', label: 'Net profit', color: COLORS.net, values: col('net_profit'), type: 'line', format: rupee, hidden: !seriesOn.net },
+      { id: 'gross', label: 'Contribution', color: COLORS.gross, values: col('gross_profit'), type: 'line', format: rupee, hidden: !seriesOn.gross },
+      { id: 'ads', label: 'Ads spend', color: COLORS.ads, values: col('ads'), type: 'line', format: rupee, hidden: !seriesOn.ads },
+      { id: 'smm', label: 'SMM spend', color: COLORS.smm, values: col('smm'), type: 'line', format: rupee, hidden: !seriesOn.smm },
+    ] : []),
   ];
   revOpts = () => ({ points: pts, series: revSeries(), yFormat: (v) => inrCompact(v), height: 300, floorMax: 50000, ariaLabel: 'Revenue and profit over time', emptyText: 'No revenue in this range yet.' });
   revChart = mk('rev', revOpts());

@@ -88,6 +88,7 @@ final class T
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
         \App\Services\Settings::flush();
         \App\Services\Tags::flush();
+        \App\Services\Analytics::resetMemo();
         \App\Support\Clock::setFixed(null);
         \App\Support\Seeder::all();
     }

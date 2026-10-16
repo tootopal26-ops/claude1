@@ -118,7 +118,7 @@ After a webhook has been accepted the shop can ask the gateway whether it agrees
 
 ## 3. Admin routes
 
-HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|orders|recovery|payments|payment-checks|services|tags|website|advertising|gateway|smm|security|audit|system}`) redirect to the sign-in page when signed out. The pages load their data from the JSON API below.
+HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|finance|orders|recovery|payments|payment-checks|services|tags|website|advertising|gateway|smm|security|audit|system}`) redirect to the sign-in page when signed out. The pages load their data from the JSON API below.
 
 ### Auth
 | Method & path | Purpose |
@@ -160,11 +160,28 @@ HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|orders|recovery|pa
 | `GET /admin/api/jobs` *(jobs.view)* | Every scheduled job with its last run, last success and state (`ok\|overdue\|failing\|never_run\|running`). |
 | `POST /admin/api/jobs/{job}/run` `{dry_run?}` *(jobs.run)* | The same locked, time-bounded, recorded run as the cron line (`trigger_source = admin`); `dry_run` writes nothing and asks no provider anything. 10 per 10 minutes per admin (`429`). Audited (`job.run`). |
 
+### Finance — profit, costs, expenses, reconciliation (permission in brackets; `403 forbidden` without it)
+Full behaviour, definitions and the labels in [PROFIT-INTELLIGENCE.md](PROFIT-INTELLIGENCE.md). Writes are idempotent per `Idempotency-Key`, validated (`422` with `fields`) and audited.
+| Method & path | Purpose |
+|---|---|
+| `GET /admin/api/finance?range=today\|7d\|30d\|90d\|lifetime\|custom&from=&to=&platform=&service=&mode=&payment=` *(finance.view)* | The profit statement for *today*, the period and lifetime (integer paise; margin in tenths of a percent or `null`), the trend, `labels` (`status` actual / estimated / incomplete with the reasons), the payment counts, the per-service contribution lists, the `definitions` and `meta`; with a platform / service / order-type filter the shared costs are left out (`meta.shared_costs_included = false`). Also `can {adjust}`. |
+| `GET /admin/api/finance/orders/{id}` *(finance.view)* | One order's money: collected, refunds, provider cost, cost lines (live and ended, with source, who, when), contribution, `cost_status`, `reasons`. |
+| `POST /admin/api/finance/orders/{id}/costs` `{type: fulfilment\|payment_fee\|other, amount, note, estimate?}` *(finance.adjust)* | Record or correct a cost line (a note of 3+ characters is required; `409 not_paid` for an unpaid order). A fulfilment cost / fee **replaces** the live line (the old one is kept as history); *other* adds a line. |
+| `POST /admin/api/finance/costs/{id}/void` `{reason}` *(finance.adjust)* | End an *other* line (`409` for a fulfilment cost or a fee — correct those instead). |
+| `GET /admin/api/finance/expenses?from=&to=&category=&include_voided=&page=` *(finance.view)* | Expenses and chargebacks with `sum_paise` (voided excluded) and paging. |
+| `POST /admin/api/finance/expenses` `{day, category: tools\|hosting\|chargeback\|other, amount, description?, reference?, order?}` *(finance.adjust)* | Record one (a chargeback needs its `order`; *other* needs a description). |
+| `POST /admin/api/finance/expenses/{id}/void` `{reason}` *(finance.adjust)* | Void with a reason; the entry stays listed. |
+| `GET /admin/api/finance/reconciliation` *(finance.view)* | What is missing or inconsistent, with counts, samples and the safe fix where there is one. |
+| `POST /admin/api/finance/reconciliation/fix` `{action: backfill_fees\|backfill_fulfilment, dry_run?}` *(finance.adjust)* | Add estimated fee lines / apply a service's standard cost to older orders. Append-only, idempotent; `dry_run` only counts; `409 not_allowed` when no fee model is set. |
+| `GET` / `PUT /admin/api/finance/settings` `{fee_mode: unset\|none\|percent\|fixed\|percent_plus_fixed, fee_percent, fee_fixed, ad_gst: cost\|recoverable}` *(finance.view / finance.adjust)* | The payment-fee model and the GST treatment of advertising (validated and bounded; audited; stored days are recomputed). |
+
+For roles without `finance.view`, `GET /admin/api/dashboard` and the order endpoints **omit** every profit, cost and advertising figure (and the provider's raw answers) instead of hiding them on the page.
+
 ### Catalogue
 | | |
 |---|---|
 | `GET /admin/api/services` · `GET /admin/api/services/meta` · `GET /admin/api/services/{id}` | List (grouped by platform, with profit/order), form metadata, one service. |
-| `POST /admin/api/services` · `PUT /admin/api/services/{id}` · `DELETE /admin/api/services/{id}` | Create / update / soft-delete. Fields: `code, platform_id, type, target_kind, title, subtitle, description, price (₹ string), quantity, min_quantity, max_quantity, mode (AUTO\|MANUAL), smm_provider_id, smm_service_id, smm_cost (₹), tag_id, is_premium, status (active\|inactive), sort_order, icon_path`. Price must be ₹1–₹1,00,000, quantities ≥ 1, `min ≤ quantity ≤ max`; AUTO needs `smm_service_id`. Violations → `422` with `fields`. `tag_id` is the badge shown on the card: an id from `GET /admin/api/tags`, or `null` / `0` / `""` for no tag (omit it on a partial update to leave the tag alone). The automatic **TRIAL PACK** tag cannot be assigned (`422` / `fields.tag_id`) — it is derived from the price (see below) — and a disabled tag cannot be newly assigned, but a service that already has one keeps it. Service objects carry `tag_id` (the assignment) and `effective_tag` (`{id, name, bg, fg, auto}` — what the storefront really shows: the enabled TRIAL PACK tag when `price_paise` is exactly 500, else the assigned tag if enabled, else `null`). `meta` carries `tags` (every tag: `id, name, bg_color, text_color, is_active, is_system, is_auto`) and `tag_rule {code, tag_id, price_paise, price}`. |
+| `POST /admin/api/services` · `PUT /admin/api/services/{id}` · `DELETE /admin/api/services/{id}` | Create / update / soft-delete. Fields: `code, platform_id, type, target_kind, title, subtitle, description, price (₹ string), quantity, min_quantity, max_quantity, mode (AUTO\|MANUAL), smm_provider_id, smm_service_id, smm_cost (₹), fulfil_cost (₹ — what delivering one purchase of a MANUAL service costs directly: empty = not stated, so its orders are labelled incomplete; `0` = stated: it costs nothing; `422` / `fields.fulfil_cost` for a bad value; every change is audited as `service.fulfil_cost_changed`), tag_id, is_premium, status (active\|inactive), sort_order, icon_path`. Price must be ₹1–₹1,00,000, quantities ≥ 1, `min ≤ quantity ≤ max`; AUTO needs `smm_service_id`. Violations → `422` with `fields`. `tag_id` is the badge shown on the card: an id from `GET /admin/api/tags`, or `null` / `0` / `""` for no tag (omit it on a partial update to leave the tag alone). The automatic **TRIAL PACK** tag cannot be assigned (`422` / `fields.tag_id`) — it is derived from the price (see below) — and a disabled tag cannot be newly assigned, but a service that already has one keeps it. Service objects carry `tag_id` (the assignment) and `effective_tag` (`{id, name, bg, fg, auto}` — what the storefront really shows: the enabled TRIAL PACK tag when `price_paise` is exactly 500, else the assigned tag if enabled, else `null`). `meta` carries `tags` (every tag: `id, name, bg_color, text_color, is_active, is_system, is_auto`) and `tag_rule {code, tag_id, price_paise, price}`. |
 | `POST /admin/api/services/icon` | Multipart icon upload (PNG/JPG/WebP ≤ 2 MB, re-encoded) → `{path}`. |
 | `PATCH /admin/api/platforms/{id}` · `POST\|DELETE /admin/api/platforms/{id}/logo` | Platform name/tagline/visibility/order · upload or reset the platform logo. |
 

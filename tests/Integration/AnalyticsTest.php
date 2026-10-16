@@ -74,7 +74,7 @@ T::test('dashboard: the spec example — revenue ₹1000, SMM ₹300, ads ₹108
     T::same(59200, $d['kpis']['today']['profit']['value']);
     T::same(70000, $d['kpis']['today']['gross_profit']);
     $b = $d['breakdown'];
-    T::same(['revenue' => 100000, 'smm' => 30000, 'ads' => 10800, 'gross' => 70000, 'net' => 59200, 'margin_tenths' => 592, 'margin' => '59.2'], $b);
+    T::same(['revenue' => 100000, 'smm' => 30000, 'ads' => 10800, 'gross' => 70000, 'net' => 59200, 'margin_tenths' => 592, 'margin' => '59.2', 'other_costs' => 0, 'overheads' => 0], $b, 'no cost line, no expense, no actual ad spend: exactly the figures of before');
     T::same(10, $d['kpis']['today']['orders']['value']);
     T::same(10, $d['kpis']['today']['payments']['value']);
     T::same(100, $d['visitors']['today']['visitors']);

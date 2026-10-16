@@ -86,7 +86,7 @@ for (const vp of [{ name: 'desktop', width: 1440, height: 900 }, { name: 'phone'
   await t.step(`admin ${vp.name}: every page`, async () => {
     resetLimits(); await login(page);
     const all = [];
-    for (const p of ['dashboard', 'orders', 'payments', 'services', 'tags', 'website', 'advertising', 'gateway', 'smm', 'security', 'audit', 'system']) {
+    for (const p of ['dashboard', 'finance', 'orders', 'recovery', 'payments', 'payment-checks', 'services', 'tags', 'website', 'advertising', 'gateway', 'smm', 'security', 'audit', 'system']) {
       await page.goto(`${BASE}/admin/${p}`, { waitUntil: 'networkidle' });
       await page.waitForFunction(() => document.querySelector('[aria-busy="true"]') === null, null, { timeout: 15000 }).catch(() => {});
       await page.waitForTimeout(900);
@@ -104,6 +104,16 @@ for (const vp of [{ name: 'desktop', width: 1440, height: 900 }, { name: 'phone'
     if (await edit.count()) { await edit.click(); await page.waitForSelector('dialog[open]'); await page.waitForTimeout(500); await scan('admin/service-editor', page); await page.keyboard.press('Escape'); await page.waitForFunction(() => !document.querySelector('dialog[open]')); }
     await page.goto(`${BASE}/admin/orders`, { waitUntil: 'networkidle' }); await page.waitForTimeout(900);
     if (await page.locator('#approve-all:enabled').count()) { await page.click('#approve-all'); await page.waitForSelector('dialog[open]'); await page.waitForTimeout(500); await scan('admin/approve-all-confirm', page); await page.keyboard.press('Escape'); await page.waitForFunction(() => !document.querySelector('dialog[open]')); }
+  });
+  await t.step(`admin ${vp.name}: finance tabs and the expense dialog`, async () => {
+    const ready = () => page.waitForFunction(() => document.querySelector('#fin-root')?.getAttribute('aria-busy') === 'false', null, { timeout: 15000 }).catch(() => {});
+    for (const q of ['?tab=services', '?tab=costs', '?tab=reconcile', '?tab=settings']) {
+      await page.goto(`${BASE}/admin/finance${q}`, { waitUntil: 'networkidle' }); await ready(); await page.waitForTimeout(700);
+      await scan('admin/finance' + q, page);
+    }
+    await page.goto(`${BASE}/admin/finance?tab=costs`, { waitUntil: 'networkidle' }); await ready(); await page.waitForTimeout(500);
+    await page.click('#fin-add'); await page.waitForSelector('dialog[open]'); await page.waitForTimeout(500); await scan('admin/finance-expense-dialog', page);
+    await page.keyboard.press('Escape'); await page.waitForFunction(() => !document.querySelector('dialog[open]'));
   });
   await page.close();
 }

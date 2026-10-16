@@ -19,6 +19,7 @@ final class PageController extends BaseController
     /** page key → [title, view, permission needed to open it (null = every signed-in admin)] */
     public const PAGES = [
         'dashboard'      => ['Dashboard', 'admin/dashboard', 'dashboard.view'],
+        'finance'        => ['Finance', 'admin/finance', 'finance.view'],
         'orders'         => ['Orders', 'admin/orders', 'orders.view'],
         'recovery'       => ['Order recovery', 'admin/recovery', 'orders.view'],
         'payments'       => ['Payments', 'admin/payments', 'payments.view'],

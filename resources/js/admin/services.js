@@ -29,7 +29,8 @@ function marginCell(s) {
   const p = s.preview;
   const margin = p.price ? Math.trunc((p.gross * 1000) / p.price) : 0;
   const cls = p.gross < 0 ? 'amt-neg' : 'amt-pos';
-  return html`<span class="cell-main" title="Price minus provider cost (AUTO only), before advertising"><b class="${cls}">${inr(p.gross)}</b><small>${tenths(margin)}% margin</small></span>`;
+  const note = p.fulfil_known ? `${tenths(margin)}% margin` : 'cost not stated';
+  return html`<span class="cell-main" title="${p.fulfil_known ? 'Price minus the provider cost (AUTO) or the manual fulfilment cost (MANUAL), before advertising' : 'MANUAL service with no fulfilment cost stated: its orders are labelled incomplete in the profit reports'}"><b class="${cls}">${inr(p.gross)}</b><small>${note}</small></span>`;
 }
 
 function row(s) {
@@ -153,6 +154,11 @@ function editorHtml(s) {
           <div class="input-affix"><span class="affix">₹</span><input class="input" id="f-smm_cost" name="smm_cost" inputmode="decimal" value="${s ? plain(s.smm_cost_paise).replace(/\.00$/, '') : ''}" placeholder="58"></div>
           <p class="field-hint" id="cost-hint">What your provider charges you for ONE purchase of this pack, in rupees. Used for profit reports.</p></div>
       </div>
+      <div id="manual-fields" ${mode === 'MANUAL' ? '' : 'hidden'}>
+        <div class="field"><label class="label" for="f-fulfil_cost">Fulfilment cost per purchase <span class="text-muted font-normal">(optional)</span></label>
+          <div class="input-affix"><span class="affix">₹</span><input class="input" id="f-fulfil_cost" name="fulfil_cost" inputmode="decimal" value="${s?.fulfil_cost != null ? plain(s.fulfil_cost_paise).replace(/\.00$/, '') : ''}" placeholder="not decided yet"></div>
+          <p class="field-hint" id="fulfil-hint">What delivering ONE purchase costs you directly — staff time, a supplier. Leave it empty if you have not decided yet: orders are then labelled <b>incomplete</b>, never counted as free. Enter 0 if it costs nothing.</p></div>
+      </div>
     </div>
 
     <div class="form-section"><h3>Profit preview</h3><div id="profit-preview" class="profit-box" aria-live="polite"></div>
@@ -213,15 +219,22 @@ function updatePreview() {
   const price = parseRupees(val('price'));
   const mode = val('mode');
   const cost = mode === 'AUTO' ? parseRupees(val('smm_cost') || '0') : 0;
-  if (price === null || (mode === 'AUTO' && cost === null)) { box.className = 'profit-box'; box.innerHTML = '<span class="text-sm text-muted">Enter a valid price' + (mode === 'AUTO' ? ' and provider cost' : '') + ' to see the estimated profit.</span>'; return; }
+  const fulfilRaw = val('fulfil_cost').trim();
+  const fulfilStated = mode === 'MANUAL' && fulfilRaw !== '';
+  const fulfil = fulfilStated ? parseRupees(fulfilRaw) : 0;
+  if (price === null || (mode === 'AUTO' && cost === null) || (fulfilStated && fulfil === null)) {
+    box.className = 'profit-box';
+    box.innerHTML = '<span class="text-sm text-muted">Enter a valid price' + (mode === 'AUTO' ? ' and provider cost' : fulfilStated ? ' and fulfilment cost' : '') + ' to see the estimated profit.</span>';
+    return;
+  }
   const ad = meta.est_ad_cost_paise;
-  const gross = price - cost;
+  const gross = price - cost - fulfil;
   const net = gross - ad;
   const margin = price ? Math.trunc((net * 1000) / price) : 0;
   box.className = 'profit-box' + (net < 0 ? ' is-neg' : '');
   box.innerHTML = String(html`
     <div class="profit-line"><span>Customer pays</span><b>${inr(price)}</b></div>
-    <div class="profit-line"><span>${mode === 'AUTO' ? 'Provider cost' : 'Provider cost (manual — not counted)'}</span><b>− ${inr(cost)}</b></div>
+    <div class="profit-line"><span>${mode === 'AUTO' ? 'Provider cost' : fulfilStated ? 'Manual fulfilment cost' : 'Fulfilment cost (manual — not stated, not counted yet)'}</span><b>− ${inr(mode === 'AUTO' ? cost : fulfil)}</b></div>
     <div class="profit-line"><span>Gross profit</span><b>${inr(gross)}</b></div>
     <div class="profit-line"><span>Estimated ad cost per order</span><b>− ${inr(ad, true)}</b></div>
     <div class="profit-line total"><span>Estimated net profit · ${tenths(margin)}% margin</span><b class="${net < 0 ? 'amt-neg' : 'amt-pos'}">${inr(net)}</b></div>`);
@@ -250,6 +263,8 @@ function setMode(mode) {
   $('#sd-body [name="mode"]').value = mode;
   $$('#sd-body [data-mode]').forEach((b) => { const on = b.dataset.mode === mode; b.setAttribute('aria-checked', String(on)); });
   $('#auto-fields').hidden = mode !== 'AUTO';
+  const manual = $('#manual-fields');
+  if (manual) manual.hidden = mode !== 'MANUAL';
   updatePreview();
 }
 
@@ -306,7 +321,7 @@ function collect() {
   const body = {
     platform_id: Number(val('platform_id')), type: val('type'), target_kind: val('target_kind'), title: val('title'), subtitle: val('subtitle'), description: val('description'),
     code: val('code'), price: val('price'), quantity: val('quantity'), min_quantity: val('min_quantity'), max_quantity: val('max_quantity'), mode: val('mode'),
-    smm_provider_id: val('smm_provider_id') || null, smm_service_id: val('smm_service_id'), smm_cost: val('smm_cost') || '0', tag_id: val('tag_id') ? Number(val('tag_id')) : null,
+    smm_provider_id: val('smm_provider_id') || null, smm_service_id: val('smm_service_id'), smm_cost: val('smm_cost') || '0', fulfil_cost: val('fulfil_cost').trim(), tag_id: val('tag_id') ? Number(val('tag_id')) : null,
     sort_order: val('sort_order') || '0', is_premium: checked('is_premium'), status: checked('active') ? 'active' : 'inactive',
   };
   if (body.mode !== 'AUTO') { body.smm_cost = val('smm_cost') || '0'; }

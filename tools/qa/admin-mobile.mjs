@@ -132,7 +132,7 @@ await t.step('dashboard charts respond to touch (tap shows the tooltip) and fit 
 await t.step('every admin page: no horizontal overflow at 360, 390, 412 and tablet 768/820 widths', async () => {
   for (const [w, h] of [[360, 800], [412, 915], [768, 1024], [820, 1180]]) {
     await page.setViewportSize({ width: w, height: h });
-    for (const p of ['dashboard', 'orders', 'payments', 'services', 'tags', 'website', 'gateway', 'smm', 'advertising', 'security', 'audit', 'system']) {
+    for (const p of ['dashboard', 'finance', 'orders', 'recovery', 'payments', 'payment-checks', 'services', 'tags', 'website', 'gateway', 'smm', 'advertising', 'security', 'audit', 'system']) {
       await go(page, '/admin/' + p, { settle: 300 });
       const rep = await layoutReport(page);
       t.ok(!rep.overflowX && rep.wide.length === 0, `${p} @${w}: scrollW ${rep.scrollW} wide=${rep.wide.join(';')}`);

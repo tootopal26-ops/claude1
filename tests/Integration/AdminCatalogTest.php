@@ -87,6 +87,36 @@ T::test('admin services: partial update keeps untouched fields; a no-op save wri
     T::same(2, (int) Db::val('SELECT COUNT(*) FROM service_pricing WHERE service_id = ?', [$id]), 'initial + changed');
 });
 
+T::test('admin services: manual fulfilment cost — empty is "not stated", 0 is a stated zero, bad input is refused, an untouched save keeps it, every change is audited', function () {
+    T::freshDb();
+    $s = AdminServices::save(null, ac_base(), ac_req(), AC_ADMIN);
+    $id = $s['id'];
+    T::same(null, $s['fulfil_cost_paise'], 'not stated by default');
+    T::false($s['preview']['fulfil_known']);
+    T::same(1250, $s['preview']['gross'], 'nothing is deducted for a number we do not have');
+    $s = AdminServices::save($id, ['fulfil_cost' => '3.50'], ac_req(), AC_ADMIN);
+    T::same([350, '3.50', 900, true], [$s['fulfil_cost_paise'], $s['fulfil_cost'], $s['preview']['gross'], $s['preview']['fulfil_known']]);
+    $s = AdminServices::save($id, ['title' => 'Renamed'], ac_req(), AC_ADMIN);
+    T::same(350, $s['fulfil_cost_paise'], 'a save that does not mention it keeps it');
+    $s = AdminServices::save($id, ['fulfil_cost' => '0'], ac_req(), AC_ADMIN);
+    T::same([0, '0.00', true], [$s['fulfil_cost_paise'], $s['fulfil_cost'], $s['preview']['fulfil_known']], 'zero is a number that was stated');
+    $s = AdminServices::save($id, ['fulfil_cost' => '  '], ac_req(), AC_ADMIN);
+    T::same(null, $s['fulfil_cost_paise'], 'empty goes back to not stated');
+    foreach (['abc', '-1', '1.999', '1e3', '999999999', '১২'] as $bad) {
+        T::true(isset(ac_fields(fn() => AdminServices::save($id, ['fulfil_cost' => $bad], ac_req(), AC_ADMIN))['fulfil_cost']), 'rejects ' . json_encode($bad));
+    }
+    T::same(null, AdminServices::get($id)['fulfil_cost_paise'], 'a refused save changes nothing');
+    $f = AdminServices::save($id, ['fulfil_cost' => 2.5], ac_req(), AC_ADMIN);
+    T::same(250, $f['fulfil_cost_paise'], 'a JSON number is read as rupees too');
+    $rows = Db::all("SELECT meta_json FROM audit_logs WHERE action = 'service.fulfil_cost_changed' ORDER BY id");
+    T::same(4, count($rows), 'null → 3.50 → 0.00 → null → 2.50, each change once');
+    $last = json_decode((string) $rows[3]['meta_json'], true);
+    T::same([null, '2.50'], [$last['from'], $last['to']]);
+    // the list used by the admin carries it too
+    $row = array_values(array_filter(AdminServices::list(), static fn(array $x): bool => $x['id'] === $id))[0];
+    T::same(250, $row['fulfil_cost_paise']);
+});
+
 T::test('admin services: optimistic locking refuses a stale form (409) and soft delete frees the code but keeps order history intact', function () {
     T::freshDb();
     $id = (int) Db::val("SELECT id FROM services WHERE code = 'ig-likes-100'");

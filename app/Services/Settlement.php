@@ -131,6 +131,9 @@ final class Settlement
                 'set' => ['paid_at' => Clock::sql($now), 'paid_day' => $day, 'payment_status' => 'success', 'late_payment' => $late ? 1 : 0, 'last_error' => null],
             ]);
 
+            // what this order costs, as of now (fee model, a MANUAL service's standard cost): a later change never rewrites it
+            Finance::snapshotAtPayment($o, $expected, $now);
+
             $route = $o['mode'] === Status::MANUAL ? 'MANUAL' : 'AUTO';
             if ($route === 'MANUAL') {
                 Db::exec(

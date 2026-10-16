@@ -49,14 +49,14 @@ final class Dashboard
         $filtered = $platformId !== null || $mode !== null;
 
         $days = $filtered ? Analytics::computeDays($from, $to, $platformId, $mode) : Analytics::rollup($from, $to);
-        // visitor + ads numbers are always site-wide
+        // visitor + advertising numbers are always site-wide; so are chargebacks and business expenses, which no platform or order type owns
         if ($filtered) {
             $site = Analytics::rollup($from, $to);
             foreach ($days as $d => &$m) {
-                foreach (['ads_spend_paise', 'visitors', 'qualified_visitors', 'order_visitors', 'paid_visitors', 'desktop_visitors', 'mobile_visitors', 'tablet_visitors', 'src_instagram', 'src_youtube', 'src_direct', 'src_other'] as $k) {
+                foreach (['ads_spend_paise', 'ads_actual_paise', 'ads_estimated_paise', 'ads_actual_day', 'chargebacks_paise', 'expenses_paise', 'visitors', 'qualified_visitors', 'order_visitors', 'paid_visitors', 'desktop_visitors', 'mobile_visitors', 'tablet_visitors', 'src_instagram', 'src_youtube', 'src_direct', 'src_other'] as $k) {
                     $m[$k] = $site[$d][$k];
                 }
-                $m['net_profit_paise'] = $m['gross_profit_paise'] - $m['ads_spend_paise'];
+                $m['net_profit_paise'] = $m['gross_profit_paise'];           // before the costs that belong to the whole business (see $adsAttributable)
             }
             unset($m);
         }
@@ -65,7 +65,11 @@ final class Dashboard
         $series = $bucket === 'hour' ? self::hourly($from, $platformId, $mode) : self::bucketize($days, $bucket);
         $totals = Analytics::sum($days);
         $adsAttributable = !$filtered;
-        $breakdown = Profit::breakdown($totals['revenue_paise'], $totals['smm_spend_paise'], $adsAttributable ? $totals['ads_spend_paise'] : 0);
+        $breakdown = Profit::breakdown(
+            $totals['revenue_paise'], $totals['smm_spend_paise'], $adsAttributable ? $totals['ads_spend_paise'] : 0,
+            $totals['fulfil_cost_paise'] + $totals['payment_fee_paise'] + $totals['other_cost_paise'],
+            $adsAttributable ? $totals['chargebacks_paise'] + $totals['expenses_paise'] : 0
+        );
 
         return [
             'meta' => [
@@ -78,6 +82,7 @@ final class Dashboard
             'kpis' => self::kpis($today),
             'totals' => $totals + ['conv_order_tenths' => self::rate($totals['order_visitors'], $totals['visitors']), 'conv_paid_tenths' => self::rate($totals['paid_visitors'], $totals['visitors'])],
             'breakdown' => $breakdown,
+            'labels' => FinanceReport::labels($totals, $filtered, $days),
             'series' => $series,
             'visitors' => self::visitorBlock($totals, $today),
             'performance' => self::performance($from, $to, $platformId, $mode, $totals, $breakdown),
@@ -87,8 +92,61 @@ final class Dashboard
         ];
     }
 
-    /** @return array{0:string,1:string,2:string} */
-    private static function resolveRange(array $f, string $today): array
+    /**
+     * The dashboard for a role that may not see profit or costs (permission finance.view): every cost, profit, margin and advertising figure is
+     * removed from the data — not merely hidden by the page — so nothing is left to read from the response.
+     *
+     * @param array<string,mixed> $d Dashboard::build()
+     * @return array<string,mixed>
+     */
+    public static function withoutFinance(array $d): array
+    {
+        $d['meta']['finance'] = false;
+        unset($d['meta']['cpc_paise']);
+        foreach (['today', 'lifetime'] as $scope) {
+            foreach (['profit', 'gross_profit', 'smm', 'ads'] as $k) {
+                unset($d['kpis'][$scope][$k]);
+            }
+        }
+        foreach (['profit', 'smm', 'ads'] as $k) {
+            unset($d['kpis']['spark'][$k]);
+        }
+        $d['breakdown'] = null;
+        $d['labels'] = null;
+        $d['smm'] = null;
+        foreach ($d['series'] as $i => $point) {
+            unset($d['series'][$i]['gross_profit'], $d['series'][$i]['net_profit'], $d['series'][$i]['ads'], $d['series'][$i]['smm']);
+        }
+        foreach (['smm_spend_paise', 'fulfil_cost_paise', 'payment_fee_paise', 'other_cost_paise', 'chargebacks_paise', 'expenses_paise', 'gross_profit_paise', 'ads_spend_paise', 'ads_actual_paise',
+            'ads_estimated_paise', 'ads_actual_day', 'net_profit_paise', 'auto_profit_paise', 'manual_profit_paise', 'orders_cost_estimated', 'orders_cost_incomplete'] as $k) {
+            unset($d['totals'][$k]);
+        }
+        $p = &$d['performance'];
+        $p['best_profit'] = null;
+        $p['lowest_profit'] = null;
+        $p['avg_profit_paise'] = null;
+        foreach (['top_services', 'platforms'] as $list) {
+            foreach ($p[$list] as $i => $row) {
+                unset($p[$list][$i]['profit'], $p[$list][$i]['margin_tenths']);
+            }
+        }
+        foreach (['best_revenue', 'best_platform'] as $one) {
+            if (is_array($p[$one] ?? null)) {
+                unset($p[$one]['profit'], $p[$one]['margin_tenths']);
+            }
+        }
+        unset($p['auto_vs_manual']['auto']['profit'], $p['auto_vs_manual']['manual']['profit']);
+        unset($p);
+        return $d;
+    }
+
+    /**
+     * The date range a screen asked for: today · 7d · 30d · 90d · lifetime · custom (from / to, corrected if reversed, never in the future).
+     *
+     * @param array<string,mixed> $f
+     * @return array{0:string,1:string,2:string} from, to, the range key
+     */
+    public static function resolveRange(array $f, string $today): array
     {
         $key = (string) ($f['range'] ?? '7d');
         switch ($key) {
@@ -218,7 +276,7 @@ final class Dashboard
     {
         $off = Tz::offsetSeconds(Tz::dayStart($day) + 43200);
         [$of, $op] = Analytics::orderFilter($platformId, $mode);
-        $h = array_fill(0, 24, ['revenue' => 0, 'smm' => 0, 'orders' => 0, 'orders_paid' => 0, 'visitors' => 0, 'qualified' => 0, 'ads' => 0]);
+        $h = array_fill(0, 24, ['revenue' => 0, 'smm' => 0, 'lines' => 0, 'orders' => 0, 'orders_paid' => 0, 'visitors' => 0, 'qualified' => 0, 'ads' => 0]);
 
         foreach (Db::all(
             'SELECT HOUR(DATE_ADD(o.paid_at, INTERVAL ? SECOND)) AS h, COUNT(*) AS n, SUM(o.amount_paise - o.refunded_paise) AS rev, '
@@ -228,6 +286,13 @@ final class Dashboard
             $h[(int) $r['h']]['orders_paid'] = (int) $r['n'];
             $h[(int) $r['h']]['revenue'] = (int) $r['rev'];
             $h[(int) $r['h']]['smm'] = (int) $r['smm'];
+        }
+        foreach (Db::all(
+            'SELECT HOUR(DATE_ADD(o.paid_at, INTERVAL ? SECOND)) AS h, SUM(c.amount_paise) AS line_sum FROM order_costs c JOIN orders o ON o.id = c.order_id '
+            . 'WHERE c.superseded_at IS NULL AND o.paid_at IS NOT NULL AND o.paid_day = ?' . $of . ' GROUP BY h',
+            array_merge([$off, $day], $op)
+        ) as $r) {
+            $h[(int) $r['h']]['lines'] = (int) $r['line_sum'];
         }
         foreach (Db::all('SELECT HOUR(DATE_ADD(o.created_at, INTERVAL ? SECOND)) AS h, COUNT(*) AS n FROM orders o WHERE o.created_day = ?' . $of . ' GROUP BY h', array_merge([$off, $day], $op)) as $r) {
             $h[(int) $r['h']]['orders'] = (int) $r['n'];
@@ -239,9 +304,23 @@ final class Dashboard
             $h[(int) $r['h']]['qualified'] = (int) $r['n'];
             $h[(int) $r['h']]['ads'] = (int) $r['ads'];
         }
+        // a day with ACTUAL ad spend carries that, not the CPC estimate (never both): spread over the hours in proportion to the qualified visitors
+        $actual = AdSpend::byDay($day, $day)[$day] ?? null;
+        if ($actual !== null) {
+            $q = array_sum(array_column($h, 'qualified'));
+            $left = $actual;
+            $last = null;
+            foreach ($h as $hour => &$m) {
+                $m['ads'] = $q > 0 ? Money::mulDiv($actual, $m['qualified'], $q) : 0;
+                $left -= $m['ads'];
+                $last = $m['qualified'] > 0 ? $hour : $last;
+            }
+            unset($m);
+            $h[$last ?? 0]['ads'] += $left;                                  // rounding (or a day with no qualified visitors) lands in one hour
+        }
         $out = [];
         foreach ($h as $hour => $m) {
-            $gross = $m['revenue'] - $m['smm'];
+            $gross = $m['revenue'] - $m['smm'] - $m['lines'];
             $out[] = [
                 'key' => sprintf('%02d:00', $hour), 'revenue' => $m['revenue'], 'gross_profit' => $gross, 'net_profit' => $gross - $m['ads'],
                 'orders' => $m['orders'], 'orders_paid' => $m['orders_paid'], 'visitors' => $m['visitors'], 'qualified' => $m['qualified'],

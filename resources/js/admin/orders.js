@@ -42,9 +42,13 @@ function writeUrl() {
 // ── list ──
 const platformIcon = (slug) => platforms.find((p) => p.slug === slug)?.logo_url || '';
 
+const hasFinance = () => listData?.can?.finance !== false;       // profit and costs are for roles with finance.view; the server removes them from the data for the others
+
 function profitCell(o) {
-  if (o.cost_paise === null || o.profit_paise === null) return html`<span class="amt-mute">—</span>`;
-  return html`<span class="cell-main"><b>${signedMoney(o.profit_paise)}</b><small>${o.mode === 'AUTO' ? `cost ${inr(o.cost_paise)}${o.cost_final ? '' : ' (est.)'}` : 'no provider cost'}</small></span>`;
+  if (o.cost_paise === null || o.profit_paise === null || o.cost_paise === undefined) return html`<span class="amt-mute">—</span>`;
+  const st = o.cost_status && o.cost_status !== 'actual' ? o.cost_status : '';
+  const costs = o.cost_paise > 0 ? `costs ${inr(o.cost_paise)}${o.mode === 'AUTO' && !o.cost_final ? ' (est.)' : ''}` : o.mode === 'AUTO' ? 'cost not known yet' : 'no cost recorded';
+  return html`<span class="cell-main"><b>${signedMoney(o.profit_paise)}</b><small title="${st === 'incomplete' ? 'A cost of this order is not known yet: the profit shown does not subtract it' : st === 'estimated' ? 'Some costs are estimates' : 'Costs are recorded actuals'}">${costs}${st ? ' · ' + st : ''}</small></span>`;
 }
 
 /** The account link / username of an order, as a link to the account when it is one (the admin delivers manual orders from it). */
@@ -61,7 +65,7 @@ function rowHtml(o) {
     <td data-label="Service" class="span2"><span class="cell-svc">${platformIcon(o.platform) ? html`<img src="${platformIcon(o.platform)}" alt="" width="30" height="30" loading="lazy">` : ''}<span class="cell-main"><b>${o.service}</b>${targetCell(o)}</span></span></td>
     <td data-label="Amount" class="num"><span class="cell-main"><b>${inr(o.amount_paise)}</b>${o.refunded_paise ? html`<small class="amt-neg">−${inr(o.refunded_paise)} refunded</small>` : ''}</span></td>
     <td data-label="Payment · mode"><span class="stackcell">${payChip(o.payment_status)}${modeChip(o.mode)}</span></td>
-    <td data-label="Profit" class="num">${profitCell(o)}</td>
+    ${hasFinance() ? html`<td data-label="Profit" class="num">${profitCell(o)}</td>` : ''}
     <td data-label="Status"><span class="stackcell">${orderChip(o.status, o.status_label)}<small class="mono text-muted" title="Status in the shop's standard vocabulary">${o.state}</small>${['needs_review', 'escalated'].includes(o.recovery_status) ? html`<a class="chip chip-warn" href="${url('/admin/recovery')}" title="A person was asked to look at this order">${o.recovery_status === 'escalated' ? 'escalated' : 'needs review'}</a>` : ''}${o.late ? html`<span class="chip chip-warn" title="Payment arrived after the 5-minute session ended">late payment</span>` : ''}</span>${o.last_error && o.status === 'FAILED' ? html`<small class="block mt-1 text-bad-700 truncate max-w-[14rem]" title="${o.last_error}">${o.last_error}</small>` : ''}</td>
     <td class="row-actions-cell"><span class="row-actions"><button type="button" class="btn btn-sm" data-open="${o.id}" aria-label="View order ${o.public_id}">${icon('eye', 'icon-sm')}<span class="md:sr-only 2xl:not-sr-only">View</span></button></span></td>
   </tr>`;
@@ -93,7 +97,7 @@ function renderList(d) {
     return;
   }
   root().innerHTML = String(html`<div class="tbl-wrap"><div class="tbl-scroll" tabindex="0" role="region" aria-label="Orders"><table class="tbl tbl-resp">
-    <thead><tr><th>Order</th><th>Service &amp; target</th><th class="num">Amount</th><th>Payment · mode</th><th class="num">Profit</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
+    <thead><tr><th>Order</th><th>Service &amp; target</th><th class="num">Amount</th><th>Payment · mode</th>${hasFinance() ? html`<th class="num">Profit</th>` : ''}<th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
     <tbody>${d.rows.map(rowHtml)}</tbody></table></div>${pager(d, 'orders')}</div>`);
 }
 
@@ -160,6 +164,31 @@ function recoveryHtml(o) {
       ${dd('Recovery status', r.recovery_status ? r.recovery_status.replace('_', ' ') : '—')}${r.escalated_at ? dd('Escalated', `${dt(r.escalated_at)} by ${r.escalated_by || 'the system'}`) : ''}${r.error ? dd('Latest error', r.error) : ''}</dl></div>`;
 }
 
+const COST_TYPE = { fulfilment: 'Fulfilment', payment_fee: 'Payment fee', other: 'Other cost' };
+const STATUS_CHIP = { actual: 'chip-ok', estimated: 'chip-info', incomplete: 'chip-warn' };
+
+/** Money of one order: what was paid and refunded for everyone; for roles with finance.view also every cost with its source, the contribution and how complete it is. */
+function moneyHtml(o, m) {
+  if (m.restricted) {
+    return html`<div class="od-section"><h3>Money</h3><div class="money-grid"><div class="stat"><small>Paid</small><strong>${inr(m.amount)}</strong></div><div class="stat"><small>Refunded</small><strong>${inr(m.refunded)}</strong></div></div></div>`;
+  }
+  const f = m.finance;
+  const lines = f.lines.filter((l) => l.active);
+  return html`<div class="od-section"><h3>Money</h3><div class="money-grid">
+      <div class="stat"><small>Paid</small><strong>${inr(m.amount)}</strong></div>
+      <div class="stat"><small>Refunded</small><strong>${inr(m.refunded)}</strong></div>
+      <div class="stat"><small>Provider cost${o.mode === 'MANUAL' ? ' (n/a)' : ''}</small><strong>${inr(m.cost)}</strong><span>${o.mode === 'MANUAL' ? 'manual orders have no provider cost' : o.cost_final ? 'final provider charge' : m.cost > 0 ? 'estimate until the provider confirms' : 'not known yet'}</span></div>
+      <div class="stat"><small>Contribution (before ads)</small><strong class="${m.gross < 0 ? 'amt-neg' : 'amt-pos'}" data-contribution>${inr(m.gross)}</strong><span><span class="chip ${STATUS_CHIP[f.cost_status] || 'chip-gray'}" data-cost-status="${f.cost_status}">${f.cost_status}</span></span></div></div>
+    ${f.reasons.length ? html`<ul class="mt-2 text-[13px] text-muted list-disc pl-5 grid gap-0.5">${f.reasons.map((r) => html`<li>${r}</li>`)}</ul>` : ''}
+    <h4 class="mt-3 mb-1 text-[13px] font-bold text-ink-soft">Cost lines</h4>
+    ${lines.length ? html`<ul class="divide-y divide-line" data-cost-lines>${lines.map((l) => html`<li class="flex items-start justify-between gap-3 py-2 text-sm"><span class="cell-main"><b>${COST_TYPE[l.type] || l.type} <span class="chip ${l.estimate ? 'chip-info' : 'chip-ok'}">${l.estimate ? 'estimate' : 'actual'}</span></b>
+        <small class="cell-prose">${l.source_label}${l.by ? ' · ' + l.by : ''} · ${fmtDateTime(l.at)}${l.note ? ' — ' + l.note : ''}</small></span>
+        <span class="shrink-0 text-right"><b class="num">${inr(l.amount_paise)}</b>${m.can_adjust && l.type === 'other' ? html`<button type="button" class="btn btn-sm btn-ghost block ml-auto" data-void-line="${l.id}">Remove</button>` : ''}</span></li>`)}</ul>`
+      : html`<p class="text-sm text-muted">No cost line is recorded for this order. Fee model: ${f.fee_model}.</p>`}
+    ${f.lines.some((l) => !l.active) ? html`<details class="fold mt-2"><summary>Earlier amounts (${f.lines.filter((l) => !l.active).length})</summary><ul class="mt-2 grid gap-1 text-[13px] text-muted">${f.lines.filter((l) => !l.active).map((l) => html`<li>${COST_TYPE[l.type] || l.type} ${inr(l.amount_paise)} · ${l.source_label} · ended ${fmtDateTime(l.ended_at)}${l.note ? ' — ' + l.note : ''}</li>`)}</ul></details>` : ''}
+    ${m.can_adjust ? html`<div class="mt-3"><button type="button" class="btn btn-sm" data-record-cost>${icon('plus', 'icon-sm')}<span>Record a cost…</span></button></div>` : ''}</div>`;
+}
+
 function drawerHtml(d) {
   const o = d.order;
   const m = d.money;
@@ -185,11 +214,7 @@ function drawerHtml(d) {
       ${dd('Customer link', html`<span class="inline-flex items-center gap-1"><a class="underline break-all" href="${o.access_url}" target="_blank" rel="noopener">${o.access_url.replace(/^https?:\/\//, '')}</a>${copyBtn(o.access_url, 'Copy customer link')}</span>`)}
     </dl></div>
 
-    ${m ? html`<div class="od-section"><h3>Money</h3><div class="money-grid">
-      <div class="stat"><small>Paid</small><strong>${inr(m.amount)}</strong></div>
-      <div class="stat"><small>Refunded</small><strong>${inr(m.refunded)}</strong></div>
-      <div class="stat"><small>Provider cost${o.mode === 'MANUAL' ? ' (manual)' : ''}</small><strong>${inr(m.cost)}</strong><span>${o.mode === 'MANUAL' ? 'not counted for manual orders' : o.cost_final ? 'final provider charge' : 'estimate until the provider confirms'}</span></div>
-      <div class="stat"><small>Profit (before ads)</small><strong class="${m.gross < 0 ? 'amt-neg' : 'amt-pos'}">${inr(m.gross)}</strong></div></div></div>` : ''}
+    ${m ? moneyHtml(o, m) : ''}
 
     <div class="od-section"><h3>Payment${d.payments.length > 1 ? 's (' + d.payments.length + ')' : ''}</h3>
       ${d.payments.length ? d.payments.map((p) => html`<div class="card !p-3 mb-2"><div class="flex items-center justify-between gap-2 mb-2">${payChip(p.status)}<b>${inr(p.amount_paise)}</b></div><dl class="dl">
@@ -246,6 +271,44 @@ async function openOrder(id, opener) {
     $('#od-body').innerHTML = errorState(e.message).toString();
     $('#od-body').querySelector('[data-retry]')?.addEventListener('click', () => openOrder(id, opener));
   }
+}
+
+/** Record (or correct) a cost of the open order: fulfilment and payment fee replace the earlier amount, "other" adds a line. The old amount stays as history. */
+async function recordCost() {
+  const o = drawerData.order;
+  const id = o.id;
+  const key = uuid();
+  await formDialog({
+    title: 'Record a cost', confirmText: 'Record',
+    message: `${o.public_id}: what did delivering this order really cost? A fulfilment cost or a payment fee replaces the earlier amount (it is kept in the history); “other” adds a further line.`,
+    fields: [
+      { name: 'type', label: 'Kind of cost', type: 'select', value: o.mode === 'MANUAL' ? 'fulfilment' : 'other', options: [['fulfilment', 'Fulfilment (delivering it by hand)'], ['payment_fee', 'Payment fee (what the gateway charged)'], ['other', 'Other direct cost']] },
+      { name: 'amount', label: 'Amount (₹)', required: true, inputmode: 'decimal', placeholder: 'e.g. 15.50', hint: '0 is allowed: it cost nothing.' },
+      { name: 'kind', label: 'Is it an actual or an estimate?', type: 'select', value: 'actual', options: [['actual', 'An actual amount I have paid or been charged'], ['estimate', 'My estimate']] },
+      { name: 'note', label: 'Why / where from?', type: 'textarea', required: true, max: 240, placeholder: 'e.g. Supplier invoice 1042' },
+    ],
+    submit: async (v) => {
+      await post(`finance/orders/${id}/costs`, { type: v.type, amount: v.amount, note: v.note, estimate: v.kind === 'estimate' }, { idempotency: key });
+      ok('Cost recorded');
+      paintDrawer(await get(`orders/${id}`));
+      load({ silent: true });
+    },
+  });
+}
+
+async function removeCostLine(lineId) {
+  const id = drawerData.order.id;
+  await formDialog({
+    title: 'Remove this cost line?', confirmText: 'Remove', tone: 'danger',
+    message: 'The line stops counting. It stays in the order’s history with your reason (and in the audit log).',
+    fields: [{ name: 'reason', label: 'Why is it wrong?', type: 'textarea', required: true, max: 200 }],
+    submit: async (v) => {
+      await post(`finance/costs/${lineId}/void`, { reason: v.reason }, { idempotency: uuid() });
+      ok('Cost line removed');
+      paintDrawer(await get(`orders/${id}`));
+      load({ silent: true });
+    },
+  });
 }
 
 async function runAction(action, btn) {
@@ -382,6 +445,8 @@ export default async function init() {
   on(root(), 'click', '[data-open]', (e, el) => { if (e.target.closest('a')) return; openOrder(el.dataset.open, el.matches('tr') ? el.querySelector('button[data-open]') || el : el); });
   $('#order-drawer').addEventListener('close', () => { openId = null; drawerData = null; writeUrl(); });
   on($('#order-drawer'), 'click', '[data-act]', (e, b) => { if (drawerData && !b.disabled) runAction(b.dataset.act, b); });
+  on($('#order-drawer'), 'click', '[data-record-cost]', () => { if (drawerData) recordCost(); });
+  on($('#order-drawer'), 'click', '[data-void-line]', (e, b) => { if (drawerData) removeCostLine(Number(b.dataset.voidLine)); });
   on($('#order-drawer'), 'click', '[data-copy]', (e, b) => copyText(b.dataset.copy));
   $('#approve-all').addEventListener('click', (e) => approveAll(e.currentTarget));
   onStatus(() => { /* the sidebar badge is handled by the shell */ });

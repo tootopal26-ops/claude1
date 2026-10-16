@@ -4,22 +4,28 @@ All figures are **integer paise** end to end (`Money` never uses floating point;
 
 ## 1. Profit rules
 
+> **Changed in the profit-intelligence phase:** a MANUAL order is no longer "100 % profit". Every cost an order has is subtracted exactly
+> once, and a cost that is **not known is labelled, never counted as ₹0**. The full definitions, the *actual / estimated / incomplete*
+> labels, the fee model, expenses and chargebacks are in [PROFIT-INTELLIGENCE.md](PROFIT-INTELLIGENCE.md); this page keeps the summary.
+
 ```
 Revenue (net)  = amount paid − refunds
-MANUAL order   : gross profit = revenue                      (100 % counts as profit before ad cost)
-AUTO order     : gross profit = revenue − provider cost
-Net profit     = gross profit − advertising cost
-Margin         = net profit ÷ revenue                        (one decimal place; "—" when revenue is 0)
+AUTO order     : gross profit (contribution) = revenue − provider cost − the order's cost lines (payment fee, other)
+MANUAL order   : gross profit (contribution) = revenue − the order's cost lines (fulfilment, payment fee, other)
+Net profit     = contribution − chargebacks − business expenses − advertising
+Margin         = net profit ÷ net revenue                    (one decimal place; "—" when net revenue is not above 0)
 ```
-The dashboard card is literally **`REVENUE − SMM COST − ADS COST = NET PROFIT`** (+ margin).
+The dashboard card is **`REVENUE − COSTS − ADS COST = NET PROFIT`** (+ margin), where *costs* = the provider cost **plus** fulfilment, payment
+fees, other order costs, chargebacks and business expenses; it also says whether any of those costs are incomplete.
 
 * **Provider (SMM) cost** is counted **once**, on the order that incurred it. While an order is in progress the cost is the *estimate* (`services.smm_cost_paise` at the time of purchase); when the provider reports its **actual charge** (cron sync) the actual figure replaces the estimate and the order is marked final. A provider-cancelled/failed order costs 0 (the provider refunded us). The charge is read as ₹ (INR only): a charge the provider declares in another currency is not converted — the ₹ estimate stays and the order is not marked final.
-* **Ad cost** is counted **once**, from qualified visitors — it is never also deducted inside an order's profit. That is why order- and service-level profit is "before ads", and only the dashboard's breakdown (and net profit KPIs) subtract advertising.
+* **Fulfilment, payment fee and other order costs** are append-only cost lines on the order (`order_costs`), snapshotted when the payment is verified (the fee from the fee model, the fulfilment cost from the service's standard cost) or recorded by an admin with a reason. Changing the fee model or a service's cost later never rewrites an order that was already paid.
+* **Ad cost** is counted **once**: the **actual** spend entered for a day, or — for a day with none — the CPC estimate from qualified visitors; never both. It is never also deducted inside an order's profit, which is why order- and service-level profit (*contribution*) is "before ads", and only the dashboard's breakdown and the net-profit KPIs subtract advertising.
 * **Refunds** reduce revenue (and therefore profit) from the day of the order's payment; partial refunds are supported. A refunded AUTO order keeps its provider cost (money already spent) unless the provider refunded it.
 * **Late payments** count on the day they were received.
 
 ### Service profit preview (Admin → Services)
-For each service: `price − provider cost (AUTO only) − estimated ad cost per order`.
+For each service: `price − provider cost (AUTO) or fulfilment cost (MANUAL, when stated) − estimated ad cost per order`. A MANUAL service whose fulfilment cost is **not stated** says so instead of inventing a number (its orders are labelled incomplete in the reports).
 *Estimated ad cost per order* uses **real data** when available — `qualified-visitor ad spend of the last 30 days ÷ paid orders in the last 30 days` (needs ≥ 10 paid orders) — otherwise `CPC ÷ assumed conversion rate` (default 4 %). The basis is printed under the preview so you always know where the number came from.
 
 ## 2. Visitor tracking & CPC
@@ -41,7 +47,7 @@ The CPC and the qualification time are edited in **Admin → Advertising**; ever
 | KPI | Definition |
 |---|---|
 | Revenue | net revenue of paid orders (paid − refunds), by the day of payment |
-| Profit | net profit = revenue − SMM cost − ads spend |
+| Profit | net profit = revenue − all costs (provider, fulfilment, fees, other, chargebacks, expenses) − ads spend |
 | Orders | orders created |
 | Visitors | distinct visitor-days |
 | Successful payments | payments confirmed |

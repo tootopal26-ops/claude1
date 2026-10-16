@@ -152,7 +152,8 @@ export { url as appUrl };
  * Modal with a small form. Resolves with an object of the entered values, or null when cancelled.
  * `submit(values)` may be async and throw ApiError: field errors are shown in place and the dialog stays open.
  *
- *   await formDialog({ title, message, fields: [{ name, label, type, value, placeholder, required, hint, rows }], confirmText, tone, submit })
+ *   await formDialog({ title, message, fields: [{ name, label, type, value, placeholder, required, hint, rows, options }], confirmText, tone, submit })
+ *   (type: text · number · date · textarea · select — a select takes `options: [[value, label], …]`)
  */
 export function formDialog({ title, message = '', fields = [], confirmText = 'Confirm', cancelText = 'Cancel', tone = 'primary', submit = null, extra = '' }) {
   return new Promise((resolve) => {
@@ -164,7 +165,9 @@ export function formDialog({ title, message = '', fields = [], confirmText = 'Co
       const id = `${tid}-${f.name}`;
       const control = f.type === 'textarea'
         ? html`<textarea class="textarea" id="${id}" name="${f.name}" rows="${f.rows || 3}" maxlength="${f.max || 400}" placeholder="${f.placeholder || ''}">${f.value || ''}</textarea>`
-        : html`<input class="input" id="${id}" name="${f.name}" type="${f.type || 'text'}" value="${f.value ?? ''}" placeholder="${f.placeholder || ''}" maxlength="${f.max || 200}" ${f.inputmode ? html`inputmode="${f.inputmode}"` : ''} autocomplete="off" ${f.required ? 'required' : ''}>`;
+        : f.type === 'select'
+          ? html`<select class="select" id="${id}" name="${f.name}">${(f.options || []).map(([v, l]) => html`<option value="${v}" ${String(v) === String(f.value ?? '') ? 'selected' : ''}>${l}</option>`)}</select>`
+          : html`<input class="input" id="${id}" name="${f.name}" type="${f.type || 'text'}" value="${f.value ?? ''}" placeholder="${f.placeholder || ''}" maxlength="${f.max || 200}" ${f.inputmode ? html`inputmode="${f.inputmode}"` : ''} autocomplete="off" ${f.required ? 'required' : ''}>`;
       return html`<div class="field"><label class="label${f.required ? ' req' : ''}" for="${id}">${f.label}</label>${control}${f.hint ? html`<p class="field-hint">${f.hint}</p>` : ''}</div>`;
     });
     dlg.innerHTML = String(html`<form class="dlg-panel" novalidate>
@@ -206,7 +209,7 @@ export function formDialog({ title, message = '', fields = [], confirmText = 'Co
     });
     dlg.addEventListener('close', () => { dlg.remove(); resolve(result); });
     openDialog(dlg);
-    form.querySelector('input,textarea')?.focus();
+    form.querySelector('input,textarea,select')?.focus();
     if (!fields.length) form.querySelector('[data-act="yes"]').focus();
   });
 }

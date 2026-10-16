@@ -76,7 +76,8 @@ final class AdminServices
     {
         $price = (int) $r['price_paise'];
         $cost = (int) $r['smm_cost_paise'];
-        $preview = Profit::servicePreview($price, $cost, (string) $r['mode'], $estAdPaise);
+        $fulfil = ($r['fulfil_cost_paise'] ?? null) !== null ? (int) $r['fulfil_cost_paise'] : null;
+        $preview = Profit::servicePreview($price, $cost, (string) $r['mode'], $estAdPaise, $fulfil);
         $tagId = ($r['tag_id'] ?? null) !== null ? (int) $r['tag_id'] : null;
         return [
             'id' => (int) $r['id'], 'code' => $r['code'], 'platform_id' => (int) $r['platform_id'], 'platform' => $r['platform_slug'], 'platform_name' => $r['platform_name'],
@@ -85,6 +86,7 @@ final class AdminServices
             'price_paise' => $price, 'price' => Money::plain($price), 'quantity' => (int) $r['quantity'], 'min_quantity' => (int) $r['min_quantity'], 'max_quantity' => (int) $r['max_quantity'],
             'mode' => $r['mode'], 'smm_provider_id' => $r['smm_provider_id'] !== null ? (int) $r['smm_provider_id'] : null, 'provider_name' => $r['provider_name'],
             'smm_service_id' => (string) ($r['smm_service_id'] ?? ''), 'smm_cost_paise' => $cost, 'smm_cost' => Money::plain($cost),
+            'fulfil_cost_paise' => $fulfil, 'fulfil_cost' => $fulfil !== null ? Money::plain($fulfil) : null,
             'tag_id' => $tagId, 'effective_tag' => Tags::effective($price, $tagId), 'is_premium' => (bool) $r['is_premium'],
             'icon_url' => upload_url($r['icon_path'] ?? null), 'status' => $r['status'], 'sort_order' => (int) $r['sort_order'],
             'paid_orders' => (int) $r['paid_orders'], 'updated_at' => (string) $r['updated_at'], 'preview' => $preview,
@@ -204,6 +206,25 @@ final class AdminServices
         if ($providerId !== null && Db::val('SELECT id FROM smm_providers WHERE id = ?', [$providerId]) === null) {
             $errors['smm_provider_id'] = 'That provider does not exist.';
         }
+        // What delivering ONE purchase of a MANUAL service costs us directly (staff time, a supplier …). Empty = not stated yet: orders are then
+        // labelled "incomplete" instead of being counted as free; 0 = stated, it really costs nothing. Only the amount is stored here — each paid order
+        // snapshots it (Finance::snapshotFulfilment), so changing it later never rewrites the profit of orders already delivered.
+        $fulfil = ($existing['fulfil_cost_paise'] ?? null) !== null ? (int) $existing['fulfil_cost_paise'] : null;
+        if (array_key_exists('fulfil_cost', $in)) {
+            $raw = $in['fulfil_cost'];
+            if ($raw === null || (is_string($raw) && trim($raw) === '')) {
+                $fulfil = null;
+            } else {
+                try {
+                    $fulfil = Money::parseRupees(is_scalar($raw) ? $raw : null);
+                    if ($fulfil > Finance::MAX_LINE_PAISE) {
+                        $errors['fulfil_cost'] = 'The fulfilment cost can be at most ' . Money::inr(Finance::MAX_LINE_PAISE) . '.';
+                    }
+                } catch (\InvalidArgumentException) {
+                    $errors['fulfil_cost'] = 'Enter the cost in rupees with at most two decimals, or leave it empty if you have not decided yet.';
+                }
+            }
+        }
         if ($mode === Status::AUTO) {
             if ($smmId === '' || !preg_match('/^[A-Za-z0-9_.\-]{1,64}$/D', $smmId)) {
                 $errors['smm_service_id'] = 'AUTO services need the SMM service ID from your provider (letters, numbers, - _ .).';
@@ -236,7 +257,7 @@ final class AdminServices
             'subtitle' => $subtitle !== '' ? $subtitle : null, 'description' => $description !== '' ? $description : null,
             'price_paise' => $price, 'quantity' => $quantity, 'min_quantity' => $min, 'max_quantity' => $max,
             'mode' => $mode, 'smm_provider_id' => $providerId, 'smm_service_id' => $smmId !== '' ? $smmId : null, 'smm_cost_paise' => $cost,
-            'tag_id' => $tagId, 'icon_path' => $iconPath,
+            'fulfil_cost_paise' => $fulfil, 'tag_id' => $tagId, 'icon_path' => $iconPath,
             'is_premium' => (int) (bool) $val('is_premium', false), 'status' => $status, 'sort_order' => (int) $sort, 'updated_at' => $now,
         ];
         if (!Tags::available()) {
@@ -273,6 +294,11 @@ final class AdminServices
         } else {
             if (in_array('price_paise', $changed, true)) {
                 Audit::log('service.price_changed', 'service', $savedId, ['code' => $code, 'from' => Money::plain((int) $existing['price_paise']), 'to' => Money::plain((int) $price)], $req, $admin);
+            }
+            if (in_array('fulfil_cost_paise', $changed, true)) {
+                Audit::log('service.fulfil_cost_changed', 'service', $savedId, [
+                    'code' => $code, 'from' => ($existing['fulfil_cost_paise'] ?? null) !== null ? Money::plain((int) $existing['fulfil_cost_paise']) : null, 'to' => $fulfil !== null ? Money::plain($fulfil) : null,
+                ], $req, $admin);
             }
             Audit::log('service.updated', 'service', $savedId, ['code' => $code, 'changed' => $changed], $req, $admin);
             // an icon that was replaced or removed is no longer needed

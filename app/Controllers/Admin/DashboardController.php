@@ -8,6 +8,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Services\AdminAccount;
 use App\Services\Dashboard;
+use App\Support\Permissions;
 
 final class DashboardController extends BaseController
 {
@@ -22,7 +23,12 @@ final class DashboardController extends BaseController
         if ($filters['range'] === '') {
             $filters['range'] = '7d';
         }
-        return $this->ok(['dashboard' => Dashboard::build($filters)]);
+        $d = Dashboard::build($filters);
+        // profit, costs and advertising figures are for roles with finance.view; for the others they are removed from the data, not just hidden
+        if (!Permissions::can((string) $this->admin($req)['role'], 'finance.view')) {
+            $d = Dashboard::withoutFinance($d);
+        }
+        return $this->ok(['dashboard' => $d]);
     }
 
     /** GET /admin/api/status — sidebar badge, setup checklist, cron health. */

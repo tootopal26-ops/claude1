@@ -72,8 +72,66 @@ final class OrdersController extends BaseController
         if (isset($data['detail']['order']['actions'])) {
             $data['detail']['order']['actions'] = $may($data['detail']['order']['actions']);
         }
+        if (!Permissions::can($role, 'finance.view')) {
+            $data = self::withoutFinance($data);
+        }
+        // what a role with finance.view may do with the order's money (the finance endpoints enforce it again)
+        $adjust = Permissions::can($role, 'finance.adjust');
+        foreach (['', 'detail'] as $wrap) {
+            $d = $wrap === '' ? $data : ($data[$wrap] ?? null);
+            if (is_array($d) && isset($d['money']) && is_array($d['money']) && empty($d['money']['restricted'])) {
+                $d['money']['can_adjust'] = $adjust;
+                $wrap === '' ? $data = $d : $data[$wrap] = $d;
+            }
+        }
         if (isset($data['rows'])) {
-            $data['can'] = ['bulk' => Permissions::can($role, 'orders.bulk'), 'act' => Permissions::can($role, 'orders.act'), 'recover' => Permissions::can($role, 'orders.recover')];
+            $data['can'] = ['bulk' => Permissions::can($role, 'orders.bulk'), 'act' => Permissions::can($role, 'orders.act'), 'recover' => Permissions::can($role, 'orders.recover'),
+                'finance' => Permissions::can($role, 'finance.view')];
+        }
+        return $data;
+    }
+
+    /**
+     * Costs, profit and the provider's own charge belong to roles with finance.view: for the others they are removed from the data (not merely hidden by the
+     * page), including the raw provider answers, which carry the charge.
+     *
+     * @param array<string,mixed> $data
+     * @return array<string,mixed>
+     */
+    private static function withoutFinance(array $data): array
+    {
+        $strip = static function (array $o): array {
+            unset($o['cost_paise'], $o['cost_final'], $o['profit_paise'], $o['cost_status'], $o['estimated_cost_paise'], $o['line_costs']);
+            return $o;
+        };
+        $money = static fn(?array $m): ?array => $m === null ? null : ['amount' => $m['amount'], 'refunded' => $m['refunded'], 'mode' => $m['mode'], 'restricted' => true];
+        $smm = static fn(array $list): array => array_map(static function (array $t): array {
+            $t['request'] = null;
+            $t['response'] = null;
+            return $t;
+        }, $list);
+        foreach ($data['rows'] ?? [] as $i => $row) {
+            $data['rows'][$i] = $strip($row);
+        }
+        foreach (['', 'detail'] as $wrap) {
+            $d = $wrap === '' ? $data : ($data[$wrap] ?? null);
+            if (!is_array($d)) {
+                continue;
+            }
+            if (isset($d['order'])) {
+                $d['order'] = $strip($d['order']);
+            }
+            if (array_key_exists('money', $d)) {
+                $d['money'] = $money($d['money']);
+            }
+            if (isset($d['smm'])) {
+                $d['smm'] = $smm($d['smm']);
+            }
+            if ($wrap === '') {
+                $data = $d;
+            } else {
+                $data[$wrap] = $d;
+            }
         }
         return $data;
     }

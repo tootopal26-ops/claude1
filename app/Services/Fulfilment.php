@@ -356,7 +356,12 @@ final class Fulfilment
             ]);
             Db::exec("INSERT INTO manual_orders (order_id, state, created_at, updated_at) VALUES (?, 'pending', ?, ?) ON DUPLICATE KEY UPDATE state = 'pending', updated_at = VALUES(updated_at)",
                 [$orderId, Clock::sql(), Clock::sql()]);
+            // it is now delivered by hand: that costs what the service's standard fulfilment cost says (none stated → the order stays "incomplete")
+            Finance::snapshotFulfilment((array) Orders::byId($orderId));
         });
+        if ($o['paid_day'] !== null) {
+            Analytics::markDirty((string) $o['paid_day']);
+        }
         Audit::log('order.action', 'order', $orderId, ['action' => 'move_to_manual'], $req, $admin);
     }
 

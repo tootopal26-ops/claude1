@@ -81,7 +81,8 @@ final class AdminOrders
         $whereSql = implode(' AND ', $where);
         $total = (int) Db::val("SELECT COUNT(*) {$from} WHERE {$whereSql}", $params);
         $rows = Db::all(
-            "SELECT o.*, p.gateway_order_id, p.provider_txn_id, p.status AS pay_row_status, pr.name AS provider_name {$from} WHERE {$whereSql} ORDER BY o.id DESC LIMIT ? OFFSET ?",
+            'SELECT o.*, ' . Profit::SQL_LINES . ' AS line_costs, CASE WHEN o.paid_at IS NULL THEN NULL WHEN ' . Finance::incompleteSql('o') . " THEN 'incomplete' WHEN " . Finance::estimatedSql('o') . " THEN 'estimated' ELSE 'actual' END AS cost_status, "
+            . "p.gateway_order_id, p.provider_txn_id, p.status AS pay_row_status, pr.name AS provider_name {$from} WHERE {$whereSql} ORDER BY o.id DESC LIMIT ? OFFSET ?",
             array_merge($params, [$per, ($page - 1) * $per])
         );
 
@@ -108,12 +109,13 @@ final class AdminOrders
     private static function row(array $o): array
     {
         $paid = $o['paid_at'] !== null;
-        $profit = $paid ? Profit::forOrder($o) : null;
+        $profit = $paid ? Profit::forOrder($o, (int) ($o['line_costs'] ?? 0)) : null;
         return [
             'id' => (int) $o['id'], 'public_id' => $o['public_id'], 'platform' => $o['platform_slug'], 'service' => $o['service_title'], 'target' => $o['target'], 'target_url' => $o['target_url'],
             'quantity' => (int) $o['quantity'], 'amount_paise' => (int) $o['amount_paise'], 'refunded_paise' => (int) $o['refunded_paise'],
             'payment_status' => $o['payment_status'], 'mode' => $o['mode'], 'provider' => $o['provider_name'], 'provider_order_id' => $o['provider_order_id'],
-            'cost_paise' => $paid ? ($profit['cost']) : null, 'cost_final' => (bool) $o['provider_cost_final'], 'profit_paise' => $profit['gross'] ?? null,
+            'cost_paise' => $paid ? $profit['cost'] + $profit['lines'] : null, 'cost_final' => (bool) $o['provider_cost_final'], 'profit_paise' => $profit['gross'] ?? null,
+            'cost_status' => $o['cost_status'] ?? null,
             'status' => $o['status'], 'status_label' => Status::orderLabel((string) $o['status']), 'state' => Status::specOrder($o), 'failure_kind' => $o['failure_kind'],
             'recovery_status' => $o['recovery_status'], 'late' => (bool) $o['late_payment'],
             'last_error' => $o['last_error'] !== null ? mb_substr((string) $o['last_error'], 0, 160) : null,
@@ -165,7 +167,10 @@ final class AdminOrders
         $smm = Db::all('SELECT * FROM smm_transactions WHERE order_id = ? ORDER BY id DESC LIMIT 25', [$id]);
         $manual = Db::one('SELECT m.*, a.username AS approver FROM manual_orders m LEFT JOIN admins a ON a.id = m.approved_by WHERE m.order_id = ?', [$id]);
         $paid = $o['paid_at'] !== null;
-        $profit = $paid ? Profit::forOrder($o) : null;
+        $finance = Finance::orderView($id);
+        $o['line_costs'] = $finance['line_costs_paise'];
+        $o['cost_status'] = $finance['cost_status'];
+        $profit = $paid ? Profit::forOrder($o, $finance['line_costs_paise']) : null;
 
         $pv = static fn(array $p): array => [
             'id' => (int) $p['id'], 'status' => $p['status'], 'provider' => $p['provider'], 'gateway_order_id' => $p['gateway_order_id'], 'utr' => $p['provider_txn_id'],
@@ -185,7 +190,7 @@ final class AdminOrders
                 'attempts' => (int) $o['provider_attempts'], 'next_attempt_at' => Clock::iso($o['next_attempt_at']), 'provider_status' => $o['provider_status'],
                 'estimated_cost_paise' => (int) $o['estimated_cost_paise'], 'smm_service_id' => $o['smm_service_id'], 'submitted_at' => Clock::iso($o['submitted_at']), 'completed_at' => Clock::iso($o['completed_at']),
             ],
-            'money' => $profit === null ? null : $profit + ['amount' => (int) $o['amount_paise'], 'refunded' => (int) $o['refunded_paise'], 'mode' => $o['mode']],
+            'money' => $profit === null ? null : $profit + ['amount' => (int) $o['amount_paise'], 'refunded' => (int) $o['refunded_paise'], 'mode' => $o['mode'], 'finance' => $finance],
             'payments' => array_map($pv, $payments),
             'webhooks' => array_map(static fn(array $w): array => [
                 'id' => (int) $w['id'], 'event_id' => $w['event_id'], 'type' => $w['event_type'], 'signature_valid' => (bool) $w['signature_valid'], 'status' => $w['status'],
