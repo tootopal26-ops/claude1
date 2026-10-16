@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-use App\Controllers\Admin\{AccountController, AuthController, DashboardController, FinanceController, IntegrationsController, JobsController, OrdersController, PageController, PaymentChecksController, RecoveryController, ServicesController, SettingsController, TagsController};
+use App\Controllers\Admin\{AccountController, AdsController, AuthController, DashboardController, FinanceController, IntegrationsController, JobsController, OrdersController, PageController, PaymentChecksController, RecoveryController, ServicesController, SettingsController, TagsController};
 use App\Core\Middleware;
 use App\Core\Router;
 
@@ -61,6 +61,16 @@ return static function (Router $r): void {
     $r->get("/admin/api/finance/orders/{$id}", [FinanceController::class, 'order'], $api);
     $r->post("/admin/api/finance/orders/{$id}/costs", [FinanceController::class, 'recordCost'], $api);
     $r->post("/admin/api/finance/costs/{$id}/void", [FinanceController::class, 'voidCost'], $api);
+
+    // ── ads intelligence: campaign figures, actual spend, the attribution window ──
+    $r->get('/admin/api/ads', [AdsController::class, 'overview'], $api);
+    $r->get('/admin/api/ads/spend', [AdsController::class, 'spend'], $api);
+    $r->post('/admin/api/ads/spend', [AdsController::class, 'addSpend'], $api);
+    $r->post('/admin/api/ads/spend/import', [AdsController::class, 'importSpend'], $api);
+    $r->post("/admin/api/ads/spend/{$id}/void", [AdsController::class, 'voidSpend'], $api);
+    $r->get('/admin/api/ads/settings', [AdsController::class, 'settings'], $api);
+    $r->put('/admin/api/ads/settings', [AdsController::class, 'saveSettings'], $api);
+    $r->post('/admin/api/ads/attribution/backfill', [AdsController::class, 'backfill'], $api);
 
     // ── payment checks: monitor, flags, thresholds, re-check ──
     $r->get('/admin/api/payment-checks/summary', [PaymentChecksController::class, 'summary'], $api);

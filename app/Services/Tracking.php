@@ -26,6 +26,15 @@ use App\Support\Ua;
  *              double-checks the elapsed time, then charges one CPC for that
  *              visitor-day (see Ads).
  *   bots     = filtered by user-agent so crawlers never cost "ad money".
+ *
+ * Measured on top of that (Ads Intelligence, docs/ADS-INTELLIGENCE.md) — none of it changes what is billed:
+ *   campaign = utm_source / medium / campaign / content / term, cleaned to a-z 0-9 _ . - and space (80 characters). A page load that brings a DIFFERENT
+ *              campaign tag starts a new session, so the earlier tag cannot keep the credit for a later click. The visitor-day is named after the first
+ *              campaign-tagged session of that day (visitor_days.utm_campaign), so visitors, qualified visitors and the CPC estimate split by campaign
+ *              add up exactly to the dashboard's totals.
+ *   page views  = page loads in the session (a refresh is a page view, never a new visitor or session).
+ *   returning   = the visitor (cookie) had an earlier visit. A cleared cookie looks like a new visitor: this is a lower bound, said so on the screen.
+ *   engaged     = qualified (the server-verified 3 s rule) AND opened a service card (reported by the browser; it never affects spend).
  */
 final class Tracking
 {
@@ -91,6 +100,10 @@ final class Tracking
             return $v === '' ? null : substr($v, 0, 80);
         };
         $utmSource = $utm($p['utm_source'] ?? null);
+        $utmMedium = $utm($p['utm_medium'] ?? null);
+        $utmCampaign = $utm($p['utm_campaign'] ?? null);
+        $utmContent = $utm($p['utm_content'] ?? null);
+        $utmTerm = $utm($p['utm_term'] ?? null);
         $source = Ua::source($utmSource, $refHost, is_string($ownHost) ? $ownHost : null);
         $device = Ua::device($ua);
         $path = self::cleanPath($p['path'] ?? '/');
@@ -111,27 +124,33 @@ final class Tracking
             $cookies[] = [self::VISITOR_COOKIE, $anon, Csrf::cookieOptions($req, $now + 400 * 86400)];
         }
 
+        // A click on a DIFFERENT campaign starts a new session: otherwise the earlier tag would keep the credit for a later click. The same campaign
+        // again (a reload of the tagged address) and pages without a tag stay in the session. It is the same visit, so "returning" carries over.
+        $previous = null;
+        if ($session !== null && $utmCampaign !== null && $utmCampaign !== ($session['utm_campaign'] ?? null)) {
+            $previous = $session;
+            $session = null;
+        }
+
         if ($session === null) {
             $skey = Crypto::token(16);
+            $returning = $previous !== null ? (int) $previous['returning_visitor'] : ((int) ($visitor['sessions_count'] ?? 0) > 0 ? 1 : 0);
             $sid = Db::insert('visitor_sessions', [
                 'visitor_id' => $visitor['id'], 'session_key' => $skey, 'day' => Tz::today(), 'started_at' => $sqlNow, 'last_hit_at' => $sqlNow,
                 'last_seen_at' => $sqlNow, 'landing_path' => $path, 'referrer_host' => $refHost, 'source' => $source,
-                'utm_source' => $utmSource, 'utm_medium' => $utm($p['utm_medium'] ?? null), 'utm_campaign' => $utm($p['utm_campaign'] ?? null),
-                'device_type' => $device, 'browser' => Ua::browser($ua), 'os' => Ua::os($ua),
+                'utm_source' => $utmSource, 'utm_medium' => $utmMedium, 'utm_campaign' => $utmCampaign, 'utm_content' => $utmContent, 'utm_term' => $utmTerm,
+                'page_views' => 1, 'returning_visitor' => $returning, 'device_type' => $device, 'browser' => Ua::browser($ua), 'os' => Ua::os($ua),
             ]);
             Db::exec('UPDATE visitors SET sessions_count = sessions_count + 1, last_seen_at = ? WHERE id = ?', [$sqlNow, $visitor['id']]);
-            $session = ['id' => $sid, 'qualified_at' => null, 'source' => $source, 'device_type' => $device];
+            $session = ['id' => $sid, 'qualified_at' => null, 'source' => $source, 'device_type' => $device, 'utm_campaign' => $utmCampaign];
             $cookies[] = [self::SESSION_COOKIE, $skey, Csrf::cookieOptions($req, 0)];
         } else {
-            Db::exec('UPDATE visitor_sessions SET last_hit_at = ?, last_seen_at = ? WHERE id = ?', [$sqlNow, $sqlNow, $session['id']]);
+            Db::exec('UPDATE visitor_sessions SET last_hit_at = ?, last_seen_at = ?, page_views = LEAST(page_views + 1, 60000) WHERE id = ?', [$sqlNow, $sqlNow, $session['id']]);
             Db::exec('UPDATE visitors SET last_seen_at = ? WHERE id = ?', [$sqlNow, $visitor['id']]);
         }
 
-        // One row per visitor per business day — the unit that is billed.
-        Db::exec(
-            'INSERT IGNORE INTO visitor_days (visitor_id, day, source, device_type, created_at) VALUES (?, ?, ?, ?, ?)',
-            [$visitor['id'], Tz::today(), $session['source'] ?? $source, $session['device_type'] ?? $device, $sqlNow]
-        );
+        // One row per visitor per business day — the unit that is billed. It is named after the first campaign-tagged session of the day.
+        self::touchDay((int) $visitor['id'], Tz::today(), (string) ($session['source'] ?? $source), (string) ($session['device_type'] ?? $device), $session['utm_campaign'] ?? null, $sqlNow);
 
         $ads = Ads::current();
         return [
@@ -166,16 +185,14 @@ final class Tracking
         $day = Tz::today();
         $charged = Db::tx(static function () use ($s, $ctx, $ads, $now, $day): bool {
             Db::exec('UPDATE visitor_sessions SET qualified_at = ? WHERE id = ? AND qualified_at IS NULL', [$now, $s['id']]);
-            Db::exec(
-                'INSERT IGNORE INTO visitor_days (visitor_id, day, source, device_type, created_at) VALUES (?, ?, ?, ?, ?)',
-                [$ctx['visitor']['id'], $day, $s['source'], $s['device_type'], $now]
-            );
+            self::touchDay((int) $ctx['visitor']['id'], $day, (string) $s['source'], (string) $s['device_type'], $s['utm_campaign'] ?? null, $now);
             // The first qualification of the day wins; later sessions the same day are free.
             return Db::exec(
                 'UPDATE visitor_days SET qualified = 1, qualified_at = ?, cpc_paise = ? WHERE visitor_id = ? AND day = ? AND qualified = 0',
                 [$now, $ads['cpc_paise'], $ctx['visitor']['id'], $day]
             ) === 1;
         });
+        self::engage((int) $s['id']);
         return ['ok' => true, 'qualified' => true, 'charged' => $charged];
     }
 
@@ -189,9 +206,33 @@ final class Tracking
         RateLimiter::enforce('track-ping', (string) $ctx['session']['id'], 30, 600);
         $secs = isset($p['active_s']) && is_numeric($p['active_s']) ? max(0, min(86400, (int) $p['active_s'])) : 0;
         $platform = isset($p['platform']) && is_string($p['platform']) && preg_match('/^[a-z0-9_-]{1,16}$/', $p['platform']) ? $p['platform'] : null;
+        $services = isset($p['services']) && is_numeric($p['services']) ? max(0, min(200, (int) $p['services'])) : 0;   // service cards opened (a count, never which)
         Db::exec(
-            'UPDATE visitor_sessions SET active_seconds = GREATEST(active_seconds, ?), last_seen_at = ?, platform_viewed = COALESCE(?, platform_viewed) WHERE id = ?',
-            [$secs, Clock::sql(), $platform, $ctx['session']['id']]
+            'UPDATE visitor_sessions SET active_seconds = GREATEST(active_seconds, ?), service_views = GREATEST(service_views, ?), last_seen_at = ?, platform_viewed = COALESCE(?, platform_viewed) WHERE id = ?',
+            [$secs, $services, Clock::sql(), $platform, $ctx['session']['id']]
+        );
+        self::engage((int) $ctx['session']['id']);
+    }
+
+    /** Engaged = qualified (verified by the server) AND opened a service card. Whichever happens second sets it, once. It never affects spend. */
+    private static function engage(int $sessionId): void
+    {
+        Db::exec(
+            'UPDATE visitor_sessions SET engaged_at = ? WHERE id = ? AND engaged_at IS NULL AND qualified_at IS NOT NULL AND service_views >= 1',
+            [Clock::sql(), $sessionId]
+        );
+    }
+
+    /**
+     * The visitor-day row (one per visitor per business day). A campaign is written only while the day has none, so the FIRST campaign-tagged session
+     * of the day names it and nothing later changes it.
+     */
+    private static function touchDay(int $visitorId, string $day, string $source, string $device, ?string $campaign, string $now): void
+    {
+        Db::exec(
+            'INSERT INTO visitor_days (visitor_id, day, source, device_type, utm_campaign, created_at) VALUES (?, ?, ?, ?, ?, ?) '
+            . 'ON DUPLICATE KEY UPDATE utm_campaign = COALESCE(utm_campaign, VALUES(utm_campaign))',
+            [$visitorId, $day, $source, $device, $campaign, $now]
         );
     }
 
@@ -217,9 +258,11 @@ final class Tracking
         }
         Db::exec("UPDATE visitors SET {$visitorCol} = 1 WHERE id = ?", [$visitorId]);
         $v = Db::one('SELECT first_source, device_type FROM visitors WHERE id = ?', [$visitorId]);
+        $campaign = $sessionId !== null ? Db::val('SELECT utm_campaign FROM visitor_sessions WHERE id = ?', [$sessionId]) : null;
         Db::exec(
-            "INSERT INTO visitor_days (visitor_id, day, source, device_type, {$col}, created_at) VALUES (?, ?, ?, ?, 1, ?) ON DUPLICATE KEY UPDATE {$col} = 1",
-            [$visitorId, Tz::today(), $v['first_source'] ?? 'direct', $v['device_type'] ?? 'desktop', Clock::sql()]
+            "INSERT INTO visitor_days (visitor_id, day, source, device_type, utm_campaign, {$col}, created_at) VALUES (?, ?, ?, ?, ?, 1, ?) "
+            . "ON DUPLICATE KEY UPDATE {$col} = 1, utm_campaign = COALESCE(utm_campaign, VALUES(utm_campaign))",
+            [$visitorId, Tz::today(), $v['first_source'] ?? 'direct', $v['device_type'] ?? 'desktop', $campaign, Clock::sql()]
         );
     }
 

@@ -108,13 +108,72 @@ await t.step('a visitor who orders and pays is flagged on the visitor, the sessi
   await ctx.close();
 });
 
+await t.step('Ads Intelligence tracking: all five campaign tags, page views, another campaign starts a new session, a service card + the qualifying time = an engaged session — billing unchanged', async () => {
+  resetLimits();
+  const d0 = dayRows();
+  const { ctx, page } = await newVisitor(); t.page = page;
+  const sess = () => rows("SELECT utm_source, utm_medium, utm_campaign, utm_content, utm_term, page_views, service_views, engaged_at IS NOT NULL, qualified_at IS NOT NULL, returning_visitor FROM visitor_sessions WHERE visitor_id = (SELECT MAX(id) FROM visitors) ORDER BY id");
+  const vday = () => sql(`SELECT COALESCE(utm_campaign, '-') FROM visitor_days WHERE visitor_id = (SELECT MAX(id) FROM visitors) AND day = '${day}'`);
+  await page.goto(BASE + '/?utm_source=Meta&utm_medium=CPC&utm_campaign=Diwali%20Reels&utm_content=reel-a&utm_term=followers', { waitUntil: 'load' }); await sleep(1300);
+  let s1 = sess();
+  t.eq(s1.length, 1);
+  t.eq(s1[0].slice(0, 5), ['meta', 'cpc', 'diwali reels', 'reel-a', 'followers'], 'every tag is kept, lower-cased and cleaned');
+  t.eq([s1[0][5], s1[0][6], s1[0][7], s1[0][8]], ['1', '0', '0', '0'], 'one page view, no card, not engaged, not yet qualified');
+  t.eq(vday(), 'diwali reels', 'the visitor-day is named after the campaign');
+  await page.reload({ waitUntil: 'load' }); await sleep(900);
+  t.eq(sess().length, 1, 'a reload of the tagged address stays in the session'); t.eq(sess()[0][5], '2', 'and is a second page view');
+  // open a service card: the browser reports it; the qualifying time then makes the session engaged
+  await page.locator('[data-service] [data-action=buy]').first().click();
+  await sleep(3800);
+  s1 = sess();
+  t.eq([s1[0][6], s1[0][7], s1[0][8]], ['1', '1', '1'], 'one card opened, engaged, qualified');
+  const d1 = dayRows(); t.eq([d1[1] - d0[1], d1[2] - d0[2]], [1, 108], 'one qualified visitor, ONE ₹1.08 charge — engagement bills nothing');
+  // a click on ANOTHER campaign starts a new session; the day keeps the first campaign and is not charged again
+  await page.goto(BASE + '/?utm_campaign=winter', { waitUntil: 'load' }); await sleep(1300);
+  s1 = sess();
+  t.eq(s1.map((r) => r[2]), ['diwali reels', 'winter'], 'two sessions, two campaigns');
+  t.eq([s1[1][5], s1[1][7]], ['1', '0'], 'the new session starts at one page view and is not engaged');
+  t.eq(s1[1][9], '0', 'the same visit is not a returning visitor');
+  t.eq(vday(), 'diwali reels', 'nothing later renames the visitor-day');
+  await sleep(3600);
+  t.eq(dayRows()[2] - d0[2], 108, 'no second charge the same day');
+  // a hostile tag is cleaned before it is stored
+  const { ctx: c2, page: p2 } = await newVisitor();
+  await p2.goto(BASE + '/?utm_campaign=%22%3E%3Cimg%20src%3Dx%20onerror%3Dalert(1)%3E&utm_content=' + encodeURIComponent('x'.repeat(200)), { waitUntil: 'load' }); await sleep(1300);
+  const hostile = rows("SELECT utm_campaign, CHAR_LENGTH(utm_content) FROM visitor_sessions WHERE visitor_id = (SELECT MAX(id) FROM visitors)")[0];
+  t.ok(/^[a-z0-9_.\- ]{1,80}$/.test(hostile[0]), 'campaign: ' + hostile[0]); t.eq(hostile[1], '80', 'content is cut at 80 characters');
+  await c2.close(); await ctx.close();
+});
+
+await t.step('a visitor from a campaign who pays is credited to it at verification — once, from server-side data — and Ads Intelligence shows it', async () => {
+  resetLimits();
+  const { ctx, page } = await newVisitor(); t.page = page;
+  await page.goto(BASE + '/?utm_source=meta&utm_medium=cpc&utm_campaign=spring-sale', { waitUntil: 'load' }); await sleep(1100);
+  const { ref } = await placeOrder(page, 'ig-likes-100', 'https://www.instagram.com/p/AttributedBuyer1/');
+  const oid = payment(ref).id;
+  t.eq(Number(sql(`SELECT COUNT(*) FROM campaign_attribution WHERE order_id = ${oid}`)), 0, 'nothing is credited before the payment is verified');
+  await payOk(ref); await page.waitForSelector('[data-view=paid]:not([hidden])', { timeout: 9000 });
+  t.eq(rows(`SELECT model, window_days, touch_kind, utm_source, utm_medium, utm_campaign FROM campaign_attribution WHERE order_id = ${oid}`)[0], ['last_non_direct', '7', 'campaign', 'meta', 'cpc', 'spring-sale']);
+  // the browser cannot change it afterwards: a later visit through another campaign leaves the credited row alone
+  await page.goto(BASE + '/?utm_campaign=someone-else', { waitUntil: 'load' }); await sleep(1100);
+  t.eq(sql(`SELECT utm_campaign FROM campaign_attribution WHERE order_id = ${oid}`), 'spring-sale');
+  const j = await adminGet('/admin/api/ads?range=today');
+  const row = j.ads.campaigns.find((c) => c.key === 'spring-sale');
+  t.ok(row, 'the campaign is on the Ads page'); t.eq([row.orders, row.customers, row.attributed_revenue], [1, 1, 500], 'one verified order, one customer, ₹5 of attributed revenue');
+  await ctx.close();
+});
+
 await t.step('the admin dashboard reconciles to the penny with the raw tracking rows (visitors, qualified, ad spend, CPC)', async () => {
   const d = dayRows();
   const j = await adminGet('/admin/api/dashboard?range=today'); const k = j.dashboard.kpis.today;
-  t.eq(k.visitors.value, d[0], 'visitors today'); t.eq(k.qualified, d[1], 'qualified visitors today'); t.eq(k.ads.value, d[2], 'ad spend today (paise)');
+  // advertising cost = the ACTUAL spend entered for a day, else the CPC estimate (qualified × CPC) — never both; restated here from the raw rows
+  const spend = (from, to) => Number(sql(`SELECT COALESCE((SELECT SUM(amount_paise + gst_paise) FROM ad_daily_spend WHERE voided_at IS NULL AND spend_day BETWEEN '${from}' AND '${to}'), 0)`))
+    + Number(sql(`SELECT COALESCE(SUM(cpc_paise), 0) FROM visitor_days WHERE qualified = 1 AND day BETWEEN '${from}' AND '${to}' AND day NOT IN (SELECT spend_day FROM ad_daily_spend WHERE voided_at IS NULL)`));
+  t.eq(k.visitors.value, d[0], 'visitors today'); t.eq(k.qualified, d[1], 'qualified visitors today'); t.eq(k.ads.value, spend(day, day), 'ad spend today (paise)');
+  t.eq(spend(day, day), d[2], 'with no actual spend entered for today, that is exactly the CPC charges');
   t.eq(j.dashboard.meta.cpc_paise, 108); t.eq(j.dashboard.meta.qualify_seconds, 3);
-  const lifetime = rows("SELECT COUNT(*), COALESCE(SUM(qualified), 0), COALESCE(SUM(cpc_paise), 0) FROM visitor_days")[0].map(Number);
-  t.eq(j.dashboard.kpis.lifetime.visitors.value, lifetime[0], 'lifetime visitors'); t.eq(j.dashboard.kpis.lifetime.ads.value, lifetime[2], 'lifetime ad spend');
+  const lifetime = rows("SELECT COUNT(*), COALESCE(SUM(qualified), 0) FROM visitor_days")[0].map(Number);
+  t.eq(j.dashboard.kpis.lifetime.visitors.value, lifetime[0], 'lifetime visitors'); t.eq(j.dashboard.kpis.lifetime.ads.value, spend('2000-01-01', day), 'lifetime ad spend');
 });
 
 const failed = t.finish();

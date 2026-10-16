@@ -79,7 +79,7 @@ The existing values stay (they are stored in rows, used by the UI, 185 tests and
 - [x] **Phase 3** — payment risk flags, thresholds, monitoring screen, safe reconcile actions, webhook cross-check, role enforcement on the existing admin. See [PAYMENT-CHECKS.md](PAYMENT-CHECKS.md).
 - [x] **Phase 4** — recovery queue + actions (Admin → Order recovery), safe retry policy, per-job cron entry points with locks and run history (`php bin/cron.php recovery`), "run now" / dry run. See [ORDER-RECOVERY.md](ORDER-RECOVERY.md).
 - [x] **Phase 5a** — Profit Intelligence: cost lines (fulfilment, payment fee, other), the fee model, expenses and chargebacks, the profit statement with *actual / estimated / incomplete* labels, reconciliation with append-only fixes, per-service fulfilment cost, role-gated profit (Admin → Finance). See [PROFIT-INTELLIGENCE.md](PROFIT-INTELLIGENCE.md).
-- [ ] **Phase 5b** — Ads Intelligence (campaign attribution, actual spend entry, ad metrics, screens).
+- [x] **Phase 5b** — Ads Intelligence: campaign tracking (five tags, page views, engaged, returning), attribution of verified orders (last non-direct touch, configurable window, stored once), actual vs estimated spend, campaign metrics with confidence labels, spend entry / CSV import (Admin → Ads Intelligence). See [ADS-INTELLIGENCE.md](ADS-INTELLIGENCE.md).
 - [ ] **Phase 6** — Business Watchdog, alerts, deterministic Daily Report.
 - [ ] **Phase 7** — AI adapter (optional), AI commentary, Support Assistant (rules-based; AI optional).
 - [ ] **Phase 8** — Adaptive pricing: settings & budget maths, price rules, cohorts, quotes, experiments, rollback; Simulator, Profit Guard, Learning History.

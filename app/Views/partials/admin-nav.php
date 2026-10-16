@@ -1,7 +1,7 @@
 <?php
 /** Admin navigation (rendered twice: desktop sidebar and mobile drawer). Expects: $page, $admin, $site, $idp */
 $groups = [
-    ['Overview', [['dashboard', 'Dashboard', 'layout-dashboard'], ['finance', 'Finance', 'badge-indian-rupee']]],
+    ['Overview', [['dashboard', 'Dashboard', 'layout-dashboard'], ['finance', 'Finance', 'badge-indian-rupee'], ['ads', 'Ads Intelligence', 'target']]],
     ['Sales', [['orders', 'Orders', 'package'], ['recovery', 'Order recovery', 'life-buoy', true], ['payments', 'Payments', 'credit-card'], ['payment-checks', 'Payment checks', 'shield-alert', true], ['services', 'Services', 'layers'], ['tags', 'Tags & Badges', 'tags', true]]],
     ['Configuration', [['website', 'Website', 'globe'], ['gateway', 'Payment gateway', 'wallet'], ['smm', 'SMM API', 'server'], ['advertising', 'Advertising', 'megaphone']]],
     ['Account', [['security', 'Security', 'shield-check'], ['audit', 'Audit log', 'history'], ['system', 'System', 'activity']]],

@@ -59,6 +59,12 @@ This document describes what protects the shop, how each protection was **verifi
 * **Nothing is overwritten, nothing is deleted:** order cost lines are append-only (a correction ends the old line; a unique live key makes two live lines impossible), expenses are voided with a reason and stay visible, and every change is in the audit log and on the order's timeline ✔. Reconciliation fixes only ever add lines, dry run first, idempotent ✔.
 * Amounts are parsed from rupee strings into integer paise on the server with bounds (a line ≤ ₹1,00,000, an expense ≤ ₹10,00,000, a fee model ≤ 20 % or ₹1,000); a chargeback must name an existing order ✔. See [PROFIT-INTELLIGENCE.md](PROFIT-INTELLIGENCE.md).
 
+### Advertising data
+* **Campaign tags are untrusted input** and are cleaned on the server before they are stored (lower-case, `a–z 0–9 _ . -` and space, ≤ 80 characters; markup, quotes and control characters dropped), so a hostile `utm_*` value can neither inject markup nor SQL ✔ (tested with real payloads, and in a real browser). The page escapes everything it shows.
+* **Attribution cannot be steered afterwards:** an order is credited once, at verification, from session rows the server wrote earlier, with the model and window used; nothing the browser sends after the payment, and no later setting, rewrites it ✔. A different campaign click starts a new session, so an older tag cannot keep the credit.
+* **No new personal data:** the tracker still stores no IP address, no fingerprint and no raw user-agent; the new fields are tags, counts and timestamps. Engagement ("opened a service card") is a count reported by the browser and never affects spend ✔.
+* Reading needs `ads.view` (owner, manager, analyst), entering / importing / voiding spend, changing the window and attributing orders need `ads.manage` (owner, manager); support sees none of it. A refused call changes nothing and writes no audit row ✔. See [ADS-INTELLIGENCE.md](ADS-INTELLIGENCE.md).
+
 ### Abuse protection
 Database-backed rate limits (works on shared hosting, no Redis): checkout 8/10 min + 40/h per IP, lookups and polls per minute, beacons, webhook flood cap, admin sign-in. Order/payment tokens are 128-bit capabilities; guessing is rate-limited and tested ✔. Bots are excluded from analytics so they cannot generate ad cost.
 

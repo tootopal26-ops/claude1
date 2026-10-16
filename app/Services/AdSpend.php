@@ -88,6 +88,12 @@ final class AdSpend
         return ['rows' => array_map([self::class, 'shape'], $rows), 'total' => $total, 'page' => $page, 'pages' => $pages, 'per' => $per, 'sum_paise' => (int) $sums['s'], 'gst_paise' => (int) $sums['g']];
     }
 
+    /** The campaign names that have a spend entry ('' = the day's total, not split by campaign), for the filter. @return list<string> */
+    public static function campaigns(): array
+    {
+        return array_map('strval', Db::col('SELECT DISTINCT campaign FROM ad_daily_spend ORDER BY campaign'));
+    }
+
     /** @param array<string,mixed> $r @return array<string,mixed> */
     private static function shape(array $r): array
     {

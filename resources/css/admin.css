@@ -146,6 +146,12 @@
     .kpi-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
     .kpi-grid > :nth-child(7):last-child { grid-column: auto; }
   }
+  /* Ads Intelligence: twelve cards in rows of four (the dashboard's seven-across layout would orphan them) */
+  .kpi-grid-ads > :last-child:nth-child(odd) { grid-column: auto; }
+  @media (min-width: 768px) { .kpi-grid-ads > :nth-child(7):last-child { grid-column: auto; } }
+  @media (min-width: 1536px) { .kpi-grid-ads { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .field-narrow { max-width: 18rem; }
+  .field-error span { white-space: pre-line; }
   .kpi-skel { height: 8.5rem; border-radius: var(--radius-lg); }
   .kpi {
     position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; padding: 0.95rem 1rem 0.8rem;
@@ -300,6 +306,9 @@
   .tbl tr[data-open] { cursor: pointer; }
   .tbl .num, .tbl th.num { text-align: right; font-variant-numeric: tabular-nums; }
   .tbl td.num small { white-space: nowrap; }
+  /* a table with many numeric columns: tighter cells and headers that may wrap onto two lines, so it fits without sideways scrolling */
+  .tbl-dense th, .tbl-dense td { padding-inline: 0.5rem; }
+  .tbl-dense th { white-space: normal; line-height: 1.25; letter-spacing: 0.05em; vertical-align: bottom; }
   .tbl .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8125rem; }
   .cell-main { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
   .cell-main b { font-weight: 700; }

@@ -1,5 +1,5 @@
-// Privacy-conscious visitor analytics. Sends: path, referrer, utm_*, and whether this is the first page
-// of the browser tab. No IP, no fingerprinting — see App\Services\Tracking for the server side.
+// Privacy-conscious visitor analytics. Sends: path, referrer, utm_* (source, medium, campaign, content, term), whether this is the first
+// page of the browser tab, and how many different service cards were opened. No IP, no fingerprinting — see App\Services\Tracking.
 import { base, readJson } from './core/dom.js';
 
 (function () {
@@ -13,6 +13,15 @@ import { base, readJson } from './core/dom.js';
 
   let platform = null;
   window.addEventListener('smb:platform', (e) => { platform = e.detail; });
+
+  // "engaged" = stayed the qualifying time AND opened a service card: count the different cards opened (never which) and tell the server at once
+  const opened = new Set();
+  window.addEventListener('smb:service', (e) => {
+    const id = String(e.detail || '');
+    if (!id || opened.has(id) || opened.size >= 50) return;
+    opened.add(id);
+    sendPing();
+  });
 
   // visible-time accounting (hidden tabs do not count)
   let visibleMs = 0, last = performance.now(), qualified = false, qualifyAfter = 3000, timer = null;
@@ -28,6 +37,7 @@ import { base, readJson } from './core/dom.js';
     const res = await post('hit', {
       first, path: location.pathname, ref: document.referrer || '',
       utm_source: q.get('utm_source') || '', utm_medium: q.get('utm_medium') || '', utm_campaign: q.get('utm_campaign') || '',
+      utm_content: q.get('utm_content') || '', utm_term: q.get('utm_term') || '',
     });
     if (!res || !res.tracked) return;
     try { sessionStorage.setItem('smb_hit', '1'); } catch { /* ignore */ }
@@ -45,11 +55,12 @@ import { base, readJson } from './core/dom.js';
     }, 250);
   }
 
-  const sendPing = () => {
+  function sendPing() {
     tick();
-    const blob = new Blob([JSON.stringify({ active_s: Math.round(visibleMs / 1000), platform })], { type: 'application/json' });
-    if (!(navigator.sendBeacon && navigator.sendBeacon(api('ping'), blob))) post('ping', { active_s: Math.round(visibleMs / 1000), platform });
-  };
+    const body = { active_s: Math.round(visibleMs / 1000), platform, services: opened.size };
+    const blob = new Blob([JSON.stringify(body)], { type: 'application/json' });
+    if (!(navigator.sendBeacon && navigator.sendBeacon(api('ping'), blob))) post('ping', body);
+  }
   document.addEventListener('visibilitychange', () => { if (document.hidden) sendPing(); else last = performance.now(); });
   window.addEventListener('pagehide', sendPing);
 

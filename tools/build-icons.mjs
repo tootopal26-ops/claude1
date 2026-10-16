@@ -11,7 +11,7 @@ const LUCIDE = [
   'qr-code', 'smartphone', 'monitor', 'tablet', 'megaphone', 'indian-rupee', 'percent', 'rocket', 'life-buoy', 'power', 'sliders-horizontal',
   'gem', 'crown', 'play', 'loader-circle', 'shield-alert', 'ban', 'rotate-ccw', 'undo-2', 'square-check-big', 'list-checks', 'store', 'webhook',
   'file-text', 'database', 'hourglass', 'badge-indian-rupee', 'panel-left', 'ellipsis', 'ellipsis-vertical', 'arrow-left', 'send', 'wifi-off', 'circle-x',
-  'tag', 'tags', 'palette',
+  'tag', 'tags', 'palette', 'target', 'funnel', 'mouse-pointer-click', 'shopping-cart',
 ];
 
 const symbols = [];

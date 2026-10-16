@@ -20,6 +20,7 @@ final class PageController extends BaseController
     public const PAGES = [
         'dashboard'      => ['Dashboard', 'admin/dashboard', 'dashboard.view'],
         'finance'        => ['Finance', 'admin/finance', 'finance.view'],
+        'ads'            => ['Ads Intelligence', 'admin/ads', 'ads.view'],
         'orders'         => ['Orders', 'admin/orders', 'orders.view'],
         'recovery'       => ['Order recovery', 'admin/recovery', 'orders.view'],
         'payments'       => ['Payments', 'admin/payments', 'payments.view'],

@@ -158,6 +158,11 @@ final class Settlement
         Risk::flush();
         if ($out['result'] === self::SETTLED && isset($out['day'])) {
             Tracking::onPaymentSucceeded($out['visitor_id'] ?? null, $out['session_id'] ?? null);
+            try {
+                Attribution::record((int) $out['order_id']);       // which campaign gets the credit — decided here, once, from what the server recorded earlier
+            } catch (\Throwable $e) {
+                Log::warning('Campaign attribution failed', ['order' => $out['order_id'], 'error' => $e->getMessage()]);   // the payment is settled; the analytics job fills it in
+            }
             Analytics::markDirty((string) $out['day']);
             if ($source === 'admin' && isset($evidence['admin'])) {
                 Audit::log('payment.confirmed_manually', 'payment', $paymentId, ['note' => $evidence['note'] ?? ''], null, $evidence['admin']);

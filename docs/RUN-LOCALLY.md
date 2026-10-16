@@ -1,6 +1,6 @@
 # Run the whole site on your own computer (demo mode)
 
-One command gives you the complete application — storefront, admin panel, a **fake payment gateway** and a **fake SMM panel** — filled with about 75 days of demo orders, so you can click through everything without a hosting account, Apache or a real gateway.
+One command gives you the complete application — storefront, admin panel, a **fake payment gateway** and a **fake SMM panel** — filled with about 75 days of demo orders, so you can click through everything without a hosting account, Apache or a real gateway. The demo history includes three ad campaigns (visits, credited orders and some actual ad spend) for **Admin → Ads Intelligence**; it is synthetic data.
 
 ```bash
 php tools/local-demo.php

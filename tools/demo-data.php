@@ -42,7 +42,7 @@ $rand = static fn(int $n): string => substr(bin2hex(random_bytes((int) ceil($n /
 
 echo "Wiping previous demo data…\n";
 Db::exec('SET FOREIGN_KEY_CHECKS = 0');
-foreach (['order_status_history', 'smm_transactions', 'manual_orders', 'webhook_events', 'payments', 'orders', 'users', 'visitor_days', 'visitor_sessions', 'visitors', 'analytics_daily', 'idempotency_keys', 'rate_limits'] as $t) {
+foreach (['order_status_history', 'smm_transactions', 'manual_orders', 'webhook_events', 'payments', 'order_costs', 'campaign_attribution', 'ad_daily_spend', 'orders', 'users', 'visitor_days', 'visitor_sessions', 'visitors', 'analytics_daily', 'idempotency_keys', 'rate_limits'] as $t) {
     Db::exec("TRUNCATE TABLE `{$t}`");
 }
 Db::exec('SET FOREIGN_KEY_CHECKS = 1');
@@ -104,15 +104,31 @@ for ($i = $days - 1; $i >= 0; $i--) {
             $source = $pick(['instagram' => 38, 'youtube' => 27, 'direct' => 25, 'other' => 10]);
             $device = $pick(['mobile' => 71, 'desktop' => 24, 'tablet' => 5]);
             $qualified = $chance(0.62);
+            // a share of the traffic comes from tagged ad links (what Ads Intelligence splits by campaign)
+            $campaign = match ($source) {
+                'instagram' => $pick(['diwali-reels' => 55, 'creator-collab' => 25, '' => 20]),
+                'youtube' => $pick(['yt-shorts-push' => 70, '' => 30]),
+                default => $pick(['creator-collab' => 10, '' => 90]),
+            };
+            $campaign = $campaign === '' ? null : $campaign;
+            $utmSource = $campaign === null ? null : ($source === 'youtube' ? 'google' : 'meta');
             $vid = Db::insert('visitors', [
                 'anon_id' => $rand(32), 'first_seen_at' => Clock::sql($ts), 'last_seen_at' => Clock::sql($ts + 60), 'first_landing_path' => '/', 'first_source' => $source,
                 'device_type' => $device, 'browser' => $device === 'desktop' ? 'Chrome' : 'Chrome', 'os' => $device === 'desktop' ? 'Windows' : 'Android', 'sessions_count' => 1,
             ]);
+            $engaged = $qualified && $chance(0.55);
+            $sid = Db::insert('visitor_sessions', [
+                'visitor_id' => $vid, 'session_key' => $rand(32), 'day' => $day, 'started_at' => Clock::sql($ts), 'last_hit_at' => Clock::sql($ts), 'last_seen_at' => Clock::sql($ts + 60),
+                'active_seconds' => $qualified ? mt_rand(5, 240) : mt_rand(0, 2), 'qualified_at' => $qualified ? Clock::sql($ts + 4) : null, 'engaged_at' => $engaged ? Clock::sql($ts + 12) : null,
+                'page_views' => $qualified ? mt_rand(1, 4) : 1, 'service_views' => $engaged ? mt_rand(1, 3) : 0, 'returning_visitor' => $chance(0.12) ? 1 : 0,
+                'landing_path' => '/', 'source' => $source, 'utm_source' => $utmSource, 'utm_medium' => $campaign === null ? null : 'cpc', 'utm_campaign' => $campaign,
+                'device_type' => $device, 'browser' => 'Chrome', 'os' => $device === 'desktop' ? 'Windows' : 'Android',
+            ]);
             Db::insert('visitor_days', [
                 'visitor_id' => $vid, 'day' => $day, 'qualified' => $qualified ? 1 : 0, 'qualified_at' => $qualified ? Clock::sql($ts + 4) : null,
-                'cpc_paise' => $qualified ? $cpc : 0, 'source' => $source, 'device_type' => $device, 'created_at' => Clock::sql($ts),
+                'cpc_paise' => $qualified ? $cpc : 0, 'source' => $source, 'device_type' => $device, 'utm_campaign' => $campaign, 'created_at' => Clock::sql($ts),
             ]);
-            $dayVisitors[] = ['id' => $vid, 'ts' => $ts, 'qualified' => $qualified];
+            $dayVisitors[] = ['id' => $vid, 'ts' => $ts, 'qualified' => $qualified, 'session' => $sid, 'campaign' => $campaign, 'source' => $source, 'utm_source' => $utmSource];
             $stats['visitors']++;
         }
     });
@@ -164,7 +180,7 @@ for ($i = $days - 1; $i >= 0; $i--) {
         Db::tx(static function () use ($vis, $svc, $day, $createdTs, $paidTs, $amount, $status, $payStatus, $refunded, $cost, $platform, $target, $targetUrl, $providerOrder, $mode, $outcome, $provider, $rand, $utr, $chance, &$stats, $nowTs): void {
             $paidDay = $paidTs ? Tz::dayOf($paidTs) : null;
             $orderId = Db::insert('orders', [
-                'public_id' => Orders::newPublicId(), 'access_token' => $rand(32), 'visitor_id' => $vis['id'], 'service_id' => $svc['id'], 'platform_id' => $svc['platform_id'],
+                'public_id' => Orders::newPublicId(), 'access_token' => $rand(32), 'visitor_id' => $vis['id'], 'visitor_session_id' => $vis['session'], 'service_id' => $svc['id'], 'platform_id' => $svc['platform_id'],
                 'platform_slug' => $platform, 'service_code' => $svc['code'], 'service_title' => $svc['title'], 'service_type' => $svc['type'], 'mode' => $mode, 'quantity' => $svc['quantity'],
                 'amount_paise' => $amount, 'target' => $target, 'target_url' => $targetUrl, 'status' => $status, 'payment_status' => $payStatus, 'refunded_paise' => $refunded,
                 'late_payment' => 0, 'smm_provider_id' => $mode === 'AUTO' ? ($provider['id'] ?? null) : null, 'smm_service_id' => $mode === 'AUTO' ? $svc['smm_service_id'] : null,
@@ -222,10 +238,36 @@ for ($i = $days - 1; $i >= 0; $i--) {
                 ]);
             }
             Db::exec('UPDATE visitor_days SET order_created = 1, payment_succeeded = ? WHERE visitor_id = ? AND day = ?', [$paidTs ? 1 : 0, $vis['id'], Tz::dayOf($vis['ts'])]);
+            Db::exec('UPDATE visitor_sessions SET order_created = 1, payment_succeeded = ? WHERE id = ?', [$paidTs ? 1 : 0, $vis['session']]);
+            if ($paidTs) {      // credited the way the shop does it at verification: the visit's campaign, else its source, else direct
+                $kind = $vis['campaign'] !== null ? 'campaign' : ($vis['source'] !== 'direct' ? 'source' : 'direct');
+                Db::insert('campaign_attribution', [
+                    'order_id' => $orderId, 'visitor_session_id' => $vis['session'], 'model' => 'last_non_direct', 'window_days' => 7, 'touch_kind' => $kind,
+                    'utm_source' => $vis['utm_source'], 'utm_medium' => $vis['campaign'] === null ? null : 'cpc', 'utm_campaign' => $vis['campaign'],
+                    'source' => $kind === 'direct' ? 'direct' : $vis['source'], 'touch_at' => $kind === 'direct' ? null : Clock::sql($vis['ts']), 'attributed_at' => Clock::sql($paidTs),
+                ]);
+            }
             $stats['orders']++;
             $stats['paid'] += $paidTs ? 1 : 0;
         });
     }
+}
+
+// actual ad spend for the last 24 days (two paid campaigns); a few days are left out and older days keep the CPC estimate, so the screens show both kinds
+$spendFrom = Tz::addDays($today, -23);
+$perCampaign = Db::all('SELECT day, utm_campaign AS c, SUM(qualified) AS q FROM visitor_days WHERE day >= ? AND utm_campaign IN (\'diwali-reels\', \'yt-shorts-push\') GROUP BY day, utm_campaign', [$spendFrom]);
+foreach ($perCampaign as $r) {
+    $age = Tz::daysBetween((string) $r['day'], $today);
+    if ($age === 0 || $age % 6 === 5 || (int) $r['q'] === 0) {          // today's bill is not in yet; a few other days were never entered
+        continue;
+    }
+    $platform = $r['c'] === 'yt-shorts-push' ? 'google' : 'meta';
+    $amount = (int) round((int) $r['q'] * 100 * (0.8 + mt_rand(0, 50) / 100));            // ₹0.80–₹1.30 per qualified visitor, in paise
+    $clicks = (int) round((int) $r['q'] * (1.05 + mt_rand(0, 25) / 100));
+    Db::insert('ad_daily_spend', [
+        'spend_day' => $r['day'], 'campaign' => $r['c'], 'platform' => $platform, 'amount_paise' => $amount, 'gst_paise' => (int) round($amount * 0.18), 'currency' => 'INR',
+        'clicks' => $clicks, 'impressions' => $clicks * mt_rand(22, 40), 'source' => $age % 2 === 0 ? 'manual' : 'import', 'note' => null, 'entered_by' => 1, 'imported_at' => Clock::sql($nowTs - $age * 86400 + 3600),
+    ]);
 }
 
 // a couple of rejected webhooks and an audit trail for the activity feed

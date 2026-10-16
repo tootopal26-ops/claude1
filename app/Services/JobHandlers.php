@@ -47,7 +47,11 @@ final class JobHandlers
     /** @return array<string,mixed> */
     public static function analytics(JobContext $c): array
     {
-        return ['days_refreshed' => Analytics::ensureFresh(Tz::addDays(Tz::today(), -3), Tz::addDays(Tz::today(), -1))];
+        $out = ['days_refreshed' => Analytics::ensureFresh(Tz::addDays(Tz::today(), -3), Tz::addDays(Tz::today(), -1))];
+        if (!$c->dryRun) {
+            $out['attribution_filled'] = Attribution::backfill();     // a verified order whose attribution row was missed (the process died after the payment committed)
+        }
+        return $out;
     }
 
     /**

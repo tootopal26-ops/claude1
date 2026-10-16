@@ -57,7 +57,7 @@ MySQL 5.7+ / MariaDB 10.3+, InnoDB, `utf8mb4`. No CTEs, window functions, `CONVE
 | `rate_limits` | Fixed-window counters `k = sha1(bucket|identity|window)`; purged by cron. |
 | `schema_migrations` | Applied migration versions. |
 
-### Operations, risk, finance, ads, reports and pricing (migrations 005–011)
+### Operations, risk, finance, ads, reports and pricing (migrations 005–012)
 Additive only: nothing above was changed or removed (the new columns are nullable or default-off). Rollback notes are at the top of each migration file.
 
 | Table / columns | Purpose |
@@ -71,6 +71,7 @@ Additive only: nothing above was changed or removed (the new columns are nullabl
 | `analytics_daily.fulfil_cost_paise / payment_fee_paise / other_cost_paise / chargebacks_paise / expenses_paise / ads_actual_paise / ads_estimated_paise / ads_actual_day / orders_cost_estimated / orders_cost_incomplete` *(011)* | The per-day sums behind the Finance statement ([PROFIT-INTELLIGENCE.md](PROFIT-INTELLIGENCE.md)): the order cost lines of the orders paid that day, chargebacks and expenses recorded that day, advertising split into the actual and the estimated part, and how many of that day's paid orders have estimated / incomplete costs. Derived data: the migration marks every stored day dirty and the next read recomputes it. |
 | `daily_reports`, `ai_usage_logs`, `support_conversations`, `support_messages` *(007)* | One deterministic report per IST day (AI commentary stored apart from the numbers), a log of AI calls (no prompts, no answers, no secrets), and short-lived support chats. |
 | `visitor_sessions.utm_content / utm_term / page_views / service_views / engaged_at / returning_visitor`, `ad_daily_spend`, `campaign_attribution` *(008)* | Finer visitor measurement, **actual** ad spend per IST day (pre-tax and GST apart; the CPC estimate is never added on top of a day that has actual spend) and one attribution row per verified order. |
+| `visitor_days.utm_campaign` *(012)* | The campaign the visitor-day belongs to: the first campaign-tagged session of that day, written once (NULL = no campaign). It lets visitors, qualified visitors, checkout starts and the CPC estimate split by campaign add up exactly to the dashboard ([ADS-INTELLIGENCE.md](ADS-INTELLIGENCE.md)). Existing rows are filled in best effort from the sessions that still exist. |
 | `service_price_versions`, `pricing_experiments`, `pricing_experiment_cohorts`, `pricing_assignments`, `pricing_decision_logs`, `price_audit_logs`, `ad_campaign_settings`, `services.adaptive_*`, `services.pricing_paused`, `orders.price_version_id / experiment_id / price_cohort`, `visitor_sessions.platform_pref` *(009)* | Adaptive pricing: `services.price_paise` stays the default price; every price an order was sold at is kept; experiments, stable pseudonymous cohorts, decision and price audit logs, and the budget / CPC / GST settings history. Everything defaults to **off**. |
 
 ## Relationships (simplified)

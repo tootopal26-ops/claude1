@@ -118,7 +118,7 @@ After a webhook has been accepted the shop can ask the gateway whether it agrees
 
 ## 3. Admin routes
 
-HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|finance|orders|recovery|payments|payment-checks|services|tags|website|advertising|gateway|smm|security|audit|system}`) redirect to the sign-in page when signed out. The pages load their data from the JSON API below.
+HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|finance|ads|orders|recovery|payments|payment-checks|services|tags|website|advertising|gateway|smm|security|audit|system}`) redirect to the sign-in page when signed out. The pages load their data from the JSON API below.
 
 ### Auth
 | Method & path | Purpose |
@@ -176,6 +176,20 @@ Full behaviour, definitions and the labels in [PROFIT-INTELLIGENCE.md](PROFIT-IN
 | `GET` / `PUT /admin/api/finance/settings` `{fee_mode: unset\|none\|percent\|fixed\|percent_plus_fixed, fee_percent, fee_fixed, ad_gst: cost\|recoverable}` *(finance.view / finance.adjust)* | The payment-fee model and the GST treatment of advertising (validated and bounded; audited; stored days are recomputed). |
 
 For roles without `finance.view`, `GET /admin/api/dashboard` and the order endpoints **omit** every profit, cost and advertising figure (and the provider's raw answers) instead of hiding them on the page.
+
+### Ads Intelligence — campaigns, actual spend, attribution (permission in brackets; `403 forbidden` without it)
+Full behaviour, units and labels in [ADS-INTELLIGENCE.md](ADS-INTELLIGENCE.md). Writes are idempotent per `Idempotency-Key`, validated (`422` with `fields`) and audited.
+| Method & path | Purpose |
+|---|---|
+| `GET /admin/api/ads?range=today\|7d\|30d\|90d\|lifetime\|custom&from=&to=&campaign=` *(ads.view)* | `cards` (spend today / lifetime / period with their source — `actual`, `estimated`, `mixed`, `none` —, visitors, qualified, sessions, page views, engaged, returning, checkout starts, customers, orders, conversion, CPC, cost per customer / qualified, attributed revenue / refunds / costs, contribution after ads, `confidence {level, why}`), `campaigns` (one row per campaign with the same figures), `trend`, `coverage` (what is missing), `notes`, `definitions`, `meta` (range, campaigns, attribution `{model, label, window_days}`, CPC), `can {manage}`. `422` for a campaign with no data in the period. |
+| `GET /admin/api/ads/spend?from=&to=&campaign=&include_voided=&page=` *(ads.view)* | Actual spend entries (25 per page), `sum_paise`, `gst_paise` and the campaign names for the filter. |
+| `POST /admin/api/ads/spend` `{day, campaign?, platform?, amount, gst?, clicks?, impressions?, note?}` *(ads.manage)* | Enter the actual spend of a day / campaign / platform; the same key replaces the earlier entry (the old value is audited). Amounts in ₹ (`0` allowed); the day cannot be in the future. |
+| `POST /admin/api/ads/spend/{id}/void` `{reason}` *(ads.manage)* | Void with a reason (`409` when already voided); the entry stays listed. |
+| `POST /admin/api/ads/spend/import` `{csv, dry_run?}` *(ads.manage)* | Check or import a pasted report (`date, campaign, platform, spend, gst, clicks, impressions`; ≤ 500 lines; all or nothing, `422` names the bad lines). |
+| `GET` / `PUT /admin/api/ads/settings` `{window_days}` *(ads.view / ads.manage)* | The attribution window 1–90 days (`422` with the field), the model, the number of verified orders with no attribution yet, the CPC and the GST treatment. |
+| `POST /admin/api/ads/attribution/backfill` `{dry_run?}` *(ads.manage)* | Attribute verified orders that have no row yet; dry run counts. Idempotent. |
+
+`POST /api/track/hit` (public beacon) also reads `utm_content` and `utm_term`; `POST /api/track/ping` also reads `services` (the number of service cards opened, 0–200) — both cleaned and bounded on the server.
 
 ### Catalogue
 | | |

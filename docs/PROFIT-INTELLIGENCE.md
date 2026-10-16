@@ -81,7 +81,7 @@ entry changes.
 
 **Advertising.** `ad_daily_spend` holds the **actual** spend per day / campaign / platform (entered or pasted from a report); a day that
 has any actual spend uses it **instead of** the CPC estimate. The GST setting decides whether the GST part of that spend is a cost
-(default) or recoverable (not counted). The entry screens belong to Ads Intelligence, the second half of this phase.
+(default) or recoverable (not counted). Entering spend, and everything about campaigns, is in [ADS-INTELLIGENCE.md](ADS-INTELLIGENCE.md) (Admin → Ads Intelligence → Spend).
 
 ## 4. The screens
 
@@ -123,7 +123,7 @@ fix. **A fix only ever adds lines**; nothing already recorded is changed.
 | Provider cost unknown / never reported | medium / low | the order is at the provider but no cost is known / the final charge never arrived | — (sync the order or set the service's cost) |
 | Refund status and amount disagree | high | a refunded order with no refunded amount, or a refund above the payment | — |
 | Orders that lost money | info | refunds and known costs exceed what was collected | — |
-| Advertising is estimated for N of the last 30 days | info | those days use the CPC estimate | enter the actual spend |
+| Advertising is estimated for N of the last 30 days | info | those days use the CPC estimate | enter the actual spend (Ads Intelligence → Spend) |
 
 Every fix has a **dry run first** ("Would add N … totalling ₹X. Nothing was changed."), asks for confirmation, is **idempotent**
 (a second run adds nothing — `INSERT IGNORE` on the live key), marks the affected days for recomputation and is audited
@@ -201,7 +201,7 @@ Finance page shows.
 
 * **No real payment fee is read from anywhere.** Alpha UPI reports none. Until a model is set, every order is *incomplete* on that
   count; with a model, the fee is an *estimate* (it is labelled so).
-* **No live ad-platform integration:** actual advertising spend is typed or pasted by an admin; until then it is a CPC *estimate*.
+* **No live ad-platform integration:** actual advertising spend is typed or pasted by an admin ([ADS-INTELLIGENCE.md](ADS-INTELLIGENCE.md)); until then it is a CPC *estimate*.
 * A live Alpha UPI account and a live SMM panel were not used (mock servers only).
 * A fulfilment cost is a number per service purchase that **you** state; the system cannot know what your supplier or your time cost.
 * The MySQL 8 run of migration `011` and of the new tests is part of the final integration pass (Phase 9); the SQL uses nothing

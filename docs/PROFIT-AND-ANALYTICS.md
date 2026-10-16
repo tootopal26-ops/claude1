@@ -36,10 +36,12 @@ For each service: `price − provider cost (AUTO) or fulfilment cost (MANUAL, wh
 | **Visitor-day** | One row per visitor per **business day** (`visitor_days`, unique on `(visitor_id, day)`). |
 | **Qualified visitor** | Stayed **≥ 3 seconds of *visible* time** (configurable 1–60 s). The browser counts visible time only (a hidden tab does not accumulate) and asks the server to qualify; the server **re-checks the elapsed time** since the page load, so a forged early request is refused. |
 | **CPC** | Cost per qualified visitor-day, default **₹1.08** (`cpc_paise = 108`). Charged **once per visitor per day** however often they return, and stored as a **snapshot** in `visitor_days.cpc_paise` at the moment of qualification — changing the CPC later never rewrites history (only *new* visitors pay the new rate). |
-| **Ad spend** | `Σ cpc_paise` of qualified visitor-days in the range. |
+| **Ad spend** | For a day with **actual** spend entered (Ads Intelligence → Spend): that spend. For every other day: `Σ cpc_paise` of its qualified visitor-days (the **estimate**). Never both for the same day. |
 | **Bots** | Crawlers, headless browsers, `curl`, link-preview fetchers and empty user-agents are never tracked and never cost ad money. |
 
 The CPC and the qualification time are edited in **Admin → Advertising**; every change is stored (who/when) and audited.
+
+The tracker also records the five campaign tags (`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, cleaned), page views, engaged and returning sessions, and names each visitor-day after its first campaign-tagged session. What they mean, how a verified order is credited to a campaign, and the per-campaign figures are in [ADS-INTELLIGENCE.md](ADS-INTELLIGENCE.md).
 
 ## 3. Dashboard (Admin → Dashboard)
 

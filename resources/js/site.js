@@ -80,6 +80,7 @@ function openCard(card) {
     input.focus({ preventScroll: true });
     card.scrollIntoView({ block: 'nearest', behavior: reduceMotion() ? 'auto' : 'smooth' });
   }, reduceMotion() ? 0 : 380);
+  window.dispatchEvent(new CustomEvent('smb:service', { detail: card.dataset.id || '' }));   // the visitor looked at a service (engagement)
 }
 
 function closeCard(card) {
