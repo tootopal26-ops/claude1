@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-use App\Controllers\Admin\{AccountController, AdsController, AuthController, DashboardController, FinanceController, IntegrationsController, JobsController, OrdersController, PageController, PaymentChecksController, RecoveryController, ServicesController, SettingsController, TagsController};
+use App\Controllers\Admin\{AccountController, AdsController, AlertsController, AuthController, DashboardController, FinanceController, IntegrationsController, JobsController, OrdersController, PageController, PaymentChecksController, RecoveryController, ReportsController, ServicesController, SettingsController, TagsController};
 use App\Core\Middleware;
 use App\Core\Router;
 
@@ -71,6 +71,21 @@ return static function (Router $r): void {
     $r->get('/admin/api/ads/settings', [AdsController::class, 'settings'], $api);
     $r->put('/admin/api/ads/settings', [AdsController::class, 'saveSettings'], $api);
     $r->post('/admin/api/ads/attribution/backfill', [AdsController::class, 'backfill'], $api);
+
+    // ── business watchdog: the alerts, what each check last saw, thresholds, e-mail ──
+    $r->get('/admin/api/alerts', [AlertsController::class, 'list'], $api);
+    $r->get('/admin/api/alerts/checks', [AlertsController::class, 'checks'], $api);
+    $r->get('/admin/api/alerts/settings', [AlertsController::class, 'settings'], $api);
+    $r->put('/admin/api/alerts/settings', [AlertsController::class, 'saveSettings'], $api);
+    $r->put('/admin/api/alerts/mail', [AlertsController::class, 'saveMail'], $api);
+    $r->post('/admin/api/alerts/mail/test', [AlertsController::class, 'testMail'], $api);
+    $r->post("/admin/api/alerts/{$id}/acknowledge", [AlertsController::class, 'acknowledge'], $api);
+    $r->post("/admin/api/alerts/{$id}/resolve", [AlertsController::class, 'resolve'], $api);
+
+    // ── daily reports: the history, one report, (re)generate a day ──
+    $r->get('/admin/api/reports', [ReportsController::class, 'list'], $api);
+    $r->get('/admin/api/reports/{date:\d{4}-\d{2}-\d{2}}', [ReportsController::class, 'show'], $api);
+    $r->post('/admin/api/reports/{date:\d{4}-\d{2}-\d{2}}/generate', [ReportsController::class, 'generate'], $api);
 
     // ── payment checks: monitor, flags, thresholds, re-check ──
     $r->get('/admin/api/payment-checks/summary', [PaymentChecksController::class, 'summary'], $api);

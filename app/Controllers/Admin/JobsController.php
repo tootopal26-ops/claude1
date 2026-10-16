@@ -10,6 +10,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Services\Audit;
 use App\Services\Jobs;
+use App\Support\Permissions;
 
 /** Scheduled jobs: their health (last run, last success, failures) and "run now". */
 final class JobsController extends BaseController
@@ -18,7 +19,7 @@ final class JobsController extends BaseController
     public function list(Request $req, array $p): Response
     {
         $this->authorize($req, 'jobs.view');
-        return $this->ok(['jobs' => Jobs::overview()]);
+        return $this->ok(['jobs' => Jobs::overview(), 'can' => ['run' => Permissions::can((string) $this->admin($req)['role'], 'jobs.run')]]);
     }
 
     /** POST /admin/api/jobs/{job}/run  { dry_run? } — the same locked, time-bounded, recorded run as the cron line; 10 per 10 minutes per admin. */
@@ -31,6 +32,9 @@ final class JobsController extends BaseController
         }
         RateLimiter::enforce('job-run', (string) $admin['id'], 10, 600, 'Too many manual runs. Wait a few minutes.');
         $dry = ($req->json()['dry_run'] ?? false) === true;
+        if ($dry && !Jobs::supportsDryRun($job)) {
+            throw new HttpException(422, 'This job has no dry run.', 'invalid');
+        }
         $run = Jobs::run($job, ['source' => 'admin', 'dry_run' => $dry]);
         Audit::log('job.run', 'job', $job, ['status' => $run['status'], 'dry_run' => $dry], $req, $admin);
         return $this->ok(['run' => $run, 'jobs' => Jobs::overview()]);

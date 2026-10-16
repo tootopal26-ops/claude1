@@ -144,7 +144,24 @@ final class SmmProviders
     public static function test(int $id, Request $req, array $admin): array
     {
         $row = self::row($id) ?? throw new HttpException(404, 'Provider not found.');
-        $res = self::client($row)->balance();
+        $r = self::checkBalance($row);
+        Audit::log('smm.provider_tested', 'smm_provider', $id, ['ok' => $r['ok']], $req, $admin);
+        return $r;
+    }
+
+    /**
+     * Ask the provider for its balance (the documented `balance` action) and record what it said: on the provider row (what the SMM API page shows)
+     * and in the call log. Used by “Test connection” and by the optional watchdog check. Nothing is invented: a provider that answers without a
+     * balance gets no balance.
+     *
+     * @param array<string,mixed> $row an smm_providers row
+     * @param (callable(array<string,mixed>):SmmResponse)|null $fetch test seam: how the provider is asked
+     * @return array{ok:bool,message:string,balance:?string,duration_ms:int,level:string}
+     */
+    public static function checkBalance(array $row, ?callable $fetch = null): array
+    {
+        $id = (int) $row['id'];
+        $res = $fetch !== null ? $fetch($row) : self::client($row)->balance();
         $balance = null;
         $ok = false;
         if ($res->ok() && isset($res->data['balance'])) {
@@ -168,7 +185,14 @@ final class SmmProviders
         Db::update('smm_providers', [
             'last_tested_at' => Clock::sql(), 'last_test_ok' => $ok ? 1 : 0, 'last_test_message' => mb_substr($message, 0, 255), 'last_balance' => $balance,
         ], 'id = ?', [$id]);
-        Audit::log('smm.provider_tested', 'smm_provider', $id, ['ok' => $ok], $req, $admin);
+        try {
+            Db::insert('smm_transactions', [
+                'provider_id' => $id, 'action' => 'balance', 'request_json' => '{"action":"balance"}', 'http_status' => $res->httpStatus, 'ok' => $res->ok() ? 1 : 0,
+                'error' => $res->error !== '' ? mb_substr($res->error, 0, 500) : null, 'duration_ms' => $res->durationMs, 'created_at' => Clock::sql(),
+            ]);
+        } catch (\Throwable) {
+            // the call log is a convenience; the answer above is already saved
+        }
         return ['ok' => $ok, 'message' => $message, 'balance' => $balance, 'duration_ms' => $res->durationMs, 'level' => $ok ? 'ok' : 'error'];
     }
 

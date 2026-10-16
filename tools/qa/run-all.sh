@@ -22,6 +22,8 @@ SUITES=(
   "node tools/qa/admin-recovery.mjs"
   "node tools/qa/admin-finance.mjs"
   "node tools/qa/admin-ads.mjs"
+  "node tools/qa/admin-alerts.mjs"
+  "node tools/qa/admin-reports.mjs"
   "node tools/qa/pay-alpha-api.mjs"
   "node tools/qa/admin-mobile.mjs"
   "node tools/qa/install-e2e.mjs"

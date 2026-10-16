@@ -164,16 +164,18 @@ T::test('jobs: an unknown job is refused', function () {
 
 T::test('jobs: runDue runs a job only when its interval has passed; the overview says what state each job is in', function () {
     T::freshDb();
+    Clock::setFixed(strtotime('2027-01-15 08:00:00 UTC'));                    // 13:30 IST: after the daily report job's start time, whenever the suite really runs
+    $all = ['payments', 'recovery', 'analytics', 'watchdog', 'report', 'cleanup'];
     $GLOBALS['ops_ran'] = [];
     $stub = static function (string $j): callable { return static function (JobContext $c) use ($j): array { $GLOBALS['ops_ran'][] = $j; return []; }; };
-    ops_with_stubs(['payments' => $stub('payments'), 'recovery' => $stub('recovery'), 'analytics' => $stub('analytics'), 'cleanup' => $stub('cleanup')], function () {
+    ops_with_stubs(array_combine($all, array_map($stub, $all)), function () use ($all) {
         $over = Jobs::overview();
-        T::same(['payments', 'recovery', 'analytics', 'cleanup'], array_column($over, 'job'));
-        T::same(['never_run', 'never_run', 'never_run', 'never_run'], array_column($over, 'state'));
+        T::same($all, array_column($over, 'job'));
+        T::same(array_fill(0, 6, 'never_run'), array_column($over, 'state'));
 
-        T::same(['payments', 'recovery', 'analytics', 'cleanup'], array_keys(Jobs::runDue()), 'nothing has run yet → everything is due');
+        T::same($all, array_keys(Jobs::runDue()), 'nothing has run yet → everything is due');
         T::same([], Jobs::runDue(), 'just ran → nothing is due');
-        T::same(['ok', 'ok', 'ok', 'ok'], array_column(Jobs::overview(), 'state'));
+        T::same(array_fill(0, 6, 'ok'), array_column(Jobs::overview(), 'state'));
 
         // time passes: payments last started 10 minutes ago (interval 5 min) → due again; cleanup (hourly) is not
         Db::exec("UPDATE job_runs SET started_at = ? WHERE job = 'payments'", [Clock::sql(Clock::now() - 600)]);
@@ -192,14 +194,15 @@ T::test('jobs: runDue runs a job only when its interval has passed; the overview
         T::same(['failed', 'logic'], [$row['last_run']['status'], $row['last_run']['error_category']]);
         T::true($row['failures_24h'] >= 1);
     });
+    Clock::setFixed(null);
 });
 
 T::test('cron: the one-line entry point runs the quick jobs every time and reports the skip when it is already running', function () {
     T::freshDb();
     $stub = static fn(string $j): callable => static fn(JobContext $c): array => ['job' => $j];
-    ops_with_stubs(['payments' => $stub('payments'), 'recovery' => $stub('recovery'), 'analytics' => $stub('analytics'), 'cleanup' => $stub('cleanup')], function () {
+    ops_with_stubs(['payments' => $stub('payments'), 'recovery' => $stub('recovery'), 'analytics' => $stub('analytics'), 'watchdog' => $stub('watchdog'), 'report' => $stub('report'), 'cleanup' => $stub('cleanup')], function () {
         $out = Cron::run();
-        foreach (['payments', 'recovery', 'analytics', 'cleanup'] as $j) {
+        foreach (['payments', 'recovery', 'analytics', 'watchdog', 'cleanup'] as $j) {
             T::true(isset($out[$j]), "$j is in the output");
         }
         T::true(isset($out['took_ms']));
@@ -322,7 +325,7 @@ T::test('alerts: descriptions are cleaned — no paths, no long tokens — and t
     Alerts::raise('info_thing', 'info', 'FYI', 'nothing urgent');
     $second = Alerts::raise('to_close', 'warning', 'Closing', 'x');
     Alerts::resolve($second['id'], ops_admin());
-    T::same(['critical' => 1, 'warning' => 1, 'info' => 1, 'total' => 3, 'unacknowledged' => 3], Alerts::counts());
+    T::same(['critical' => 1, 'warning' => 1, 'info' => 1, 'total' => 3, 'unacknowledged' => 3, 'unacknowledged_critical' => 1], Alerts::counts());
     $live = Alerts::list();
     T::same(3, $live['total']);
     T::same(['critical', 'warning', 'info'], array_column($live['rows'], 'severity'), 'most severe first');
@@ -330,6 +333,10 @@ T::test('alerts: descriptions are cleaned — no paths, no long tokens — and t
     T::same(4, Alerts::list(['status' => 'all'])['total']);
     T::same(1, Alerts::list(['severity' => 'critical'])['total']);
     T::same(1, Alerts::list(['type' => 'app_errors'])['total']);
+    // acknowledging keeps an alert live but takes it off the count of critical alerts nobody has seen (the red menu badge)
+    $critical = (int) Db::val("SELECT id FROM business_alerts WHERE severity = 'critical' AND status = 'open'");
+    Alerts::acknowledge($critical, ops_admin());
+    T::same([1, 2, 0], [Alerts::counts()['critical'], Alerts::counts()['unacknowledged'], Alerts::counts()['unacknowledged_critical']]);
 });
 
 T::test('alerts: e-mail is off by default; when on it respects the minimum severity and the cooldown, and contains no secrets', function () {

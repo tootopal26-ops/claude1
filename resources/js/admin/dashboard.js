@@ -132,7 +132,7 @@ function profitCard(d) {
       <span class="bg-sky-500" data-w="${costPct}"></span><span class="bg-amber-500" data-w="${adsPct}"></span><span class="bg-emerald-500" data-w="${netPct}"></span></div>
       <div class="legend"><span><i class="bg-sky-500"></i>Costs ${costPct}%</span><span><i class="bg-amber-500"></i>Ads ${adsPct}%</span><span><i class="bg-emerald-500"></i>${before ? 'Profit' : 'Net profit'} ${netPct}%</span></div>` : ''}
     <div class="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-muted"><span class="chip ${stCls}" data-profit-status="${l?.status || 'estimated'}">${stText}</span><span>${stWhy}</span>
-      <a class="ml-auto underline font-semibold" href="${url('/admin/finance')}">Full profit statement</a></div>
+      <a class="ml-auto inline-flex min-h-6 items-center underline font-semibold" href="${url('/admin/finance')}">Full profit statement</a></div>
     <p class="mt-2 text-[13px] text-muted">${before
       ? 'Advertising, chargebacks and business expenses belong to the whole business, so they are not subtracted while a platform or delivery filter is on. Clear the filters to see net profit.'
       : 'Advertising is the actual spend entered for a day, or the CPC estimate (qualified visitors × cost per click, once per visitor per day) for a day with none — never both.'}</p>
@@ -266,9 +266,9 @@ function render(d) {
   const root = $('#dash-root');
   const parts = [
     kpiSection(d),
-    html`<h2 class="sec-title">${hasFinance(d) ? 'Profit &amp; trends' : 'Trends'} · ${rangeText(d.meta)}</h2>`,
+    html`<h2 class="sec-title">${hasFinance(d) ? 'Profit & trends' : 'Trends'} · ${rangeText(d.meta)}</h2>`,
     hasFinance(d) ? profitCard(d) : '',
-    html`<div class="stack mt-4"><section class="card" aria-labelledby="h-rev"><div class="card-head"><h2 class="card-title" id="h-rev">${icon('trending-up')}${hasFinance(d) ? 'Revenue &amp; profit' : 'Revenue'}</h2>${raw(toggles(hasFinance(d)))}</div><div data-chart="rev" aria-label="Revenue and profit over time"></div></section>
+    html`<div class="stack mt-4"><section class="card" aria-labelledby="h-rev"><div class="card-head"><h2 class="card-title" id="h-rev">${icon('trending-up')}${hasFinance(d) ? 'Revenue & profit' : 'Revenue'}</h2>${raw(toggles(hasFinance(d)))}</div><div data-chart="rev" aria-label="Revenue and profit over time"></div></section>
       <div class="grid-2">${chartCard('orders', 'Orders', 'package', 'Created vs paid')}${chartCard('visitors', 'Visitors', 'users', 'Visitors vs qualified')}</div></div>`,
     html`<h2 class="sec-title">Audience &amp; conversion</h2>`,
     visitorsCard(d),
@@ -372,8 +372,33 @@ async function load({ silent = false } = {}) {
   }
 }
 
+const SEV_CHIP = { critical: ['Critical', 'chip-bad'], warning: ['Warning', 'chip-warn'], info: ['Info', 'chip-info'] };
+
+/** The Business alerts card: what is wrong right now, from the watchdog's own alerts (nothing is shown that the Alerts page would not show). */
+async function loadAlerts() {
+  const box = $('#dash-alerts');
+  try {
+    const d = await get('alerts', { status: 'active' });
+    const c = d.counts;
+    let note = '';
+    if (c.total === 0) {
+      const w = (await get('alerts/checks')).watchdog;
+      const last = w.job?.last_run;
+      note = last ? `The watchdog last ran ${timeAgo(last.at)}${last.dry_run ? ' (a dry run)' : ''}; nothing is over a threshold. “Not enough data” on the Checks tab means a check could not judge.` : 'The watchdog has not run yet. It runs from the cron job every 15 minutes.';
+    }
+    box.innerHTML = String(html`<section class="card" aria-labelledby="h-alerts"><div class="card-head"><h2 class="card-title" id="h-alerts">${icon('bell-ring')}Business alerts</h2>
+      <a class="btn btn-sm ${c.total ? '' : 'btn-ghost'}" href="${url('/admin/alerts')}">${c.total ? 'Open alerts' : 'Alerts'}</a></div>
+      ${c.total ? html`<p class="text-sm text-ink-soft mb-2"><b>${num(c.total)} active</b> · ${num(c.critical)} critical · ${num(c.warning)} warning · ${num(c.info)} info${c.unacknowledged ? ' · ' + num(c.unacknowledged) + ' not acknowledged' : ''}</p>
+        <ul class="grid gap-2">${d.rows.slice(0, 3).map((a) => html`<li class="flex items-start gap-2"><span class="chip ${(SEV_CHIP[a.severity] || SEV_CHIP.info)[1]} min-w-[4.75rem] shrink-0 justify-center">${(SEV_CHIP[a.severity] || SEV_CHIP.info)[0]}</span><span class="min-w-0"><b>${a.title}</b><small class="text-ink-soft line-clamp-2" data-alert-desc>${a.description}</small><small class="block text-muted">${num(a.occurrences)}× · last ${timeAgo(a.last_detected_at)}</small></span></li>`)}</ul>`
+        : html`<p class="text-sm text-ink-soft">No active alerts. ${note}</p>`}</section>`);
+  } catch {
+    box.innerHTML = '';
+  }
+}
+
 export default function init() {
   const root = $('#dash-root');
+  loadAlerts();
   syncControls();
   on(document, 'click', '#range-seg [data-range]', (e, b) => {
     state.range = b.dataset.range;
@@ -407,5 +432,5 @@ export default function init() {
     revChart?.update(revOpts(), false);
   });
   load();
-  whenVisible(() => load({ silent: true }), 60000);
+  whenVisible(() => { load({ silent: true }); loadAlerts(); }, 60000);
 }

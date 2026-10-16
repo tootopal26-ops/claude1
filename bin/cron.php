@@ -9,6 +9,8 @@
  *   php bin/cron.php payments            every 5 minutes    expire / re-check payments, payment-risk scan
  *   php bin/cron.php recovery            every 5 minutes    submit / retry / sync AUTO orders, recovery scan
  *   php bin/cron.php analytics           every 5 minutes    refresh dashboard rollups
+ *   php bin/cron.php watchdog            every 15 minutes  the Business Watchdog's health checks (alerts)
+ *   php bin/cron.php report              hourly            the daily report of every finished day that has none (safe to repeat)
  *   php bin/cron.php cleanup             hourly             retention
  *   (more jobs are listed by:  php bin/cron.php list)
  *

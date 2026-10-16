@@ -1,7 +1,7 @@
 <?php
 /** Admin navigation (rendered twice: desktop sidebar and mobile drawer). Expects: $page, $admin, $site, $idp */
 $groups = [
-    ['Overview', [['dashboard', 'Dashboard', 'layout-dashboard'], ['finance', 'Finance', 'badge-indian-rupee'], ['ads', 'Ads Intelligence', 'target']]],
+    ['Overview', [['dashboard', 'Dashboard', 'layout-dashboard'], ['finance', 'Finance', 'badge-indian-rupee'], ['ads', 'Ads Intelligence', 'target'], ['alerts', 'Business alerts', 'bell-ring'], ['reports', 'Daily reports', 'file-text']]],
     ['Sales', [['orders', 'Orders', 'package'], ['recovery', 'Order recovery', 'life-buoy', true], ['payments', 'Payments', 'credit-card'], ['payment-checks', 'Payment checks', 'shield-alert', true], ['services', 'Services', 'layers'], ['tags', 'Tags & Badges', 'tags', true]]],
     ['Configuration', [['website', 'Website', 'globe'], ['gateway', 'Payment gateway', 'wallet'], ['smm', 'SMM API', 'server'], ['advertising', 'Advertising', 'megaphone']]],
     ['Account', [['security', 'Security', 'shield-check'], ['audit', 'Audit log', 'history'], ['system', 'System', 'activity']]],
@@ -31,6 +31,7 @@ $groups = array_values(array_filter(array_map(
         <?= icon($ico) ?><span><?= e($text) ?></span>
         <?php if ($key === 'orders'): ?><span class="adm-count" data-approve-count hidden title="Manual orders waiting for approval">0</span><?php endif; ?>
         <?php if ($key === 'recovery'): ?><span class="adm-count" data-recovery-count hidden title="Paid orders that need a person (unknown outcome, review, failed)">0</span><?php endif; ?>
+        <?php if ($key === 'alerts'): ?><span class="adm-count" data-alert-count hidden title="Alerts nobody has acknowledged yet">0</span><?php endif; ?>
         <?php if ($key === 'payment-checks'): ?><span class="adm-count" data-flag-count hidden title="Payment flags that need a person to look">0</span><?php endif; ?>
       </a>
       <?php endforeach; ?>

@@ -53,13 +53,14 @@ export async function layoutReport(page) {
 /**
  * "Unreachable buttons / incorrect z-index": every visible control that is inside the viewport must be what the user actually hits when they
  * press at its centre (nothing — a sticky bar, a toast, a stray overlay — may sit on top of it). Controls under the sticky header while
- * scrolling, and the page behind an open modal, are exempt.
+ * scrolling, controls under a sticky bar that scrolling brings out from under it, and the page behind an open modal, are exempt.
  */
 export async function coveredControls(page) {
   return page.evaluate(() => {
     const vw = document.documentElement.clientWidth, vh = window.innerHeight;
     const name = (el) => el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '');
     const open = document.querySelector('dialog[open]');
+    const stickyOwner = (n) => { for (; n && n !== document.body; n = n.parentElement) if (getComputedStyle(n).position === 'sticky') return n; return null; };
     // any sticky/fixed bar pinned to the top edge (storefront header, admin mobile bar …): content scrolling underneath it is normal
     let headerBottom = 0;
     for (const e of document.querySelectorAll('header, nav, [role=banner], body > *')) {
@@ -76,6 +77,16 @@ export async function coveredControls(page) {
       if (x < 0 || x >= vw || y <= headerBottom + 1 || y >= vh) continue;
       const top = document.elementFromPoint(x, y);
       if (!top || el === top || el.contains(top) || top.contains(el) || (el.labels && [...el.labels].some((l) => l.contains(top)))) continue;
+      // Under a STICKY bar (a long form's save bar) is normal while scrolling — a sticky bar stops where its container ends, so it can never hide the last
+      // control. What matters is whether the person can bring the control out from under it: scroll it to the middle of the screen and hit-test again.
+      if (stickyOwner(top)) {
+        const sx = window.scrollX, sy = window.scrollY;
+        el.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+        const r2 = el.getBoundingClientRect();
+        const top2 = document.elementFromPoint(r2.left + r2.width / 2, r2.top + r2.height / 2);
+        window.scrollTo(sx, sy);
+        if (top2 && (el === top2 || el.contains(top2) || top2.contains(el) || (el.labels && [...el.labels].some((l) => l.contains(top2))))) continue;
+      }
       out.push(`${name(el)} "${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 24)}" is covered by ${name(top)}`);
     }
     return [...new Set(out)].slice(0, 12);

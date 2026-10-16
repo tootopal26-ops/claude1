@@ -15,6 +15,13 @@ function paintBadges(s) {
   $$('[data-approve-count]').forEach((el) => { el.hidden = n === 0; el.textContent = n > 99 ? '99+' : String(n); });
   const rc = s.recovery_open || 0;
   $$('[data-recovery-count]').forEach((el) => { el.hidden = rc === 0; el.textContent = rc > 99 ? '99+' : String(rc); });
+  const al = s.alerts?.unacknowledged || 0;
+  const crit = s.alerts?.unacknowledged_critical || 0;
+  $$('[data-alert-count]').forEach((el) => {
+    el.hidden = al === 0; el.textContent = al > 99 ? '99+' : String(al);
+    el.toggleAttribute('data-critical', crit > 0);
+    el.title = al + ' alert' + (al === 1 ? '' : 's') + ' nobody has acknowledged yet' + (crit ? ' — ' + crit + ' critical' : '');
+  });
   const f = s.payment_flags || 0;
   $$('[data-flag-count]').forEach((el) => { el.hidden = f === 0; el.textContent = f > 99 ? '99+' : String(f); });
   $$('[data-approve-chip]').forEach((el) => {

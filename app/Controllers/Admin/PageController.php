@@ -21,6 +21,8 @@ final class PageController extends BaseController
         'dashboard'      => ['Dashboard', 'admin/dashboard', 'dashboard.view'],
         'finance'        => ['Finance', 'admin/finance', 'finance.view'],
         'ads'            => ['Ads Intelligence', 'admin/ads', 'ads.view'],
+        'alerts'         => ['Business alerts', 'admin/alerts', 'alerts.view'],
+        'reports'        => ['Daily reports', 'admin/reports', 'reports.view'],
         'orders'         => ['Orders', 'admin/orders', 'orders.view'],
         'recovery'       => ['Order recovery', 'admin/recovery', 'orders.view'],
         'payments'       => ['Payments', 'admin/payments', 'payments.view'],

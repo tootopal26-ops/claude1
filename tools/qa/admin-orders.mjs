@@ -99,8 +99,10 @@ await t.step('pagination: Next loads page 2, Prev returns; buttons disable at th
 });
 
 await t.step('order drawer: opens by click, shows all sections, closes with ESC and returns focus', async () => {
-  // the newest demo order can be an unpaid / expired one (it depends on the time of day the demo data was generated): those have no Money section
-  const row = rows().filter({ hasText: /Completed|Submitted|In progress|Manual|Partial/i }).first();
+  // the newest demo order can be an unpaid / expired one (it depends on the time of day the demo data was generated): those have no Money section — so
+  // open a PAID order, picked by the database, not by a word in the row (an expired MANUAL order also says "Manual")
+  const paid = sql('SELECT public_id FROM orders WHERE paid_at IS NOT NULL ORDER BY created_at DESC, id DESC LIMIT 12').split('\n').filter(Boolean);
+  const row = rows().filter({ hasText: new RegExp(paid.join('|')) }).first();
   await row.click();
   await page.waitForSelector('#order-drawer[open] .od-hero');
   const body = await t.text(page.locator('#od-body'));

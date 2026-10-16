@@ -36,6 +36,8 @@
   </div>
 </section>
 
+<div id="dash-alerts" class="mb-5" aria-live="polite"></div>
+
 <div id="dash-root" aria-live="polite" aria-busy="true">
   <div class="kpi-grid"><?php for ($i = 0; $i < 7; $i++): ?><div class="skeleton kpi-skel"></div><?php endfor; ?></div>
 </div>

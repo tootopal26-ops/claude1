@@ -1,0 +1,46 @@
+import{b as y}from"./chunk-JKMFBAQH.js";import{f as l,j as g,q as k,r as $,v as S}from"./chunk-3MSMKM7H.js";import{b as v,c as m}from"./chunk-CUNUMIEQ.js";import"./chunk-F5XV67FX.js";import{b,c,d as _}from"./chunk-77GGHPHY.js";import"./chunk-FHXP7Q2I.js";import{a as w,e as n,h as i,m as r}from"./chunk-3IHOMMDJ.js";var P=null,u=null,A=!1,d=()=>w("#system-root"),T={ok:["on schedule","chip-ok"],running:["running now","chip-info"],overdue:["overdue","chip-warn"],failing:["failing","chip-bad"],never_run:["never run","chip-gray"]};async function R(){try{let a=await v("jobs");u=a.jobs,A=!!a.can?.run}catch{u=null}}async function f(){await R(),x((await v("system")).system)}function q(){if(!u)return"";let a=(s,e)=>n`<button type="button" class="btn btn-sm" data-job-run="${s.job}" ${e?n`data-dry="1"`:""} aria-label="${e?"Dry run of ":"Run "}${s.label}${e?"":" now"}" title="${e?"Dry run \u2014 show what it would do, change nothing":"Run now"}">${r(e?"flask-conical":"play","icon-sm")}<span class="md:sr-only 2xl:not-sr-only">${e?"Dry run":"Run now"}</span></button>`;return n`<section class="card" aria-labelledby="h-jobs"><div class="card-head"><h2 class="card-title" id="h-jobs">${r("list-checks")}Scheduled jobs</h2><span class="card-sub">each takes a lock, has a time limit and records how it ended</span></div>
+    <p class="text-sm text-ink-soft mb-3">“Overdue” means no successful run for much longer than the schedule — check the cron line above. A <b>dry run</b> shows what a job would do and changes nothing.</p>
+    <div class="tbl-scroll" tabindex="0" role="region" aria-label="Table of scheduled jobs"><table class="tbl tbl-resp" id="jobs-table"><thead><tr><th>Job</th><th>State</th><th>Last run</th><th>Last success</th><th class="num">Failures (24 h)</th><th><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody>${u.map(s=>{let[e,t]=T[s.state]||T.never_run;return n`<tr data-job="${s.job}">
+      <td data-label="Job" class="span2"><span class="cell-main"><b>${s.label}</b><small class="cell-prose cell-full">${s.what}</small><small class="cell-wide mt-1"><span class="mono">${s.cron}</span>${s.schedule?" \xB7 "+s.schedule:""}</small></span></td>
+      <td data-label="State"><span class="chip ${t}">${e}</span></td>
+      <td data-label="Last run">${s.last_run?n`<span class="cell-main"><b>${g(s.last_run.at)}${s.last_run.dry_run?" \xB7 dry run":""}</b><small class="cell-wide">${s.last_run.status}${s.last_run.duration_ms!=null?" \xB7 "+s.last_run.duration_ms+" ms":""} · ${s.last_run.source}</small>${s.last_run.error?n`<small class="cell-prose cell-full amt-neg">${s.last_run.error_category}: ${s.last_run.error}</small>`:""}</span>`:n`<span class="text-muted">never</span>`}</td>
+      <td data-label="Last success">${s.last_success_at?g(s.last_success_at):n`<span class="text-muted">never</span>`}</td>
+      <td data-label="Failures (24 h)" class="num"><span class="${s.failures_24h?"amt-neg":""}">${l(s.failures_24h)}</span> <small class="text-muted">of ${l(s.runs_24h)} runs</small></td>
+      <td class="row-actions-cell"><span class="row-actions row-actions-wrap">${A?n`${a(s,!1)}${s.dry_run_supported?a(s,!0):""}`:""}</span></td></tr>`})}</tbody></table></div></section>`}var o=(a,s,e="")=>n`<div class="health-item ${a?"ok":"bad"}">${r(a?"circle-check":"circle-alert")}<span><b>${s}</b>${e?n`<br><small class="text-muted">${e}</small>`:""}</span></div>`;function x(a){P=a;let s=a.cron.age_seconds,e=s!==null&&s<=900;d().innerHTML=String(n`
+  <div class="stack-lg">
+    <section class="card" aria-labelledby="h-env"><div class="card-head"><h2 class="card-title" id="h-env">${r("server")}Server</h2></div>
+      <div class="health">
+        ${o(a.php_ok,"PHP "+a.php,a.php_ok?"Meets the 8.1+ requirement":"PHP 8.1 or newer is required")}
+        ${o(!0,"Database",a.database)}
+        ${o(a.https,a.https?"HTTPS enabled":"Not using HTTPS",a.https?"Secure cookies and HSTS are active":"Set APP_URL to your https:// address in .env before going live")}
+        ${o(a.env==="production"&&!a.debug,"Environment: "+a.env,a.debug?"Debug output is ON \u2014 turn APP_DEBUG off in production":"Debug output is off")}
+        ${a.extensions.map(t=>o(t.ok||!t.required,`PHP ${t.name}`,t.ok?"loaded":t.required?"MISSING \u2014 enable it in cPanel \u2192 Select PHP Version":"optional (faster password hashing)"))}
+        ${a.paths.map(t=>o(t.ok,t.path,t.ok?"writable":"NOT writable \u2014 set permissions to 755/775"))}
+        ${o(!0,"Business time zone",a.timezone)}
+      </div>
+      <p class="field-hint mt-3">Site address: <span class="mono">${a.app_url||"not set"}</span> · Server: ${a.server}</p>
+    </section>
+
+    <section class="card" aria-labelledby="h-cron"><div class="card-head"><h2 class="card-title" id="h-cron">${r("clock")}Background tasks (cron)</h2>
+      <span class="chip ${e?"chip-ok":"chip-warn"}">${a.cron.last_run_at?"Last run "+g(a.cron.last_run_at):"Never run"}</span></div>
+      <p class="text-sm text-ink-soft mb-3">The cron job expires unpaid payment sessions, retries and syncs provider orders, runs the business watchdog, writes the daily report and cleans old data. Run it <b>every minute</b>.</p>
+      <div class="field"><span class="label">cPanel → Cron Jobs → command</span>
+        <div class="copy-field"><input class="input" readonly value="* * * * * ${a.cron.command} >/dev/null 2>&1" aria-label="Cron command"><button type="button" class="btn" data-copy="* * * * * ${a.cron.command} >/dev/null 2>&1">${r("copy","icon-sm")}<span>Copy</span></button></div></div>
+      ${a.cron.http_enabled?n`<div class="field"><span class="label">Or ping this URL every minute (cron-job.org, UptimeRobot…)</span><div class="copy-field"><input class="input" readonly value="${a.cron.url}" aria-label="Cron URL"><button type="button" class="btn" data-copy="${a.cron.url}">${r("copy","icon-sm")}<span>Copy</span></button></div></div>`:n`<p class="field-hint">No HTTP cron key is set. Add <span class="kbd">CRON_KEY=some-long-random-text</span> to <span class="kbd">.env</span> to enable the URL variant.</p>`}
+      <div class="form-actions"><button type="button" class="btn" id="run-cron">${r("refresh-cw","icon-sm")}<span>Run background tasks now</span></button></div></section>
+
+    ${q()}
+
+    <section class="card" aria-labelledby="h-db"><div class="card-head"><h2 class="card-title" id="h-db">${r("database")}Database updates</h2>
+      <span class="chip ${a.migrations.pending.length?"chip-warn":"chip-ok"}">${a.migrations.pending.length?a.migrations.pending.length+" pending":"Up to date"}</span></div>
+      <p class="text-sm text-ink-soft mb-3">${a.migrations.pending.length?n`A newer release needs these changes: <span class="mono">${a.migrations.pending.join(", ")}</span>. Take a backup, then apply them.`:n`${a.migrations.applied} update${a.migrations.applied===1?" has":"s have"} been applied. After uploading a newer release, come back here (or run <span class="kbd">php bin/migrate.php</span>) if it ships new files in <span class="kbd">database/migrations/</span>.`}</p>
+      <div class="form-actions"><button type="button" class="btn ${a.migrations.pending.length?"btn-primary":""}" id="run-migrate" ${a.migrations.pending.length?"":"disabled"}>${r("database","icon-sm")}<span>Apply database updates</span></button></div></section>
+
+    <section class="card" aria-labelledby="h-q"><div class="card-head"><h2 class="card-title" id="h-q">${r("activity")}Queues</h2></div>
+      <div class="stat-grid-4">
+        <div class="stat"><small>Open payment sessions</small><strong>${l(a.queue.payments_open)}</strong><span>waiting for the customer</span></div>
+        <div class="stat"><small>AUTO orders to submit</small><strong>${l(a.queue.orders_submit_due)}</strong><span>paid, not yet at the provider</span></div>
+        <div class="stat"><small>Orders at the provider</small><strong>${l(a.queue.orders_in_flight)}</strong><span>being status-checked</span></div>
+        <div class="stat"><small>Webhook problems (24 h)</small><strong class="${a.queue.webhook_errors_24h?"amt-neg":""}">${l(a.queue.webhook_errors_24h)}</strong><span>invalid or failed deliveries</span></div></div></section>
+  </div>`),d().setAttribute("aria-busy","false")}async function C(){try{await f()}catch(s){d().innerHTML=k(s.message).toString(),d().setAttribute("aria-busy","false");return}let a=d();i(a,"click","[data-copy]",(s,e)=>S(e.dataset.copy,"Copied")),i(a,"click","[data-retry]",()=>location.reload()),i(a,"click","#run-migrate",async(s,e)=>{await $(e,async()=>{try{let t=await m("system/migrate");b(t.message),await f(),y()}catch(t){c("Could not apply the update",t.message)}})}),i(a,"click","[data-job-run]",async(s,e)=>{let t=e.dataset.dry==="1";await $(e,async()=>{try{let p=await m(`jobs/${e.dataset.jobRun}/run`,{dry_run:t}),h=p.run;h.status==="skipped"?_("Already running","Another run of this job is in progress."):h.status==="failed"?c("The job failed",h.error||"See the server log."):b(t?"Dry run finished":"Job finished",t?"Nothing was changed.":`Finished in ${h.duration_ms} ms.`),u=p.jobs,x(P)}catch(p){c("Could not run the job",p.message)}})}),i(a,"click","#run-cron",async(s,e)=>{await $(e,async()=>{try{let t=await m("system/cron");b(t.message),await f(),y()}catch(t){c("Could not run tasks",t.message)}})})}export{C as default};

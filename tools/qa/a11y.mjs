@@ -86,7 +86,7 @@ for (const vp of [{ name: 'desktop', width: 1440, height: 900 }, { name: 'phone'
   await t.step(`admin ${vp.name}: every page`, async () => {
     resetLimits(); await login(page);
     const all = [];
-    for (const p of ['dashboard', 'finance', 'ads', 'orders', 'recovery', 'payments', 'payment-checks', 'services', 'tags', 'website', 'advertising', 'gateway', 'smm', 'security', 'audit', 'system']) {
+    for (const p of ['dashboard', 'finance', 'ads', 'alerts', 'reports', 'orders', 'recovery', 'payments', 'payment-checks', 'services', 'tags', 'website', 'advertising', 'gateway', 'smm', 'security', 'audit', 'system']) {
       await page.goto(`${BASE}/admin/${p}`, { waitUntil: 'networkidle' });
       await page.waitForFunction(() => document.querySelector('[aria-busy="true"]') === null, null, { timeout: 15000 }).catch(() => {});
       await page.waitForTimeout(900);

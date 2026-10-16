@@ -54,6 +54,18 @@ final class JobHandlers
         return $out;
     }
 
+    /** @return array<string,mixed> */
+    public static function watchdog(JobContext $c): array
+    {
+        return Watchdog::run($c);
+    }
+
+    /** @return array<string,mixed> */
+    public static function report(JobContext $c): array
+    {
+        return DailyReport::runDue($c);
+    }
+
     /**
      * Retention: everything that has a lifetime is deleted here, and only here.
      *
@@ -61,6 +73,9 @@ final class JobHandlers
      */
     public static function cleanup(JobContext $c): array
     {
+        if ($c->dryRun) {
+            return ['dry_run' => 'retention has no dry run: nothing was deleted'];
+        }
         $now = Clock::now();
         $n = [
             'rate_limits'          => RateLimiter::purgeExpired(),

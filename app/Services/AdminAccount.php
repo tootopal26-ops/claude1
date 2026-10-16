@@ -120,7 +120,9 @@ final class AdminAccount
         try {
             $flags = Risk::openCounts()['attention'];
             $recovery = Recovery::summary()['needs_person'];
+            $alerts = Alerts::counts();
         } catch (\Throwable) {
+            $alerts = ['critical' => 0, 'warning' => 0, 'info' => 0, 'total' => 0, 'unacknowledged' => 0, 'unacknowledged_critical' => 0];
             $flags = 0;        // these arrive with a database update that may not be applied yet: the banner below says so
             $recovery = 0;
         }
@@ -128,6 +130,7 @@ final class AdminAccount
             'approvable' => Fulfilment::approvableCount(),
             'payment_flags' => $flags,
             'recovery_open' => $recovery,
+            'alerts' => $alerts,
             'setup' => $items,
             'auto_services' => $autoServices,
             'smm_ok' => $provider !== null,

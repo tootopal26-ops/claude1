@@ -51,7 +51,7 @@ final class Alerts
             . 'ON DUPLICATE KEY UPDATE occurrences = occurrences + 1, last_detected_at = VALUES(last_detected_at), title = VALUES(title), description = VALUES(description), '
             . "details_json = VALUES(details_json), severity = IF(FIELD(VALUES(severity), 'info', 'warning', 'critical') > FIELD(severity, 'info', 'warning', 'critical'), VALUES(severity), severity)",
             [
-                mb_substr($type, 0, 40), $severity, mb_substr(Jobs::clean($title), 0, 160), mb_substr(Jobs::clean($description), 0, 1000), $entityType, $entityId, $key, $key,
+                mb_substr($type, 0, 40), $severity, Jobs::clean($title, 160), Jobs::clean($description, 1000), $entityType, $entityId, $key, $key,
                 $now, $now, $details ? mb_substr((string) json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR), 0, 4000) : null,
             ]
         );
@@ -147,12 +147,15 @@ final class Alerts
     /** @return array{critical:int,warning:int,info:int,total:int,unacknowledged:int} live alerts */
     public static function counts(): array
     {
-        $out = ['critical' => 0, 'warning' => 0, 'info' => 0, 'total' => 0, 'unacknowledged' => 0];
+        $out = ['critical' => 0, 'warning' => 0, 'info' => 0, 'total' => 0, 'unacknowledged' => 0, 'unacknowledged_critical' => 0];
         foreach (Db::all("SELECT severity, status, COUNT(*) AS n FROM business_alerts WHERE status IN ('open', 'acknowledged') GROUP BY severity, status") as $r) {
             $out[$r['severity']] = ($out[$r['severity']] ?? 0) + (int) $r['n'];
             $out['total'] += (int) $r['n'];
             if ($r['status'] === 'open') {
                 $out['unacknowledged'] += (int) $r['n'];
+                if ($r['severity'] === 'critical') {
+                    $out['unacknowledged_critical'] += (int) $r['n'];
+                }
             }
         }
         return $out;
@@ -185,6 +188,133 @@ final class Alerts
         ];
     }
 
+    /**
+     * Validate and save the e-mail settings. Only the keys that are sent change. Switching e-mail on needs at least one valid recipient.
+     * The audit log records how many recipients there are — never the addresses.
+     *
+     * @param array<string,mixed> $in {enabled?, to?, from?, min_severity?, cooldown_min?}
+     * @param array{id:int,username:string,email:string} $admin
+     * @return array{enabled:bool,to:string,from:string,min_severity:string,cooldown_min:int}
+     */
+    public static function saveMailSettings(array $in, array $admin, ?Request $req = null): array
+    {
+        $cur = self::mailSettings();
+        $errors = [];
+        $set = [];
+        $clean = static fn(string $s): string => mb_substr((string) preg_replace('/[\x00-\x1F\x7F]+/', ' ', $s), 0, 60);
+        if (array_key_exists('enabled', $in)) {
+            if (!is_bool($in['enabled'])) {
+                $errors['enabled'] = 'Choose on or off.';
+            } else {
+                $set['alerts.email_enabled'] = $in['enabled'];
+            }
+        }
+        if (array_key_exists('to', $in)) {
+            $raw = is_string($in['to']) ? trim($in['to']) : null;
+            if ($raw === null || mb_strlen($raw) > 250) {
+                $errors['to'] = 'Enter up to 5 e-mail addresses separated by commas.';
+            } else {
+                $list = $raw === '' ? [] : array_map('trim', explode(',', $raw));
+                $bad = array_values(array_filter($list, static fn(string $a): bool => filter_var($a, FILTER_VALIDATE_EMAIL) === false));
+                if ($bad) {
+                    $errors['to'] = '“' . $clean($bad[0]) . '” is not an e-mail address.';
+                } elseif (count($list) > 5) {
+                    $errors['to'] = 'Enter at most 5 addresses.';
+                } else {
+                    $set['alerts.email_to'] = implode(', ', $list);
+                }
+            }
+        }
+        if (array_key_exists('from', $in)) {
+            $from = is_string($in['from']) ? trim($in['from']) : null;
+            if ($from === null || ($from !== '' && (mb_strlen($from) > 120 || filter_var($from, FILTER_VALIDATE_EMAIL) === false))) {
+                $errors['from'] = 'Enter one e-mail address, or leave this empty.';
+            } else {
+                $set['alerts.email_from'] = $from;
+            }
+        }
+        if (array_key_exists('min_severity', $in)) {
+            if (!in_array($in['min_severity'], ['warning', 'critical'], true)) {
+                $errors['min_severity'] = 'Choose warning or critical.';
+            } else {
+                $set['alerts.email_min_severity'] = $in['min_severity'];
+            }
+        }
+        if (array_key_exists('cooldown_min', $in)) {
+            $v = $in['cooldown_min'];
+            if ((!is_int($v) && !(is_string($v) && preg_match('/^\d{1,5}$/D', $v))) || (int) $v < 5 || (int) $v > 1440) {
+                $errors['cooldown_min'] = 'Enter a number from 5 to 1440.';
+            } else {
+                $set['alerts.email_cooldown_min'] = (int) $v;
+            }
+        }
+        $enabled = (bool) ($set['alerts.email_enabled'] ?? $cur['enabled']);
+        $recipients = self::recipients((string) ($set['alerts.email_to'] ?? $cur['to']));
+        if ($enabled && !$recipients && !isset($errors['to'])) {
+            $errors['to'] = 'Add at least one recipient to switch e-mail on.';
+        }
+        if ($errors) {
+            throw new HttpException(422, 'Some of the settings are not valid.', 'invalid', ['fields' => $errors]);
+        }
+        if ($set) {
+            Settings::setMany($set, $admin['id']);
+            $now = self::mailSettings();
+            Audit::log('alerts.mail_settings_changed', 'settings', 'alerts', [
+                'enabled' => $now['enabled'], 'recipients' => count(self::recipients($now['to'])), 'min_severity' => $now['min_severity'], 'cooldown_min' => $now['cooldown_min'], 'sender_set' => $now['from'] !== '',
+            ], $req, $admin);
+        }
+        return self::mailSettings();
+    }
+
+    /**
+     * One message to the saved recipients, so the owner can see whether the hosting provider's mail() works. It is sent even while e-mail alerts
+     * are off, and it says only what happened: handed to the mail system, or refused. Arrival is up to the provider.
+     *
+     * @param array{id:int,username:string,email:string} $admin
+     * @return array{sent:bool,recipients:int,message:string}
+     */
+    public static function sendTest(array $admin, ?Request $req = null): array
+    {
+        $m = self::mailSettings();
+        $to = self::recipients($m['to']);
+        if (!$to) {
+            throw new HttpException(422, 'Save at least one recipient before sending a test.', 'invalid', ['fields' => ['to' => 'Add a recipient and save first.']]);
+        }
+        $site = Settings::site()['name'];
+        $body = "This is a test message from the Business Watchdog of {$site}.\n\nIf you can read it, alert e-mails reach this address. No alert is open because of this message.\nAlerts: " . absolute_url('/admin/alerts') . "\n\n(This message contains no credentials and no customer data.)\n";
+        $ok = self::deliver($to, '[TEST] ' . $site . ': alert e-mail test', $body, $m, 0);
+        Audit::log('alerts.test_email', 'settings', 'alerts', ['recipients' => count($to), 'handed_to_mail_system' => $ok], $req, $admin);
+        return [
+            'sent' => $ok, 'recipients' => count($to),
+            'message' => $ok ? 'Handed to the mail system for ' . count($to) . ' recipient' . (count($to) === 1 ? '' : 's') . '. Whether and when it arrives is up to your hosting provider’s mail service — check the inbox and the spam folder.'
+                : 'The mail system refused the message (PHP mail() returned false). Ask your hosting provider whether mail() is enabled for this account, or leave e-mail alerts off.',
+        ];
+    }
+
+    /** @return list<string> the valid addresses of a comma-separated list */
+    private static function recipients(string $list): array
+    {
+        return array_values(array_filter(array_map('trim', explode(',', $list)), static fn(string $a): bool => $a !== '' && filter_var($a, FILTER_VALIDATE_EMAIL) !== false));
+    }
+
+    /** @param list<string> $to @param array<string,mixed> $m */
+    private static function deliver(array $to, string $subject, string $body, array $m, int $alertId): bool
+    {
+        $from = filter_var($m['from'], FILTER_VALIDATE_EMAIL) !== false ? $m['from'] : 'no-reply@' . (parse_url((string) env('APP_URL', ''), PHP_URL_HOST) ?: 'localhost');
+        $headers = 'From: ' . $from . "\r\nContent-Type: text/plain; charset=UTF-8\r\nX-Mailer: smb-alerts";
+        try {
+            $send = self::$mailer ?? static fn(string $t, string $s, string $b, string $h): bool => @mail($t, '=?UTF-8?B?' . base64_encode($s) . '?=', $b, $h);
+            $ok = (bool) $send(implode(',', $to), $subject, $body, $headers);
+            if (!$ok) {
+                Log::warning('E-mail could not be handed to the mail system', ['alert' => $alertId]);
+            }
+            return $ok;
+        } catch (\Throwable $e) {
+            Log::exception($e, 'E-mail failed', ['alert' => $alertId]);
+            return false;
+        }
+    }
+
     /** True when a message was handed to the mail system for this alert (at most once per cooldown). */
     private static function maybeNotify(int $id, string $severity): bool
     {
@@ -192,7 +322,7 @@ final class Alerts
         if (!$m['enabled'] || array_search($severity, self::SEVERITIES, true) < array_search($m['min_severity'], self::SEVERITIES, true)) {
             return false;
         }
-        $to = array_values(array_filter(array_map('trim', explode(',', $m['to'])), static fn(string $a): bool => filter_var($a, FILTER_VALIDATE_EMAIL) !== false));
+        $to = self::recipients($m['to']);
         if (!$to) {
             return false;
         }
@@ -211,18 +341,6 @@ final class Alerts
         $site = Settings::site()['name'];
         $subject = '[' . strtoupper((string) $a['severity']) . '] ' . $site . ': ' . $a['title'];
         $body = $a['title'] . "\n\n" . $a['description'] . "\n\nSeen " . $a['occurrences'] . ' time(s) since ' . Tz::label() . ' ' . Clock::iso($a['first_detected_at']) . ".\nOpen the alert: " . absolute_url('/admin/alerts') . "\n\n(This message contains no credentials and no customer data.)\n";
-        $from = filter_var($m['from'], FILTER_VALIDATE_EMAIL) !== false ? $m['from'] : 'no-reply@' . (parse_url((string) env('APP_URL', ''), PHP_URL_HOST) ?: 'localhost');
-        $headers = 'From: ' . $from . "\r\nContent-Type: text/plain; charset=UTF-8\r\nX-Mailer: smb-alerts";
-        try {
-            $send = self::$mailer ?? static fn(string $t, string $s, string $b, string $h): bool => @mail($t, '=?UTF-8?B?' . base64_encode($s) . '?=', $b, $h);
-            $ok = (bool) $send(implode(',', $to), $subject, $body, $headers);
-            if (!$ok) {
-                Log::warning('Alert e-mail could not be handed to the mail system', ['alert' => $id]);
-            }
-            return $ok;
-        } catch (\Throwable $e) {
-            Log::exception($e, 'Alert e-mail failed', ['alert' => $id]);
-            return false;
-        }
+        return self::deliver($to, $subject, $body, $m, $id);
     }
 }

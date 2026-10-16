@@ -41,7 +41,7 @@ function example(string $regex): string
 /** A concrete value for a route parameter: the first of a few typical values that the parameter's own pattern accepts (an id, a job name …). */
 function sample(string $pattern): string
 {
-    foreach (['1', 'payments', 'abc', 'a1b'] as $candidate) {
+    foreach (['1', 'payments', 'abc', 'a1b', '2026-01-15'] as $candidate) {
         if (@preg_match('#^(?:' . $pattern . ')$#', $candidate) === 1) {
             return $candidate;
         }
