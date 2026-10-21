@@ -19,6 +19,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/tournaments', [TournamentController::class, 'index']);
         Route::get('/tournaments/{tournament}', [TournamentController::class, 'show']);
         Route::post('/tournaments/{tournament}/join', [TournamentController::class, 'join']);
+        Route::get('/tournaments/{tournament}/credentials', [TournamentController::class, 'credentials']);
 
         Route::post('/devices/push-token', [DevicePushTokenController::class, 'store']);
         Route::delete('/devices/push-token', [DevicePushTokenController::class, 'destroy']);

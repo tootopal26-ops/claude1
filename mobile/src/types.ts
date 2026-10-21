@@ -7,20 +7,38 @@ export type User = {
 export type Tournament = {
   id: number;
   title: string;
+  description: string | null;
+  rules: string | null;
   mode: 'solo' | 'duo' | 'squad';
+  required_player_count: number;
   entry_fee: string;
+  per_kill_reward: string;
+  prize_pool: string;
   total_slots: number;
   joined_slots: number;
   scheduled_start_at: string;
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  credentials_released: boolean;
   already_joined: boolean;
+};
+
+export type TournamentEntryPlayer = {
+  slot_number: number;
+  in_game_name: string;
+  uid: string | null;
 };
 
 export type TournamentEntry = {
   id: number;
   tournament_id: number;
-  in_game_name: string;
-  uid: string | null;
+  entry_fee_paid: string;
+  players: TournamentEntryPlayer[];
+};
+
+export type TournamentCredentials = {
+  room_id: string;
+  room_password: string;
+  released_at: string;
 };
 
 export type AppNotification = {

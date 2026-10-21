@@ -14,13 +14,15 @@ class TournamentEntryResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $player = $this->players->first();
-
         return [
             'id' => $this->id,
             'tournament_id' => $this->tournament_id,
-            'in_game_name' => $player?->in_game_name,
-            'uid' => $player?->uid,
+            'entry_fee_paid' => (string) $this->entry_fee_paid,
+            'players' => $this->players->sortBy('slot_number')->values()->map(fn ($player) => [
+                'slot_number' => $player->slot_number,
+                'in_game_name' => $player->in_game_name,
+                'uid' => $player->uid,
+            ]),
         ];
     }
 }

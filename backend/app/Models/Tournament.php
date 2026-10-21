@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'game_id', 'title', 'description', 'rules', 'image_path', 'mode',
@@ -54,5 +55,27 @@ class Tournament extends Model
     public function isFree(): bool
     {
         return (float) $this->entry_fee === 0.0;
+    }
+
+    /**
+     * How many individual players a single booking (one tournament_entries
+     * row) must register, by mode. total_slots counts team bookings, not
+     * individual players, in every mode.
+     */
+    public function requiredPlayerCount(): int
+    {
+        return match ($this->mode) {
+            'solo' => 1,
+            'duo' => 2,
+            'squad' => 4,
+        };
+    }
+
+    /**
+     * @return HasOne<TournamentCredential, $this>
+     */
+    public function credential(): HasOne
+    {
+        return $this->hasOne(TournamentCredential::class);
     }
 }

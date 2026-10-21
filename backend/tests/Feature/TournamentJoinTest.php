@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Wallet\WalletService;
 use App\Models\Tournament;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,11 +21,10 @@ class TournamentJoinTest extends TestCase
 
         $response = $this->actingAs($user, 'sanctum')
             ->postJson("/api/v1/tournaments/{$tournament->id}/join", [
-                'in_game_name' => 'ShadowStrike',
-                'uid' => '123456789012',
+                'players' => [['in_game_name' => 'ShadowStrike', 'uid' => '123456789012']],
             ]);
 
-        $response->assertCreated()->assertJsonPath('data.in_game_name', 'ShadowStrike');
+        $response->assertCreated()->assertJsonPath('data.players.0.in_game_name', 'ShadowStrike');
 
         $this->assertDatabaseHas('tournament_entries', [
             'tournament_id' => $tournament->id,
@@ -39,11 +39,11 @@ class TournamentJoinTest extends TestCase
         $tournament = Tournament::factory()->create(['total_slots' => 48]);
 
         $this->actingAs($user, 'sanctum')
-            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['in_game_name' => 'ShadowStrike'])
+            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['players' => [['in_game_name' => 'ShadowStrike', 'uid' => null]]])
             ->assertCreated();
 
         $response = $this->actingAs($user, 'sanctum')
-            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['in_game_name' => 'ShadowStrike']);
+            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['players' => [['in_game_name' => 'ShadowStrike', 'uid' => null]]]);
 
         $response->assertStatus(422)->assertJsonValidationErrors('tournament');
     }
@@ -55,23 +55,94 @@ class TournamentJoinTest extends TestCase
         $secondUser = User::factory()->create();
 
         $this->actingAs($firstUser, 'sanctum')
-            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['in_game_name' => 'First'])
+            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['players' => [['in_game_name' => 'First', 'uid' => null]]])
             ->assertCreated();
 
         $response = $this->actingAs($secondUser, 'sanctum')
-            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['in_game_name' => 'Second']);
+            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['players' => [['in_game_name' => 'Second', 'uid' => null]]]);
 
         $response->assertStatus(422)->assertJsonValidationErrors('tournament');
         $this->assertSame(1, $tournament->fresh()->confirmedEntriesCount());
     }
 
-    public function test_joining_a_paid_tournament_is_rejected_until_the_wallet_ships(): void
+    public function test_joining_a_paid_tournament_debits_the_wallet_and_records_the_fee_paid(): void
+    {
+        $user = User::factory()->create();
+        app(WalletService::class)->creditDeposit($user, '100.00', 'seed:'.$user->id);
+        $tournament = Tournament::factory()->paid(50)->create();
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['players' => [['in_game_name' => 'ShadowStrike', 'uid' => null]]]);
+
+        $response->assertCreated()->assertJsonPath('data.entry_fee_paid', '50.00');
+        $this->assertSame('50.00', $user->fresh()->wallet->deposit_balance);
+    }
+
+    public function test_joining_a_paid_tournament_without_enough_balance_is_rejected_and_creates_no_entry(): void
     {
         $user = User::factory()->create();
         $tournament = Tournament::factory()->paid(50)->create();
 
         $response = $this->actingAs($user, 'sanctum')
-            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['in_game_name' => 'ShadowStrike']);
+            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['players' => [['in_game_name' => 'ShadowStrike', 'uid' => null]]]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('tournament');
+        $this->assertDatabaseMissing('tournament_entries', ['tournament_id' => $tournament->id]);
+    }
+
+    public function test_a_duo_tournament_requires_exactly_two_players(): void
+    {
+        $user = User::factory()->create();
+        $tournament = Tournament::factory()->create(['mode' => 'duo']);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['players' => [['in_game_name' => 'Solo', 'uid' => null]]]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('players');
+    }
+
+    public function test_a_squad_tournament_can_be_joined_with_four_players(): void
+    {
+        $user = User::factory()->create();
+        $tournament = Tournament::factory()->create(['mode' => 'squad']);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/tournaments/{$tournament->id}/join", [
+                'players' => [
+                    ['in_game_name' => 'P1', 'uid' => null],
+                    ['in_game_name' => 'P2', 'uid' => null],
+                    ['in_game_name' => 'P3', 'uid' => null],
+                    ['in_game_name' => 'P4', 'uid' => null],
+                ],
+            ]);
+
+        $response->assertCreated();
+        $this->assertSame(4, $response->json('data.players') !== null ? count($response->json('data.players')) : 0);
+    }
+
+    public function test_joining_after_the_join_window_closes_is_rejected(): void
+    {
+        $user = User::factory()->create();
+        $tournament = Tournament::factory()->create([
+            'scheduled_start_at' => now()->subMinutes(10),
+        ]);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['players' => [['in_game_name' => 'Late', 'uid' => null]]]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('tournament');
+    }
+
+    public function test_joining_after_credentials_are_released_is_rejected_even_within_the_time_window(): void
+    {
+        $user = User::factory()->create();
+        $tournament = Tournament::factory()->create([
+            'scheduled_start_at' => now()->subMinute(),
+            'credentials_released_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['players' => [['in_game_name' => 'Late', 'uid' => null]]]);
 
         $response->assertStatus(422)->assertJsonValidationErrors('tournament');
     }
@@ -82,7 +153,7 @@ class TournamentJoinTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user, 'sanctum')
-            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['in_game_name' => 'ShadowStrike'])
+            ->postJson("/api/v1/tournaments/{$tournament->id}/join", ['players' => [['in_game_name' => 'ShadowStrike', 'uid' => null]]])
             ->assertCreated();
 
         $response = $this->actingAs(User::factory()->create(), 'sanctum')->getJson('/api/v1/tournaments');

@@ -18,9 +18,17 @@ class TournamentCreate extends Component
 
     public string $description = '';
 
+    public string $mode = 'solo';
+
     public float $entry_fee = 0;
 
+    public float $per_kill_reward = 0;
+
+    public float $prize_pool = 0;
+
     public int $total_slots = 48;
+
+    public ?int $min_players = null;
 
     public string $scheduled_start_at = '';
 
@@ -35,14 +43,17 @@ class TournamentCreate extends Component
             'game_id' => ['required', 'exists:games,id'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'mode' => ['required', 'in:solo,duo,squad'],
             'entry_fee' => ['required', 'numeric', 'min:0'],
+            'per_kill_reward' => ['required', 'numeric', 'min:0'],
+            'prize_pool' => ['required', 'numeric', 'min:0'],
             'total_slots' => ['required', 'integer', 'min:1', 'max:200'],
+            'min_players' => ['nullable', 'integer', 'min:1', 'lte:total_slots'],
             'scheduled_start_at' => ['required', 'date', 'after:now'],
         ]);
 
         $tournament = Tournament::create([
             ...$validated,
-            'mode' => 'solo',
             'status' => 'upcoming',
         ]);
 

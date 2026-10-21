@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Models\Tournament;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -17,9 +18,14 @@ class JoinTournamentRequest extends FormRequest
      */
     public function rules(): array
     {
+        /** @var Tournament $tournament */
+        $tournament = $this->route('tournament');
+        $requiredCount = $tournament->requiredPlayerCount();
+
         return [
-            'in_game_name' => ['required', 'string', 'max:20'],
-            'uid' => ['nullable', 'string', 'max:12'],
+            'players' => ['required', 'array', "size:{$requiredCount}"],
+            'players.*.in_game_name' => ['required', 'string', 'max:20'],
+            'players.*.uid' => ['nullable', 'string', 'max:12'],
         ];
     }
 }

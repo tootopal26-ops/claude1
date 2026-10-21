@@ -3,6 +3,8 @@
 namespace App\Domain\Tournament;
 
 use App\Domain\Notifications\NotificationService;
+use App\Domain\Wallet\InsufficientWalletBalanceException;
+use App\Domain\Wallet\WalletService;
 use App\Models\AuditLog;
 use App\Models\Tournament;
 use App\Models\TournamentEntry;
@@ -11,33 +13,28 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Atomically books a single Solo slot for a free-entry tournament.
- *
- * This is the Phase 1 slice of the full booking engine described in the
- * project plan: Duo/Squad multi-position booking, paid-entry wallet
- * deduction (deposit-then-winnings priority), and the join-window/
- * credential-release timing rules all land in Phase 5. Until the wallet
- * exists, a tournament with a non-zero entry fee is deliberately refused
- * here rather than silently let through for free — see the guard below.
+ * Atomically books one team slot (Solo/Duo/Squad) on a tournament,
+ * deducting the entry fee (deposit balance first, then eligible winnings)
+ * when the tournament isn't free.
  */
 class ConfirmSlotBookingAction
 {
-    public function __construct(private readonly NotificationService $notifications) {}
+    public function __construct(
+        private readonly NotificationService $notifications,
+        private readonly WalletService $wallet,
+    ) {}
 
     /**
+     * @param  list<array{in_game_name: string, uid: ?string}>  $players
+     *
      * @throws ValidationException
+     * @throws InsufficientWalletBalanceException
      */
-    public function execute(Tournament $tournament, User $user, string $inGameName, ?string $uid): TournamentEntry
+    public function execute(Tournament $tournament, User $user, array $players): TournamentEntry
     {
-        $entry = DB::transaction(function () use ($tournament, $user, $inGameName, $uid) {
+        $entry = DB::transaction(function () use ($tournament, $user, $players) {
             /** @var Tournament $locked */
             $locked = Tournament::query()->lockForUpdate()->findOrFail($tournament->id);
-
-            if ($locked->mode !== 'solo') {
-                throw ValidationException::withMessages([
-                    'tournament' => 'Only Solo tournaments can be joined in this build.',
-                ]);
-            }
 
             if ($locked->status !== 'upcoming') {
                 throw ValidationException::withMessages([
@@ -45,9 +42,24 @@ class ConfirmSlotBookingAction
                 ]);
             }
 
-            if ((float) $locked->entry_fee > 0) {
+            if ($locked->credentials_released_at !== null) {
                 throw ValidationException::withMessages([
-                    'tournament' => 'Paid-entry tournaments are not yet available.',
+                    'tournament' => 'Joining is closed for this tournament.',
+                ]);
+            }
+
+            $joinWindowCloses = $locked->scheduled_start_at->copy()
+                ->addMinutes((int) config('minimax.tournament_join_window_minutes'));
+
+            if (now()->greaterThanOrEqualTo($joinWindowCloses)) {
+                throw ValidationException::withMessages([
+                    'tournament' => 'Joining is closed for this tournament.',
+                ]);
+            }
+
+            if (count($players) !== $locked->requiredPlayerCount()) {
+                throw ValidationException::withMessages([
+                    'players' => "This {$locked->mode} tournament requires exactly {$locked->requiredPlayerCount()} player(s) per booking.",
                 ]);
             }
 
@@ -68,19 +80,37 @@ class ConfirmSlotBookingAction
             $entry = TournamentEntry::create([
                 'tournament_id' => $locked->id,
                 'user_id' => $user->id,
-                'entry_fee_paid' => 0,
+                'entry_fee_paid' => $locked->entry_fee,
                 'status' => 'confirmed',
             ]);
 
-            $entry->players()->create([
-                'slot_number' => 1,
-                'in_game_name' => $inGameName,
-                'uid' => $uid,
-            ]);
+            foreach ($players as $index => $player) {
+                $entry->players()->create([
+                    'slot_number' => $index + 1,
+                    'in_game_name' => $player['in_game_name'],
+                    'uid' => $player['uid'],
+                ]);
+            }
+
+            if (! $locked->isFree()) {
+                try {
+                    $this->wallet->debitForEntryFee(
+                        $user,
+                        (string) $locked->entry_fee,
+                        "tournament.entry_fee:{$entry->id}",
+                        $entry,
+                    );
+                } catch (InsufficientWalletBalanceException) {
+                    throw ValidationException::withMessages([
+                        'tournament' => 'Insufficient wallet balance to pay this tournament\'s entry fee.',
+                    ]);
+                }
+            }
 
             AuditLog::record('tournament.joined', $user, $entry, [
                 'tournament_id' => $locked->id,
-                'in_game_name' => $inGameName,
+                'entry_fee_paid' => (string) $locked->entry_fee,
+                'players' => array_column($players, 'in_game_name'),
             ]);
 
             return $entry->load('players');

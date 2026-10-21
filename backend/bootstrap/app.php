@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsureStaffSecurityVersionIsCurrent;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,6 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->group(base_path('routes/admin.php'));
         },
     )
+    ->withSchedule(function (Schedule $schedule): void {
+        $schedule->command('tournaments:close-joining-window')->everyMinute();
+        $schedule->command('tournaments:auto-cancel-underfilled')->everyMinute();
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'permission' => EnsurePermission::class,

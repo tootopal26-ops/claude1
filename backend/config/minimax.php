@@ -38,4 +38,29 @@ return [
     */
     'wallet_risk_alert_threshold' => env('MINIMAX_WALLET_RISK_ALERT_THRESHOLD', '200.00'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Tournament join window (minutes after scheduled start)
+    |--------------------------------------------------------------------------
+    |
+    | Joining a tournament stays open until this many minutes after its
+    | scheduled_start_at (the "lobby" time, not the moment the match itself
+    | begins), or until credentials are released — whichever happens first.
+    |
+    */
+    'tournament_join_window_minutes' => (int) env('MINIMAX_TOURNAMENT_JOIN_WINDOW_MINUTES', 4),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Minimum-players grace period (minutes after scheduled start)
+    |--------------------------------------------------------------------------
+    |
+    | If a tournament with a configured min_players still hasn't reached
+    | that many confirmed entries this many minutes after scheduled_start_at,
+    | and staff hasn't already released credentials (which overrides this
+    | check), it is auto-cancelled and every paid entry is refunded.
+    |
+    */
+    'tournament_min_players_grace_minutes' => (int) env('MINIMAX_TOURNAMENT_MIN_PLAYERS_GRACE_MINUTES', 5),
+
 ];

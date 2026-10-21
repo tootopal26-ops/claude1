@@ -22,11 +22,15 @@ class TournamentResource extends JsonResource
             'description' => $this->description,
             'rules' => $this->rules,
             'mode' => $this->mode,
+            'required_player_count' => $this->requiredPlayerCount(),
             'entry_fee' => (string) $this->entry_fee,
+            'per_kill_reward' => (string) $this->per_kill_reward,
+            'prize_pool' => (string) $this->prize_pool,
             'total_slots' => $this->total_slots,
             'joined_slots' => $joinedSlots,
             'scheduled_start_at' => $this->scheduled_start_at->toIso8601String(),
             'status' => $this->status,
+            'credentials_released' => $this->credentials_released_at !== null,
             'already_joined' => $request->user()
                 ? $this->entries()->where('user_id', $request->user()->id)->where('status', 'confirmed')->exists()
                 : false,

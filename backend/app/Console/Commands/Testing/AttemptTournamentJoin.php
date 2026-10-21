@@ -28,7 +28,9 @@ class AttemptTournamentJoin extends Command
         $user = User::findOrFail($this->argument('user'));
 
         try {
-            $action->execute($tournament, $user, $this->argument('inGameName'), null);
+            $action->execute($tournament, $user, [
+                ['in_game_name' => $this->argument('inGameName'), 'uid' => null],
+            ]);
             $this->line('JOINED');
 
             return self::SUCCESS;
