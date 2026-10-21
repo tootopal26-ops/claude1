@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AlphaUpiWebhookController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DepositController;
 use App\Http\Controllers\Api\V1\DevicePushTokenController;
+use App\Http\Controllers\Api\V1\LeaderboardController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\Api\V1\TournamentController;
@@ -44,5 +45,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/deposits', [DepositController::class, 'index']);
         Route::post('/deposits', [DepositController::class, 'store']);
         Route::get('/deposits/{deposit}', [DepositController::class, 'show']);
+
+        Route::get('/leaderboards/{type}', [LeaderboardController::class, 'show']);
     });
 });

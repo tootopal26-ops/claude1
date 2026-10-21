@@ -63,4 +63,21 @@ return [
     */
     'tournament_min_players_grace_minutes' => (int) env('MINIMAX_TOURNAMENT_MIN_PLAYERS_GRACE_MINUTES', 5),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Leaderboard reward payouts (coins)
+    |--------------------------------------------------------------------------
+    |
+    | Credited to eligible winnings exactly once per period, when that
+    | period finalizes, keyed by period type then final rank. A rank with
+    | no entry here receives no reward. Change freely — only the periods
+    | finalized AFTER a change pick up the new amounts.
+    |
+    */
+    'leaderboard_rewards' => [
+        'daily' => [1 => '50.00', 2 => '30.00', 3 => '20.00'],
+        'weekly' => [1 => '300.00', 2 => '150.00', 3 => '100.00'],
+        'monthly' => [1 => '1000.00', 2 => '500.00', 3 => '250.00'],
+    ],
+
 ];

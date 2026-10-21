@@ -51,6 +51,23 @@ export type DepositOrder = {
   created_at: string;
 };
 
+export type LeaderboardEntry = {
+  rank: number;
+  username: string;
+  score: string;
+  total_kills: number;
+  tournaments_played: number;
+};
+
+export type Leaderboard = {
+  type: 'daily' | 'weekly' | 'monthly';
+  period_start: string;
+  period_end: string;
+  status: 'provisional' | 'finalized';
+  entries: LeaderboardEntry[];
+  my_entry: LeaderboardEntry | null;
+};
+
 export type WithdrawalRequest = {
   id: number;
   amount: string;

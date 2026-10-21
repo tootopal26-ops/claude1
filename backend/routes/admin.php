@@ -2,6 +2,7 @@
 
 use App\Livewire\Admin\AuditLogViewer;
 use App\Livewire\Admin\DepositList;
+use App\Livewire\Admin\LeaderboardViewer;
 use App\Livewire\Admin\Login as AdminLogin;
 use App\Livewire\Admin\NotificationCompose;
 use App\Livewire\Admin\NotificationHistory;
@@ -124,5 +125,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/payment-settings', PaymentSettings::class)
             ->name('payment-settings')
             ->middleware('permission:payments.manage');
+
+        Route::get('/leaderboards', LeaderboardViewer::class)
+            ->name('leaderboards.index')
+            ->middleware('permission:leaderboards.manage');
     });
 });

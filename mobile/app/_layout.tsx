@@ -34,6 +34,7 @@ export default function RootLayout() {
           <Stack.Screen name="wallet" options={{ title: 'Wallet' }} />
           <Stack.Screen name="deposit" options={{ title: 'Deposit' }} />
           <Stack.Screen name="withdraw" options={{ title: 'Withdraw' }} />
+          <Stack.Screen name="leaderboard" options={{ title: 'Leaderboard' }} />
         </Stack>
       </AuthProvider>
     </SafeAreaProvider>

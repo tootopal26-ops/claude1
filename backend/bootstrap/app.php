@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('tournaments:close-joining-window')->everyMinute();
         $schedule->command('tournaments:auto-cancel-underfilled')->everyMinute();
         $schedule->command('tournaments:generate-from-templates')->daily();
+        $schedule->command('leaderboards:maintain')->everyTenMinutes();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([

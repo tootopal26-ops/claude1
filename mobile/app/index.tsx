@@ -69,6 +69,11 @@ export default function TournamentListScreen() {
               <Text style={styles.balanceText}>{totalBalance ?? '—'}</Text>
             </Pressable>
           </Link>
+          <Link href="/leaderboard" asChild>
+            <Pressable style={styles.bellButton}>
+              <Text style={styles.bellIcon}>🏆</Text>
+            </Pressable>
+          </Link>
           <Link href="/notifications" asChild>
             <Pressable style={styles.bellButton}>
               <Text style={styles.bellIcon}>🔔</Text>
