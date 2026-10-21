@@ -45,4 +45,17 @@ class TournamentEntry extends Model
     {
         return $this->hasMany(TournamentEntryPlayer::class);
     }
+
+    /**
+     * @return HasMany<TournamentResult, $this>
+     */
+    public function results(): HasMany
+    {
+        return $this->hasMany(TournamentResult::class);
+    }
+
+    public function currentResult(): ?TournamentResult
+    {
+        return $this->results()->whereNull('superseded_by_id')->first();
+    }
 }

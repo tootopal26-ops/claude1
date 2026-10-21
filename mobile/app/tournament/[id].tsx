@@ -134,6 +134,16 @@ export default function TournamentDetailScreen() {
         </View>
       )}
 
+      {tournament.my_result && (
+        <View style={styles.result}>
+          <Text style={styles.resultTitle}>Your result</Text>
+          <Text style={styles.resultMeta}>Rank #{tournament.my_result.rank} · {tournament.my_result.kills} kills</Text>
+          {Number(tournament.my_result.prize_awarded) > 0 && (
+            <Text style={styles.resultMeta}>Prize awarded: {tournament.my_result.prize_awarded} coins</Text>
+          )}
+        </View>
+      )}
+
       {alreadyJoined ? (
         <View style={styles.confirmation}>
           <Text style={styles.confirmationTitle}>You're confirmed for this tournament</Text>
@@ -142,7 +152,7 @@ export default function TournamentDetailScreen() {
               {PLAYER_LABELS[player.slot_number - 1] ?? `Player ${player.slot_number}`}: {player.in_game_name}
             </Text>
           ))}
-          {!credentials && tournament.status !== 'cancelled' && (
+          {!credentials && tournament.status !== 'cancelled' && !tournament.my_result && (
             <Text style={styles.confirmationMeta}>Room details will appear here once they're released.</Text>
           )}
         </View>
@@ -233,4 +243,14 @@ const styles = StyleSheet.create({
   },
   credentialsTitle: { color: '#fff', fontWeight: '700', fontSize: 16 },
   credentialsMeta: { color: '#C4B5FD', marginTop: 4, fontSize: 14 },
+  result: {
+    marginTop: 16,
+    backgroundColor: 'rgba(250,204,21,0.12)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(250,204,21,0.35)',
+  },
+  resultTitle: { color: '#FACC15', fontWeight: '700', fontSize: 16 },
+  resultMeta: { color: '#fff', marginTop: 4, fontSize: 14 },
 });

@@ -11,6 +11,10 @@
         · status: {{ $tournament->status }}
     </p>
 
+    @if (auth('staff')->user()->hasPermission('results.submit'))
+        <a href="{{ route('admin.tournaments.results', $tournament) }}" class="mb-6 inline-block text-sm text-violet-400 hover:text-violet-200">Enter / view results &rarr;</a>
+    @endif
+
     @if (session('status'))
         <div class="mb-4 rounded-lg bg-emerald-900/40 px-4 py-3 text-sm text-emerald-300">{{ session('status') }}</div>
     @endif

@@ -11,6 +11,7 @@ use App\Livewire\Admin\StaffList;
 use App\Livewire\Admin\TournamentCreate;
 use App\Livewire\Admin\TournamentEntries;
 use App\Livewire\Admin\TournamentList;
+use App\Livewire\Admin\TournamentResults;
 use App\Livewire\Admin\UserList;
 use App\Livewire\Admin\UserShow;
 use Illuminate\Support\Facades\Auth;
@@ -41,6 +42,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/tournaments/{tournament}/entries', TournamentEntries::class)
             ->name('tournaments.entries')
             ->middleware('permission:tournaments.view');
+
+        Route::get('/tournaments/{tournament}/results', TournamentResults::class)
+            ->name('tournaments.results')
+            ->middleware('permission:results.submit');
 
         Route::get('/notifications', NotificationHistory::class)
             ->name('notifications.index')

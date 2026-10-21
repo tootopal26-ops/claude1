@@ -20,6 +20,7 @@ export type Tournament = {
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   credentials_released: boolean;
   already_joined: boolean;
+  my_result: { rank: number; kills: number; prize_awarded: string } | null;
 };
 
 export type TournamentEntryPlayer = {

@@ -185,6 +185,47 @@ class WalletService
     }
 
     /**
+     * Applies a signed delta directly to the eligible winnings balance —
+     * used uniformly for a tournament result's prize credit (delta = the
+     * full prize, nothing previous) and for a later correction (delta =
+     * new prize minus old prize). A zero delta writes nothing and returns
+     * null, so a correction that doesn't change a given entry's prize is
+     * a no-op rather than a pointless zero-amount ledger row.
+     *
+     * @throws InsufficientWalletBalanceException if subtracting would take the winnings balance negative
+     */
+    public function applyResultCorrection(
+        User $user,
+        string $signedDelta,
+        string $idempotencyKey,
+        ?Model $source = null,
+        ?string $reason = null,
+    ): ?WalletLedgerEntry {
+        if (bccomp($signedDelta, '0.00', 2) === 0) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($user, $signedDelta, $idempotencyKey, $source, $reason) {
+            $wallet = $this->lockWallet($user);
+
+            if ($existing = $this->findExisting($idempotencyKey, 'winnings')) {
+                return $existing;
+            }
+
+            $current = (string) $wallet->eligible_winnings_balance;
+            $resultingBalance = bcadd($current, $signedDelta, 2);
+
+            if (bccomp($resultingBalance, '0.00', 2) < 0) {
+                throw new InsufficientWalletBalanceException(
+                    "Result correction of {$signedDelta} would take the winnings balance negative (current: {$current}).",
+                );
+            }
+
+            return $this->applyEntry($wallet, 'result_correction', 'winnings', $signedDelta, $idempotencyKey, $source, $reason);
+        });
+    }
+
+    /**
      * Staff-initiated correction. Always audited; adjustments at or above
      * the configured threshold also raise a risk alert for review.
      *

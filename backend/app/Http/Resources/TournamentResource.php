@@ -16,6 +16,11 @@ class TournamentResource extends JsonResource
     {
         $joinedSlots = $this->joined_slots_count ?? $this->confirmedEntriesCount();
 
+        $myEntry = $request->user()
+            ? $this->entries()->where('user_id', $request->user()->id)->where('status', 'confirmed')->first()
+            : null;
+        $myResult = $myEntry?->currentResult();
+
         return [
             'id' => $this->id,
             'title' => $this->title,
@@ -31,9 +36,12 @@ class TournamentResource extends JsonResource
             'scheduled_start_at' => $this->scheduled_start_at->toIso8601String(),
             'status' => $this->status,
             'credentials_released' => $this->credentials_released_at !== null,
-            'already_joined' => $request->user()
-                ? $this->entries()->where('user_id', $request->user()->id)->where('status', 'confirmed')->exists()
-                : false,
+            'already_joined' => $myEntry !== null,
+            'my_result' => $myResult ? [
+                'rank' => $myResult->rank,
+                'kills' => $myResult->kills,
+                'prize_awarded' => (string) $myResult->prize_awarded,
+            ] : null,
         ];
     }
 }
