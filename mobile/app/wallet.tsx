@@ -89,11 +89,18 @@ export default function WalletScreen() {
                 </View>
               </View>
 
-              <Link href="/withdraw" asChild>
-                <Pressable style={styles.withdrawButton}>
-                  <Text style={styles.withdrawButtonText}>Withdraw winnings</Text>
-                </Pressable>
-              </Link>
+              <View style={styles.actionRow}>
+                <Link href="/deposit" asChild>
+                  <Pressable style={[styles.actionButton, styles.depositButton]}>
+                    <Text style={styles.withdrawButtonText}>Add coins</Text>
+                  </Pressable>
+                </Link>
+                <Link href="/withdraw" asChild>
+                  <Pressable style={[styles.actionButton, styles.withdrawButton]}>
+                    <Text style={styles.withdrawButtonText}>Withdraw</Text>
+                  </Pressable>
+                </Link>
+              </View>
 
               <Text style={styles.historyHeading}>Transaction history</Text>
             </View>
@@ -140,13 +147,15 @@ const styles = StyleSheet.create({
   breakdownLabel: { color: '#C4B5FD', fontSize: 12, marginBottom: 4 },
   breakdownValue: { color: '#fff', fontSize: 18, fontWeight: '700' },
   winningsValue: { color: '#34D399' },
-  withdrawButton: {
-    backgroundColor: '#8B5CF6',
+  actionRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
+  actionButton: {
+    flex: 1,
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
-    marginBottom: 20,
   },
+  depositButton: { backgroundColor: '#34D399' },
+  withdrawButton: { backgroundColor: '#8B5CF6' },
   withdrawButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
   historyHeading: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 8 },
   empty: { color: '#C4B5FD', textAlign: 'center', marginTop: 32 },

@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Domain\Payments\AlphaUpiAdapter;
+use App\Domain\Payments\PaymentGatewayInterface;
+use App\Models\PaymentProviderConfig;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -15,7 +18,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(PaymentGatewayInterface::class, function () {
+            $config = PaymentProviderConfig::where('provider', 'alpha_upi')->first();
+
+            return new AlphaUpiAdapter(
+                (string) config('services.alpha_upi.base_url'),
+                (string) config('services.alpha_upi.key'),
+                (string) config('services.alpha_upi.secret'),
+                (string) config('services.alpha_upi.webhook_secret'),
+                $config?->webhook_signature_header ?? 'X-PayIndia-Signature',
+            );
+        });
     }
 
     /**

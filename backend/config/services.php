@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'alpha_upi' => [
+        'base_url' => env('ALPHA_UPI_BASE_URL', 'https://alphaupi.site/api'),
+        'key' => env('ALPHA_UPI_API_KEY'),
+        'secret' => env('ALPHA_UPI_API_SECRET'),
+        'webhook_secret' => env('ALPHA_UPI_WEBHOOK_SECRET'),
+    ],
+
 ];

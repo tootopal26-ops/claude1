@@ -42,6 +42,15 @@ export type TournamentCredentials = {
   released_at: string;
 };
 
+export type DepositOrder = {
+  id: number;
+  amount: string;
+  status: 'pending' | 'success' | 'failed' | 'expired';
+  payment_url: string | null;
+  utr: string | null;
+  created_at: string;
+};
+
 export type WithdrawalRequest = {
   id: number;
   amount: string;

@@ -23,6 +23,9 @@
                 @if (auth('staff')->user()->hasPermission('withdrawals.manage'))
                     <a href="{{ route('admin.withdrawals.index') }}" class="text-sm text-violet-300 hover:text-white">Withdrawals</a>
                 @endif
+                @if (auth('staff')->user()->hasPermission('payments.view'))
+                    <a href="{{ route('admin.deposits.index') }}" class="text-sm text-violet-300 hover:text-white">Deposits</a>
+                @endif
                 @if (auth('staff')->user()->hasPermission('staff.manage'))
                     <a href="{{ route('admin.staff.index') }}" class="text-sm text-violet-300 hover:text-white">Staff</a>
                     <a href="{{ route('admin.presets.index') }}" class="text-sm text-violet-300 hover:text-white">Presets</a>

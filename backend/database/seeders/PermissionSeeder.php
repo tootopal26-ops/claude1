@@ -30,6 +30,8 @@ class PermissionSeeder extends Seeder
         ['key' => 'results.submit', 'label' => 'Submit and revise tournament results', 'group' => 'Tournament Operations'],
         ['key' => 'wallet.manage', 'label' => 'Adjust eligible wallet balances', 'group' => 'Wallet & Payments'],
         ['key' => 'withdrawals.manage', 'label' => 'Approve or reject withdrawal requests', 'group' => 'Wallet & Payments'],
+        ['key' => 'payments.view', 'label' => 'View deposit orders and payment provider status', 'group' => 'Wallet & Payments'],
+        ['key' => 'payments.manage', 'label' => 'Configure payment provider settings', 'group' => 'Wallet & Payments'],
         ['key' => 'users.view', 'label' => 'View player account details', 'group' => 'Users'],
         ['key' => 'users.ban', 'label' => 'Ban or unban player accounts', 'group' => 'Users'],
         ['key' => 'passwords.reset', 'label' => 'Reset a player password via secure recovery', 'group' => 'Users'],

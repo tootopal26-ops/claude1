@@ -1,9 +1,11 @@
 <?php
 
 use App\Livewire\Admin\AuditLogViewer;
+use App\Livewire\Admin\DepositList;
 use App\Livewire\Admin\Login as AdminLogin;
 use App\Livewire\Admin\NotificationCompose;
 use App\Livewire\Admin\NotificationHistory;
+use App\Livewire\Admin\PaymentSettings;
 use App\Livewire\Admin\PresetForm;
 use App\Livewire\Admin\PresetList;
 use App\Livewire\Admin\StaffForm;
@@ -114,5 +116,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/withdrawals/{withdrawal}', WithdrawalShow::class)
             ->name('withdrawals.show')
             ->middleware('permission:withdrawals.manage');
+
+        Route::get('/deposits', DepositList::class)
+            ->name('deposits.index')
+            ->middleware('permission:payments.view');
+
+        Route::get('/payment-settings', PaymentSettings::class)
+            ->name('payment-settings')
+            ->middleware('permission:payments.manage');
     });
 });

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Game;
+use App\Models\PaymentProviderConfig;
 use App\Models\StaffUser;
 use App\Models\Tournament;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -49,6 +50,11 @@ class DatabaseSeeder extends Seeder
                 'scheduled_start_at' => now()->addDay(),
                 'status' => 'upcoming',
             ]
+        );
+
+        PaymentProviderConfig::firstOrCreate(
+            ['provider' => 'alpha_upi'],
+            ['is_active' => true, 'webhook_signature_header' => 'X-PayIndia-Signature']
         );
     }
 }

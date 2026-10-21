@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\AlphaUpiWebhookController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\DepositController;
 use App\Http\Controllers\Api\V1\DevicePushTokenController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\SessionController;
@@ -8,6 +10,8 @@ use App\Http\Controllers\Api\V1\TournamentController;
 use App\Http\Controllers\Api\V1\WalletController;
 use App\Http\Controllers\Api\V1\WithdrawalController;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/webhooks/alpha-upi', AlphaUpiWebhookController::class)->middleware('throttle:60,1');
 
 Route::prefix('v1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
@@ -36,5 +40,9 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/withdrawals', [WithdrawalController::class, 'index']);
         Route::post('/withdrawals', [WithdrawalController::class, 'store']);
+
+        Route::get('/deposits', [DepositController::class, 'index']);
+        Route::post('/deposits', [DepositController::class, 'store']);
+        Route::get('/deposits/{deposit}', [DepositController::class, 'show']);
     });
 });
