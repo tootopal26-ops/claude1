@@ -21,7 +21,7 @@ use Illuminate\Validation\ValidationException;
  *
  * Every entry's prize is applied to its wallet as a signed delta against
  * whatever it was previously credited (0 on first publish), via
- * WalletService::applyResultCorrection, so a correction only ever moves
+ * WalletService::adjustWinningsBalance, so a correction only ever moves
  * the difference rather than double-crediting the full new amount. If a
  * reduction can't be applied because the player has since spent or
  * withdrawn those winnings, the whole submission is rejected rather than
@@ -112,9 +112,10 @@ class SubmitTournamentResultsAction
                 $delta = bcsub((string) $result['prize_awarded'], (string) $previousPrize, 2);
 
                 try {
-                    $this->wallet->applyResultCorrection(
+                    $this->wallet->adjustWinningsBalance(
                         $entry->user,
                         $delta,
+                        'result_correction',
                         "tournament.prize:{$entry->id}:{$newRevisionNumber}",
                         $newRow,
                         $newRevisionNumber === 1 ? 'Tournament prize' : 'Tournament prize correction',

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\Api\V1\TournamentController;
 use App\Http\Controllers\Api\V1\WalletController;
+use App\Http\Controllers\Api\V1\WithdrawalController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -32,5 +33,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/wallet', [WalletController::class, 'show']);
         Route::get('/wallet/ledger', [WalletController::class, 'ledger']);
+
+        Route::get('/withdrawals', [WithdrawalController::class, 'index']);
+        Route::post('/withdrawals', [WithdrawalController::class, 'store']);
     });
 });

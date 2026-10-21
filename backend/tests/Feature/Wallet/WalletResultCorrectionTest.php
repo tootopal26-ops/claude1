@@ -16,7 +16,7 @@ class WalletResultCorrectionTest extends TestCase
     {
         $user = User::factory()->create();
 
-        app(WalletService::class)->applyResultCorrection($user, '60.00', 'tournament.prize:1:1');
+        app(WalletService::class)->adjustWinningsBalance($user, '60.00', 'result_correction', 'tournament.prize:1:1');
 
         $this->assertSame('60.00', $user->fresh()->wallet->eligible_winnings_balance);
     }
@@ -26,8 +26,8 @@ class WalletResultCorrectionTest extends TestCase
         $user = User::factory()->create();
         $wallet = app(WalletService::class);
 
-        $wallet->applyResultCorrection($user, '60.00', 'tournament.prize:1:1');
-        $wallet->applyResultCorrection($user, '20.00', 'tournament.prize:1:2'); // 80 - 60 = 20
+        $wallet->adjustWinningsBalance($user, '60.00', 'result_correction', 'tournament.prize:1:1');
+        $wallet->adjustWinningsBalance($user, '20.00', 'result_correction', 'tournament.prize:1:2'); // 80 - 60 = 20
 
         $this->assertSame('80.00', $user->fresh()->wallet->eligible_winnings_balance);
     }
@@ -37,8 +37,8 @@ class WalletResultCorrectionTest extends TestCase
         $user = User::factory()->create();
         $wallet = app(WalletService::class);
 
-        $wallet->applyResultCorrection($user, '60.00', 'tournament.prize:1:1');
-        $wallet->applyResultCorrection($user, '-10.00', 'tournament.prize:1:2'); // 50 - 60 = -10
+        $wallet->adjustWinningsBalance($user, '60.00', 'result_correction', 'tournament.prize:1:1');
+        $wallet->adjustWinningsBalance($user, '-10.00', 'result_correction', 'tournament.prize:1:2'); // 50 - 60 = -10
 
         $this->assertSame('50.00', $user->fresh()->wallet->eligible_winnings_balance);
     }
@@ -47,12 +47,12 @@ class WalletResultCorrectionTest extends TestCase
     {
         $user = User::factory()->create();
         $wallet = app(WalletService::class);
-        $wallet->applyResultCorrection($user, '10.00', 'tournament.prize:1:1');
+        $wallet->adjustWinningsBalance($user, '10.00', 'result_correction', 'tournament.prize:1:1');
 
         $this->expectException(InsufficientWalletBalanceException::class);
 
         try {
-            $wallet->applyResultCorrection($user, '-50.00', 'tournament.prize:1:2');
+            $wallet->adjustWinningsBalance($user, '-50.00', 'result_correction', 'tournament.prize:1:2');
         } finally {
             $this->assertSame('10.00', $user->fresh()->wallet->eligible_winnings_balance);
         }
@@ -62,9 +62,9 @@ class WalletResultCorrectionTest extends TestCase
     {
         $user = User::factory()->create();
         $wallet = app(WalletService::class);
-        $wallet->applyResultCorrection($user, '60.00', 'tournament.prize:1:1');
+        $wallet->adjustWinningsBalance($user, '60.00', 'result_correction', 'tournament.prize:1:1');
 
-        $result = $wallet->applyResultCorrection($user, '0.00', 'tournament.prize:1:2');
+        $result = $wallet->adjustWinningsBalance($user, '0.00', 'result_correction', 'tournament.prize:1:2');
 
         $this->assertNull($result);
         $this->assertSame('60.00', $user->fresh()->wallet->eligible_winnings_balance);
@@ -75,8 +75,8 @@ class WalletResultCorrectionTest extends TestCase
         $user = User::factory()->create();
         $wallet = app(WalletService::class);
 
-        $wallet->applyResultCorrection($user, '60.00', 'tournament.prize:1:1');
-        $wallet->applyResultCorrection($user, '60.00', 'tournament.prize:1:1');
+        $wallet->adjustWinningsBalance($user, '60.00', 'result_correction', 'tournament.prize:1:1');
+        $wallet->adjustWinningsBalance($user, '60.00', 'result_correction', 'tournament.prize:1:1');
 
         $this->assertSame('60.00', $user->fresh()->wallet->eligible_winnings_balance);
     }

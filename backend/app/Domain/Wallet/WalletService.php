@@ -186,17 +186,22 @@ class WalletService
 
     /**
      * Applies a signed delta directly to the eligible winnings balance —
-     * used uniformly for a tournament result's prize credit (delta = the
-     * full prize, nothing previous) and for a later correction (delta =
-     * new prize minus old prize). A zero delta writes nothing and returns
-     * null, so a correction that doesn't change a given entry's prize is
-     * a no-op rather than a pointless zero-amount ledger row.
+     * the general-purpose primitive behind every operation that only ever
+     * touches winnings, never deposit: a tournament result's prize credit
+     * and later corrections (delta = new prize minus old prize), and a
+     * withdrawal's atomic reservation/release (delta = -amount to reserve,
+     * +amount to release back). $type labels the ledger entry so the
+     * wallet history reads correctly regardless of which caller wrote it.
+     * A zero delta writes nothing and returns null, so a correction that
+     * doesn't change anything is a no-op rather than a pointless
+     * zero-amount ledger row.
      *
      * @throws InsufficientWalletBalanceException if subtracting would take the winnings balance negative
      */
-    public function applyResultCorrection(
+    public function adjustWinningsBalance(
         User $user,
         string $signedDelta,
+        string $type,
         string $idempotencyKey,
         ?Model $source = null,
         ?string $reason = null,
@@ -205,7 +210,7 @@ class WalletService
             return null;
         }
 
-        return DB::transaction(function () use ($user, $signedDelta, $idempotencyKey, $source, $reason) {
+        return DB::transaction(function () use ($user, $signedDelta, $type, $idempotencyKey, $source, $reason) {
             $wallet = $this->lockWallet($user);
 
             if ($existing = $this->findExisting($idempotencyKey, 'winnings')) {
@@ -217,11 +222,11 @@ class WalletService
 
             if (bccomp($resultingBalance, '0.00', 2) < 0) {
                 throw new InsufficientWalletBalanceException(
-                    "Result correction of {$signedDelta} would take the winnings balance negative (current: {$current}).",
+                    "Adjustment of {$signedDelta} would take the winnings balance negative (current: {$current}).",
                 );
             }
 
-            return $this->applyEntry($wallet, 'result_correction', 'winnings', $signedDelta, $idempotencyKey, $source, $reason);
+            return $this->applyEntry($wallet, $type, 'winnings', $signedDelta, $idempotencyKey, $source, $reason);
         });
     }
 

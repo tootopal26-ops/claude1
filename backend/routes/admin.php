@@ -16,6 +16,8 @@ use App\Livewire\Admin\TournamentList;
 use App\Livewire\Admin\TournamentResults;
 use App\Livewire\Admin\UserList;
 use App\Livewire\Admin\UserShow;
+use App\Livewire\Admin\WithdrawalList;
+use App\Livewire\Admin\WithdrawalShow;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -104,5 +106,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/templates/{template}/edit', TemplateForm::class)
             ->name('templates.edit')
             ->middleware('permission:recurring_tournaments.manage');
+
+        Route::get('/withdrawals', WithdrawalList::class)
+            ->name('withdrawals.index')
+            ->middleware('permission:withdrawals.manage');
+
+        Route::get('/withdrawals/{withdrawal}', WithdrawalShow::class)
+            ->name('withdrawals.show')
+            ->middleware('permission:withdrawals.manage');
     });
 });

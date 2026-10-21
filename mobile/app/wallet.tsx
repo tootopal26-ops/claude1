@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { Redirect } from 'expo-router';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Link, Redirect } from 'expo-router';
 
 import { fetchWallet, fetchWalletLedger } from '../src/api/wallet';
 import { useAuth } from '../src/auth/AuthContext';
@@ -89,6 +89,12 @@ export default function WalletScreen() {
                 </View>
               </View>
 
+              <Link href="/withdraw" asChild>
+                <Pressable style={styles.withdrawButton}>
+                  <Text style={styles.withdrawButtonText}>Withdraw winnings</Text>
+                </Pressable>
+              </Link>
+
               <Text style={styles.historyHeading}>Transaction history</Text>
             </View>
           }
@@ -134,6 +140,14 @@ const styles = StyleSheet.create({
   breakdownLabel: { color: '#C4B5FD', fontSize: 12, marginBottom: 4 },
   breakdownValue: { color: '#fff', fontSize: 18, fontWeight: '700' },
   winningsValue: { color: '#34D399' },
+  withdrawButton: {
+    backgroundColor: '#8B5CF6',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  withdrawButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
   historyHeading: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 8 },
   empty: { color: '#C4B5FD', textAlign: 'center', marginTop: 32 },
   row: {

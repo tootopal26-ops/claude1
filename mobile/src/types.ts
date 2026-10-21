@@ -42,6 +42,17 @@ export type TournamentCredentials = {
   released_at: string;
 };
 
+export type WithdrawalRequest = {
+  id: number;
+  amount: string;
+  upi_id: string;
+  status: 'pending' | 'approved' | 'processing' | 'paid' | 'rejected' | 'failed';
+  rejection_reason: string | null;
+  failure_reason: string | null;
+  settlement_reference: string | null;
+  created_at: string;
+};
+
 export type AppNotification = {
   id: number;
   title: string;
