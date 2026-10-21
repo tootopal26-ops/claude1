@@ -52,6 +52,7 @@ final class AiService
             'enabled' => $enabled, 'provider' => $provider, 'model' => $model,
             'base_url' => $baseUrl !== '' ? $baseUrl : (self::DEFAULT_BASE_URL[$provider] ?? ''),
             'has_key' => $hasKey, 'use_for_reports' => (bool) Settings::get('ai.use_for_reports', false), 'use_for_support' => (bool) Settings::get('ai.use_for_support', false),
+            'use_for_pricing' => (bool) Settings::get('ai.use_for_pricing', false),
             'providers' => self::PROVIDERS, 'available' => $enabled && $provider !== 'none' && $model !== '' && $hasKey,
         ];
     }
@@ -128,7 +129,7 @@ final class AiService
             $hadKey = false;
             $keyChanged = true;
         }
-        foreach (['use_for_reports', 'use_for_support'] as $f) {
+        foreach (['use_for_reports', 'use_for_support', 'use_for_pricing'] as $f) {
             if (array_key_exists($f, $in)) {
                 if (!is_bool($in[$f])) {
                     $errors[$f] = 'Choose on or off.';
@@ -159,6 +160,7 @@ final class AiService
         Audit::log('ai.settings_changed', 'settings', 'ai', [
             'enabled' => $willBeEnabled, 'provider' => $provider, 'model' => $model, 'key_changed' => $keyChanged,
             'use_for_reports' => $set['ai.use_for_reports'] ?? $cur['use_for_reports'], 'use_for_support' => $set['ai.use_for_support'] ?? $cur['use_for_support'],
+            'use_for_pricing' => $set['ai.use_for_pricing'] ?? $cur['use_for_pricing'],
         ], $req, $admin);
         return self::settings();
     }

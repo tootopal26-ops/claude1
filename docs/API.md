@@ -122,7 +122,7 @@ After a webhook has been accepted the shop can ask the gateway whether it agrees
 
 ## 3. Admin routes
 
-HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|finance|ads|alerts|reports|orders|recovery|payments|payment-checks|services|tags|website|advertising|gateway|smm|security|audit|system}`) redirect to the sign-in page when signed out. The pages load their data from the JSON API below.
+HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|finance|ads|alerts|reports|pricing|orders|recovery|payments|payment-checks|services|tags|website|advertising|gateway|smm|security|audit|system}`) redirect to the sign-in page when signed out. The pages load their data from the JSON API below.
 
 ### Auth
 | Method & path | Purpose |
@@ -179,11 +179,34 @@ HTML shells (`GET /admin`, `/admin/login`, `/admin/{dashboard|finance|ads|alerts
 | `POST /admin/api/reports/{YYYY-MM-DD}/generate` `{force?}` *(reports.generate)* | Create the report of a **finished** day (`422` for today, the future, or a day before the shop's first data); with `force: true` rebuild it **in place** (never a second row) and answer which figures changed. Idempotent per `Idempotency-Key`; audited (`report.generated`, `report.regenerated` with the changes). |
 | `POST /admin/api/reports/{YYYY-MM-DD}/ai` *(reports.generate)* | The optional AI commentary ([AI-AND-SUPPORT.md](AI-AND-SUPPORT.md)): `{result:{status: "none"\|"ok"\|"unavailable"\|"invalid", message}, message, report}`. `none` when AI is off (for reports specifically, or entirely) — says so plainly, nothing is called. 10 per 10 minutes per admin (`429`); idempotent per `Idempotency-Key`; audited (`report.ai_generated`) only on success. `404` for a day with no report yet. |
 
+### Adaptive pricing (permission in brackets; `403 forbidden` without it) — see [ADAPTIVE-PRICING.md](ADAPTIVE-PRICING.md)
+Writes are idempotent per `Idempotency-Key`, validated (`422` with `fields`) and audited. Money as usual (integer paise + a rupee string); `candidate_price`/`profit_floor` accept rupee strings on the way in.
+| Method & path | Purpose |
+|---|---|
+| `GET` / `PUT /admin/api/pricing/settings` *(pricing.view / pricing.approve)* | The engine's policy knobs (cooldown, assignment TTL, default treatment share / min sample / max duration, the global min price, every rollback tolerance and the decision margin) and the global pause state. Changing them is owner-only. |
+| `GET /admin/api/pricing/services` *(pricing.view)* | Every MANUAL service with its adaptive-pricing configuration (`adaptive_enabled`, min/max price, `pricing_paused`), whether it is eligible right now and why not, its active experiment (if any) and cooldown. |
+| `PUT /admin/api/pricing/services/{id}` `{adaptive_enabled?, min_price?, max_price?, pricing_paused?}` *(pricing.pause)* | The only place this is configured — there is no second copy of this switch on the Services page. |
+| `POST /admin/api/pricing/simulate/{id}` `{candidates:["49","99",…]}` *(pricing.view)* | The Price Experiment Simulator: no write. For each candidate, the price-ending verdict (and why not, if invalid), contribution per order, and a projection at the service's **real** recent order volume (never a demand forecast — the volume is held constant and the window used is named). |
+| `GET /admin/api/pricing/experiments?status=&page=` *(pricing.view)* | `status` = `active` (proposed\|running\|paused) \| `ended` (concluded\|rolled_back\|cancelled) \| one exact status \| empty (all). Also `can {propose, approve, pause}`. |
+| `POST /admin/api/pricing/experiments` `{service_id, candidate_price, treatment_share_pct?, min_sample?, max_duration_days?, profit_floor?}` *(pricing.propose)* | Propose a control-vs-candidate test. Refused (`422`) for an ineligible service, an invalid or out-of-bounds candidate, one that does not differ from the control price, or one beyond the configured maximum change; refused (`422`) while another experiment is already in progress for the same service or it is in cooldown. |
+| `GET /admin/api/pricing/experiments/{id}` *(pricing.view)* | One experiment in full: both cohorts' rollups, the last 50 decision-log rows, and whether its candidate was ever activated. |
+| `POST /admin/api/pricing/experiments/{id}/start` `{mode:"dry_run"\|"live"}` *(pricing.propose for `dry_run`; **pricing.approve, owner only**, for `live`)* | `dry_run` is a real randomised A/A test — **every** cohort is shown the real default price, so no customer is ever affected; `live` is the only way the treatment cohort is ever shown the candidate price, and needs the owner tier. |
+| `POST /admin/api/pricing/experiments/{id}/go-live` *(pricing.approve, owner only)* | Switches a **running dry-run** experiment to live without resetting its clock or its already-placed assignments (a visitor assigned before the switch keeps the price they were already shown). |
+| `POST /admin/api/pricing/experiments/{id}/pause` `{reason}` / `…/resume` *(pricing.pause)* | Pausing stops new assignments; resuming does not retroactively change anyone already assigned. |
+| `POST /admin/api/pricing/experiments/{id}/rollback` `{reason}` *(pricing.pause)* | Stops the experiment immediately and reverts the default price if (and only if) a winning candidate had already been activated. The same action the automatic evaluator takes, available on demand. |
+| `POST /admin/api/pricing/experiments/{id}/apply` *(pricing.approve, owner only)* | Activate a **concluded, winning** experiment's candidate price as the new default (price-versioned and audited like any other price change); `409` if it is not a concluded winner, or was already activated once. |
+| `POST /admin/api/pricing/experiments/{id}/cancel` `{reason}` *(pricing.pause)* | Only a `proposed` experiment (never started) can be cancelled — a running or paused one is stopped with a rollback instead. |
+| `POST /admin/api/pricing/experiments/{id}/evaluate` *(pricing.pause)* | Runs the same deterministic evaluator the `pricing` cron job runs, on demand, for one experiment. 30 per 10 minutes per admin. |
+| `POST /admin/api/pricing/experiments/{id}/ai-insight` *(pricing.view)* | The optional, advisory-only AI explanation of an experiment's own numbers (`App\Services\PricingAi`) — `none`/`unavailable`/`invalid` exactly like the report commentary; 10 per 10 minutes per admin; audited on success (`pricing.ai_insight`). |
+| `GET /admin/api/pricing/profit-guard` *(pricing.view)* | The global pause state, every adaptive-enabled service's own pause switch, every **running** experiment's profit-floor status (`ok`/`at_risk`/`breached`, from real cohort numbers), recent automatic rollbacks, and the related alerts. |
+| `POST /admin/api/pricing/global-pause` `{paused:true\|false}` *(pricing.pause)* | The emergency brake: stops **every** service from assigning a new visitor to any experiment at once; never alters a price an order already carries. |
+| `GET /admin/api/pricing/learning-history?page=` *(pricing.view)* | Every ended (concluded / rolled-back / cancelled) experiment with both cohorts' real purchases, revenue and contribution, the decision and its reason, and whether it was activated — plus a `summary` of winners/losers/inconclusive/rolled-back counts. |
+
 ### AI provider (permission `ai.configure` — **owner only**; `403 forbidden` for every other role, `manager` included)
 | Method & path | Purpose |
 |---|---|
-| `GET /admin/api/ai/settings` | `{enabled, provider: "none"\|"anthropic"\|"openai_compatible", model, base_url, has_key, use_for_reports, use_for_support, providers, available}` — never the key itself. |
-| `PUT /admin/api/ai/settings` `{enabled?, provider?, model?, base_url?, api_key?, clear_key?, use_for_reports?, use_for_support?}` | Validated as a whole (`422` with `fields`); switching `enabled: true` with a provider needs a model **and** a key together, or both are named. `clear_key: true` empties the key — refused if that would leave the feature on with none. Audited (`ai.settings_changed`) with the provider, model and *whether* the key changed — never its value. |
+| `GET /admin/api/ai/settings` | `{enabled, provider: "none"\|"anthropic"\|"openai_compatible", model, base_url, has_key, use_for_reports, use_for_support, use_for_pricing, providers, available}` — never the key itself. |
+| `PUT /admin/api/ai/settings` `{enabled?, provider?, model?, base_url?, api_key?, clear_key?, use_for_reports?, use_for_support?, use_for_pricing?}` | Validated as a whole (`422` with `fields`); switching `enabled: true` with a provider needs a model **and** a key together, or both are named. `clear_key: true` empties the key — refused if that would leave the feature on with none. Audited (`ai.settings_changed`) with the provider, model and *whether* the key changed — never its value. |
 | `POST /admin/api/ai/test` | A trivial round trip against the **saved** settings → `{result:{ok, message}}` (never throws). 5 per 10 minutes per admin (`429`); audited (`ai.test`). |
 | `GET /admin/api/ai/usage?days=1-90` | Calls over the window, grouped by feature and status, with token counts and average latency — never a prompt or an answer. |
 

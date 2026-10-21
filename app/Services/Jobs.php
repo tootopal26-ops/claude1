@@ -39,11 +39,12 @@ final class Jobs
         'analytics'        => ['label' => 'Analytics refresh', 'what' => 'Re-computes the dashboard rollups of recent days.', 'every' => 300, 'max' => 120, 'cron' => '*/5 * * * *'],
         'watchdog'         => ['label' => 'Business watchdog', 'what' => 'Runs the health checks (payment failures, notifications, provider calls, stuck orders, provider cost, missing costs, sales and conversion changes, failed jobs, application errors, money discrepancies) and raises, updates or resolves alerts.', 'every' => 900, 'max' => 120, 'cron' => '*/15 * * * *'],
         'report'           => ['label' => 'Daily report', 'what' => 'Writes the report of every finished business day (Asia/Kolkata) that has none yet. Safe to run as often as you like: a day that already has a report is left alone.', 'every' => 86400, 'max' => 180, 'cron' => '10 * * * *', 'daily_at' => '00:10', 'grace' => 93600],
+        'pricing'          => ['label' => 'Adaptive pricing', 'what' => 'Evaluates every running pricing experiment: recomputes real cohort metrics, checks every rollback trigger (profit floor, conversion decline, payment failures, cost increase, data integrity, maximum duration) and rolls back or concludes automatically. Never activates a winning price by itself — that needs an explicit admin action.', 'every' => 600, 'max' => 180, 'cron' => '*/10 * * * *'],
         'cleanup'          => ['label' => 'Cleanup and retention', 'what' => 'Deletes expired rows (rate limits, idempotency keys, old sessions, support conversations past retention, old job history) and old logs.', 'every' => 3600, 'max' => 240, 'cron' => '17 * * * *'],
     ];
 
     /** Jobs for which "dry run" means something: they compute and report what they would do, and change nothing. The others have no dry-run mode. */
-    public const DRY_RUN = ['payments', 'recovery', 'watchdog', 'report'];
+    public const DRY_RUN = ['payments', 'recovery', 'watchdog', 'report', 'pricing'];
 
     /** @var array<string,callable(JobContext):array<string,mixed>> */
     private static array $handlers = [];

@@ -66,6 +66,12 @@ final class JobHandlers
         return DailyReport::runDue($c);
     }
 
+    /** @return array<string,mixed> */
+    public static function pricing(JobContext $c): array
+    {
+        return Pricing::evaluateAll(!$c->dryRun);
+    }
+
     /**
      * Retention: everything that has a lifetime is deleted here, and only here.
      *

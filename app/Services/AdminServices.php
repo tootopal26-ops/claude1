@@ -174,6 +174,11 @@ final class AdminServices
             $price = Money::parseRupees(self::scalar($in['price'] ?? null, $existing !== null ? Money::plain((int) $existing['price_paise']) : null));
             if ($price < 100 || $price > 10_000_000) {
                 $errors['price'] = 'The price must be between ₹1 and ₹1,00,000.';
+            } elseif ($existing !== null && $price !== (int) $existing['price_paise'] && Db::val(
+                "SELECT COUNT(*) FROM pricing_experiments WHERE service_id = ? AND status IN ('proposed','running','paused')", [$id]
+            ) > 0) {
+                // the control price an experiment is measuring against must not move under it — see App\Services\Pricing
+                $errors['price'] = 'A pricing experiment is in progress for this service, so its price cannot be changed here. Stop or roll back the experiment on the Pricing page first.';
             }
         } catch (\InvalidArgumentException) {
             $errors['price'] = 'Enter the price in rupees with at most two decimals.';

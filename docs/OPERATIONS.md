@@ -12,6 +12,7 @@ Redis. On cPanel that means **Cron Jobs**; on a host without cron there is an HT
 | `analytics` | recomputes the dashboard rollups of the last days; credits verified orders to a campaign when that was missed | every 5 min | `*/5 * * * *` | – |
 | `watchdog` | runs the Business Watchdog's 12 health checks and raises, updates or resolves alerts ([WATCHDOG-AND-REPORTS.md](WATCHDOG-AND-REPORTS.md)) | every 15 min | `*/15 * * * *` | yes |
 | `report` | writes the daily report of every finished business day (Asia/Kolkata) that has none yet | once a day after 00:10 IST | `10 * * * *` (see below) | yes |
+| `pricing` | evaluates every running adaptive-pricing experiment: recomputes real cohort metrics and checks every rollback trigger (profit floor, conversion decline, payment failures, cost increase, data integrity, maximum duration), rolling back or concluding automatically ([ADAPTIVE-PRICING.md](ADAPTIVE-PRICING.md)); never activates a winning price by itself | every 10 min | `*/10 * * * *` | yes |
 | `cleanup` | deletes what has a lifetime: rate limits, idempotency keys, expired sessions, visitor sessions over 400 days, webhook deliveries over 180 days, job history over 90 days, closed payment flags over a year, AI usage log over 180 days, support conversations past their retention, old pricing assignments, log files over 30 days | hourly | `17 * * * *` | – (a dry run deletes nothing) |
 
 `php bin/cron.php list` prints every job, its state, its suggested schedule and its last run.
@@ -32,6 +33,7 @@ Redis. On cPanel that means **Cron Jobs**; on a host without cron there is an HT
 */5  * * * *  /usr/local/bin/php /home/USER/smb/bin/cron.php analytics >/dev/null 2>&1
 */15 * * * *  /usr/local/bin/php /home/USER/smb/bin/cron.php watchdog  >/dev/null 2>&1
 10   * * * *  /usr/local/bin/php /home/USER/smb/bin/cron.php report    >/dev/null 2>&1
+*/10 * * * *  /usr/local/bin/php /home/USER/smb/bin/cron.php pricing   >/dev/null 2>&1
 17   * * * *  /usr/local/bin/php /home/USER/smb/bin/cron.php cleanup   >/dev/null 2>&1
 ```
 

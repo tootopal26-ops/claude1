@@ -35,6 +35,18 @@ final class Settings
             'theme.accent_to'           => '#ff3b3b',
             'business.timezone'         => 'Asia/Kolkata',
             'cron.last_run'             => 0,
+            'pricing.global_pause'               => false,
+            'pricing.cooldown_days'              => 14,
+            'pricing.assignment_ttl_days'         => 30,
+            'pricing.default_treatment_share_bps' => 5000,
+            'pricing.default_min_sample'          => 200,
+            'pricing.default_max_duration_days'   => 21,
+            'pricing.min_price_paise'             => 2000,
+            'pricing.rollback_conversion_tolerance_bps' => 5000,
+            'pricing.rollback_failure_gap_bps'    => 2000,
+            'pricing.decision_margin_bps'         => 500,
+            'pricing.cost_increase_tolerance_bps' => 0,
+            'pricing.max_price_change_bps'        => 5000,
         ];
     }
 

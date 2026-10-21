@@ -23,6 +23,7 @@ final class PageController extends BaseController
         'ads'            => ['Ads Intelligence', 'admin/ads', 'ads.view'],
         'alerts'         => ['Business alerts', 'admin/alerts', 'alerts.view'],
         'reports'        => ['Daily reports', 'admin/reports', 'reports.view'],
+        'pricing'        => ['Adaptive pricing', 'admin/pricing', 'pricing.view'],
         'orders'         => ['Orders', 'admin/orders', 'orders.view'],
         'recovery'       => ['Order recovery', 'admin/recovery', 'orders.view'],
         'payments'       => ['Payments', 'admin/payments', 'payments.view'],

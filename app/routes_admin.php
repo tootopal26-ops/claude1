@@ -9,7 +9,7 @@
 
 declare(strict_types=1);
 
-use App\Controllers\Admin\{AccountController, AdsController, AiController, AlertsController, AuthController, DashboardController, FinanceController, IntegrationsController, JobsController, OrdersController, PageController, PaymentChecksController, RecoveryController, ReportsController, ServicesController, SettingsController, SupportController, TagsController};
+use App\Controllers\Admin\{AccountController, AdsController, AiController, AlertsController, AuthController, DashboardController, FinanceController, IntegrationsController, JobsController, OrdersController, PageController, PaymentChecksController, PricingController, RecoveryController, ReportsController, ServicesController, SettingsController, SupportController, TagsController};
 use App\Core\Middleware;
 use App\Core\Router;
 
@@ -93,6 +93,28 @@ return static function (Router $r): void {
     $r->put('/admin/api/ai/settings', [AiController::class, 'saveSettings'], $api);
     $r->post('/admin/api/ai/test', [AiController::class, 'test'], $api);
     $r->get('/admin/api/ai/usage', [AiController::class, 'usage'], $api);
+
+    // ── adaptive pricing: experiments, the simulator, profit guard, learning history ──
+    $r->get('/admin/api/pricing/settings', [PricingController::class, 'settings'], $api);
+    $r->put('/admin/api/pricing/settings', [PricingController::class, 'saveSettings'], $api);
+    $r->get('/admin/api/pricing/services', [PricingController::class, 'services'], $api);
+    $r->put("/admin/api/pricing/services/{$id}", [PricingController::class, 'saveService'], $api);
+    $r->post("/admin/api/pricing/simulate/{$id}", [PricingController::class, 'simulate'], $api);
+    $r->get('/admin/api/pricing/experiments', [PricingController::class, 'experiments'], $api);
+    $r->post('/admin/api/pricing/experiments', [PricingController::class, 'propose'], $api);
+    $r->get("/admin/api/pricing/experiments/{$id}", [PricingController::class, 'experiment'], $api);
+    $r->post("/admin/api/pricing/experiments/{$id}/start", [PricingController::class, 'start'], $api);
+    $r->post("/admin/api/pricing/experiments/{$id}/go-live", [PricingController::class, 'goLive'], $api);
+    $r->post("/admin/api/pricing/experiments/{$id}/pause", [PricingController::class, 'pause'], $api);
+    $r->post("/admin/api/pricing/experiments/{$id}/resume", [PricingController::class, 'resume'], $api);
+    $r->post("/admin/api/pricing/experiments/{$id}/rollback", [PricingController::class, 'rollback'], $api);
+    $r->post("/admin/api/pricing/experiments/{$id}/apply", [PricingController::class, 'applyWinner'], $api);
+    $r->post("/admin/api/pricing/experiments/{$id}/cancel", [PricingController::class, 'cancel'], $api);
+    $r->post("/admin/api/pricing/experiments/{$id}/evaluate", [PricingController::class, 'evaluateNow'], $api);
+    $r->post("/admin/api/pricing/experiments/{$id}/ai-insight", [PricingController::class, 'aiInsight'], $api);
+    $r->get('/admin/api/pricing/profit-guard', [PricingController::class, 'profitGuard'], $api);
+    $r->post('/admin/api/pricing/global-pause', [PricingController::class, 'globalPause'], $api);
+    $r->get('/admin/api/pricing/learning-history', [PricingController::class, 'learningHistory'], $api);
 
     // ── support assistant: monitoring, settings ──
     $r->get('/admin/api/support/overview', [SupportController::class, 'overview'], $api);

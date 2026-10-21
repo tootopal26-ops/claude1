@@ -51,11 +51,13 @@ final class Catalog
     }
 
     /**
-     * Everything the home page needs: platforms → sections → service cards.
+     * Everything the home page needs: platforms → sections → service cards. $anonId (the visitor's own first-party cookie value,
+     * when one already exists) lets an eligible, LIVE pricing experiment show its treatment cohort the candidate price — every
+     * other visitor, and every service with no running live experiment, sees the normal price untouched.
      *
      * @return list<array<string,mixed>>
      */
-    public static function storefront(): array
+    public static function storefront(?string $anonId = null): array
     {
         $platforms = self::platforms(true);
         $byId = [];
@@ -74,7 +76,7 @@ final class Catalog
                 continue;
             }
             $slug = $platforms[$byId[$pid]]['slug'];
-            $sections[$pid][(string) $r['type']][] = self::card($r, $slug);
+            $sections[$pid][(string) $r['type']][] = self::card($r, $slug, $anonId);
         }
         foreach ($platforms as $i => $p) {
             $secs = [];
@@ -95,10 +97,12 @@ final class Catalog
     }
 
     /** @return array<string,mixed> one storefront card (public fields only) */
-    public static function card(array $r, string $platformSlug): array
+    public static function card(array $r, string $platformSlug, ?string $anonId = null): array
     {
         // Instagram Followers / YouTube Subscribers ask for the account LINK ("Instagram Profile Link" / "YouTube Channel Link"), not a username
         $linkOnly = Targets::requiresLink($platformSlug, (string) $r['target_kind'], (string) $r['type']);
+        $pricing = Pricing::resolveForService((int) $r['id'], (int) $r['price_paise'], $anonId);
+        $price = $pricing['price_paise'];
         return [
             'id'          => (int) $r['id'],
             'type'        => (string) $r['type'],
@@ -106,11 +110,11 @@ final class Catalog
             'title'       => (string) $r['title'],
             'subtitle'    => (string) ($r['subtitle'] ?? ''),
             'description' => (string) ($r['description'] ?? ''),
-            'price_paise' => (int) $r['price_paise'],
-            'price'       => Money::inr((int) $r['price_paise']),
+            'price_paise' => $price,
+            'price'       => Money::inr($price),
             'quantity'    => (int) $r['quantity'],
             // the ONE badge this card shows (the automatic TRIAL PACK at exactly ₹5, else the assigned tag if it is enabled): see Tags::effective()
-            'tag'         => Tags::effective((int) $r['price_paise'], ($r['tag_id'] ?? null) !== null ? (int) $r['tag_id'] : null),
+            'tag'         => Tags::effective($price, ($r['tag_id'] ?? null) !== null ? (int) $r['tag_id'] : null),
             'is_premium'  => (bool) $r['is_premium'],
             'icon_url'    => upload_url($r['icon_path'] ?? null),
             'link_only'   => $linkOnly,
@@ -125,9 +129,13 @@ final class Catalog
      * Service that can be ordered RIGHT NOW (active, not deleted, platform active,
      * sane price/quantity). Joined with its platform slug.
      *
-     * @return array<string,mixed>|null
+     * $anonId: the visitor's own first-party cookie, so a visitor already assigned to a running pricing experiment is charged
+     * EXACTLY the price they were shown — never a price the browser sent, and never a different one than their card displayed.
+     *
+     * @return array<string,mixed>|null price_paise is the price to charge; price_version_id/experiment_id/price_cohort (possibly
+     *                                   all null) are what the order must record so it can never be silently re-priced later.
      */
-    public static function orderable(int $serviceId): ?array
+    public static function orderable(int $serviceId, ?string $anonId = null): ?array
     {
         $r = Db::one(
             "SELECT s.*, p.slug AS platform_slug, p.name AS platform_name FROM services s JOIN platforms p ON p.id = s.platform_id "
@@ -137,11 +145,15 @@ final class Catalog
         if ($r === null) {
             return null;
         }
-        $price = (int) $r['price_paise'];
         $qty = (int) $r['quantity'];
-        if ($price < 100 || $qty < 1 || $qty < (int) $r['min_quantity'] || $qty > (int) $r['max_quantity']) {
+        if ((int) $r['price_paise'] < 100 || $qty < 1 || $qty < (int) $r['min_quantity'] || $qty > (int) $r['max_quantity']) {
             return null;   // misconfigured → never sellable (also guards against absurd values)
         }
+        $pricing = Pricing::resolveForService($serviceId, (int) $r['price_paise'], $anonId);
+        $r['price_paise'] = $pricing['price_paise'];
+        $r['price_version_id'] = $pricing['price_version_id'];
+        $r['experiment_id'] = $pricing['experiment_id'];
+        $r['price_cohort'] = $pricing['cohort'];
         return $r;
     }
 

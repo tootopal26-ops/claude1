@@ -11,6 +11,7 @@ use App\Core\View;
 use App\Services\Catalog;
 use App\Services\Settings;
 use App\Services\Tags;
+use App\Services\Tracking;
 
 final class SiteController
 {
@@ -21,7 +22,7 @@ final class SiteController
             $html = View::render('site/maintenance', ['site' => $site, 'title' => $site['name'], 'page' => 'maintenance', 'noindex' => true, 'shop' => false], 'layouts/site');
             return Response::html($html, 503)->header('Retry-After', '900')->header('Cache-Control', 'no-store');
         }
-        $platforms = Catalog::storefront();
+        $platforms = Catalog::storefront($req->cookie(Tracking::VISITOR_COOKIE));
         $items = [];
         foreach ($platforms as $pl) {
             foreach ($pl['sections'] as $sec) {

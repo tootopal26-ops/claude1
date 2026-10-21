@@ -181,6 +181,10 @@ final class Tracking
         if ($since < $ads['qualify_seconds'] - 1) {   // 1 s tolerance for network jitter
             return ['ok' => true, 'qualified' => false, 'retry_ms' => max(500, ($ads['qualify_seconds'] - $since) * 1000)];
         }
+        $anon = $req->cookie(self::VISITOR_COOKIE);
+        if ($anon !== null) {
+            Pricing::onVisitorQualified($anon);   // the same 3-second rule qualifies a pricing-experiment assignment, if the visitor has one
+        }
         $now = Clock::sql();
         $day = Tz::today();
         $charged = Db::tx(static function () use ($s, $ctx, $ads, $now, $day): bool {

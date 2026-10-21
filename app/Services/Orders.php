@@ -65,7 +65,7 @@ final class Orders
         if (!(is_int($serviceId) || (is_string($serviceId) && ctype_digit($serviceId))) || !is_string($rawTarget)) {
             throw new HttpException(422, 'Please choose a service and enter your username or link.', 'invalid');
         }
-        $service = Catalog::orderable((int) $serviceId);
+        $service = Catalog::orderable((int) $serviceId, $req->cookie(Tracking::VISITOR_COOKIE));
         if ($service === null) {
             throw new HttpException(422, 'This service is not available right now. Please pick another one.', 'service_unavailable');
         }
@@ -153,11 +153,12 @@ final class Orders
                 $publicId = self::newPublicId();
                 $n = Db::exec(
                     'INSERT IGNORE INTO orders (public_id, access_token, user_id, visitor_id, visitor_session_id, service_id, platform_id, platform_slug, service_code, '
-                    . 'service_title, service_type, mode, quantity, amount_paise, target, target_url, status, payment_status, smm_provider_id, smm_service_id, '
-                    . "estimated_cost_paise, provider_cost_paise, created_day, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_PAYMENT', 'pending', ?, ?, ?, 0, ?, ?, ?)",
+                    . 'service_title, service_type, mode, quantity, amount_paise, price_version_id, experiment_id, price_cohort, target, target_url, status, payment_status, smm_provider_id, smm_service_id, '
+                    . "estimated_cost_paise, provider_cost_paise, created_day, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_PAYMENT', 'pending', ?, ?, ?, 0, ?, ?, ?)",
                     [
                         $publicId, Crypto::token(16), $userId, $visitor['visitor_id'], $visitor['session_id'], $service['id'], $service['platform_id'],
                         $service['platform_slug'], $service['code'], $service['title'], $service['type'], $service['mode'], $service['quantity'], $service['price_paise'],
+                        $service['price_version_id'] ?? null, $service['experiment_id'] ?? null, $service['price_cohort'] ?? null,
                         $shownTarget, $check['url'],
                         $auto ? $service['smm_provider_id'] : null, $auto ? $service['smm_service_id'] : null,
                         $auto ? (int) $service['smm_cost_paise'] : 0,

@@ -165,17 +165,17 @@ T::test('jobs: an unknown job is refused', function () {
 T::test('jobs: runDue runs a job only when its interval has passed; the overview says what state each job is in', function () {
     T::freshDb();
     Clock::setFixed(strtotime('2027-01-15 08:00:00 UTC'));                    // 13:30 IST: after the daily report job's start time, whenever the suite really runs
-    $all = ['payments', 'recovery', 'analytics', 'watchdog', 'report', 'cleanup'];
+    $all = ['payments', 'recovery', 'analytics', 'watchdog', 'report', 'pricing', 'cleanup'];
     $GLOBALS['ops_ran'] = [];
     $stub = static function (string $j): callable { return static function (JobContext $c) use ($j): array { $GLOBALS['ops_ran'][] = $j; return []; }; };
     ops_with_stubs(array_combine($all, array_map($stub, $all)), function () use ($all) {
         $over = Jobs::overview();
         T::same($all, array_column($over, 'job'));
-        T::same(array_fill(0, 6, 'never_run'), array_column($over, 'state'));
+        T::same(array_fill(0, count($all), 'never_run'), array_column($over, 'state'));
 
         T::same($all, array_keys(Jobs::runDue()), 'nothing has run yet → everything is due');
         T::same([], Jobs::runDue(), 'just ran → nothing is due');
-        T::same(array_fill(0, 6, 'ok'), array_column(Jobs::overview(), 'state'));
+        T::same(array_fill(0, count($all), 'ok'), array_column(Jobs::overview(), 'state'));
 
         // time passes: payments last started 10 minutes ago (interval 5 min) → due again; cleanup (hourly) is not
         Db::exec("UPDATE job_runs SET started_at = ? WHERE job = 'payments'", [Clock::sql(Clock::now() - 600)]);
