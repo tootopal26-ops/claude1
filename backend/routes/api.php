@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\DevicePushTokenController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\Api\V1\TournamentController;
+use App\Http\Controllers\Api\V1\WalletController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -27,5 +28,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/sessions', [SessionController::class, 'index']);
         Route::delete('/sessions/{tokenId}', [SessionController::class, 'destroy']);
+
+        Route::get('/wallet', [WalletController::class, 'show']);
+        Route::get('/wallet/ledger', [WalletController::class, 'ledger']);
     });
 });

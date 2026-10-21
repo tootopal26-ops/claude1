@@ -14,6 +14,9 @@
                 <a href="{{ route('admin.tournaments.index') }}" class="text-lg font-bold text-violet-300">Mini Max Admin</a>
                 <a href="{{ route('admin.tournaments.index') }}" class="text-sm text-violet-300 hover:text-white">Tournaments</a>
                 <a href="{{ route('admin.notifications.index') }}" class="text-sm text-violet-300 hover:text-white">Notifications</a>
+                @if (auth('staff')->user()->hasPermission('users.view'))
+                    <a href="{{ route('admin.users.index') }}" class="text-sm text-violet-300 hover:text-white">Players</a>
+                @endif
                 @if (auth('staff')->user()->hasPermission('staff.manage'))
                     <a href="{{ route('admin.staff.index') }}" class="text-sm text-violet-300 hover:text-white">Staff</a>
                     <a href="{{ route('admin.presets.index') }}" class="text-sm text-violet-300 hover:text-white">Presets</a>

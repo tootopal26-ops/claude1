@@ -4,6 +4,7 @@ import { Link, Redirect } from 'expo-router';
 
 import { apiRequest } from '../src/api/client';
 import { fetchNotifications } from '../src/api/notifications';
+import { fetchWallet } from '../src/api/wallet';
 import { useAuth } from '../src/auth/AuthContext';
 import type { Tournament } from '../src/types';
 
@@ -14,6 +15,7 @@ export default function TournamentListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [totalBalance, setTotalBalance] = useState<string | null>(null);
 
   const loadTournaments = useCallback(async () => {
     setError(null);
@@ -37,6 +39,11 @@ export default function TournamentListScreen() {
       .catch(() => {
         // Non-fatal: the badge just stays at its last known value.
       });
+    fetchWallet()
+      .then((response) => setTotalBalance(response.data.total_balance))
+      .catch(() => {
+        // Non-fatal: the header just omits the balance until the next load.
+      });
   }, [user, loadTournaments]);
 
   if (authLoading) {
@@ -56,6 +63,12 @@ export default function TournamentListScreen() {
       <View style={styles.header}>
         <Text style={styles.welcome}>Welcome, {user.username}</Text>
         <View style={styles.headerActions}>
+          <Link href="/wallet" asChild>
+            <Pressable style={styles.balanceChip}>
+              <Text style={styles.balanceIcon}>🪙</Text>
+              <Text style={styles.balanceText}>{totalBalance ?? '—'}</Text>
+            </Pressable>
+          </Link>
           <Link href="/notifications" asChild>
             <Pressable style={styles.bellButton}>
               <Text style={styles.bellIcon}>🔔</Text>
@@ -123,6 +136,21 @@ const styles = StyleSheet.create({
   },
   welcome: { color: '#fff', fontSize: 16, fontWeight: '600' },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  // 🪙 is a placeholder — swap for the owner-supplied coin PNG (CoinAsset
+  // component) once it's provided; see the icon-system spec.
+  balanceChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(139,92,246,0.15)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(139,92,246,0.4)',
+  },
+  balanceIcon: { fontSize: 14 },
+  balanceText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   bellButton: { position: 'relative', padding: 4 },
   bellIcon: { fontSize: 20 },
   badge: {

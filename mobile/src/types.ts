@@ -31,3 +31,20 @@ export type AppNotification = {
   read: boolean;
   created_at: string;
 };
+
+export type Wallet = {
+  deposit_balance: string;
+  eligible_winnings_balance: string;
+  total_balance: string;
+  withdrawable_balance: string;
+};
+
+export type WalletLedgerEntry = {
+  id: number;
+  type: string;
+  balance: 'deposit' | 'winnings';
+  amount: string;
+  balance_after: string;
+  reason: string | null;
+  created_at: string;
+};

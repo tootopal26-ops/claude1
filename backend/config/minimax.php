@@ -27,4 +27,15 @@ return [
     */
     'dob_exclusion_window_days' => (int) env('MINIMAX_DOB_EXCLUSION_WINDOW_DAYS', 6),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Wallet risk-alert threshold (coins)
+    |--------------------------------------------------------------------------
+    |
+    | A manual wallet adjustment (add or subtract) at or above this amount
+    | in a single operation raises a high-priority risk alert for review.
+    |
+    */
+    'wallet_risk_alert_threshold' => env('MINIMAX_WALLET_RISK_ALERT_THRESHOLD', '200.00'),
+
 ];

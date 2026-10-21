@@ -11,6 +11,8 @@ use App\Livewire\Admin\StaffList;
 use App\Livewire\Admin\TournamentCreate;
 use App\Livewire\Admin\TournamentEntries;
 use App\Livewire\Admin\TournamentList;
+use App\Livewire\Admin\UserList;
+use App\Livewire\Admin\UserShow;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -75,5 +77,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/audit-logs', AuditLogViewer::class)
             ->name('audit-logs.index')
             ->middleware('permission:audit_logs.view');
+
+        Route::get('/users', UserList::class)
+            ->name('users.index')
+            ->middleware('permission:users.view');
+
+        Route::get('/users/{user}', UserShow::class)
+            ->name('users.show')
+            ->middleware('permission:users.view');
     });
 });
