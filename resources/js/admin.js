@@ -9,6 +9,7 @@ const pages = {
   ads: () => import('./admin/ads.js'),
   alerts: () => import('./admin/alerts.js'),
   reports: () => import('./admin/reports.js'),
+  support: () => import('./admin/support.js'),
   orders: () => import('./admin/orders.js'),
   recovery: () => import('./admin/recovery.js'),
   payments: () => import('./admin/payments.js'),

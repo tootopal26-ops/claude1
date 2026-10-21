@@ -15,7 +15,10 @@ const BASIS = {
 const SEV = { critical: ['Critical', 'chip-bad'], warning: ['Warning', 'chip-warn'], info: ['Info', 'chip-info'] };
 const TONE_ICON = { good: 'trending-up', bad: 'circle-alert', warn: 'triangle-alert', info: 'info' };
 const GOOD_UP = new Set(['collected', 'net_revenue', 'orders_paid', 'aov', 'net_profit']);
-const AI = { none: 'no AI commentary', ok: 'AI commentary', unavailable: 'AI unavailable', invalid: 'AI output rejected' };
+const AI_NOTE = {
+  unavailable: 'The AI provider could not be reached when this was last tried. The report itself is unaffected.',
+  invalid: 'The provider’s last reply was not in the expected shape, so nothing is shown. The report itself is unaffected.',
+};
 
 const state = { from: '', to: '', page: 1, date: '' };
 let can = { generate: false };
@@ -110,6 +113,31 @@ function changeCell(r) {
   return html`<span class="${cls}">${sign}${amount}${r.delta_pct_tenths !== null ? ' (' + (r.delta > 0 ? '+' : r.delta < 0 ? '−' : '') + tenths(Math.abs(r.delta_pct_tenths)) + '%)' : ''}</span>`;
 }
 
+// ── optional AI commentary (advisory only — never a figure, never an authoritative statement) ────────────────────────────────
+function aiHtml(rep) {
+  const ai = rep.ai || { status: 'none' };
+  const btn = (label, primary = false) => can.ai ? html`<button type="button" class="btn btn-sm${primary ? '' : ' btn-ghost'}" data-ai-gen="${rep.date}">${icon('bot', 'icon-sm')}<span>${label}</span></button>` : '';
+  if (ai.status === 'none') {
+    if (!can.ai) return '';
+    return html`<section class="card" aria-labelledby="h-rp-ai"><div class="card-head"><h2 class="card-title" id="h-rp-ai">${icon('bot')}AI commentary</h2><span class="card-sub">optional, advisory — never changes a figure</span></div>
+      <p class="text-sm text-ink-soft mb-3">Ask the configured AI provider for a short plain-language read of this report. It is given only the numbers already above, never an order id or a customer link, and cannot overwrite any figure.</p>
+      ${btn('Generate AI summary', true)}</section>`;
+  }
+  if (ai.status !== 'ok') {
+    return html`<section class="card" aria-labelledby="h-rp-ai"><div class="card-head"><h2 class="card-title" id="h-rp-ai">${icon('bot')}AI commentary</h2><span class="chip chip-gray">${ai.status === 'invalid' ? 'Rejected' : 'Unavailable'}</span></div>
+      <p class="text-sm text-ink-soft mb-3">${AI_NOTE[ai.status] || ''}</p>${btn('Try again')}</section>`;
+  }
+  let d;
+  try { d = JSON.parse(ai.summary); } catch { d = null; }
+  if (!d) return '';
+  const list = (title, items) => items.length ? html`<div><dt class="font-semibold text-sm">${title}</dt><dd><ul class="grid gap-1 list-disc pl-5 text-sm text-ink-soft">${items.map((x) => html`<li>${x}</li>`)}</ul></dd></div>` : '';
+  return html`<section class="card" aria-labelledby="h-rp-ai"><div class="card-head"><h2 class="card-title" id="h-rp-ai">${icon('bot')}AI commentary</h2><span class="card-sub">advisory — written by ${ai.provider || 'an AI provider'}, not verified, never a figure</span></div>
+    <p class="mb-2">${d.summary}</p>
+    <dl class="grid gap-2">${list('Notable changes', d.changes || [])}${list('Possible causes (not confirmed — correlation, not proof)', d.causes || [])}${list('Suggested next steps', d.next_steps || [])}${list('Uncertain or incomplete', d.uncertainties || [])}</dl>
+    <p class="text-xs text-muted mt-3">Generated ${fmtDateTime(ai.generated_at)}${ai.model ? ' · ' + ai.model : ''}</p>
+    <div class="form-actions form-actions-start">${btn('Regenerate AI summary')}</div></section>`;
+}
+
 function reportHtml(rep) {
   const s = rep.snapshot;
   const m = s.metrics;
@@ -144,6 +172,8 @@ function reportHtml(rep) {
 
     <section class="card" aria-labelledby="h-rp-hi"><div class="card-head"><h2 class="card-title" id="h-rp-hi">${icon('sparkles')}In short</h2><span class="card-sub">written by fixed rules from the numbers below — no AI</span></div>
       <ul class="grid gap-2" data-highlights>${s.highlights.map((x) => html`<li class="flex items-start gap-2"><span class="mt-1 shrink-0">${icon(TONE_ICON[x.tone] || 'info', 'icon-sm')}</span><span>${x.text}</span></li>`)}</ul></section>
+
+    ${aiHtml(rep)}
 
     ${sections}
 
@@ -231,6 +261,18 @@ async function generate(day, force, btn) {
   });
 }
 
+async function generateAi(day, btn) {
+  await withBusy(btn, async () => {
+    try {
+      const r = await post(`reports/${day}/ai`, {}, { idempotency: true });
+      (r.result.status === 'ok' ? ok : warn)(r.result.status === 'ok' ? 'AI commentary added' : 'Could not add AI commentary', r.result.message);
+      if (state.date === day) await load({ silent: true });
+    } catch (e) {
+      fail('Could not reach the AI provider', e.message);
+    }
+  });
+}
+
 // ── boot ──────────────────────────────────────────────────────────────────────
 export default function init() {
   const q = new URLSearchParams(location.search);
@@ -261,6 +303,7 @@ export default function init() {
     if (yes) generate(state.date, true, b);
   });
   on($('#rp-status'), 'click', '[data-gen]', (e, b) => generate(b.dataset.gen, false, b));
+  on(r, 'click', '[data-ai-gen]', (e, b) => generateAi(b.dataset.aiGen, b));
 
   load();
 }

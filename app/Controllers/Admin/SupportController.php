@@ -6,6 +6,7 @@ namespace App\Controllers\Admin;
 
 use App\Core\Request;
 use App\Core\Response;
+use App\Services\AiService;
 use App\Services\SupportAssistant;
 use App\Support\Permissions;
 
@@ -27,7 +28,11 @@ final class SupportController extends BaseController
     public function overview(Request $req, array $p): Response
     {
         $this->authorize($req, 'support.view');
-        return $this->ok(['enabled' => SupportAssistant::enabled(), 'can' => $this->can($req)] + SupportAssistant::adminList('', 1, 5));
+        $ai = AiService::settings();
+        return $this->ok([
+            'enabled' => SupportAssistant::enabled(), 'retention_days' => SupportAssistant::retentionDays(), 'ai_for_support' => $ai['available'] && $ai['use_for_support'],
+            'can' => $this->can($req),
+        ] + SupportAssistant::adminList('', 1, 5));
     }
 
     /** GET /admin/api/support/conversations?status=&page= */

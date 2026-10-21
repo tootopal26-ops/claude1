@@ -42,7 +42,7 @@ final class SupportAssistant
         return (bool) Settings::get('support.enabled', true);
     }
 
-    private static function retentionDays(): int
+    public static function retentionDays(): int
     {
         return max(1, min(365, (int) Settings::get('support.retention_days', 30)));
     }

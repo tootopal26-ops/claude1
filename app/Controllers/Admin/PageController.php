@@ -27,6 +27,7 @@ final class PageController extends BaseController
         'recovery'       => ['Order recovery', 'admin/recovery', 'orders.view'],
         'payments'       => ['Payments', 'admin/payments', 'payments.view'],
         'payment-checks' => ['Payment checks', 'admin/payment-checks', 'payments.view'],
+        'support'        => ['Support', 'admin/support', 'support.view'],
         'services'       => ['Services', 'admin/services', 'catalog.manage'],
         'tags'           => ['Tags & Badges', 'admin/tags', 'catalog.manage'],
         'website'        => ['Website', 'admin/website', 'catalog.manage'],
