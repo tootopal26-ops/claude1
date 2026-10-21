@@ -41,4 +41,16 @@ class StaffUser extends Authenticatable
 
         return $this->permissionPreset?->permissions->contains('key', $key) ?? false;
     }
+
+    /**
+     * Bump this so every currently-logged-in session for this account is
+     * forced to re-authenticate on its next request (see
+     * EnsureStaffSecurityVersionIsCurrent). Call after changing anything
+     * that affects what this account can do or whether it can log in at
+     * all: permission preset, super-admin flag, active status, password.
+     */
+    public function invalidateActiveSessions(): void
+    {
+        $this->increment('security_version');
+    }
 }

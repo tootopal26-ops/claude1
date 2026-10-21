@@ -36,6 +36,7 @@ class Login extends Component
         }
 
         session()->regenerate();
+        session(['staff_security_version' => Auth::guard('staff')->user()->security_version]);
 
         $this->redirectRoute('admin.tournaments.index', navigate: false);
     }

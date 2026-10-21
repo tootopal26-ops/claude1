@@ -1,8 +1,13 @@
 <?php
 
+use App\Livewire\Admin\AuditLogViewer;
 use App\Livewire\Admin\Login as AdminLogin;
 use App\Livewire\Admin\NotificationCompose;
 use App\Livewire\Admin\NotificationHistory;
+use App\Livewire\Admin\PresetForm;
+use App\Livewire\Admin\PresetList;
+use App\Livewire\Admin\StaffForm;
+use App\Livewire\Admin\StaffList;
 use App\Livewire\Admin\TournamentCreate;
 use App\Livewire\Admin\TournamentEntries;
 use App\Livewire\Admin\TournamentList;
@@ -20,7 +25,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         return redirect()->route('admin.login');
     })->name('logout')->middleware('auth:staff');
 
-    Route::middleware('auth:staff')->group(function () {
+    Route::middleware(['auth:staff', 'staff.security_version'])->group(function () {
         Route::redirect('/', '/admin/tournaments');
 
         Route::get('/tournaments', TournamentList::class)
@@ -42,5 +47,33 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/notifications/create', NotificationCompose::class)
             ->name('notifications.create')
             ->middleware('permission:notifications.send');
+
+        Route::get('/presets', PresetList::class)
+            ->name('presets.index')
+            ->middleware('permission:staff.manage');
+
+        Route::get('/presets/create', PresetForm::class)
+            ->name('presets.create')
+            ->middleware('permission:staff.manage');
+
+        Route::get('/presets/{preset}/edit', PresetForm::class)
+            ->name('presets.edit')
+            ->middleware('permission:staff.manage');
+
+        Route::get('/staff', StaffList::class)
+            ->name('staff.index')
+            ->middleware('permission:staff.manage');
+
+        Route::get('/staff/create', StaffForm::class)
+            ->name('staff.create')
+            ->middleware('permission:staff.manage');
+
+        Route::get('/staff/{staffUser}/edit', StaffForm::class)
+            ->name('staff.edit')
+            ->middleware('permission:staff.manage');
+
+        Route::get('/audit-logs', AuditLogViewer::class)
+            ->name('audit-logs.index')
+            ->middleware('permission:audit_logs.view');
     });
 });

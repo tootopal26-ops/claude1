@@ -19,7 +19,10 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'username' => fake()->unique()->userName(),
+            // Faker's userName() can include dots, which fail the app's
+            // alpha_dash validation on a form re-save — keep this charset
+            // identical to what RegisterRequest actually accepts.
+            'username' => fake()->unique()->regexify('[a-z][a-z0-9_]{7,14}'),
             'mobile' => fake()->unique()->numerify('9#########'),
             'email' => fake()->unique()->safeEmail(),
             'date_of_birth' => fake()->dateTimeBetween('-40 years', '-18 years')->format('Y-m-d'),

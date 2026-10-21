@@ -20,7 +20,10 @@ class StaffUserFactory extends Factory
     {
         return [
             'display_name' => fake()->name(),
-            'username' => fake()->unique()->userName(),
+            // Faker's userName() can include dots, which fail the app's
+            // alpha_dash validation on a form re-save — keep this charset
+            // identical to what StaffForm actually accepts.
+            'username' => fake()->unique()->regexify('[a-z][a-z0-9_]{7,14}'),
             'password' => static::$password ??= Hash::make('password'),
             'is_super_admin' => false,
             'is_active' => true,
