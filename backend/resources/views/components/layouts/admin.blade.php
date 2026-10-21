@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ $title ?? 'Mini Max Admin' }}</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
+</head>
+<body class="min-h-screen bg-[#140a1f] text-white antialiased">
+    @if (auth('staff')->check())
+        <nav class="flex items-center justify-between border-b border-violet-900/40 bg-[#1a1025]/80 px-6 py-4">
+            <a href="{{ route('admin.tournaments.index') }}" class="text-lg font-bold text-violet-300">Mini Max Admin</a>
+            <div class="flex items-center gap-4 text-sm text-violet-200">
+                <span>{{ auth('staff')->user()->display_name }}</span>
+                <form method="POST" action="{{ route('admin.logout') }}">
+                    @csrf
+                    <button type="submit" class="text-red-400 hover:text-red-300">Log out</button>
+                </form>
+            </div>
+        </nav>
+    @endif
+
+    <main class="mx-auto max-w-5xl px-6 py-8">
+        {{ $slot }}
+    </main>
+
+    @livewireScripts
+</body>
+</html>
