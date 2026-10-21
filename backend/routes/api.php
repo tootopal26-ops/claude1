@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\DevicePushTokenController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\TournamentController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,5 +17,11 @@ Route::prefix('v1')->group(function () {
         Route::get('/tournaments', [TournamentController::class, 'index']);
         Route::get('/tournaments/{tournament}', [TournamentController::class, 'show']);
         Route::post('/tournaments/{tournament}/join', [TournamentController::class, 'join']);
+
+        Route::post('/devices/push-token', [DevicePushTokenController::class, 'store']);
+        Route::delete('/devices/push-token', [DevicePushTokenController::class, 'destroy']);
+
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
     });
 });

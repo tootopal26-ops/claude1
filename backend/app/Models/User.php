@@ -35,4 +35,20 @@ class User extends Authenticatable
     {
         return $this->hasMany(TournamentEntry::class);
     }
+
+    /**
+     * @return HasMany<DevicePushToken, $this>
+     */
+    public function devicePushTokens(): HasMany
+    {
+        return $this->hasMany(DevicePushToken::class);
+    }
+
+    /**
+     * @return HasMany<Notification, $this>
+     */
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class)->latest();
+    }
 }

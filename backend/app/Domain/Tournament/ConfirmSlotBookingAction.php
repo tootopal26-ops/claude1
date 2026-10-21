@@ -2,6 +2,7 @@
 
 namespace App\Domain\Tournament;
 
+use App\Domain\Notifications\NotificationService;
 use App\Models\AuditLog;
 use App\Models\Tournament;
 use App\Models\TournamentEntry;
@@ -21,12 +22,14 @@ use Illuminate\Validation\ValidationException;
  */
 class ConfirmSlotBookingAction
 {
+    public function __construct(private readonly NotificationService $notifications) {}
+
     /**
      * @throws ValidationException
      */
     public function execute(Tournament $tournament, User $user, string $inGameName, ?string $uid): TournamentEntry
     {
-        return DB::transaction(function () use ($tournament, $user, $inGameName, $uid) {
+        $entry = DB::transaction(function () use ($tournament, $user, $inGameName, $uid) {
             /** @var Tournament $locked */
             $locked = Tournament::query()->lockForUpdate()->findOrFail($tournament->id);
 
@@ -82,5 +85,16 @@ class ConfirmSlotBookingAction
 
             return $entry->load('players');
         });
+
+        $this->notifications->notify(
+            recipients: [$user],
+            type: 'tournament.joined',
+            title: 'You\'re in!',
+            body: "You've successfully joined {$tournament->title}.",
+            data: ['tournament_id' => (string) $tournament->id, 'deep_link' => "tournament/{$tournament->id}"],
+            idempotencyKey: "tournament.joined:{$entry->id}",
+        );
+
+        return $entry;
     }
 }

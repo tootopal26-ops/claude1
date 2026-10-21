@@ -1,6 +1,8 @@
 <?php
 
 use App\Livewire\Admin\Login as AdminLogin;
+use App\Livewire\Admin\NotificationCompose;
+use App\Livewire\Admin\NotificationHistory;
 use App\Livewire\Admin\TournamentCreate;
 use App\Livewire\Admin\TournamentEntries;
 use App\Livewire\Admin\TournamentList;
@@ -32,5 +34,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/tournaments/{tournament}/entries', TournamentEntries::class)
             ->name('tournaments.entries')
             ->middleware('permission:tournaments.view');
+
+        Route::get('/notifications', NotificationHistory::class)
+            ->name('notifications.index')
+            ->middleware('permission:notifications.send');
+
+        Route::get('/notifications/create', NotificationCompose::class)
+            ->name('notifications.create')
+            ->middleware('permission:notifications.send');
     });
 });

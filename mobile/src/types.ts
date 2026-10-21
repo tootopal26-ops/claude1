@@ -22,3 +22,12 @@ export type TournamentEntry = {
   in_game_name: string;
   uid: string | null;
 };
+
+export type AppNotification = {
+  id: number;
+  title: string;
+  body: string;
+  data: { deep_link?: string; tournament_id?: string } & Record<string, unknown>;
+  read: boolean;
+  created_at: string;
+};

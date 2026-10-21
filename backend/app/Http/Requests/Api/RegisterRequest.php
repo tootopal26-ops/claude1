@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Rules\DobNotInExclusionWindow;
+use App\Rules\MeetsMinimumAge;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -21,7 +23,7 @@ class RegisterRequest extends FormRequest
             'username' => ['required', 'string', 'max:32', 'alpha_dash', 'unique:users,username'],
             'mobile' => ['required', 'string', 'max:20', 'unique:users,mobile'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'date_of_birth' => ['required', 'date', 'before:today'],
+            'date_of_birth' => ['required', 'date', 'before:today', new MeetsMinimumAge, new DobNotInExclusionWindow],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ];
     }

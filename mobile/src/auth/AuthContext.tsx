@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { apiRequest } from '../api/client';
+import { registerForPushNotificationsAsync, unregisterPushNotificationsAsync } from '../notifications/pushRegistration';
 import type { User } from '../types';
 import { clearToken, getToken, setToken } from './tokenStorage';
 
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const payload = await apiRequest<{ data: User }>('/auth/me');
         setUser(payload.data);
+        void registerForPushNotificationsAsync();
       } catch {
         await clearToken();
       } finally {
@@ -58,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         await setToken(response.data.token);
         setUser(response.data.user);
+        void registerForPushNotificationsAsync();
       },
       async register(payload) {
         const response = await apiRequest<{ data: { token: string; user: User } }>('/auth/register', {
@@ -67,8 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         await setToken(response.data.token);
         setUser(response.data.user);
+        void registerForPushNotificationsAsync();
       },
       async logout() {
+        await unregisterPushNotificationsAsync();
         try {
           await apiRequest('/auth/logout', { method: 'POST' });
         } catch {

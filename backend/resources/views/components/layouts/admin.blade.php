@@ -10,7 +10,11 @@
 <body class="min-h-screen bg-[#140a1f] text-white antialiased">
     @if (auth('staff')->check())
         <nav class="flex items-center justify-between border-b border-violet-900/40 bg-[#1a1025]/80 px-6 py-4">
-            <a href="{{ route('admin.tournaments.index') }}" class="text-lg font-bold text-violet-300">Mini Max Admin</a>
+            <div class="flex items-center gap-6">
+                <a href="{{ route('admin.tournaments.index') }}" class="text-lg font-bold text-violet-300">Mini Max Admin</a>
+                <a href="{{ route('admin.tournaments.index') }}" class="text-sm text-violet-300 hover:text-white">Tournaments</a>
+                <a href="{{ route('admin.notifications.index') }}" class="text-sm text-violet-300 hover:text-white">Notifications</a>
+            </div>
             <div class="flex items-center gap-4 text-sm text-violet-200">
                 <span>{{ auth('staff')->user()->display_name }}</span>
                 <form method="POST" action="{{ route('admin.logout') }}">

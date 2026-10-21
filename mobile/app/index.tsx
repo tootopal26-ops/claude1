@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Tex
 import { Link, Redirect } from 'expo-router';
 
 import { apiRequest } from '../src/api/client';
+import { fetchNotifications } from '../src/api/notifications';
 import { useAuth } from '../src/auth/AuthContext';
 import type { Tournament } from '../src/types';
 
@@ -12,6 +13,7 @@ export default function TournamentListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const loadTournaments = useCallback(async () => {
     setError(null);
@@ -30,6 +32,11 @@ export default function TournamentListScreen() {
       await loadTournaments();
       setLoading(false);
     })();
+    fetchNotifications()
+      .then((response) => setUnreadCount(response.meta.unread_count))
+      .catch(() => {
+        // Non-fatal: the badge just stays at its last known value.
+      });
   }, [user, loadTournaments]);
 
   if (authLoading) {
@@ -48,9 +55,21 @@ export default function TournamentListScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.welcome}>Welcome, {user.username}</Text>
-        <Pressable onPress={() => logout()}>
-          <Text style={styles.logout}>Log out</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Link href="/notifications" asChild>
+            <Pressable style={styles.bellButton}>
+              <Text style={styles.bellIcon}>🔔</Text>
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
+            </Pressable>
+          </Link>
+          <Pressable onPress={() => logout()}>
+            <Text style={styles.logout}>Log out</Text>
+          </Pressable>
+        </View>
       </View>
 
       {loading ? (
@@ -103,6 +122,22 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   welcome: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  bellButton: { position: 'relative', padding: 4 },
+  bellIcon: { fontSize: 20 },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -4,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
   logout: { color: '#F87171' },
   listContent: { padding: 16, gap: 12 },
   empty: { color: '#C4B5FD', textAlign: 'center', marginTop: 32 },
