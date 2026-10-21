@@ -8,6 +8,8 @@ use App\Livewire\Admin\PresetForm;
 use App\Livewire\Admin\PresetList;
 use App\Livewire\Admin\StaffForm;
 use App\Livewire\Admin\StaffList;
+use App\Livewire\Admin\TemplateForm;
+use App\Livewire\Admin\TemplateList;
 use App\Livewire\Admin\TournamentCreate;
 use App\Livewire\Admin\TournamentEntries;
 use App\Livewire\Admin\TournamentList;
@@ -90,5 +92,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/users/{user}', UserShow::class)
             ->name('users.show')
             ->middleware('permission:users.view');
+
+        Route::get('/templates', TemplateList::class)
+            ->name('templates.index')
+            ->middleware('permission:recurring_tournaments.manage');
+
+        Route::get('/templates/create', TemplateForm::class)
+            ->name('templates.create')
+            ->middleware('permission:recurring_tournaments.manage');
+
+        Route::get('/templates/{template}/edit', TemplateForm::class)
+            ->name('templates.edit')
+            ->middleware('permission:recurring_tournaments.manage');
     });
 });

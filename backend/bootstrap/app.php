@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('tournaments:close-joining-window')->everyMinute();
         $schedule->command('tournaments:auto-cancel-underfilled')->everyMinute();
+        $schedule->command('tournaments:generate-from-templates')->daily();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([

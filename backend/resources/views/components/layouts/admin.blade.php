@@ -17,6 +17,9 @@
                 @if (auth('staff')->user()->hasPermission('users.view'))
                     <a href="{{ route('admin.users.index') }}" class="text-sm text-violet-300 hover:text-white">Players</a>
                 @endif
+                @if (auth('staff')->user()->hasPermission('recurring_tournaments.manage'))
+                    <a href="{{ route('admin.templates.index') }}" class="text-sm text-violet-300 hover:text-white">Templates</a>
+                @endif
                 @if (auth('staff')->user()->hasPermission('staff.manage'))
                     <a href="{{ route('admin.staff.index') }}" class="text-sm text-violet-300 hover:text-white">Staff</a>
                     <a href="{{ route('admin.presets.index') }}" class="text-sm text-violet-300 hover:text-white">Presets</a>

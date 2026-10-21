@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'game_id', 'title', 'description', 'rules', 'image_path', 'mode',
     'entry_fee', 'per_kill_reward', 'prize_pool', 'total_slots', 'min_players',
-    'scheduled_start_at', 'status',
+    'scheduled_start_at', 'status', 'template_id',
 ])]
 class Tournament extends Model
 {
@@ -77,5 +77,13 @@ class Tournament extends Model
     public function credential(): HasOne
     {
         return $this->hasOne(TournamentCredential::class);
+    }
+
+    /**
+     * @return BelongsTo<RecurringTournamentTemplate, $this>
+     */
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(RecurringTournamentTemplate::class, 'template_id');
     }
 }
