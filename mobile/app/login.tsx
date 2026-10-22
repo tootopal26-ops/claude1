@@ -4,6 +4,7 @@ import { Redirect, useRouter } from 'expo-router';
 
 import { ApiError } from '../src/api/client';
 import { useAuth } from '../src/auth/AuthContext';
+import { BrandLogo } from '../src/components/BrandLogo';
 import { Icon } from '../src/theme/icons';
 
 export default function LoginScreen() {
@@ -63,7 +64,7 @@ export default function LoginScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Mini Max</Text>
+      <BrandLogo width={200} style={styles.logo} />
       <Text style={styles.subtitle}>{mode === 'login' ? 'Sign in to continue' : 'Create your account'}</Text>
 
       {mode === 'register' && (
@@ -145,7 +146,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#1a1025' },
   content: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1025' },
-  title: { fontSize: 32, fontWeight: '700', color: '#fff', textAlign: 'center' },
+  logo: { alignSelf: 'center', marginBottom: 8 },
   subtitle: { fontSize: 14, color: '#C4B5FD', textAlign: 'center', marginBottom: 24 },
   input: {
     backgroundColor: 'rgba(255,255,255,0.08)',

@@ -1,5 +1,5 @@
 <div class="mx-auto mt-16 max-w-sm rounded-2xl border border-violet-900/40 bg-white/5 p-8 backdrop-blur">
-    <h1 class="text-center text-2xl font-bold text-violet-200">Mini Max</h1>
+    <div class="mb-2 text-center"><x-logo-asset :height="56" /></div>
     <p class="mb-6 text-center text-sm text-violet-400">Admin &amp; Staff sign in</p>
 
     <form wire:submit="login" class="space-y-4">

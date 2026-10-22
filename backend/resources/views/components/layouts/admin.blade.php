@@ -21,7 +21,7 @@
     @if (auth('staff')->check())
         <nav class="flex items-center justify-between border-b border-violet-900/40 bg-[#1a1025]/80 px-6 py-4">
             <div class="flex items-center gap-6">
-                <a href="{{ route('admin.tournaments.index') }}" class="flex items-center gap-1.5 text-lg font-bold text-violet-300"><x-icon name="home" :size="18" />Mini Max Admin</a>
+                <a href="{{ route('admin.tournaments.index') }}" class="flex items-center gap-2 text-lg font-bold text-violet-300"><x-logo-asset :height="28" />Admin</a>
                 <a href="{{ route('admin.tournaments.index') }}" class="flex items-center gap-1 text-sm text-violet-300 hover:text-white"><x-icon name="tournaments" :size="16" />Tournaments</a>
                 <a href="{{ route('admin.notifications.index') }}" class="flex items-center gap-1 text-sm text-violet-300 hover:text-white"><x-icon name="notifications" :size="16" />Notifications</a>
                 @if (auth('staff')->user()->hasPermission('users.view'))
