@@ -7,14 +7,12 @@ use Illuminate\View\View;
 
 /**
  * The one and only place that renders the coin graphic. Player-facing
- * code must always go through <x-coin-asset> rather than a raw ₹
- * symbol or a hand-rolled coin SVG — see the ChecksNoRawCurrencyTest
- * test, which enforces that across resources/views (excluding this
+ * code must always go through <x-coin-asset> rather than a raw rupee
+ * symbol or a hand-rolled coin SVG — see NoRawCurrencyOrAdHocCoinSvgTest,
+ * which enforces that across resources/views (excluding this
  * component's own markup) and app/Http/Resources.
  *
- * public/images/coin.png is currently a generated placeholder (a plain
- * gold circle) standing in for the real, user-supplied artwork.
- * Swapping that one file for the real PNG needs no code change here.
+ * public/images/coin.png is the user-supplied coin artwork.
  */
 class CoinAsset extends Component
 {

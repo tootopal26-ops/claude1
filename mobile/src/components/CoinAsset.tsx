@@ -7,9 +7,7 @@ import { Image, type ImageStyle, type StyleProp } from 'react-native';
  * scripts/check-no-raw-currency.js, which enforces that across app/ and
  * src/.
  *
- * mobile/assets/coin.png is currently a generated placeholder (a plain
- * gold circle) standing in for the real artwork. Swapping that one file
- * for the real, user-supplied PNG needs no code change here.
+ * mobile/assets/coin.png is the user-supplied coin artwork.
  */
 const COIN_IMAGE = require('../../assets/coin.png');
 
