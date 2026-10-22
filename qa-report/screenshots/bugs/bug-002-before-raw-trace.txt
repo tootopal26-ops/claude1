@@ -1,0 +1,60 @@
+{
+    "message": "cURL error 56: CONNECT tunnel failed, response 403 (see https://curl.se/libcurl/c/libcurl-errors.html) for https://alphaupi.site/api/create-order",
+    "exception": "Illuminate\\Http\\Client\\ConnectionException",
+    "file": "/home/user/claude1/backend/vendor/laravel/framework/src/Illuminate/Http/Client/PendingRequest.php",
+    "line": 2136,
+    "trace": [
+        {
+            "file": "/home/user/claude1/backend/vendor/laravel/framework/src/Illuminate/Http/Client/PendingRequest.php",
+            "line": 1126,
+            "function": "marshalTransportException",
+            "class": "Illuminate\\Http\\Client\\PendingRequest",
+            "type": "->"
+        },
+        {
+            "file": "/home/user/claude1/backend/vendor/laravel/framework/src/Illuminate/Support/helpers.php",
+            "line": 328,
+            "function": "Illuminate\\Http\\Client\\{closure}",
+            "class": "Illuminate\\Http\\Client\\PendingRequest",
+            "type": "->"
+        },
+        {
+            "file": "/home/user/claude1/backend/vendor/laravel/framework/src/Illuminate/Http/Client/PendingRequest.php",
+            "line": 1080,
+            "function": "retry"
+        },
+        {
+            "file": "/home/user/claude1/backend/vendor/laravel/framework/src/Illuminate/Http/Client/PendingRequest.php",
+            "line": 920,
+            "function": "send",
+            "class": "Illuminate\\Http\\Client\\PendingRequest",
+            "type": "->"
+        },
+        {
+            "file": "/home/user/claude1/backend/app/Domain/Payments/AlphaUpiAdapter.php",
+            "line": 48,
+            "function": "post",
+            "class": "Illuminate\\Http\\Client\\PendingRequest",
+            "type": "->"
+        },
+        {
+            "file": "/home/user/claude1/backend/app/Domain/Payments/DepositService.php",
+            "line": 55,
+            "function": "createOrder",
+            "class": "App\\Domain\\Payments\\AlphaUpiAdapter",
+            "type": "->"
+        },
+        {
+            "file": "/home/user/claude1/backend/app/Http/Controllers/Api/V1/DepositController.php",
+            "line": 30,
+            "function": "initiate",
+            "class": "App\\Domain\\Payments\\DepositService",
+            "type": "->"
+        }
+        // ... framework pipeline frames omitted for brevity; the full
+        // trace (captured live from this sandbox before the fix below)
+        // continued through the entire middleware stack and public/index.php,
+        // which is exactly the problem: this is a complete, file-path-bearing
+        // stack trace returned in a live JSON API response.
+    ]
+}

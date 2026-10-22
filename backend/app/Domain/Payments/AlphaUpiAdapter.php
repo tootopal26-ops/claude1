@@ -2,6 +2,7 @@
 
 namespace App\Domain\Payments;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
@@ -45,13 +46,13 @@ class AlphaUpiAdapter implements PaymentGatewayInterface
         ?string $customerMobile = null,
         ?string $description = null,
     ): array {
-        $response = $this->client()->post('/create-order', array_filter([
+        $response = $this->post('/create-order', array_filter([
             'amount' => number_format((float) $amount, 2, '.', ''),
             'order_id' => $orderId,
             'customer_name' => $customerName,
             'customer_mobile' => $customerMobile,
             'description' => $description,
-        ], fn ($value) => $value !== null));
+        ], fn ($value) => $value !== null), 'create-order');
 
         $body = $this->decodeOrFail($response, 'create-order');
         $data = $body['data'] ?? [];
@@ -70,7 +71,7 @@ class AlphaUpiAdapter implements PaymentGatewayInterface
 
     public function checkStatus(string $orderId): array
     {
-        $response = $this->client()->post('/check-status', ['order_id' => $orderId]);
+        $response = $this->post('/check-status', ['order_id' => $orderId], 'check-status');
 
         $body = $this->decodeOrFail($response, 'check-status');
         $data = $body['data'] ?? [];
@@ -114,6 +115,23 @@ class AlphaUpiAdapter implements PaymentGatewayInterface
             ])
             ->acceptJson()
             ->timeout(15);
+    }
+
+    /**
+     * A DNS failure, connection refusal, TLS error, or timeout throws
+     * Illuminate\Http\Client\ConnectionException before any Response
+     * exists — distinct from decodeOrFail()'s handling of a Response
+     * that came back but was an error. Both are "the gateway didn't
+     * work", so both become the one exception type every caller of
+     * this adapter already knows to catch.
+     */
+    private function post(string $endpoint, array $data, string $label): Response
+    {
+        try {
+            return $this->client()->post($endpoint, $data);
+        } catch (ConnectionException $exception) {
+            throw new PaymentGatewayException("Could not reach Alpha UPI for {$label}: {$exception->getMessage()}");
+        }
     }
 
     private function decodeOrFail(Response $response, string $endpoint): array

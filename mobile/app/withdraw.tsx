@@ -35,12 +35,18 @@ export default function WithdrawScreen() {
   const [amount, setAmount] = useState('');
   const [upiId, setUpiId] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
-    const [walletResponse, withdrawalsResponse] = await Promise.all([fetchWallet(), fetchWithdrawals()]);
-    setWithdrawableBalance(walletResponse.data.withdrawable_balance);
-    setWithdrawals(withdrawalsResponse.data);
+    setLoadError(null);
+    try {
+      const [walletResponse, withdrawalsResponse] = await Promise.all([fetchWallet(), fetchWithdrawals()]);
+      setWithdrawableBalance(walletResponse.data.withdrawable_balance);
+      setWithdrawals(withdrawalsResponse.data);
+    } catch {
+      setLoadError('Could not load your withdrawals. Pull to retry.');
+    }
   }, []);
 
   useEffect(() => {
@@ -133,7 +139,7 @@ export default function WithdrawScreen() {
               <Text style={styles.historyHeading}>Request history</Text>
             </View>
           }
-          ListEmptyComponent={<Text style={styles.empty}>No withdrawal requests yet.</Text>}
+          ListEmptyComponent={<Text style={styles.empty}>{loadError ?? 'No withdrawal requests yet.'}</Text>}
           renderItem={({ item }) => (
             <View style={styles.row}>
               <View>

@@ -55,21 +55,21 @@
         <table class="w-full text-left text-sm">
             <thead class="text-violet-400">
                 <tr>
-                    <th class="py-2">Action</th>
-                    <th class="py-2">Occurred</th>
-                    <th class="py-2">Amount</th>
+                    <th class="px-4 py-2">Action</th>
+                    <th class="px-4 py-2">Occurred</th>
+                    <th class="px-4 py-2">Amount</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-violet-900/20">
                 @forelse ($items as $item)
                     <tr>
-                        <td class="py-2 text-violet-300">{{ $item->event->action_type }}</td>
-                        <td class="py-2 text-violet-300">{{ $item->event->occurred_at->format('d M, H:i') }}</td>
-                        <td class="py-2 text-emerald-400">{{ $item->amount }}</td>
+                        <td class="px-4 py-2 text-violet-300">{{ $item->event->action_type }}</td>
+                        <td class="px-4 py-2 text-violet-300">{{ $item->event->occurred_at->format('d M, H:i') }}</td>
+                        <td class="px-4 py-2 text-emerald-400">{{ $item->amount }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="3" class="py-6 text-center text-violet-400">No line items.</td>
+                        <td colspan="3" class="px-4 py-6 text-center text-violet-400">No line items.</td>
                     </tr>
                 @endforelse
             </tbody>

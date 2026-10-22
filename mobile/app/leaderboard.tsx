@@ -19,10 +19,16 @@ export default function LeaderboardScreen() {
   const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (nextType: Leaderboard['type']) => {
-    const response = await fetchLeaderboard(nextType);
-    setLeaderboard(response.data);
+    setError(null);
+    try {
+      const response = await fetchLeaderboard(nextType);
+      setLeaderboard(response.data);
+    } catch {
+      setError('Could not load the leaderboard. Pull to retry.');
+    }
   }, []);
 
   useEffect(() => {
@@ -58,8 +64,12 @@ export default function LeaderboardScreen() {
         ))}
       </View>
 
-      {loading || !leaderboard ? (
+      {loading ? (
         <ActivityIndicator style={styles.centered} />
+      ) : !leaderboard ? (
+        <Pressable style={styles.centered} onPress={() => load(type)}>
+          <Text style={styles.empty}>{error ?? 'Could not load the leaderboard.'} Tap to retry.</Text>
+        </Pressable>
       ) : (
         <FlatList
           data={leaderboard.entries}

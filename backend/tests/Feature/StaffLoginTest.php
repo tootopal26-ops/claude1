@@ -25,9 +25,64 @@ class StaffLoginTest extends TestCase
         Livewire::test(Login::class)
             ->set('username', 'ops_lead')
             ->set('password', 'secret123')
-            ->call('login');
+            ->call('login')
+            ->assertRedirect(route('admin.home'));
 
         $this->assertAuthenticatedAs($staff, 'staff');
+    }
+
+    /**
+     * Regression test for a real bug found during a QA audit: the
+     * post-login landing page (and the bare `/admin` redirect) used to
+     * be hardcoded to the Tournaments list, which requires
+     * tournaments.view — so a legitimately configured staff account
+     * missing only that one permission would log in successfully and
+     * land straight on a bare 403, with no nav rendered to go anywhere
+     * else.
+     */
+    public function test_logging_in_without_tournaments_view_redirects_to_home_not_tournaments(): void
+    {
+        $permission = Permission::create(['key' => 'legal.manage', 'label' => 'Manage legal docs', 'group' => 'legal']);
+        $preset = PermissionPreset::create(['name' => 'Legal Only']);
+        $preset->permissions()->attach($permission);
+        StaffUser::factory()->create([
+            'username' => 'legal_only',
+            'password' => bcrypt('secret123'),
+            'permission_preset_id' => $preset->id,
+            'is_super_admin' => false,
+        ]);
+
+        Livewire::test(Login::class)
+            ->set('username', 'legal_only')
+            ->set('password', 'secret123')
+            ->call('login')
+            ->assertRedirect(route('admin.home'));
+    }
+
+    public function test_a_staff_user_without_tournaments_view_can_load_home_and_only_sees_permitted_sections(): void
+    {
+        $permission = Permission::create(['key' => 'legal.manage', 'label' => 'Manage legal docs', 'group' => 'legal']);
+        $preset = PermissionPreset::create(['name' => 'Legal Only']);
+        $preset->permissions()->attach($permission);
+        $staff = StaffUser::factory()->create(['permission_preset_id' => $preset->id, 'is_super_admin' => false]);
+
+        $response = $this->actingAs($staff, 'staff')->get(route('admin.home'));
+        $response->assertOk();
+        $response->assertSee('Legal');
+        $response->assertDontSee('Tournaments');
+
+        $this->actingAs($staff, 'staff')->get('/admin')->assertRedirect(route('admin.home'));
+    }
+
+    public function test_the_home_page_shows_a_friendly_message_for_a_staff_user_with_no_permissions(): void
+    {
+        $preset = PermissionPreset::create(['name' => 'Nothing']);
+        $staff = StaffUser::factory()->create(['permission_preset_id' => $preset->id, 'is_super_admin' => false]);
+
+        $response = $this->actingAs($staff, 'staff')->get(route('admin.home'));
+
+        $response->assertOk();
+        $response->assertSee('doesn\'t have access to any section', false);
     }
 
     public function test_an_inactive_staff_account_cannot_log_in(): void

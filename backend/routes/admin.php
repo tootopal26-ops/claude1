@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\StorageAssetDownloadController;
 use App\Livewire\Admin\AuditLogViewer;
 use App\Livewire\Admin\DepositList;
+use App\Livewire\Admin\Home;
 use App\Livewire\Admin\LeaderboardViewer;
 use App\Livewire\Admin\LegalDocumentForm;
 use App\Livewire\Admin\LegalDocumentList;
@@ -46,7 +47,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
     })->name('logout')->middleware('auth:staff');
 
     Route::middleware(['auth:staff', 'staff.security_version'])->group(function () {
-        Route::redirect('/', '/admin/tournaments');
+        Route::redirect('/', '/admin/home');
+
+        // No `permission:` middleware here deliberately — every other
+        // route requires a specific permission, so this is the one
+        // landing page guaranteed not to 403 a staff account whose
+        // preset excludes tournaments.view.
+        Route::get('/home', Home::class)->name('home');
 
         Route::get('/tournaments', TournamentList::class)
             ->name('tournaments.index')

@@ -98,25 +98,25 @@
         <table class="w-full text-left text-sm">
             <thead class="text-violet-400">
                 <tr>
-                    <th class="py-2">When</th>
-                    <th class="py-2">Type</th>
-                    <th class="py-2">Balance</th>
-                    <th class="py-2">Amount</th>
-                    <th class="py-2">Reason</th>
+                    <th class="px-4 py-2">When</th>
+                    <th class="px-4 py-2">Type</th>
+                    <th class="px-4 py-2">Balance</th>
+                    <th class="px-4 py-2">Amount</th>
+                    <th class="px-4 py-2">Reason</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-violet-900/20">
                 @forelse ($ledgerEntries as $entry)
                     <tr>
-                        <td class="py-2 text-violet-300">{{ $entry->created_at->format('d M, H:i') }}</td>
-                        <td class="py-2 text-violet-300">{{ $entry->type }}</td>
-                        <td class="py-2 text-violet-300">{{ $entry->balance }}</td>
-                        <td class="py-2 {{ $entry->isCredit() ? 'text-emerald-400' : 'text-red-400' }}">{{ $entry->amount }}</td>
-                        <td class="py-2 text-violet-500">{{ $entry->reason ?? '—' }}</td>
+                        <td class="px-4 py-2 text-violet-300">{{ $entry->created_at->format('d M, H:i') }}</td>
+                        <td class="px-4 py-2 text-violet-300">{{ $entry->type }}</td>
+                        <td class="px-4 py-2 text-violet-300">{{ $entry->balance }}</td>
+                        <td class="px-4 py-2 {{ $entry->isCredit() ? 'text-emerald-400' : 'text-red-400' }}">{{ $entry->amount }}</td>
+                        <td class="px-4 py-2 text-violet-500">{{ $entry->reason ?? '—' }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="py-6 text-center text-violet-400">No wallet activity yet.</td>
+                        <td colspan="5" class="px-4 py-6 text-center text-violet-400">No wallet activity yet.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -128,23 +128,23 @@
         <table class="w-full text-left text-sm">
             <thead class="text-violet-400">
                 <tr>
-                    <th class="py-2">Tournament</th>
-                    <th class="py-2">Status</th>
-                    <th class="py-2">Entry fee paid</th>
-                    <th class="py-2">Joined</th>
+                    <th class="px-4 py-2">Tournament</th>
+                    <th class="px-4 py-2">Status</th>
+                    <th class="px-4 py-2">Entry fee paid</th>
+                    <th class="px-4 py-2">Joined</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-violet-900/20">
                 @forelse ($tournamentEntries as $entry)
                     <tr>
-                        <td class="py-2 text-white">{{ $entry->tournament->title }}</td>
-                        <td class="py-2 text-violet-300">{{ $entry->status }}</td>
-                        <td class="py-2 text-violet-300">{{ $entry->entry_fee_paid }}</td>
-                        <td class="py-2 text-violet-300">{{ $entry->created_at->format('d M, H:i') }}</td>
+                        <td class="px-4 py-2 text-white">{{ $entry->tournament->title }}</td>
+                        <td class="px-4 py-2 text-violet-300">{{ $entry->status }}</td>
+                        <td class="px-4 py-2 text-violet-300">{{ $entry->entry_fee_paid }}</td>
+                        <td class="px-4 py-2 text-violet-300">{{ $entry->created_at->format('d M, H:i') }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4" class="py-6 text-center text-violet-400">No tournament entries yet.</td>
+                        <td colspan="4" class="px-4 py-6 text-center text-violet-400">No tournament entries yet.</td>
                     </tr>
                 @endforelse
             </tbody>

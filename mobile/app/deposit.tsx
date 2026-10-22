@@ -29,12 +29,18 @@ export default function DepositScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const pendingDepositId = useRef<number | null>(null);
 
   const load = useCallback(async () => {
-    const response = await fetchDeposits();
-    setDeposits(response.data);
+    setLoadError(null);
+    try {
+      const response = await fetchDeposits();
+      setDeposits(response.data);
+    } catch {
+      setLoadError('Could not load your deposits. Pull to retry.');
+    }
   }, []);
 
   useEffect(() => {
@@ -131,7 +137,7 @@ export default function DepositScreen() {
               <Text style={styles.historyHeading}>Deposit history</Text>
             </View>
           }
-          ListEmptyComponent={<Text style={styles.empty}>No deposits yet.</Text>}
+          ListEmptyComponent={<Text style={styles.empty}>{loadError ?? 'No deposits yet.'}</Text>}
           renderItem={({ item }) => (
             <View style={styles.row}>
               <View>

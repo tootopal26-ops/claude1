@@ -8,6 +8,7 @@ use App\Models\DepositOrder;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
@@ -77,6 +78,40 @@ class DepositServiceTest extends TestCase
         }
 
         $this->assertSame('failed', DepositOrder::where('user_id', $user->id)->first()->status);
+    }
+
+    public function test_a_gateway_connection_failure_marks_the_order_failed_and_raises_a_validation_error(): void
+    {
+        Http::fake(function () {
+            throw new ConnectionException('Could not resolve host.');
+        });
+        $user = User::factory()->create();
+
+        try {
+            app(DepositService::class)->initiate($user, '50.00');
+            $this->fail('Expected a ValidationException.');
+        } catch (ValidationException) {
+            // expected — a transport-level failure must not leak as an
+            // uncaught 500/stack trace, same as an application-level one.
+        }
+
+        $this->assertSame('failed', DepositOrder::where('user_id', $user->id)->first()->status);
+    }
+
+    public function test_reconcile_returns_the_orders_current_state_when_the_gateway_is_unreachable(): void
+    {
+        $this->fakeCreateOrderSuccess();
+        $user = User::factory()->create();
+        $order = app(DepositService::class)->initiate($user, '50.00');
+
+        Http::fake(function () {
+            throw new ConnectionException('Connection timed out.');
+        });
+
+        $reconciled = app(DepositService::class)->reconcile($order);
+
+        $this->assertSame('pending', $reconciled->status);
+        $this->assertSame('0.00', $user->fresh()->wallet->deposit_balance);
     }
 
     public function test_a_valid_webhook_credits_the_wallet_exactly_once(): void

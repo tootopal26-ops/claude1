@@ -11,6 +11,7 @@ use App\Models\RiskAlert;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -139,7 +140,23 @@ class DepositService
             return $order;
         }
 
-        $status = $this->gateway->checkStatus($order->our_order_id);
+        // The gateway webhook (handleWebhook() above) is the primary way a
+        // deposit gets marked paid; this check-status call is only a
+        // same-request freshness check for whoever's polling. A gateway
+        // hiccup here should leave the order exactly as it was — still
+        // reconcilable on the next poll or by the webhook — rather than
+        // failing the whole status request the player is waiting on.
+        try {
+            $status = $this->gateway->checkStatus($order->our_order_id);
+        } catch (PaymentGatewayException $exception) {
+            Log::warning('Deposit reconcile check-status call failed; returning the order\'s last-known state.', [
+                'deposit_order_id' => $order->id,
+                'our_order_id' => $order->our_order_id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return $order;
+        }
 
         if ($status['payment_status'] === 'success') {
             $this->markPaid($order, $status['utr'], $status['gateway_txn_id'], $status['amount']);
