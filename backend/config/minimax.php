@@ -211,4 +211,20 @@ return [
         'elegant-display' => 'Elegant Display',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Backups
+    |--------------------------------------------------------------------------
+    |
+    | Where `backup:run` (see docs/backup-restore.md) writes its
+    | gzipped database dump and storage/app archive, and how many days
+    | of backups it keeps before pruning the oldest. Point this at a
+    | mounted volume separate from the app's own disk in production —
+    | a backup that lives only on the server it protects doesn't
+    | survive that server's own disk failure.
+    |
+    */
+    'backup_path' => env('BACKUP_PATH', storage_path('app/backups')),
+    'backup_retention_days' => (int) env('BACKUP_RETENTION_DAYS', 14),
+
 ];

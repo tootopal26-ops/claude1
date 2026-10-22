@@ -18,6 +18,10 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# EAS local build credentials (keystore path + passwords in plaintext —
+# see docs/mobile-release.md)
+credentials.json
+
 # Firebase — provided per-environment, never committed (see docs/firebase-setup.md)
 google-services.json
 GoogleService-Info.plist

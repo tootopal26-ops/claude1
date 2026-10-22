@@ -27,6 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('leaderboards:maintain')->everyTenMinutes();
         $schedule->command('staff-salary:maintain')->daily();
         $schedule->command('storage:cleanup')->weekly();
+        $schedule->command('wallet:reconcile')->daily();
+        $schedule->command('backup:run')->dailyAt('02:00');
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
