@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './themes.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -6,4 +7,38 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+/*
+ * The shared layout shell (nav, page background) reads the active
+ * color/font theme tokens from themes.css. Individual pages built in
+ * earlier phases still use hardcoded Tailwind violet-* utility classes
+ * directly (they predate this token system) and won't themselves
+ * reflect a theme switch yet — see the Phase 14 completion notes for
+ * the follow-up to retrofit them.
+ */
+body {
+    background-color: var(--mm-color-bg);
+    font-family: var(--mm-font-active);
+}
+
+.mm-surface {
+    background-color: var(--mm-color-surface);
+    border-color: var(--mm-color-surface-border);
+}
+
+.mm-text-muted {
+    color: var(--mm-color-text-muted);
+}
+
+.mm-accent {
+    color: var(--mm-color-accent);
+}
+
+.mm-btn-primary {
+    background-color: var(--mm-color-primary);
+}
+
+.mm-btn-primary:hover {
+    background-color: var(--mm-color-primary-hover);
 }

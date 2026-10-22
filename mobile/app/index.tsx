@@ -6,10 +6,14 @@ import { apiRequest } from '../src/api/client';
 import { fetchNotifications } from '../src/api/notifications';
 import { fetchWallet } from '../src/api/wallet';
 import { useAuth } from '../src/auth/AuthContext';
+import { CoinAsset } from '../src/components/CoinAsset';
+import { Icon } from '../src/theme/icons';
+import { useTheme } from '../src/theme/ThemeContext';
 import type { Tournament } from '../src/types';
 
 export default function TournamentListScreen() {
   const { user, isLoading: authLoading, logout } = useAuth();
+  const { colors } = useTheme();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -65,23 +69,28 @@ export default function TournamentListScreen() {
         <View style={styles.headerActions}>
           <Link href="/wallet" asChild>
             <Pressable style={styles.balanceChip}>
-              <Text style={styles.balanceIcon}>🪙</Text>
+              <CoinAsset size={14} />
               <Text style={styles.balanceText}>{totalBalance ?? '—'}</Text>
             </Pressable>
           </Link>
           <Link href="/leaderboard" asChild>
             <Pressable style={styles.bellButton}>
-              <Text style={styles.bellIcon}>🏆</Text>
+              <Icon name="leaderboard" size={20} color={colors.text} />
             </Pressable>
           </Link>
           <Link href="/notifications" asChild>
             <Pressable style={styles.bellButton}>
-              <Text style={styles.bellIcon}>🔔</Text>
+              <Icon name="notifications" size={20} color={colors.text} />
               {unreadCount > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
                 </View>
               )}
+            </Pressable>
+          </Link>
+          <Link href="/settings" asChild>
+            <Pressable style={styles.bellButton}>
+              <Icon name="presets" size={20} color={colors.text} />
             </Pressable>
           </Link>
           <Pressable onPress={() => logout()}>
@@ -141,8 +150,6 @@ const styles = StyleSheet.create({
   },
   welcome: { color: '#fff', fontSize: 16, fontWeight: '600' },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  // 🪙 is a placeholder — swap for the owner-supplied coin PNG (CoinAsset
-  // component) once it's provided; see the icon-system spec.
   balanceChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -154,10 +161,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(139,92,246,0.4)',
   },
-  balanceIcon: { fontSize: 14 },
   balanceText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   bellButton: { position: 'relative', padding: 4 },
-  bellIcon: { fontSize: 20 },
   badge: {
     position: 'absolute',
     top: -2,

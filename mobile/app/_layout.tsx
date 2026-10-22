@@ -4,6 +4,7 @@ import { router, Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '../src/auth/AuthContext';
+import { ThemeProvider } from '../src/theme/ThemeContext';
 
 function useNotificationTapNavigation() {
   useEffect(() => {
@@ -25,18 +26,21 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <Stack screenOptions={{ headerShown: true }}>
-          <Stack.Screen name="login" options={{ title: 'Sign in', headerShown: false }} />
-          <Stack.Screen name="index" options={{ title: 'Tournaments' }} />
-          <Stack.Screen name="tournament/[id]" options={{ title: 'Tournament' }} />
-          <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
-          <Stack.Screen name="wallet" options={{ title: 'Wallet' }} />
-          <Stack.Screen name="deposit" options={{ title: 'Deposit' }} />
-          <Stack.Screen name="withdraw" options={{ title: 'Withdraw' }} />
-          <Stack.Screen name="leaderboard" options={{ title: 'Leaderboard' }} />
-        </Stack>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <Stack screenOptions={{ headerShown: true }}>
+            <Stack.Screen name="login" options={{ title: 'Sign in', headerShown: false }} />
+            <Stack.Screen name="index" options={{ title: 'Tournaments' }} />
+            <Stack.Screen name="tournament/[id]" options={{ title: 'Tournament' }} />
+            <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+            <Stack.Screen name="wallet" options={{ title: 'Wallet' }} />
+            <Stack.Screen name="deposit" options={{ title: 'Deposit' }} />
+            <Stack.Screen name="withdraw" options={{ title: 'Withdraw' }} />
+            <Stack.Screen name="leaderboard" options={{ title: 'Leaderboard' }} />
+            <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+          </Stack>
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

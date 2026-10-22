@@ -1,0 +1,134 @@
+/*
+ * Design tokens for Mini Max's 7 color themes and 7 font themes.
+ *
+ * These are plain CSS custom properties, deliberately kept separate from
+ * Tailwind's own @theme block in app.css: Tailwind's @theme generates a
+ * fixed set of utility classes at build time, which can't switch at
+ * runtime. Everything here is runtime-switchable instead, driven by
+ * data-theme / data-font attributes on <html> (see app.js for the
+ * switcher that sets them from a saved preference).
+ *
+ * Semantic colors (danger/success/warning) carry meaning independent of
+ * the chosen theme, so they're defined once in :root rather than
+ * repeated per theme.
+ */
+
+:root {
+    --mm-color-danger: #ef4444;
+    --mm-color-danger-bg: rgb(127 29 29 / 0.4);
+    --mm-color-success: #34d399;
+    --mm-color-success-bg: rgb(6 78 59 / 0.4);
+    --mm-color-warning: #fbbf24;
+    --mm-color-warning-bg: rgb(120 53 15 / 0.4);
+}
+
+/* ---------- Color themes ---------- */
+
+:root,
+:root[data-theme='purple-glass'] {
+    --mm-color-bg: #140a1f;
+    --mm-color-surface: rgb(26 16 37 / 0.8);
+    --mm-color-surface-border: rgb(88 28 135 / 0.4);
+    --mm-color-primary: #8b5cf6;
+    --mm-color-primary-hover: #7c3aed;
+    --mm-color-text: #ffffff;
+    --mm-color-text-muted: #c4b5fd;
+    --mm-color-accent: #a78bfa;
+}
+
+:root[data-theme='midnight-emerald'] {
+    --mm-color-bg: #0a1f17;
+    --mm-color-surface: rgb(16 37 28 / 0.8);
+    --mm-color-surface-border: rgb(6 95 70 / 0.4);
+    --mm-color-primary: #10b981;
+    --mm-color-primary-hover: #059669;
+    --mm-color-text: #ffffff;
+    --mm-color-text-muted: #6ee7b7;
+    --mm-color-accent: #34d399;
+}
+
+:root[data-theme='crimson-arena'] {
+    --mm-color-bg: #1a0a0a;
+    --mm-color-surface: rgb(37 16 16 / 0.8);
+    --mm-color-surface-border: rgb(127 29 29 / 0.4);
+    --mm-color-primary: #ef4444;
+    --mm-color-primary-hover: #dc2626;
+    --mm-color-text: #ffffff;
+    --mm-color-text-muted: #fca5a5;
+    --mm-color-accent: #f87171;
+}
+
+:root[data-theme='cyber-blue'] {
+    --mm-color-bg: #0a1420;
+    --mm-color-surface: rgb(16 28 37 / 0.8);
+    --mm-color-surface-border: rgb(12 74 110 / 0.4);
+    --mm-color-primary: #0ea5e9;
+    --mm-color-primary-hover: #0284c7;
+    --mm-color-text: #ffffff;
+    --mm-color-text-muted: #7dd3fc;
+    --mm-color-accent: #38bdf8;
+}
+
+:root[data-theme='sunset-gold'] {
+    --mm-color-bg: #1f1509;
+    --mm-color-surface: rgb(37 27 16 / 0.8);
+    --mm-color-surface-border: rgb(146 64 14 / 0.4);
+    --mm-color-primary: #f59e0b;
+    --mm-color-primary-hover: #d97706;
+    --mm-color-text: #ffffff;
+    --mm-color-text-muted: #fcd34d;
+    --mm-color-accent: #fbbf24;
+}
+
+:root[data-theme='royal-indigo'] {
+    --mm-color-bg: #0d0a1f;
+    --mm-color-surface: rgb(22 16 37 / 0.8);
+    --mm-color-surface-border: rgb(67 56 202 / 0.4);
+    --mm-color-primary: #6366f1;
+    --mm-color-primary-hover: #4f46e5;
+    --mm-color-text: #ffffff;
+    --mm-color-text-muted: #a5b4fc;
+    --mm-color-accent: #818cf8;
+}
+
+:root[data-theme='monochrome-steel'] {
+    --mm-color-bg: #121212;
+    --mm-color-surface: rgb(30 30 30 / 0.8);
+    --mm-color-surface-border: rgb(100 116 139 / 0.4);
+    --mm-color-primary: #94a3b8;
+    --mm-color-primary-hover: #64748b;
+    --mm-color-text: #ffffff;
+    --mm-color-text-muted: #cbd5e1;
+    --mm-color-accent: #e2e8f0;
+}
+
+/* ---------- Font themes ---------- */
+
+:root,
+:root[data-font='default-sans'] {
+    --mm-font-active: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+:root[data-font='modern-grotesk'] {
+    --mm-font-active: 'Helvetica Neue', Arial, ui-sans-serif, sans-serif;
+}
+
+:root[data-font='rounded-friendly'] {
+    --mm-font-active: ui-rounded, 'SF Pro Rounded', Nunito, ui-sans-serif, sans-serif;
+}
+
+:root[data-font='classic-serif'] {
+    --mm-font-active: Georgia, 'Times New Roman', ui-serif, serif;
+}
+
+:root[data-font='technical-mono'] {
+    --mm-font-active: 'SF Mono', 'Cascadia Code', Consolas, ui-monospace, monospace;
+}
+
+:root[data-font='condensed-impact'] {
+    --mm-font-active: 'Arial Narrow', 'Helvetica Neue Condensed', ui-sans-serif, sans-serif;
+}
+
+:root[data-font='elegant-display'] {
+    --mm-font-active: Didot, 'Bodoni MT', Georgia, ui-serif, serif;
+}

@@ -129,4 +129,37 @@ return [
     */
     'storage_quota_bytes_per_bucket' => (int) env('MINIMAX_STORAGE_QUOTA_BYTES_PER_BUCKET', 5 * 1024 * 1024 * 1024),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Theme tokens
+    |--------------------------------------------------------------------------
+    |
+    | The key is the data-theme / data-font attribute value applied to
+    | <html> (see resources/css/themes.css for the actual CSS custom
+    | property values, and resources/js/app.js for the switcher). Mobile
+    | defines the equivalent palettes independently in
+    | mobile/src/theme/tokens.ts — keep the key list and default in sync
+    | by hand if either side's list changes.
+    |
+    */
+    'theme_colors' => [
+        'purple-glass' => 'Purple Glassmorphism',
+        'midnight-emerald' => 'Midnight Emerald',
+        'crimson-arena' => 'Crimson Arena',
+        'cyber-blue' => 'Cyber Blue',
+        'sunset-gold' => 'Sunset Gold',
+        'royal-indigo' => 'Royal Indigo',
+        'monochrome-steel' => 'Monochrome Steel',
+    ],
+
+    'theme_fonts' => [
+        'default-sans' => 'Default Sans',
+        'modern-grotesk' => 'Modern Grotesk',
+        'rounded-friendly' => 'Rounded Friendly',
+        'classic-serif' => 'Classic Serif',
+        'technical-mono' => 'Technical Mono',
+        'condensed-impact' => 'Condensed Impact',
+        'elegant-display' => 'Elegant Display',
+    ],
+
 ];

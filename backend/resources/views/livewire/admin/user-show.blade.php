@@ -34,15 +34,15 @@
     <div class="grid grid-cols-3 gap-4">
         <div class="rounded-2xl border border-violet-900/40 bg-white/5 p-4">
             <p class="text-xs text-violet-400">Total balance</p>
-            <p class="text-xl font-bold text-white">{{ $user->wallet?->totalBalance() ?? '0.00' }}</p>
+            <p class="flex items-center gap-1.5 text-xl font-bold text-white"><x-coin-asset :size="18" />{{ $user->wallet?->totalBalance() ?? '0.00' }}</p>
         </div>
         <div class="rounded-2xl border border-violet-900/40 bg-white/5 p-4">
             <p class="text-xs text-violet-400">Deposit balance</p>
-            <p class="text-xl font-bold text-white">{{ $user->wallet?->deposit_balance ?? '0.00' }}</p>
+            <p class="flex items-center gap-1.5 text-xl font-bold text-white"><x-coin-asset :size="18" />{{ $user->wallet?->deposit_balance ?? '0.00' }}</p>
         </div>
         <div class="rounded-2xl border border-violet-900/40 bg-white/5 p-4">
             <p class="text-xs text-violet-400">Eligible winnings</p>
-            <p class="text-xl font-bold text-emerald-400">{{ $user->wallet?->eligible_winnings_balance ?? '0.00' }}</p>
+            <p class="flex items-center gap-1.5 text-xl font-bold text-emerald-400"><x-coin-asset :size="18" />{{ $user->wallet?->eligible_winnings_balance ?? '0.00' }}</p>
         </div>
     </div>
 
