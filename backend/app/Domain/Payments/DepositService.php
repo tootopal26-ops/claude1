@@ -99,7 +99,22 @@ class DepositService
                 'payload' => $payload,
             ]);
         } catch (UniqueConstraintViolationException) {
-            return; // Already processed this exact event — duplicate delivery.
+            // Already processed this exact event — duplicate delivery. A
+            // retried delivery is expected gateway behavior, not an
+            // incident on its own, so this is low severity: visibility
+            // for pattern tracking, not something that needs review.
+            $order = DepositOrder::where('our_order_id', $orderId)->first();
+
+            RiskAlert::create([
+                'type' => 'duplicate_webhook',
+                'risk_level' => 'low',
+                'target_user_id' => $order?->user_id,
+                'subject_type' => $order?->getMorphClass(),
+                'subject_id' => $order?->id,
+                'details' => ['provider' => $this->gateway->providerName(), 'order_id' => $orderId, 'event_type' => $eventType],
+            ]);
+
+            return;
         }
 
         $order = DepositOrder::where('our_order_id', $orderId)->first();

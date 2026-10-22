@@ -2,8 +2,10 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\AuditLog;
 use App\Models\Permission;
 use App\Models\PermissionPreset;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -32,6 +34,8 @@ class PresetForm extends Component
 
     public function save(): void
     {
+        abort_unless(Auth::guard('staff')->user()->hasPermission('staff.manage'), 403);
+
         $this->validate([
             'name' => $this->preset
                 ? ['required', 'string', 'max:255', 'unique:permission_presets,name,'.$this->preset->id]
@@ -41,12 +45,17 @@ class PresetForm extends Component
             'selectedPermissionIds.*' => ['exists:permissions,id'],
         ]);
 
+        $wasExisting = $this->preset !== null;
         $preset = $this->preset ?? new PermissionPreset;
         $preset->name = $this->name;
         $preset->description = $this->description ?: null;
         $preset->save();
 
         $preset->permissions()->sync($this->selectedPermissionIds);
+
+        AuditLog::record($wasExisting ? 'permission_preset.updated' : 'permission_preset.created', Auth::guard('staff')->user(), $preset, [
+            'permission_ids' => $this->selectedPermissionIds,
+        ]);
 
         session()->flash('status', "Preset \"{$preset->name}\" saved.");
 

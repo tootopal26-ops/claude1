@@ -77,4 +77,34 @@ class AdminPresetManagementTest extends TestCase
         $this->actingAs($staff, 'staff')->get(route('admin.tournaments.index'))->assertOk();
         $this->actingAs($staff, 'staff')->get(route('admin.tournaments.create'))->assertForbidden();
     }
+
+    /**
+     * A Livewire action is a separate AJAX endpoint from the page's
+     * initial GET, so route middleware alone (proven by the test above)
+     * doesn't gate it — the component must check permission itself.
+     */
+    public function test_saving_a_preset_is_denied_without_staff_manage_even_via_a_direct_livewire_call(): void
+    {
+        $staff = StaffUser::factory()->create(['is_super_admin' => false]);
+
+        Livewire::actingAs($staff, 'staff')
+            ->test(PresetForm::class)
+            ->set('name', 'Should Not Save')
+            ->call('save')
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('permission_presets', ['name' => 'Should Not Save']);
+    }
+
+    public function test_creating_a_preset_is_audit_logged(): void
+    {
+        $admin = StaffUser::factory()->create(['is_super_admin' => true]);
+
+        Livewire::actingAs($admin, 'staff')
+            ->test(PresetForm::class)
+            ->set('name', 'Logged Preset')
+            ->call('save');
+
+        $this->assertDatabaseHas('audit_logs', ['action' => 'permission_preset.created', 'actor_id' => $admin->id]);
+    }
 }

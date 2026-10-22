@@ -84,9 +84,16 @@ class FinalizeLeaderboardPeriodAction
             );
 
             try {
-                LeaderboardRewardPayout::create([
+                $payout = LeaderboardRewardPayout::create([
                     'leaderboard_period_id' => $period->id,
                     'user_id' => $entry->user_id,
+                    'rank' => $entry->rank,
+                    'amount' => $amount,
+                ]);
+
+                AuditLog::record('leaderboard.reward_paid', null, $payout, [
+                    'leaderboard_period_id' => $period->id,
+                    'type' => $period->type,
                     'rank' => $entry->rank,
                     'amount' => $amount,
                 ]);

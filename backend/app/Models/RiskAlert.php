@@ -54,4 +54,13 @@ class RiskAlert extends Model
     {
         return $this->reviewed_at === null;
     }
+
+    public function subjectLabel(): string
+    {
+        if ($this->subject_type === null) {
+            return '—';
+        }
+
+        return class_basename($this->subject_type)." #{$this->subject_id}";
+    }
 }

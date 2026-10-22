@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\AuditLog;
 use App\Models\Game;
 use App\Models\RecurringTournamentTemplate;
 use Illuminate\Support\Facades\Auth;
@@ -86,9 +87,15 @@ class TemplateForm extends Component
 
         $validated['day_of_week'] = $validated['frequency'] === 'weekly' ? $validated['day_of_week'] : null;
 
+        $wasExisting = $this->template !== null;
         $template = $this->template ?? new RecurringTournamentTemplate(['created_by_staff_id' => Auth::guard('staff')->id()]);
         $template->fill($validated);
         $template->save();
+
+        AuditLog::record($wasExisting ? 'recurring_template.updated' : 'recurring_template.created', Auth::guard('staff')->user(), $template, [
+            'title' => $template->title,
+            'is_active' => $template->is_active,
+        ]);
 
         session()->flash('status', "Template \"{$template->title}\" saved.");
 

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\AuditLog;
 use App\Models\PaymentProviderConfig;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -38,6 +39,11 @@ class PaymentSettings extends Component
         $this->config->is_active = $this->isActive;
         $this->config->webhook_signature_header = $this->webhookSignatureHeader;
         $this->config->save();
+
+        AuditLog::record('payment_provider_config.updated', Auth::guard('staff')->user(), $this->config, [
+            'is_active' => $this->isActive,
+            'webhook_signature_header' => $this->webhookSignatureHeader,
+        ]);
 
         session()->flash('status', 'Payment settings saved.');
     }

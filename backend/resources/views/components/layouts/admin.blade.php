@@ -51,6 +51,7 @@
                 @endif
                 @if (auth('staff')->user()->hasPermission('audit_logs.view'))
                     <a href="{{ route('admin.audit-logs.index') }}" class="flex items-center gap-1 text-sm text-violet-300 hover:text-white"><x-icon name="audit" :size="16" />Audit Log</a>
+                    <a href="{{ route('admin.risk-alerts.index') }}" class="flex items-center gap-1 text-sm text-violet-300 hover:text-white"><x-icon name="notifications" :size="16" />Risk Alerts</a>
                 @endif
                 @if (auth('staff')->user()->hasPermission('legal.manage'))
                     <a href="{{ route('admin.legal.index') }}" class="flex items-center gap-1 text-sm text-violet-300 hover:text-white"><x-icon name="audit" :size="16" />Legal</a>

@@ -8,7 +8,9 @@ use App\Models\DepositOrder;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -102,6 +104,7 @@ class DepositServiceTest extends TestCase
         // Re-delivering the exact same event must not double-credit.
         app(DepositService::class)->handleWebhook($payload, $signature);
         $this->assertSame('50.00', $user->fresh()->wallet->deposit_balance);
+        $this->assertDatabaseHas('risk_alerts', ['type' => 'duplicate_webhook', 'risk_level' => 'low', 'target_user_id' => $user->id]);
     }
 
     public function test_an_invalid_signature_is_rejected_and_changes_nothing(): void
@@ -193,5 +196,68 @@ class DepositServiceTest extends TestCase
         app(DepositService::class)->reconcile($order);
 
         Http::assertNothingSent();
+    }
+
+    /**
+     * This is the one test in the suite that deliberately does NOT use
+     * the sqlite in-memory connection PHPUnit otherwise runs under: an
+     * in-process test can only ever hold a single DB connection, so it
+     * can't actually exercise several webhook deliveries racing for the
+     * same payment_webhook_events unique constraint. Instead it spawns
+     * several real, independent PHP processes against the shared
+     * `minimax_testing` MySQL database (each gets its own connection) —
+     * exactly what a payment gateway's retried/duplicated delivery looks
+     * like in production — and proves the wallet is still credited
+     * exactly once.
+     */
+    public function test_simultaneous_duplicate_webhook_deliveries_never_double_credit(): void
+    {
+        if (! Process::run('mysql --version')->successful()) {
+            $this->markTestSkipped('mysql client not available to prepare the concurrency fixture.');
+        }
+
+        $secret = 'test-webhook-concurrency-secret';
+        $env = ['DB_CONNECTION' => 'mysql', 'DB_DATABASE' => 'minimax_testing', 'ALPHA_UPI_WEBHOOK_SECRET' => $secret];
+
+        $migrate = Process::env($env)->path(base_path())->run('php artisan migrate:fresh --no-interaction');
+        $this->assertTrue($migrate->successful(), $migrate->errorOutput());
+
+        $seed = Process::env($env)->path(base_path())->run('php artisan app:seed-deposit-concurrency-fixture 50.00');
+        $this->assertTrue($seed->successful(), $seed->errorOutput());
+        $fixture = json_decode(trim($seed->output()), true, flags: JSON_THROW_ON_ERROR);
+        $userId = $fixture['user_id'];
+        $orderId = $fixture['our_order_id'];
+
+        $deliveries = 8;
+        $results = Process::pool(function ($pool) use ($env, $orderId, $deliveries) {
+            for ($i = 0; $i < $deliveries; $i++) {
+                $pool->as((string) $i)
+                    ->env($env)
+                    ->path(base_path())
+                    ->command("php artisan app:attempt-webhook-delivery {$orderId} 50.00");
+            }
+        })->start()->wait();
+
+        foreach ($results as $result) {
+            $this->assertTrue($result->successful(), $result->errorOutput());
+        }
+
+        config(['database.connections.concurrency_check' => array_merge(
+            config('database.connections.mysql'),
+            ['database' => 'minimax_testing'],
+        )]);
+        DB::purge('concurrency_check');
+
+        $ledgerEntryCount = DB::connection('concurrency_check')
+            ->table('wallet_ledger_entries')->where('user_id', $userId)->count();
+        $this->assertSame(1, $ledgerEntryCount, 'Exactly one of the simultaneous duplicate webhook deliveries should credit the wallet.');
+
+        $webhookEventCount = DB::connection('concurrency_check')
+            ->table('payment_webhook_events')->where('order_id', $orderId)->count();
+        $this->assertSame(1, $webhookEventCount, 'The unique constraint must dedup every delivery down to one event row.');
+
+        $finalBalance = DB::connection('concurrency_check')
+            ->table('wallets')->where('user_id', $userId)->value('deposit_balance');
+        $this->assertSame('50.00', $finalBalance, 'The wallet must be credited exactly once, not once per duplicate delivery.');
     }
 }

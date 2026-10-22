@@ -44,6 +44,37 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Concurrent wallet activity threshold
+    |--------------------------------------------------------------------------
+    |
+    | A wallet that gets this many ledger entries within this many
+    | seconds raises a medium-priority risk alert for review — the row
+    | lock in WalletService already makes every operation safe, this is
+    | separately about flagging unusually rapid/concurrent activity
+    | against one wallet (automated abuse, a race attempt) regardless of
+    | whether any individual operation itself failed.
+    |
+    */
+    'concurrent_wallet_op_threshold' => (int) env('MINIMAX_CONCURRENT_WALLET_OP_THRESHOLD', 5),
+    'concurrent_wallet_op_window_seconds' => (int) env('MINIMAX_CONCURRENT_WALLET_OP_WINDOW_SECONDS', 10),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Suspicious withdrawal pattern threshold
+    |--------------------------------------------------------------------------
+    |
+    | A user who submits this many withdrawal requests (of any status)
+    | within this many hours raises a medium-priority risk alert — rapid
+    | repeated cash-out attempts are a common fraud signal worth a second
+    | look, independent of whether any individual request is itself
+    | valid.
+    |
+    */
+    'suspicious_withdrawal_count_threshold' => (int) env('MINIMAX_SUSPICIOUS_WITHDRAWAL_COUNT_THRESHOLD', 3),
+    'suspicious_withdrawal_window_hours' => (int) env('MINIMAX_SUSPICIOUS_WITHDRAWAL_WINDOW_HOURS', 24),
+
+    /*
+    |--------------------------------------------------------------------------
     | Blocked states/regions (Admin-editable)
     |--------------------------------------------------------------------------
     |

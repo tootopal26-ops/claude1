@@ -13,6 +13,7 @@ use App\Livewire\Admin\PaymentSettings;
 use App\Livewire\Admin\PlatformSettingsEditor;
 use App\Livewire\Admin\PresetForm;
 use App\Livewire\Admin\PresetList;
+use App\Livewire\Admin\RiskAlertList;
 use App\Livewire\Admin\StaffForm;
 use App\Livewire\Admin\StaffList;
 use App\Livewire\Admin\StaffSalaryRuleForm;
@@ -100,6 +101,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('/audit-logs', AuditLogViewer::class)
             ->name('audit-logs.index')
+            ->middleware('permission:audit_logs.view');
+
+        Route::get('/risk-alerts', RiskAlertList::class)
+            ->name('risk-alerts.index')
             ->middleware('permission:audit_logs.view');
 
         Route::get('/users', UserList::class)

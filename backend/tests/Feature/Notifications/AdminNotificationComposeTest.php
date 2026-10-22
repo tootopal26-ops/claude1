@@ -146,4 +146,26 @@ class AdminNotificationComposeTest extends TestCase
 
         $this->actingAs($staff, 'staff')->get(route('admin.notifications.create'))->assertOk();
     }
+
+    /**
+     * A Livewire action is a separate AJAX endpoint from the page's
+     * initial GET, so route middleware alone (proven by the first test
+     * above) doesn't gate it — the component must check permission
+     * itself.
+     */
+    public function test_sending_is_denied_without_the_permission_even_via_a_direct_livewire_call(): void
+    {
+        $staff = StaffUser::factory()->create(['is_super_admin' => false]);
+        User::factory()->create();
+
+        Livewire::actingAs($staff, 'staff')
+            ->test(NotificationCompose::class)
+            ->set('title', 'Should not send')
+            ->set('body', 'Blocked')
+            ->set('audienceType', 'all')
+            ->call('send')
+            ->assertForbidden();
+
+        $this->assertSame(0, NotificationBatch::count());
+    }
 }

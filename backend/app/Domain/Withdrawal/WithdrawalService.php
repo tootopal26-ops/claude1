@@ -6,6 +6,7 @@ use App\Domain\Notifications\NotificationService;
 use App\Domain\Wallet\InsufficientWalletBalanceException;
 use App\Domain\Wallet\WalletService;
 use App\Models\AuditLog;
+use App\Models\RiskAlert;
 use App\Models\StaffUser;
 use App\Models\User;
 use App\Models\WithdrawalRequest;
@@ -68,8 +69,41 @@ class WithdrawalService
 
             AuditLog::record('withdrawal.requested', $user, $withdrawal, ['amount' => $amount]);
 
+            $this->maybeRaiseSuspiciousPatternRiskAlert($user);
+
             return $withdrawal;
         });
+    }
+
+    /**
+     * Fires exactly once per crossing (an exact count match, not >=), so
+     * a user who keeps requesting withdrawals raises one alert, not one
+     * per request after the threshold.
+     */
+    private function maybeRaiseSuspiciousPatternRiskAlert(User $user): void
+    {
+        $windowHours = (int) config('minimax.suspicious_withdrawal_window_hours');
+        $threshold = (int) config('minimax.suspicious_withdrawal_count_threshold');
+
+        $recentCount = WithdrawalRequest::where('user_id', $user->id)
+            ->where('created_at', '>=', now()->subHours($windowHours))
+            ->count();
+
+        if ($recentCount !== $threshold) {
+            return;
+        }
+
+        RiskAlert::create([
+            'type' => 'suspicious_withdrawal_pattern',
+            'risk_level' => 'medium',
+            'target_user_id' => $user->id,
+            'subject_type' => $user->getMorphClass(),
+            'subject_id' => $user->id,
+            'details' => [
+                'recent_request_count' => $recentCount,
+                'window_hours' => $windowHours,
+            ],
+        ]);
     }
 
     /**

@@ -4,6 +4,7 @@ namespace Tests\Feature\Leaderboard;
 
 use App\Domain\Leaderboard\FinalizeLeaderboardPeriodAction;
 use App\Domain\Leaderboard\RecomputeLeaderboardAction;
+use App\Models\AuditLog;
 use App\Models\LeaderboardPeriod;
 use App\Models\LeaderboardRewardPayout;
 use App\Models\StaffUser;
@@ -72,6 +73,7 @@ class FinalizeLeaderboardPeriodActionTest extends TestCase
         $this->assertDatabaseHas('leaderboard_reward_payouts', ['user_id' => $first->id, 'rank' => 1, 'amount' => '50.00']);
         $this->assertDatabaseHas('leaderboard_reward_payouts', ['user_id' => $second->id, 'rank' => 2, 'amount' => '30.00']);
         $this->assertDatabaseHas('audit_logs', ['action' => 'leaderboard.finalized']);
+        $this->assertSame(2, AuditLog::where('action', 'leaderboard.reward_paid')->count(), 'Each individual reward payout should have its own audit entry.');
     }
 
     public function test_finalizing_twice_never_double_pays(): void

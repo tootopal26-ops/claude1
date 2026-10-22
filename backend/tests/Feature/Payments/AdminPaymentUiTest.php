@@ -67,5 +67,6 @@ class AdminPaymentUiTest extends TestCase
         $config = PaymentProviderConfig::where('provider', 'alpha_upi')->first();
         $this->assertSame('X-Lolapay-Signature', $config->webhook_signature_header);
         $this->assertFalse($config->is_active);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'payment_provider_config.updated', 'actor_id' => $admin->id]);
     }
 }

@@ -50,6 +50,7 @@ class AdminTemplateManagementTest extends TestCase
             'frequency' => 'daily',
             'day_of_week' => null,
         ]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'recurring_template.created', 'actor_id' => $staff->id]);
     }
 
     public function test_saving_a_weekly_template_stores_the_day_of_week(): void

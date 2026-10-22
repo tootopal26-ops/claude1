@@ -86,6 +86,8 @@ class NotificationCompose extends Component
 
     public function send(): void
     {
+        abort_unless(Auth::guard('staff')->user()->hasPermission('notifications.send'), 403);
+
         if ($this->sending || $this->sent) {
             return;
         }

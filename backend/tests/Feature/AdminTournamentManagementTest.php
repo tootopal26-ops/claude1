@@ -58,4 +58,27 @@ class AdminTournamentManagementTest extends TestCase
             ->assertSee('joined_player')
             ->assertSee('ProPlayer');
     }
+
+    /**
+     * A Livewire action is a separate AJAX endpoint from the page's
+     * initial GET, so route middleware alone doesn't gate it — the
+     * component must check permission itself.
+     */
+    public function test_saving_is_denied_without_tournaments_manage_even_via_a_direct_livewire_call(): void
+    {
+        $staff = StaffUser::factory()->create(['is_super_admin' => false]);
+        $game = Game::factory()->create();
+
+        Livewire::actingAs($staff, 'staff')
+            ->test(TournamentCreate::class)
+            ->set('game_id', $game->id)
+            ->set('title', 'Should Not Save')
+            ->set('entry_fee', 0)
+            ->set('total_slots', 48)
+            ->set('scheduled_start_at', now()->addDay()->format('Y-m-d\TH:i'))
+            ->call('save')
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('tournaments', ['title' => 'Should Not Save']);
+    }
 }

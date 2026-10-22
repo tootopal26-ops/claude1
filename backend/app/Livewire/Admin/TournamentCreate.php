@@ -39,6 +39,8 @@ class TournamentCreate extends Component
 
     public function save(): void
     {
+        abort_unless(Auth::guard('staff')->user()->hasPermission('tournaments.manage'), 403);
+
         $validated = $this->validate([
             'game_id' => ['required', 'exists:games,id'],
             'title' => ['required', 'string', 'max:255'],

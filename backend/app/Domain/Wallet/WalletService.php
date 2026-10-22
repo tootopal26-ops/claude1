@@ -356,7 +356,41 @@ class WalletService
         $wallet->{$column} = $newBalance;
         $wallet->save();
 
+        $this->maybeRaiseConcurrentOpRiskAlert($wallet);
+
         return $entry;
+    }
+
+    /**
+     * Fires exactly once per crossing (an exact count match, not >=), so
+     * a sustained burst against one wallet raises one alert, not one per
+     * entry after the threshold.
+     */
+    private function maybeRaiseConcurrentOpRiskAlert(Wallet $wallet): void
+    {
+        $windowSeconds = (int) config('minimax.concurrent_wallet_op_window_seconds');
+        $threshold = (int) config('minimax.concurrent_wallet_op_threshold');
+
+        $recentCount = WalletLedgerEntry::where('wallet_id', $wallet->id)
+            ->where('created_at', '>=', now()->subSeconds($windowSeconds))
+            ->count();
+
+        if ($recentCount !== $threshold) {
+            return;
+        }
+
+        RiskAlert::create([
+            'type' => 'concurrent_wallet_op',
+            'risk_level' => 'medium',
+            'target_user_id' => $wallet->user_id,
+            'subject_type' => $wallet->getMorphClass(),
+            'subject_id' => $wallet->id,
+            'details' => [
+                'wallet_id' => $wallet->id,
+                'recent_entry_count' => $recentCount,
+                'window_seconds' => $windowSeconds,
+            ],
+        ]);
     }
 
     private function assertPositiveAmount(string $amount): void

@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\AuditLog;
 use App\Models\PermissionPreset;
+use App\Models\RiskAlert;
 use App\Models\StaffUser;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -46,6 +48,8 @@ class StaffForm extends Component
 
     public function save(): void
     {
+        abort_unless(Auth::guard('staff')->user()->hasPermission('staff.manage'), 403);
+
         $this->validate([
             'display_name' => ['required', 'string', 'max:255'],
             'username' => $this->staffUser
@@ -57,13 +61,23 @@ class StaffForm extends Component
         ]);
 
         $staff = $this->staffUser ?? new StaffUser;
+        $wasExisting = $staff->exists;
 
-        $securityRelevantChange = $staff->exists && (
+        $securityRelevantChange = $wasExisting && (
             $staff->permission_preset_id !== $this->permission_preset_id
             || $staff->is_active !== $this->is_active
             || ($this->actingStaffIsSuperAdmin && $staff->is_super_admin !== $this->is_super_admin)
             || $this->password !== ''
         );
+
+        // Flagged separately (and more narrowly) from $securityRelevantChange
+        // above: a permission-preset reassignment or a super-admin grant on
+        // an *existing* account is the specific pattern worth a second set
+        // of eyes — e.g. a compromised super-admin account quietly
+        // promoting another one. Account creation, an is_active toggle, or
+        // a password reset don't raise this on their own.
+        $presetChanged = $wasExisting && $staff->permission_preset_id !== $this->permission_preset_id;
+        $superAdminGranted = $wasExisting && $this->actingStaffIsSuperAdmin && ! $staff->is_super_admin && $this->is_super_admin;
 
         $staff->display_name = $this->display_name;
         $staff->username = $this->username;
@@ -85,6 +99,28 @@ class StaffForm extends Component
 
         if ($securityRelevantChange) {
             $staff->invalidateActiveSessions();
+        }
+
+        AuditLog::record($wasExisting ? 'staff.updated' : 'staff.created', Auth::guard('staff')->user(), $staff, [
+            'permission_preset_id' => $staff->permission_preset_id,
+            'is_active' => $staff->is_active,
+            'is_super_admin' => $staff->is_super_admin,
+            'password_changed' => $this->password !== '',
+        ]);
+
+        if ($presetChanged || $superAdminGranted) {
+            RiskAlert::create([
+                'type' => 'unauthorized_permission_change',
+                'risk_level' => 'high',
+                'actor_staff_id' => Auth::guard('staff')->id(),
+                'subject_type' => $staff->getMorphClass(),
+                'subject_id' => $staff->id,
+                'details' => [
+                    'preset_changed' => $presetChanged,
+                    'super_admin_granted' => $superAdminGranted,
+                    'new_permission_preset_id' => $staff->permission_preset_id,
+                ],
+            ]);
         }
 
         session()->flash('status', "Staff account \"{$staff->display_name}\" saved.");

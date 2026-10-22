@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Legal\AcceptCurrentLegalDocumentsAction;
+use App\Domain\Security\RecordLoginAttemptAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
@@ -38,24 +39,31 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function login(LoginRequest $request): JsonResponse
+    public function login(LoginRequest $request, RecordLoginAttemptAction $recordLoginAttempt): JsonResponse
     {
-        $user = User::where('mobile', $request->string('mobile'))->first();
+        $mobile = (string) $request->string('mobile');
+        $user = User::where('mobile', $mobile)->first();
 
         if (! $user || ! Auth::guard('web')->validate([
             'mobile' => $request->string('mobile'),
             'password' => $request->string('password'),
         ])) {
+            $recordLoginAttempt->execute($mobile, $request->ip(), false);
+
             throw ValidationException::withMessages([
                 'mobile' => 'These credentials do not match our records.',
             ]);
         }
 
         if ($user->is_banned) {
+            $recordLoginAttempt->execute($mobile, $request->ip(), false);
+
             throw ValidationException::withMessages([
                 'mobile' => 'This account has been suspended.',
             ]);
         }
+
+        $recordLoginAttempt->execute($mobile, $request->ip(), true);
 
         $token = $user->createToken($request->userAgent() ?? 'mobile')->plainTextToken;
 

@@ -140,4 +140,106 @@ class AdminStaffManagementTest extends TestCase
             ->call('save')
             ->assertHasErrors('username');
     }
+
+    /**
+     * A Livewire action is a separate AJAX endpoint from the page's
+     * initial GET, so route middleware alone doesn't gate it — the
+     * component must check permission itself.
+     */
+    public function test_saving_is_denied_without_staff_manage_even_via_a_direct_livewire_call(): void
+    {
+        $staff = StaffUser::factory()->create(['is_super_admin' => false]);
+
+        Livewire::actingAs($staff, 'staff')
+            ->test(StaffForm::class)
+            ->set('display_name', 'Should Not Save')
+            ->set('username', 'should_not_save')
+            ->set('password', 'password123')
+            ->set('password_confirmation', 'password123')
+            ->call('save')
+            ->assertForbidden();
+
+        $this->assertDatabaseMissing('staff_users', ['username' => 'should_not_save']);
+    }
+
+    public function test_creating_a_staff_account_is_audit_logged(): void
+    {
+        $admin = StaffUser::factory()->create(['is_super_admin' => true]);
+
+        Livewire::actingAs($admin, 'staff')
+            ->test(StaffForm::class)
+            ->set('display_name', 'Logged Hire')
+            ->set('username', 'logged_hire')
+            ->set('password', 'password123')
+            ->set('password_confirmation', 'password123')
+            ->call('save');
+
+        $this->assertDatabaseHas('audit_logs', ['action' => 'staff.created', 'actor_id' => $admin->id]);
+    }
+
+    public function test_changing_a_staff_members_preset_raises_an_unauthorized_permission_change_risk_alert(): void
+    {
+        $admin = StaffUser::factory()->create(['is_super_admin' => true]);
+        $presetA = PermissionPreset::create(['name' => 'Preset A']);
+        $presetB = PermissionPreset::create(['name' => 'Preset B']);
+        $staff = StaffUser::factory()->create(['permission_preset_id' => $presetA->id]);
+
+        Livewire::actingAs($admin, 'staff')
+            ->test(StaffForm::class, ['staffUser' => $staff])
+            ->set('permission_preset_id', $presetB->id)
+            ->call('save');
+
+        $this->assertDatabaseHas('risk_alerts', [
+            'type' => 'unauthorized_permission_change',
+            'subject_id' => $staff->id,
+            'actor_staff_id' => $admin->id,
+        ]);
+    }
+
+    public function test_granting_super_admin_raises_an_unauthorized_permission_change_risk_alert(): void
+    {
+        $admin = StaffUser::factory()->create(['is_super_admin' => true]);
+        $staff = StaffUser::factory()->create(['is_super_admin' => false]);
+
+        Livewire::actingAs($admin, 'staff')
+            ->test(StaffForm::class, ['staffUser' => $staff])
+            ->set('is_super_admin', true)
+            ->call('save');
+
+        $this->assertTrue($staff->fresh()->is_super_admin);
+        $this->assertDatabaseHas('risk_alerts', [
+            'type' => 'unauthorized_permission_change',
+            'subject_id' => $staff->id,
+        ]);
+    }
+
+    public function test_creating_a_new_staff_account_does_not_raise_the_permission_change_risk_alert(): void
+    {
+        $admin = StaffUser::factory()->create(['is_super_admin' => true]);
+        $preset = PermissionPreset::create(['name' => 'Some Preset']);
+
+        Livewire::actingAs($admin, 'staff')
+            ->test(StaffForm::class)
+            ->set('display_name', 'Fresh Hire')
+            ->set('username', 'fresh_hire')
+            ->set('password', 'password123')
+            ->set('password_confirmation', 'password123')
+            ->set('permission_preset_id', $preset->id)
+            ->call('save');
+
+        $this->assertDatabaseMissing('risk_alerts', ['type' => 'unauthorized_permission_change']);
+    }
+
+    public function test_an_is_active_toggle_alone_does_not_raise_the_permission_change_risk_alert(): void
+    {
+        $admin = StaffUser::factory()->create(['is_super_admin' => true]);
+        $staff = StaffUser::factory()->create(['is_active' => true]);
+
+        Livewire::actingAs($admin, 'staff')
+            ->test(StaffForm::class, ['staffUser' => $staff])
+            ->set('is_active', false)
+            ->call('save');
+
+        $this->assertDatabaseMissing('risk_alerts', ['type' => 'unauthorized_permission_change']);
+    }
 }
