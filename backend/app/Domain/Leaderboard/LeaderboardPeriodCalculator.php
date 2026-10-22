@@ -20,20 +20,40 @@ class LeaderboardPeriodCalculator
      */
     public static function currentBounds(string $type): array
     {
+        if ($type === 'weekly') {
+            return self::weekBoundsFor(now());
+        }
+
         $nowIst = now()->timezone(self::IST);
 
         $startIst = match ($type) {
             'daily' => $nowIst->copy()->startOfDay(),
-            'weekly' => $nowIst->copy()->startOfWeek(Carbon::MONDAY),
             'monthly' => $nowIst->copy()->startOfMonth(),
             default => throw new \InvalidArgumentException("Unknown leaderboard period type [{$type}]."),
         };
 
         $endIst = match ($type) {
             'daily' => $startIst->copy()->addDay(),
-            'weekly' => $startIst->copy()->addWeek(),
             'monthly' => $startIst->copy()->addMonth(),
         };
+
+        return [
+            'start' => $startIst->copy()->timezone('UTC'),
+            'end' => $endIst->copy()->timezone('UTC'),
+        ];
+    }
+
+    /**
+     * The Mon–Sun IST week containing an arbitrary instant (not just
+     * "now") — shared with Staff Salary's weekly settlement grouping so
+     * both domains agree on exactly the same week boundaries.
+     *
+     * @return array{start: Carbon, end: Carbon}
+     */
+    public static function weekBoundsFor(Carbon $instant): array
+    {
+        $startIst = $instant->copy()->timezone(self::IST)->startOfWeek(Carbon::MONDAY);
+        $endIst = $startIst->copy()->addWeek();
 
         return [
             'start' => $startIst->copy()->timezone('UTC'),

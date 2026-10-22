@@ -41,6 +41,7 @@ class PermissionSeeder extends Seeder
         ['key' => 'storage.view', 'label' => 'View storage usage', 'group' => 'Operations'],
         ['key' => 'salary.view', 'label' => 'View staff salary ledgers', 'group' => 'Staff Salary'],
         ['key' => 'salary.approve', 'label' => 'Approve staff salary payments', 'group' => 'Staff Salary'],
+        ['key' => 'salary.manage', 'label' => 'Configure staff salary rules', 'group' => 'Staff Salary'],
         ['key' => 'reports.view', 'label' => 'View reports', 'group' => 'Reports & Audit'],
         ['key' => 'audit_logs.view', 'label' => 'View audit logs and suspicious activity', 'group' => 'Reports & Audit'],
         ['key' => 'staff.manage', 'label' => 'Manage staff accounts and permission presets', 'group' => 'Staff'],

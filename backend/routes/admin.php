@@ -11,6 +11,10 @@ use App\Livewire\Admin\PresetForm;
 use App\Livewire\Admin\PresetList;
 use App\Livewire\Admin\StaffForm;
 use App\Livewire\Admin\StaffList;
+use App\Livewire\Admin\StaffSalaryRuleForm;
+use App\Livewire\Admin\StaffSalaryRuleList;
+use App\Livewire\Admin\StaffSalarySettlementList;
+use App\Livewire\Admin\StaffSalarySettlementShow;
 use App\Livewire\Admin\TemplateForm;
 use App\Livewire\Admin\TemplateList;
 use App\Livewire\Admin\TournamentCreate;
@@ -129,5 +133,25 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/leaderboards', LeaderboardViewer::class)
             ->name('leaderboards.index')
             ->middleware('permission:leaderboards.manage');
+
+        Route::get('/staff-salary/rules', StaffSalaryRuleList::class)
+            ->name('staff-salary.rules.index')
+            ->middleware('permission:salary.manage');
+
+        Route::get('/staff-salary/rules/create', StaffSalaryRuleForm::class)
+            ->name('staff-salary.rules.create')
+            ->middleware('permission:salary.manage');
+
+        Route::get('/staff-salary/rules/{rule}/edit', StaffSalaryRuleForm::class)
+            ->name('staff-salary.rules.edit')
+            ->middleware('permission:salary.manage');
+
+        Route::get('/staff-salary/settlements', StaffSalarySettlementList::class)
+            ->name('staff-salary.settlements.index')
+            ->middleware('permission:salary.view');
+
+        Route::get('/staff-salary/settlements/{settlement}', StaffSalarySettlementShow::class)
+            ->name('staff-salary.settlements.show')
+            ->middleware('permission:salary.view');
     });
 });

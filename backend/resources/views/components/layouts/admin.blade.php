@@ -29,6 +29,9 @@
                 @if (auth('staff')->user()->hasPermission('leaderboards.manage'))
                     <a href="{{ route('admin.leaderboards.index') }}" class="text-sm text-violet-300 hover:text-white">Leaderboards</a>
                 @endif
+                @if (auth('staff')->user()->hasPermission('salary.view'))
+                    <a href="{{ route('admin.staff-salary.settlements.index') }}" class="text-sm text-violet-300 hover:text-white">Salary</a>
+                @endif
                 @if (auth('staff')->user()->hasPermission('staff.manage'))
                     <a href="{{ route('admin.staff.index') }}" class="text-sm text-violet-300 hover:text-white">Staff</a>
                     <a href="{{ route('admin.presets.index') }}" class="text-sm text-violet-300 hover:text-white">Presets</a>

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 #[Fillable(['display_name', 'username', 'password', 'permission_preset_id', 'is_active'])]
@@ -52,5 +53,29 @@ class StaffUser extends Authenticatable
     public function invalidateActiveSessions(): void
     {
         $this->increment('security_version');
+    }
+
+    /**
+     * @return HasMany<StaffSalaryRule, $this>
+     */
+    public function salaryRules(): HasMany
+    {
+        return $this->hasMany(StaffSalaryRule::class);
+    }
+
+    /**
+     * @return HasMany<StaffSalaryEvent, $this>
+     */
+    public function salaryEvents(): HasMany
+    {
+        return $this->hasMany(StaffSalaryEvent::class);
+    }
+
+    /**
+     * @return HasMany<StaffSalarySettlement, $this>
+     */
+    public function salarySettlements(): HasMany
+    {
+        return $this->hasMany(StaffSalarySettlement::class);
     }
 }
