@@ -2,16 +2,23 @@
 
 namespace App\Livewire\Admin;
 
+use App\Domain\Storage\StorageService;
 use App\Domain\Tournament\SubmitTournamentResultsAction;
+use App\Models\StorageAsset;
 use App\Models\Tournament;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.admin')]
 class TournamentResults extends Component
 {
+    use WithFileUploads;
+
     public Tournament $tournament;
 
     /**
@@ -20,6 +27,10 @@ class TournamentResults extends Component
     public array $rows = [];
 
     public ?string $submitError = null;
+
+    public $evidenceFile = null;
+
+    public ?string $evidenceError = null;
 
     public function mount(Tournament $tournament): void
     {
@@ -38,6 +49,55 @@ class TournamentResults extends Component
                 'prize_awarded' => $current ? (string) $current->prize_awarded : '0.00',
             ];
         })->all();
+    }
+
+    /**
+     * @return Collection<int, StorageAsset>
+     */
+    #[Computed]
+    public function evidence()
+    {
+        return StorageAsset::query()
+            ->where('bucket', 'tournament_evidence')
+            ->where('subject_type', $this->tournament->getMorphClass())
+            ->where('subject_id', $this->tournament->id)
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
+    public function uploadEvidence(StorageService $storage): void
+    {
+        abort_unless(Auth::guard('staff')->user()->hasPermission('results.upload_attachments'), 403);
+
+        $this->evidenceError = null;
+
+        $this->validate(['evidenceFile' => ['required', 'file']]);
+
+        try {
+            $storage->store($this->evidenceFile, 'tournament_evidence', $this->tournament, Auth::guard('staff')->user());
+        } catch (ValidationException $exception) {
+            $this->evidenceError = collect($exception->errors())->flatten()->first();
+
+            return;
+        }
+
+        $this->evidenceFile = null;
+        unset($this->evidence);
+    }
+
+    public function deleteEvidence(int $assetId, StorageService $storage): void
+    {
+        abort_unless(Auth::guard('staff')->user()->hasPermission('results.upload_attachments'), 403);
+
+        $asset = StorageAsset::query()
+            ->where('bucket', 'tournament_evidence')
+            ->where('subject_type', $this->tournament->getMorphClass())
+            ->where('subject_id', $this->tournament->id)
+            ->findOrFail($assetId);
+
+        $storage->delete($asset, Auth::guard('staff')->user());
+
+        unset($this->evidence);
     }
 
     public function submit(SubmitTournamentResultsAction $action): void

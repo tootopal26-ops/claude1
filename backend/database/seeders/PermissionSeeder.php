@@ -39,6 +39,7 @@ class PermissionSeeder extends Seeder
         ['key' => 'support.manage', 'label' => 'Manage customer support tickets', 'group' => 'Support'],
         ['key' => 'notifications.send', 'label' => 'Send notifications/announcements', 'group' => 'Notifications'],
         ['key' => 'storage.view', 'label' => 'View storage usage', 'group' => 'Operations'],
+        ['key' => 'storage.manage', 'label' => 'Manage storage assets (retention, manual deletion, staff documents)', 'group' => 'Operations'],
         ['key' => 'salary.view', 'label' => 'View staff salary ledgers', 'group' => 'Staff Salary'],
         ['key' => 'salary.approve', 'label' => 'Approve staff salary payments', 'group' => 'Staff Salary'],
         ['key' => 'salary.manage', 'label' => 'Configure staff salary rules', 'group' => 'Staff Salary'],

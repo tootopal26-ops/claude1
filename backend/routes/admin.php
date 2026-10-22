@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\StorageAssetDownloadController;
 use App\Livewire\Admin\AuditLogViewer;
 use App\Livewire\Admin\DepositList;
 use App\Livewire\Admin\LeaderboardViewer;
@@ -15,6 +16,7 @@ use App\Livewire\Admin\StaffSalaryRuleForm;
 use App\Livewire\Admin\StaffSalaryRuleList;
 use App\Livewire\Admin\StaffSalarySettlementList;
 use App\Livewire\Admin\StaffSalarySettlementShow;
+use App\Livewire\Admin\StorageDashboard;
 use App\Livewire\Admin\TemplateForm;
 use App\Livewire\Admin\TemplateList;
 use App\Livewire\Admin\TournamentCreate;
@@ -57,6 +59,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/tournaments/{tournament}/results', TournamentResults::class)
             ->name('tournaments.results')
             ->middleware('permission:results.submit');
+
+        Route::get('/storage-assets/{storageAsset}/download', StorageAssetDownloadController::class)
+            ->name('storage-assets.download');
 
         Route::get('/notifications', NotificationHistory::class)
             ->name('notifications.index')
@@ -153,5 +158,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/staff-salary/settlements/{settlement}', StaffSalarySettlementShow::class)
             ->name('staff-salary.settlements.show')
             ->middleware('permission:salary.view');
+
+        Route::get('/storage', StorageDashboard::class)
+            ->name('storage.index')
+            ->middleware('permission:storage.view');
     });
 });

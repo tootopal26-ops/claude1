@@ -284,6 +284,8 @@ class WalletService
                     'risk_level' => 'high',
                     'actor_staff_id' => $actor->id,
                     'target_user_id' => $user->id,
+                    'subject_type' => $user->getMorphClass(),
+                    'subject_id' => $user->id,
                     'details' => [
                         'balance' => $balance,
                         'amount' => $signedAmount,

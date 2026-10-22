@@ -80,4 +80,53 @@ return [
         'monthly' => [1 => '1000.00', 2 => '500.00', 3 => '250.00'],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Storage buckets
+    |--------------------------------------------------------------------------
+    |
+    | Every uploaded file belongs to exactly one of these categories.
+    | allowed_mime_types is checked against the file's actual detected
+    | content type, never the client-supplied one or its extension.
+    | retention_days is how long an asset may live before storage:cleanup
+    | is allowed to remove it — null means it's never auto-removed. Either
+    | way, an asset with a retained_reason, or tied to the subject of an
+    | open (unreviewed) risk alert, is never removed automatically.
+    |
+    */
+    'storage_buckets' => [
+        'tournament_evidence' => [
+            'label' => 'Tournament result evidence',
+            'max_size_kb' => 8192,
+            'allowed_mime_types' => ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+            'retention_days' => 180,
+            'view_permission' => 'results.upload_attachments',
+        ],
+        'withdrawal_proof' => [
+            'label' => 'Withdrawal payout proof',
+            'max_size_kb' => 4096,
+            'allowed_mime_types' => ['image/jpeg', 'image/png', 'application/pdf'],
+            'retention_days' => 365,
+            'view_permission' => 'withdrawals.manage',
+        ],
+        'staff_documents' => [
+            'label' => 'Internal staff documents',
+            'max_size_kb' => 10240,
+            'allowed_mime_types' => ['image/jpeg', 'image/png', 'application/pdf'],
+            'retention_days' => null,
+            'view_permission' => 'storage.manage',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Storage quota (bytes per bucket)
+    |--------------------------------------------------------------------------
+    |
+    | Soft limit shown on the Admin storage dashboard as a percentage-used
+    | bar per bucket. Advisory only — uploads are never blocked by it.
+    |
+    */
+    'storage_quota_bytes_per_bucket' => (int) env('MINIMAX_STORAGE_QUOTA_BYTES_PER_BUCKET', 5 * 1024 * 1024 * 1024),
+
 ];

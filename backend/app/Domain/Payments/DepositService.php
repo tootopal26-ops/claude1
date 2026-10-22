@@ -154,6 +154,8 @@ class DepositService
                     'type' => 'deposit_amount_mismatch',
                     'risk_level' => 'high',
                     'target_user_id' => $locked->user_id,
+                    'subject_type' => $locked->getMorphClass(),
+                    'subject_id' => $locked->id,
                     'details' => [
                         'deposit_order_id' => $locked->id,
                         'expected_amount' => (string) $locked->amount,

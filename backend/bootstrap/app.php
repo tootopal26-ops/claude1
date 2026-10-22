@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('tournaments:generate-from-templates')->daily();
         $schedule->command('leaderboards:maintain')->everyTenMinutes();
         $schedule->command('staff-salary:maintain')->daily();
+        $schedule->command('storage:cleanup')->weekly();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
