@@ -52,6 +52,12 @@
                 @if (auth('staff')->user()->hasPermission('audit_logs.view'))
                     <a href="{{ route('admin.audit-logs.index') }}" class="flex items-center gap-1 text-sm text-violet-300 hover:text-white"><x-icon name="audit" :size="16" />Audit Log</a>
                 @endif
+                @if (auth('staff')->user()->hasPermission('legal.manage'))
+                    <a href="{{ route('admin.legal.index') }}" class="flex items-center gap-1 text-sm text-violet-300 hover:text-white"><x-icon name="audit" :size="16" />Legal</a>
+                @endif
+                @if (auth('staff')->user()->hasPermission('settings.manage'))
+                    <a href="{{ route('admin.settings.index') }}" class="flex items-center gap-1 text-sm text-violet-300 hover:text-white"><x-icon name="presets" :size="16" />Settings</a>
+                @endif
             </div>
             <div class="flex items-center gap-4 text-sm text-violet-200">
                 <label class="sr-only" for="mm-theme-color-select">Color theme</label>

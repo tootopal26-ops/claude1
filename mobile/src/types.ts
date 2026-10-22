@@ -104,3 +104,12 @@ export type WalletLedgerEntry = {
   reason: string | null;
   created_at: string;
 };
+
+export type LegalDocument = {
+  id: number;
+  type: 'terms_and_conditions' | 'privacy_policy';
+  version: number;
+  title: string;
+  content: string;
+  published_at: string;
+};

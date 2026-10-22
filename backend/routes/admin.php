@@ -4,10 +4,13 @@ use App\Http\Controllers\Admin\StorageAssetDownloadController;
 use App\Livewire\Admin\AuditLogViewer;
 use App\Livewire\Admin\DepositList;
 use App\Livewire\Admin\LeaderboardViewer;
+use App\Livewire\Admin\LegalDocumentForm;
+use App\Livewire\Admin\LegalDocumentList;
 use App\Livewire\Admin\Login as AdminLogin;
 use App\Livewire\Admin\NotificationCompose;
 use App\Livewire\Admin\NotificationHistory;
 use App\Livewire\Admin\PaymentSettings;
+use App\Livewire\Admin\PlatformSettingsEditor;
 use App\Livewire\Admin\PresetForm;
 use App\Livewire\Admin\PresetList;
 use App\Livewire\Admin\StaffForm;
@@ -162,5 +165,17 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/storage', StorageDashboard::class)
             ->name('storage.index')
             ->middleware('permission:storage.view');
+
+        Route::get('/legal', LegalDocumentList::class)
+            ->name('legal.index')
+            ->middleware('permission:legal.manage');
+
+        Route::get('/legal/create', LegalDocumentForm::class)
+            ->name('legal.create')
+            ->middleware('permission:legal.manage');
+
+        Route::get('/settings', PlatformSettingsEditor::class)
+            ->name('settings.index')
+            ->middleware('permission:settings.manage');
     });
 });

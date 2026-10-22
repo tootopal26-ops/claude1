@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Legal\AcceptCurrentLegalDocumentsAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
@@ -10,13 +11,22 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function register(RegisterRequest $request): JsonResponse
+    public function register(RegisterRequest $request, AcceptCurrentLegalDocumentsAction $acceptLegalDocuments): JsonResponse
     {
-        $user = User::create($request->validated());
+        $attributes = collect($request->validated())->except('accept_terms')->all();
+
+        $user = DB::transaction(function () use ($attributes, $request, $acceptLegalDocuments) {
+            $user = User::create($attributes);
+
+            $acceptLegalDocuments->execute($user, $request->ip());
+
+            return $user;
+        });
 
         $token = $user->createToken($request->userAgent() ?? 'mobile')->plainTextToken;
 

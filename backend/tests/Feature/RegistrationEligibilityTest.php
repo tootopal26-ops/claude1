@@ -18,8 +18,10 @@ class RegistrationEligibilityTest extends TestCase
             'mobile' => '90000'.substr($unique, 0, 5),
             'email' => "{$unique}@example.com",
             'date_of_birth' => $dateOfBirth,
+            'state' => 'Maharashtra',
             'password' => 'password123',
             'password_confirmation' => 'password123',
+            'accept_terms' => true,
         ]);
     }
 

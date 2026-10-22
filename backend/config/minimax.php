@@ -8,9 +8,13 @@ return [
     |--------------------------------------------------------------------------
     |
     | A player's date of birth must indicate they are at least this many
-    | years old at the time of registration. Jurisdiction-specific
-    | eligibility rules on top of this are a later phase (see the project
-    | plan's Phase 15); this is only the baseline age floor.
+    | years old at the time of registration. See blocked_states below for
+    | the jurisdiction side of eligibility.
+    |
+    | This and every other value below marked "Admin-editable" can be
+    | overridden at runtime from the platform_settings table — see
+    | PlatformSettingsService — without a deploy. The env()-backed value
+    | here is only the fallback used until an Admin ever changes it.
     |
     */
     'min_age' => (int) env('MINIMAX_MIN_AGE', 18),
@@ -37,6 +41,20 @@ return [
     |
     */
     'wallet_risk_alert_threshold' => env('MINIMAX_WALLET_RISK_ALERT_THRESHOLD', '200.00'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Blocked states/regions (Admin-editable)
+    |--------------------------------------------------------------------------
+    |
+    | A registration whose submitted state/region is in this list is
+    | rejected. Empty by default — deliberately not pre-populated here,
+    | since which jurisdictions to block for real-money gaming is a
+    | compliance call for the operator to make with their own current
+    | legal guidance, not one this codebase makes for them.
+    |
+    */
+    'blocked_states' => [],
 
     /*
     |--------------------------------------------------------------------------

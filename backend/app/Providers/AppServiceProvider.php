@@ -5,9 +5,11 @@ namespace App\Providers;
 use App\Domain\Payments\AlphaUpiAdapter;
 use App\Domain\Payments\PaymentGatewayInterface;
 use App\Models\PaymentProviderConfig;
+use App\Models\PlatformSetting;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 
@@ -49,5 +51,25 @@ class AppServiceProvider extends ServiceProvider
                 ], 429, $headers),
             );
         });
+
+        $this->overrideConfigFromPlatformSettings();
+    }
+
+    /**
+     * Lets staff change a fixed set of config('minimax.*') values from
+     * the Admin panel without a deploy (see PlatformSettingsService for
+     * which keys and why). Guarded by hasTable() because this runs on
+     * every boot, including `migrate` itself before this table exists
+     * on a fresh install.
+     */
+    private function overrideConfigFromPlatformSettings(): void
+    {
+        if (! $this->app->bound('db') || ! Schema::hasTable('platform_settings')) {
+            return;
+        }
+
+        foreach (PlatformSetting::query()->pluck('value', 'key') as $key => $value) {
+            config(["minimax.{$key}" => $value]);
+        }
     }
 }

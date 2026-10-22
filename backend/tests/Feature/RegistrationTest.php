@@ -17,8 +17,10 @@ class RegistrationTest extends TestCase
             'mobile' => '9123456789',
             'email' => 'player@example.com',
             'date_of_birth' => '1995-05-01',
+            'state' => 'Maharashtra',
             'password' => 'password123',
             'password_confirmation' => 'password123',
+            'accept_terms' => true,
         ]);
 
         $response->assertCreated()
@@ -37,8 +39,10 @@ class RegistrationTest extends TestCase
             'mobile' => '9123456789',
             'email' => 'someone_else@example.com',
             'date_of_birth' => '1995-05-01',
+            'state' => 'Maharashtra',
             'password' => 'password123',
             'password_confirmation' => 'password123',
+            'accept_terms' => true,
         ]);
 
         $response->assertStatus(422)->assertJsonValidationErrors('mobile');
@@ -51,8 +55,10 @@ class RegistrationTest extends TestCase
             'mobile' => '9123456780',
             'email' => 'player2@example.com',
             'date_of_birth' => '1995-05-01',
+            'state' => 'Maharashtra',
             'password' => 'password123',
             'password_confirmation' => 'password123',
+            'accept_terms' => true,
         ])->assertCreated();
 
         $response = $this->postJson('/api/v1/auth/login', [
