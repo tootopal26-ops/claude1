@@ -38,7 +38,7 @@
             <p x-show="dirty" x-cloak class="text-xs text-warning" role="status">You have unsaved changes.</p>
             <span x-show="! dirty" class="hidden"></span>
             <div class="ml-auto flex items-center gap-2">
-                <x-ui.button :href="portal_route('tournament-games.index')" variant="ghost">Cancel</x-ui.button>
+                <x-ui.button :href="portal_route('tournament-games.index')" variant="ghost" data-discard>Cancel</x-ui.button>
                 <x-ui.button type="submit" loading="save,image">Save card</x-ui.button>
             </div>
         </div>

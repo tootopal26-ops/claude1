@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Leaderboard\EnsureLeaderboardPeriodsExistAction;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\LeaderboardBannerResource;
 use App\Http\Resources\LeaderboardResource;
+use App\Models\LeaderboardBanner;
 use App\Models\LeaderboardPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,6 +16,19 @@ class LeaderboardController extends Controller
     private const VALID_TYPES = ['daily', 'weekly', 'monthly'];
 
     private const TOP_N = 50;
+
+    /**
+     * The carousel at the top of the leaderboard screen: enabled banners that
+     * have a picture, in the admin's order.
+     */
+    public function banners(): JsonResponse
+    {
+        $banners = LeaderboardBanner::query()->visibleInApp()->with(['imageAsset', 'thumbnailAsset'])->get();
+
+        return response()->json([
+            'data' => LeaderboardBannerResource::collection($banners),
+        ]);
+    }
 
     /**
      * Reads the cached rollup as of the last scheduled maintenance run

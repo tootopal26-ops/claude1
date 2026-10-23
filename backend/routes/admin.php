@@ -6,6 +6,10 @@ use App\Livewire\Admin\DepositList;
 use App\Livewire\Admin\GameForm;
 use App\Livewire\Admin\GameList;
 use App\Livewire\Admin\Home;
+use App\Livewire\Admin\LeaderboardBannerForm;
+use App\Livewire\Admin\LeaderboardBannerList;
+use App\Livewire\Admin\LeaderboardPrizes;
+use App\Livewire\Admin\LeaderboardSettlement;
 use App\Livewire\Admin\LeaderboardViewer;
 use App\Livewire\Admin\LegalDocumentForm;
 use App\Livewire\Admin\LegalDocumentList;
@@ -187,6 +191,26 @@ foreach ($portals as $portal => $config) {
 
             Route::get('/leaderboards', LeaderboardViewer::class)
                 ->name('leaderboards.index')
+                ->middleware('permission:leaderboards.manage');
+
+            Route::get('/leaderboards/prizes', LeaderboardPrizes::class)
+                ->name('leaderboards.prizes')
+                ->middleware('permission:leaderboards.manage');
+
+            Route::get('/leaderboards/settlement', LeaderboardSettlement::class)
+                ->name('leaderboards.settlement')
+                ->middleware('permission:leaderboards.manage');
+
+            Route::get('/leaderboards/banners', LeaderboardBannerList::class)
+                ->name('leaderboards.banners.index')
+                ->middleware('permission:leaderboards.manage');
+
+            Route::get('/leaderboards/banners/create', LeaderboardBannerForm::class)
+                ->name('leaderboards.banners.create')
+                ->middleware('permission:leaderboards.manage');
+
+            Route::get('/leaderboards/banners/{banner}/edit', LeaderboardBannerForm::class)
+                ->name('leaderboards.banners.edit')
                 ->middleware('permission:leaderboards.manage');
 
             Route::get('/staff-salary/rules', StaffSalaryRuleList::class)

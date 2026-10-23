@@ -4,7 +4,7 @@
 @endphp
 
 <div>
-    <x-ui.page-header title="Leaderboards" description="Rankings are recomputed from published results. Finalizing a period pays out its rewards.">
+    <x-ui.page-header title="Leaderboard management" description="Rankings are recomputed from published results. Finalizing a period pays out its prizes, as set under Prize rules.">
         <x-slot:actions>
             <x-ui.button variant="outline" icon="clock" wire:click="recomputeNow" loading="recomputeNow">Recompute now</x-ui.button>
             @if (! $isFinalized)
@@ -20,6 +20,8 @@
             @endif
         </x-slot:actions>
     </x-ui.page-header>
+
+    <x-leaderboard.subnav current="rankings" />
 
     @if ($actionStatus)
         <x-ui.alert variant="success" class="mb-6">{{ $actionStatus }}</x-ui.alert>

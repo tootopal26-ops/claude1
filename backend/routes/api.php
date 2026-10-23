@@ -55,6 +55,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/deposits', [DepositController::class, 'store']);
         Route::get('/deposits/{deposit}', [DepositController::class, 'show']);
 
+        Route::get('/leaderboards/banners', [LeaderboardController::class, 'banners']);
         Route::get('/leaderboards/{type}', [LeaderboardController::class, 'show']);
     });
 });

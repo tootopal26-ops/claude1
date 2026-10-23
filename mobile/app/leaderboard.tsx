@@ -4,6 +4,7 @@ import { Redirect } from 'expo-router';
 
 import { fetchLeaderboard } from '../src/api/leaderboards';
 import { useAuth } from '../src/auth/AuthContext';
+import { BannerCarousel } from '../src/components/BannerCarousel';
 import { StatusChip } from '../src/components/StatusChip';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import type { Leaderboard } from '../src/types';
@@ -24,6 +25,7 @@ export default function LeaderboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bannerRefresh, setBannerRefresh] = useState(0);
 
   const load = useCallback(async (nextType: Leaderboard['type']) => {
     setError(null);
@@ -58,8 +60,11 @@ export default function LeaderboardScreen() {
 
   const myEntryInTop = leaderboard?.entries.some((entry) => entry.username === user.username) ?? false;
 
-  return (
-    <View style={styles.container}>
+  const header = (
+    <View>
+      <View style={styles.carouselWrap}>
+        <BannerCarousel refreshKey={bannerRefresh} />
+      </View>
       <View style={styles.tabRow}>
         {TYPES.map((t) => (
           <Pressable
@@ -73,67 +78,75 @@ export default function LeaderboardScreen() {
           </Pressable>
         ))}
       </View>
-
-      {loading ? (
-        <ActivityIndicator style={styles.centered} color={colors.brandText} />
-      ) : !leaderboard ? (
-        <Pressable style={styles.centered} onPress={() => load(type)}>
-          <Text style={styles.empty}>{error ?? 'Could not load the leaderboard.'} Tap to retry.</Text>
-        </Pressable>
-      ) : (
-        <FlatList
-          data={leaderboard.entries}
-          keyExtractor={(item) => String(item.rank)}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              tintColor={colors.brandText}
-              colors={[colors.brand]}
-              progressBackgroundColor={colors.surface3}
-              refreshing={refreshing}
-              onRefresh={async () => {
-                setRefreshing(true);
-                await load(type);
-                setRefreshing(false);
-              }}
-            />
-          }
-          ListHeaderComponent={
-            <View style={styles.statusRow}>
-              <StatusChip
-                tone={leaderboard.status === 'provisional' ? 'warning' : 'success'}
-                label={leaderboard.status === 'provisional' ? 'Live standings' : 'Final standings'}
-              />
-            </View>
-          }
-          ListFooterComponent={
-            leaderboard.my_entry && !myEntryInTop ? (
-              <View style={[styles.row, styles.myRow]}>
-                <Text style={styles.rank}>#{leaderboard.my_entry.rank}</Text>
-                <View style={styles.playerInfo}>
-                  <Text style={styles.username}>{leaderboard.my_entry.username} (you)</Text>
-                  <Text style={styles.meta}>{leaderboard.my_entry.total_kills} kills · {leaderboard.my_entry.tournaments_played} tournaments</Text>
-                </View>
-                <Text style={styles.score}>{leaderboard.my_entry.score}</Text>
-              </View>
-            ) : undefined
-          }
-          ListEmptyComponent={<Text style={styles.empty}>No results yet for this period.</Text>}
-          renderItem={({ item }) => (
-            <View style={[styles.row, item.username === user.username && styles.myRow]}>
-              <Text style={styles.rank}>#{item.rank}</Text>
-              <View style={styles.playerInfo}>
-                <Text style={styles.username}>
-                  {item.username}
-                  {item.username === user.username ? ' (you)' : ''}
-                </Text>
-                <Text style={styles.meta}>{item.total_kills} kills · {item.tournaments_played} tournaments</Text>
-              </View>
-              <Text style={styles.score}>{item.score}</Text>
-            </View>
-          )}
-        />
+      {leaderboard && (
+        <View style={styles.statusRow}>
+          <StatusChip
+            tone={leaderboard.status === 'provisional' ? 'warning' : 'success'}
+            label={leaderboard.status === 'provisional' ? 'Live standings' : 'Final standings'}
+          />
+        </View>
       )}
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={leaderboard?.entries ?? []}
+        keyExtractor={(item) => String(item.rank)}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            tintColor={colors.brandText}
+            colors={[colors.brand]}
+            progressBackgroundColor={colors.surface3}
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              setBannerRefresh((value) => value + 1);
+              await load(type);
+              setRefreshing(false);
+            }}
+          />
+        }
+        ListHeaderComponent={header}
+        ListFooterComponent={
+          leaderboard?.my_entry && !myEntryInTop ? (
+            <View style={[styles.row, styles.myRow]}>
+              <Text style={styles.rank}>#{leaderboard.my_entry.rank}</Text>
+              <View style={styles.playerInfo}>
+                <Text style={styles.username}>{leaderboard.my_entry.username} (you)</Text>
+                <Text style={styles.meta}>{leaderboard.my_entry.total_kills} kills · {leaderboard.my_entry.tournaments_played} tournaments</Text>
+              </View>
+              <Text style={styles.score}>{leaderboard.my_entry.score}</Text>
+            </View>
+          ) : undefined
+        }
+        ListEmptyComponent={
+          loading ? (
+            <ActivityIndicator style={styles.emptyBox} color={colors.brandText} />
+          ) : !leaderboard ? (
+            <Pressable style={styles.emptyBox} onPress={() => load(type)} accessibilityRole="button">
+              <Text style={styles.empty}>{error ?? 'Could not load the leaderboard.'} Tap to retry.</Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.empty}>No results yet for this period.</Text>
+          )
+        }
+        renderItem={({ item }) => (
+          <View style={[styles.row, item.username === user.username && styles.myRow]}>
+            <Text style={styles.rank}>#{item.rank}</Text>
+            <View style={styles.playerInfo}>
+              <Text style={styles.username}>
+                {item.username}
+                {item.username === user.username ? ' (you)' : ''}
+              </Text>
+              <Text style={styles.meta}>{item.total_kills} kills · {item.tournaments_played} tournaments</Text>
+            </View>
+            <Text style={styles.score}>{item.score}</Text>
+          </View>
+        )}
+      />
     </View>
   );
 }
@@ -141,7 +154,9 @@ export default function LeaderboardScreen() {
 const useStyles = makeStyles(({ colors: c }) => ({
   container: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  tabRow: { flexDirection: 'row', padding: 16, gap: 8 },
+  carouselWrap: { alignItems: 'center', paddingTop: 16 },
+  emptyBox: { marginTop: 32, alignItems: 'center' },
+  tabRow: { flexDirection: 'row', paddingVertical: 16, gap: 8 },
   tab: {
     flex: 1,
     minHeight: 44,
@@ -155,7 +170,7 @@ const useStyles = makeStyles(({ colors: c }) => ({
   tabActive: { backgroundColor: c.brand, borderColor: c.brand },
   tabText: { color: c.fg2, fontWeight: '600' },
   tabTextActive: { color: c.onBrand },
-  listContent: { padding: 16, paddingTop: 0 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 16 },
   statusRow: { marginBottom: 12 },
   empty: { color: c.fg2, textAlign: 'center', marginTop: 32 },
   row: {

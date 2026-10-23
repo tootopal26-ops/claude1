@@ -1,0 +1,11 @@
+{
+  "data": [
+    {
+      "id": 7,
+      "title": "Weekend Showdown",
+      "image_url": "https://your-domain.example/storage/storage_assets/leaderboard_banners/aad17b8c-5d7b-4a8a-b806-3e4f457802de.webp",
+      "thumbnail_url": "https://your-domain.example/storage/storage_assets/leaderboard_banners/2bdae4e5-f292-4653-9bb5-15c7fca28763.webp",
+      "display_order": 2
+    }
+  ]
+}

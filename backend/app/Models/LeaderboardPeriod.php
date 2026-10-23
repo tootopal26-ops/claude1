@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['type', 'period_start', 'period_end', 'status', 'finalized_at'])]
+#[Fillable(['type', 'period_start', 'period_end', 'status', 'finalized_at', 'prize_snapshot'])]
 class LeaderboardPeriod extends Model
 {
     protected function casts(): array
@@ -15,6 +15,7 @@ class LeaderboardPeriod extends Model
             'period_start' => 'datetime',
             'period_end' => 'datetime',
             'finalized_at' => 'datetime',
+            'prize_snapshot' => 'array',
         ];
     }
 

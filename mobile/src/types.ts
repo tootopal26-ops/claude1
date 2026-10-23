@@ -123,3 +123,11 @@ export type LegalDocument = {
   content: string;
   published_at: string;
 };
+
+export type LeaderboardBanner = {
+  id: number;
+  title: string | null;
+  image_url: string | null;
+  thumbnail_url: string | null;
+  display_order: number;
+};
