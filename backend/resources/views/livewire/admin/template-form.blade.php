@@ -1,121 +1,77 @@
-<div class="mx-auto max-w-xl">
-    <h1 class="mb-6 text-2xl font-bold text-violet-200">{{ $template ? 'Edit template' : 'Create template' }}</h1>
+<div>
+    <x-ui.page-header
+        :title="$template ? 'Edit template' : 'Create template'"
+        description="A template generates tournaments automatically on a schedule, using the settings below."
+        :breadcrumbs="[
+            ['label' => 'Recurring Templates', 'url' => route('admin.templates.index')],
+            ['label' => $template ? 'Edit' : 'Create'],
+        ]"
+    />
 
-    <form wire:submit="save" class="space-y-4 rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-        <div>
-            <label class="mb-1 block text-xs text-violet-300">Game</label>
-            <select wire:model="game_id" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
+    <form wire:submit="save" novalidate>
+        <x-ui.form-section title="Basic details" description="What players will see on every tournament this template creates.">
+            <x-ui.select label="Game" wire:model="game_id" required>
                 <option value="">Select a game</option>
                 @foreach ($games as $game)
                     <option value="{{ $game->id }}">{{ $game->name }}</option>
                 @endforeach
-            </select>
-            @error('game_id') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-        </div>
+            </x-ui.select>
 
-        <div>
-            <label class="mb-1 block text-xs text-violet-300">Title</label>
-            <input type="text" wire:model="title" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-            @error('title') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-        </div>
+            <x-ui.input label="Title" wire:model="title" required placeholder="e.g. Weekly Solo Showdown" />
 
-        <div>
-            <label class="mb-1 block text-xs text-violet-300">Description</label>
-            <textarea wire:model="description" rows="3" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white"></textarea>
-        </div>
+            <x-ui.textarea label="Description" wire:model="description" optional rows="3" wrapperClass="sm:col-span-2" hint="Shown to players on the tournament page." />
+        </x-ui.form-section>
 
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="mb-1 block text-xs text-violet-300">Mode</label>
-                <select wire:model="mode" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                    <option value="solo">Solo</option>
-                    <option value="duo">Duo</option>
-                    <option value="squad">Squad</option>
-                </select>
-                @error('mode') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-            </div>
-            <div>
-                <label class="mb-1 block text-xs text-violet-300">Total slots (teams)</label>
-                <input type="number" min="1" wire:model="total_slots" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                @error('total_slots') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-            </div>
-        </div>
+        <x-ui.form-section title="Tournament configuration" description="Format, capacity and entry cost.">
+            <x-ui.select label="Mode" wire:model="mode" required>
+                <option value="solo">Solo</option>
+                <option value="duo">Duo</option>
+                <option value="squad">Squad</option>
+            </x-ui.select>
 
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="mb-1 block text-xs text-violet-300">Entry fee (coins, 0 = free)</label>
-                <input type="number" step="0.01" min="0" wire:model="entry_fee" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                @error('entry_fee') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-            </div>
-            <div>
-                <label class="mb-1 block text-xs text-violet-300">Min teams required (optional)</label>
-                <input type="number" min="1" wire:model="min_players" placeholder="No minimum" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                @error('min_players') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-            </div>
-        </div>
+            <x-ui.input label="Total slots (teams)" type="number" min="1" wire:model="total_slots" required hint="How many teams can join." />
 
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="mb-1 block text-xs text-violet-300">Per-kill reward (coins)</label>
-                <input type="number" step="0.01" min="0" wire:model="per_kill_reward" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                @error('per_kill_reward') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-            </div>
-            <div>
-                <label class="mb-1 block text-xs text-violet-300">Prize pool (coins)</label>
-                <input type="number" step="0.01" min="0" wire:model="prize_pool" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                @error('prize_pool') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-            </div>
-        </div>
+            <x-ui.input label="Entry fee (coins)" type="number" step="0.01" min="0" wire:model="entry_fee" required hint="Enter 0 for a free tournament." />
 
-        <hr class="border-violet-900/40">
-        <h2 class="text-sm font-semibold text-violet-300">Recurrence</h2>
+            <x-ui.input label="Minimum teams" type="number" min="1" wire:model="min_players" optional placeholder="No minimum" hint="If fewer teams have joined when the match is due to start, the tournament is cancelled and entry fees are refunded." />
+        </x-ui.form-section>
 
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="mb-1 block text-xs text-violet-300">Frequency</label>
-                <select wire:model.live="frequency" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                </select>
-                @error('frequency') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-            </div>
+        <x-ui.form-section title="Rewards" description="Prize settings copied onto each generated tournament.">
+            <x-ui.input label="Prize pool (coins)" type="number" step="0.01" min="0" wire:model="prize_pool" required hint="The most that can be paid out when results are published." />
+
+            <x-ui.input label="Per-kill reward (coins)" type="number" step="0.01" min="0" wire:model="per_kill_reward" required hint="Reward per kill shown for tournaments generated from this template." />
+        </x-ui.form-section>
+
+        <x-ui.form-section title="Recurrence" description="When tournaments are created and how far ahead.">
+            <x-ui.select label="Frequency" wire:model.live="frequency" required>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+            </x-ui.select>
+
             @if ($frequency === 'weekly')
-                <div>
-                    <label class="mb-1 block text-xs text-violet-300">Day of week</label>
-                    <select wire:model="day_of_week" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                        <option value="0">Sunday</option>
-                        <option value="1">Monday</option>
-                        <option value="2">Tuesday</option>
-                        <option value="3">Wednesday</option>
-                        <option value="4">Thursday</option>
-                        <option value="5">Friday</option>
-                        <option value="6">Saturday</option>
-                    </select>
-                    @error('day_of_week') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.select label="Day of week" wire:model="day_of_week" required>
+                    <option value="0">Sunday</option>
+                    <option value="1">Monday</option>
+                    <option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option>
+                    <option value="4">Thursday</option>
+                    <option value="5">Friday</option>
+                    <option value="6">Saturday</option>
+                </x-ui.select>
             @endif
-        </div>
 
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="mb-1 block text-xs text-violet-300">Time of day</label>
-                <input type="time" wire:model="time_of_day" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                @error('time_of_day') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
+            <x-ui.input label="Time of day" type="time" wire:model="time_of_day" required hint="24-hour start time." />
+
+            <x-ui.input label="Generate how many days ahead" type="number" min="1" max="60" wire:model="generate_days_ahead" required hint="Between 1 and 60 days." />
+
+            <div class="sm:col-span-2">
+                <x-ui.switch wire:model="is_active" label="Active" hint="Paused templates stop generating new tournaments; existing ones are unaffected." />
             </div>
-            <div>
-                <label class="mb-1 block text-xs text-violet-300">Generate how many days ahead</label>
-                <input type="number" min="1" max="60" wire:model="generate_days_ahead" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                @error('generate_days_ahead') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-            </div>
+        </x-ui.form-section>
+
+        <div class="sticky bottom-0 z-10 -mx-4 mt-2 flex items-center justify-end gap-2 border-t border-line bg-app px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+            <x-ui.button :href="route('admin.templates.index')" variant="ghost">Cancel</x-ui.button>
+            <x-ui.button type="submit" loading="save">Save template</x-ui.button>
         </div>
-
-        <label class="flex items-center gap-2 text-sm text-violet-200">
-            <input type="checkbox" wire:model="is_active">
-            Active (generates occurrences on schedule)
-        </label>
-
-        <button type="submit" class="w-full rounded-lg bg-violet-600 py-2 font-semibold text-white hover:bg-violet-500">
-            Save template
-        </button>
     </form>
 </div>

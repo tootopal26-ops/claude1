@@ -82,7 +82,7 @@ class StaffLoginTest extends TestCase
         $response = $this->actingAs($staff, 'staff')->get(route('admin.home'));
 
         $response->assertOk();
-        $response->assertSee('doesn\'t have access to any section', false);
+        $response->assertSee('doesn\'t have access to any section');
     }
 
     public function test_an_inactive_staff_account_cannot_log_in(): void

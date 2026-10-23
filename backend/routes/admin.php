@@ -43,7 +43,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         request()->session()->invalidate();
         request()->session()->regenerateToken();
 
-        return redirect()->route('admin.login');
+        return redirect()->route('admin.login')->with('status', 'You have been signed out.');
     })->name('logout')->middleware('auth:staff');
 
     Route::middleware(['auth:staff', 'staff.security_version'])->group(function () {

@@ -1,0 +1,245 @@
+<?php
+
+namespace Tests\Feature;
+
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
+use Tests\TestCase;
+
+/**
+ * Structural guards for the Admin/Staff design system (docs/design-system.md):
+ * every page is theme-driven, every theme defines the full token set, and
+ * every theme's text/surface/brand pairings meet WCAG AA.
+ */
+class AdminUiDesignSystemTest extends TestCase
+{
+    /**
+     * Tokens every color theme must define (themes.css).
+     */
+    private const array REQUIRED_TOKENS = [
+        '--mm-bg', '--mm-sidebar', '--mm-surface', '--mm-surface-2', '--mm-surface-3',
+        '--mm-border', '--mm-border-strong',
+        '--mm-fg', '--mm-fg-2', '--mm-fg-3',
+        '--mm-brand', '--mm-brand-hover', '--mm-brand-pressed', '--mm-brand-soft', '--mm-brand-text',
+        '--mm-on-brand', '--mm-ring',
+    ];
+
+    /**
+     * @return list<string>
+     */
+    private function themedViewFiles(): array
+    {
+        $files = [];
+
+        foreach ([
+            resource_path('views/livewire/admin'),
+            resource_path('views/components/ui'),
+            resource_path('views/components/layouts'),
+            resource_path('views/errors'),
+        ] as $directory) {
+            foreach (File::allFiles($directory) as $file) {
+                $files[] = $file->getPathname();
+            }
+        }
+
+        $files[] = resource_path('views/components/error-page.blade.php');
+
+        return $files;
+    }
+
+    public function test_views_use_theme_tokens_instead_of_raw_palette_colors(): void
+    {
+        $palette = '(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)';
+        $utilities = '(?:bg|text|border|ring|divide|outline|fill|stroke|accent|from|to|via|placeholder|decoration|shadow|caret)';
+
+        $patterns = [
+            "/\\b{$utilities}-{$palette}-\\d{2,3}\\b/" => 'a raw Tailwind palette color',
+            "/\\b{$utilities}-(?:white|black)\\b(?!-)/" => 'raw white/black',
+            '/#[0-9a-fA-F]{6}\\b/' => 'a hex color',
+        ];
+
+        $offenders = [];
+
+        foreach ($this->themedViewFiles() as $path) {
+            $contents = File::get($path);
+
+            foreach ($patterns as $pattern => $label) {
+                if (preg_match_all($pattern, $contents, $matches)) {
+                    $offenders[] = str_replace(base_path().'/', '', $path).': '.$label.' ('.implode(', ', array_unique($matches[0])).')';
+                }
+            }
+        }
+
+        $this->assertSame([], $offenders, "Use design tokens (bg-surface, text-fg-2, border-line, bg-brand ...) so every theme works:\n".implode("\n", $offenders));
+    }
+
+    public function test_views_use_the_confirm_dialog_not_native_wire_confirm(): void
+    {
+        $offenders = [];
+
+        foreach ($this->themedViewFiles() as $path) {
+            if (str_contains(File::get($path), 'wire:confirm')) {
+                $offenders[] = str_replace(base_path().'/', '', $path);
+            }
+        }
+
+        $this->assertSame([], $offenders, 'Use <x-ui.button confirm="..."> instead of wire:confirm: '.implode(', ', $offenders));
+    }
+
+    public function test_pages_that_flash_a_status_or_are_redirected_to_after_one_render_the_flash(): void
+    {
+        $needsFlash = [];
+
+        foreach (File::allFiles(app_path('Livewire/Admin')) as $file) {
+            $php = File::get($file->getPathname());
+
+            if (! str_contains($php, "->flash('status'")) {
+                continue;
+            }
+
+            // A form that flashes and then redirects shows the message on the redirect target;
+            // one that stays on the page must render it itself.
+            if (preg_match("/redirectRoute\\('([^']+)'/", $php, $match) && ($route = Route::getRoutes()->getByName($match[1]))) {
+                $needsFlash[ltrim($route->getActionName(), '\\')] = "redirect target of {$file->getBasename('.php')}";
+            } else {
+                $needsFlash['App\\Livewire\\Admin\\'.$file->getBasename('.php')] = 'itself';
+            }
+        }
+
+        $missing = [];
+
+        foreach ($needsFlash as $class => $why) {
+            $view = resource_path('views/livewire/admin/'.Str::kebab(class_basename($class)).'.blade.php');
+
+            if (! File::exists($view) || ! str_contains(File::get($view), '<x-ui.flash')) {
+                $missing[] = class_basename($class)." ({$why}) must render <x-ui.flash />";
+            }
+        }
+
+        $this->assertNotEmpty($needsFlash);
+        $this->assertSame([], $missing, implode("\n", $missing));
+    }
+
+    public function test_every_configured_theme_defines_the_full_token_set(): void
+    {
+        $themes = $this->parseThemes();
+
+        foreach (array_keys(config('minimax.theme_colors')) as $key) {
+            $this->assertArrayHasKey($key, $themes, "Theme \"{$key}\" has no block in themes.css");
+
+            foreach (self::REQUIRED_TOKENS as $token) {
+                $this->assertArrayHasKey($token, $themes[$key], "Theme \"{$key}\" is missing {$token}");
+            }
+        }
+    }
+
+    public function test_every_theme_meets_wcag_aa_contrast_for_its_core_pairings(): void
+    {
+        $failures = [];
+
+        foreach ($this->parseThemes() as $key => $tokens) {
+            $pairs = [
+                ['--mm-fg', '--mm-bg'], ['--mm-fg', '--mm-surface'],
+                ['--mm-fg-2', '--mm-surface'], ['--mm-fg-2', '--mm-surface-2'],
+                ['--mm-fg-3', '--mm-surface'], ['--mm-fg-3', '--mm-surface-2'], ['--mm-fg-3', '--mm-bg'],
+                ['--mm-brand-text', '--mm-surface'], ['--mm-brand-text', '--mm-surface-2'], ['--mm-brand-text', '--mm-brand-soft'],
+                ['--mm-on-brand', '--mm-brand'], ['--mm-on-brand', '--mm-brand-pressed'],
+            ];
+
+            foreach ($pairs as [$foreground, $background]) {
+                $ratio = $this->contrast($tokens[$foreground], $tokens[$background]);
+
+                if ($ratio < 4.5) {
+                    $failures[] = sprintf('%s: %s on %s is %.2f:1 (needs 4.5:1)', $key, $foreground, $background, $ratio);
+                }
+            }
+        }
+
+        $this->assertSame([], $failures, implode("\n", $failures));
+    }
+
+    public function test_android_theme_tokens_match_the_web_tokens_exactly(): void
+    {
+        $android = File::get(base_path('../mobile/src/theme/tokens.ts'));
+
+        // CSS token => Android property
+        $map = [
+            '--mm-bg' => 'bg', '--mm-sidebar' => 'sidebar', '--mm-surface' => 'surface', '--mm-surface-2' => 'surface2',
+            '--mm-surface-3' => 'surface3', '--mm-border' => 'border', '--mm-border-strong' => 'borderStrong',
+            '--mm-fg' => 'fg', '--mm-fg-2' => 'fg2', '--mm-fg-3' => 'fg3',
+            '--mm-brand' => 'brand', '--mm-brand-hover' => 'brandHover', '--mm-brand-pressed' => 'brandPressed',
+            '--mm-brand-soft' => 'brandSoft', '--mm-brand-text' => 'brandText', '--mm-on-brand' => 'onBrand', '--mm-ring' => 'ring',
+        ];
+
+        $mismatches = [];
+
+        foreach ($this->parseThemes() as $key => $tokens) {
+            $start = strpos($android, "'{$key}': {");
+            $this->assertNotFalse($start, "Android tokens.ts has no \"{$key}\" theme");
+            $block = substr($android, $start, strpos($android, '},', $start) - $start);
+
+            foreach ($map as $cssToken => $property) {
+                $matched = preg_match('/\b'.$property.":\s*'(#[0-9a-fA-F]{3,8})'/", $block, $m);
+
+                if (! $matched || strtolower($m[1]) !== strtolower($tokens[$cssToken])) {
+                    $mismatches[] = "{$key}.{$property}: web {$tokens[$cssToken]} vs android ".($m[1] ?? 'missing');
+                }
+            }
+        }
+
+        $this->assertSame([], $mismatches, "Android tokens drifted from themes.css:\n".implode("\n", $mismatches));
+    }
+
+    /**
+     * @return array<string, array<string, string>>
+     */
+    private function parseThemes(): array
+    {
+        $css = preg_replace('#/\*.*?\*/#s', '', File::get(resource_path('css/themes.css')));
+        preg_match_all('/([^{}]+)\{([^{}]*)\}/', $css, $blocks, PREG_SET_ORDER);
+
+        $themes = [];
+
+        foreach ($blocks as [, $selector, $body]) {
+            if (! preg_match_all("/\\[data-theme='([a-z-]+)'\\]/", $selector, $keys)) {
+                continue;
+            }
+
+            preg_match_all('/(--mm-[\w-]+)\s*:\s*([^;]+);/', $body, $declarations, PREG_SET_ORDER);
+
+            foreach ($keys[1] as $key) {
+                foreach ($declarations as [, $name, $value]) {
+                    $themes[$key][$name] = trim($value);
+                }
+            }
+        }
+
+        return $themes;
+    }
+
+    private function contrast(string $foregroundHex, string $backgroundHex): float
+    {
+        $a = $this->luminance($foregroundHex);
+        $b = $this->luminance($backgroundHex);
+
+        return (max($a, $b) + 0.05) / (min($a, $b) + 0.05);
+    }
+
+    private function luminance(string $hex): float
+    {
+        $hex = ltrim($hex, '#');
+
+        if (strlen($hex) === 3) {
+            $hex = preg_replace('/(.)/', '$1$1', $hex);
+        }
+
+        [$r, $g, $b] = array_map(function (string $channel): float {
+            $value = hexdec($channel) / 255;
+
+            return $value <= 0.03928 ? $value / 12.92 : (($value + 0.055) / 1.055) ** 2.4;
+        }, str_split($hex, 2));
+
+        return 0.2126 * $r + 0.7152 * $g + 0.0722 * $b;
+    }
+}

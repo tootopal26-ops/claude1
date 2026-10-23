@@ -1,11 +1,13 @@
 import { useEffect, type ReactNode } from 'react';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '../src/auth/AuthContext';
 import { LegalAcceptanceGate } from '../src/components/LegalAcceptanceGate';
-import { ThemeProvider } from '../src/theme/ThemeContext';
+import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 
 function useNotificationTapNavigation() {
   useEffect(() => {
@@ -38,28 +40,63 @@ function LegalGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Paints the theme's canvas behind everything (so no white strip can show
+ * behind the status bar, the keyboard or between screens) and keeps the
+ * status-bar icons light — every Mini Max theme is dark.
+ */
+function ThemedRoot({ children }: { children: ReactNode }) {
+  const { colors } = useTheme();
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <StatusBar style="light" />
+      {children}
+    </View>
+  );
+}
+
+function ThemedStack() {
+  const { colors } = useTheme();
+
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: true,
+        headerStyle: { backgroundColor: colors.sidebar },
+        headerTintColor: colors.fg,
+        headerTitleStyle: { color: colors.fg },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: colors.bg },
+      }}
+    >
+      <Stack.Screen name="login" options={{ title: 'Sign in', headerShown: false }} />
+      <Stack.Screen name="index" options={{ title: 'Tournaments' }} />
+      <Stack.Screen name="tournament/[id]" options={{ title: 'Tournament' }} />
+      <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+      <Stack.Screen name="wallet" options={{ title: 'Wallet' }} />
+      <Stack.Screen name="deposit" options={{ title: 'Deposit' }} />
+      <Stack.Screen name="withdraw" options={{ title: 'Withdraw' }} />
+      <Stack.Screen name="leaderboard" options={{ title: 'Leaderboard' }} />
+      <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+      <Stack.Screen name="legal" options={{ title: 'Legal' }} />
+    </Stack>
+  );
+}
+
 export default function RootLayout() {
   useNotificationTapNavigation();
 
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AuthProvider>
-          <LegalGate>
-            <Stack screenOptions={{ headerShown: true }}>
-              <Stack.Screen name="login" options={{ title: 'Sign in', headerShown: false }} />
-              <Stack.Screen name="index" options={{ title: 'Tournaments' }} />
-              <Stack.Screen name="tournament/[id]" options={{ title: 'Tournament' }} />
-              <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
-              <Stack.Screen name="wallet" options={{ title: 'Wallet' }} />
-              <Stack.Screen name="deposit" options={{ title: 'Deposit' }} />
-              <Stack.Screen name="withdraw" options={{ title: 'Withdraw' }} />
-              <Stack.Screen name="leaderboard" options={{ title: 'Leaderboard' }} />
-              <Stack.Screen name="settings" options={{ title: 'Settings' }} />
-              <Stack.Screen name="legal" options={{ title: 'Legal' }} />
-            </Stack>
-          </LegalGate>
-        </AuthProvider>
+        <ThemedRoot>
+          <AuthProvider>
+            <LegalGate>
+              <ThemedStack />
+            </LegalGate>
+          </AuthProvider>
+        </ThemedRoot>
       </ThemeProvider>
     </SafeAreaProvider>
   );

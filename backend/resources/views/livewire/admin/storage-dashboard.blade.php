@@ -1,92 +1,123 @@
+@php
+    $canManage = auth('staff')->user()->hasPermission('storage.manage');
+    $columnCount = $canManage ? 5 : 4;
+@endphp
+
 <div>
-    <h1 class="mb-6 text-2xl font-bold text-violet-200">Storage</h1>
+    <x-ui.page-header title="Storage" description="How much space each bucket is using and which files are being kept." />
 
     @if ($actionError)
-        <div class="mb-4 rounded-lg bg-red-900/40 px-4 py-3 text-sm text-red-300">{{ $actionError }}</div>
+        <x-ui.alert variant="danger" title="That action couldn't be completed" class="mb-6">{{ $actionError }}</x-ui.alert>
     @endif
 
-    <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         @foreach ($usage as $bucketUsage)
-            <div class="rounded-2xl border border-violet-900/40 p-4">
-                <p class="text-sm text-violet-300">{{ $bucketUsage['label'] }}</p>
-                <p class="mt-1 text-2xl font-bold text-white">{{ number_format($bucketUsage['total_bytes'] / 1048576, 1) }} MB</p>
-                <p class="text-xs text-violet-500">{{ $bucketUsage['count'] }} file(s)</p>
-                @php
-                    $percent = $bucketUsage['quota_bytes'] > 0 ? min(100, (int) round($bucketUsage['total_bytes'] / $bucketUsage['quota_bytes'] * 100)) : 0;
-                @endphp
-                <div class="mt-2 h-1.5 w-full rounded-full bg-violet-950">
-                    <div class="h-1.5 rounded-full {{ $percent >= 90 ? 'bg-red-500' : 'bg-violet-500' }}" style="width: {{ $percent }}%"></div>
+            @php
+                $percent = $bucketUsage['quota_bytes'] > 0 ? min(100, (int) round($bucketUsage['total_bytes'] / $bucketUsage['quota_bytes'] * 100)) : 0;
+                $retentionDays = $buckets[$bucketUsage['bucket']]['retention_days'] ?? null;
+                $barTone = $percent >= 90 ? 'bg-danger' : ($percent >= 75 ? 'bg-warning' : 'bg-brand');
+            @endphp
+            <x-ui.card wire:key="usage-{{ $bucketUsage['bucket'] }}">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="truncate text-sm font-medium text-fg-2">{{ $bucketUsage['label'] }}</p>
+                        <p class="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-fg">{{ number_format($bucketUsage['total_bytes'] / 1048576, 1) }} <span class="text-sm font-medium text-fg-3">MB</span></p>
+                    </div>
+                    <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-3 text-fg-2"><x-icon name="storage" :size="16" /></span>
                 </div>
-                <p class="mt-1 text-xs text-violet-500">{{ $percent }}% of quota</p>
-            </div>
+
+                <div class="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-surface-3" role="progressbar" aria-label="{{ $bucketUsage['label'] }} quota used" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $percent }}">
+                    <div class="h-full rounded-full {{ $barTone }}" style="width: {{ $percent }}%"></div>
+                </div>
+                <div class="mt-2 flex items-center justify-between gap-3 text-xs text-fg-3">
+                    <span class="tabular-nums">{{ $percent }}% of {{ number_format($bucketUsage['quota_bytes'] / 1048576, 0) }} MB quota</span>
+                    <span class="tabular-nums">{{ $bucketUsage['count'] }} {{ $bucketUsage['count'] === 1 ? 'file' : 'files' }}</span>
+                </div>
+                <p class="mt-3 border-t border-line pt-3 text-xs text-fg-3">
+                    <x-icon name="clock" :size="12" class="mr-1 inline align-[-1px]" />
+                    @if ($retentionDays)
+                        Cleaned up automatically after {{ $retentionDays }} days
+                    @else
+                        Kept indefinitely
+                    @endif
+                </p>
+            </x-ui.card>
         @endforeach
     </div>
 
-    <div class="mb-4">
-        <select wire:model.live="bucketFilter" class="rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-sm text-white">
-            <option value="">All buckets</option>
-            @foreach ($buckets as $key => $config)
-                <option value="{{ $key }}">{{ $config['label'] }}</option>
-            @endforeach
-        </select>
+    <x-ui.alert variant="info" title="How retention works" class="mt-6">
+        Files are removed automatically by the weekly cleanup once they pass their bucket's retention period. Mark a file
+        <strong class="font-semibold text-fg">Retained</strong> to exempt it — for example evidence tied to an open dispute or audit. Quotas are advisory: uploads are never blocked by them.
+    </x-ui.alert>
+
+    <div class="mb-4 mt-8 flex flex-wrap items-end justify-between gap-3">
+        <h2 class="text-base font-semibold text-fg">Files</h2>
+        <div class="w-full sm:w-64">
+            <x-ui.select label="Bucket" wire:model.live="bucketFilter">
+                <option value="">All buckets</option>
+                @foreach ($buckets as $key => $config)
+                    <option value="{{ $key }}">{{ $config['label'] }}</option>
+                @endforeach
+            </x-ui.select>
+        </div>
     </div>
 
-    <div class="overflow-hidden rounded-2xl border border-violet-900/40">
-        <table class="w-full text-left text-sm">
-            <thead class="bg-white/5 text-violet-300">
-                <tr>
-                    <th class="px-4 py-3">File</th>
-                    <th class="px-4 py-3">Bucket</th>
-                    <th class="px-4 py-3">Attached to</th>
-                    <th class="px-4 py-3">Uploaded by</th>
-                    <th class="px-4 py-3">Size</th>
-                    <th class="px-4 py-3">Status</th>
-                    @if (auth('staff')->user()->hasPermission('storage.manage'))
-                        <th class="px-4 py-3"></th>
+    <x-ui.table>
+        <x-slot:head>
+            <tr>
+                <th>File</th>
+                <th>Bucket</th>
+                <th class="text-right">Size</th>
+                <th>Status</th>
+                @if ($canManage)
+                    <th><span class="sr-only">Actions</span></th>
+                @endif
+            </tr>
+        </x-slot:head>
+
+        @forelse ($assets as $asset)
+            <tr wire:key="asset-{{ $asset->id }}">
+                <td class="mm-cell-primary">
+                    <a href="{{ route('admin.storage-assets.download', $asset) }}" class="inline-flex max-w-[15rem] items-center gap-2 hover:text-brand-text" title="Download {{ $asset->original_filename }}">
+                        <x-icon name="download" :size="14" class="shrink-0 text-fg-3" />
+                        <span class="truncate">{{ $asset->original_filename }}</span>
+                    </a>
+                    <span class="block max-w-[15rem] truncate text-xs font-normal text-fg-3" title="Uploaded by {{ $asset->uploadedByStaff?->display_name ?? 'unknown' }}">Uploaded by {{ $asset->uploadedByStaff?->display_name ?? '—' }}</span>
+                </td>
+                <td>
+                    <span class="block whitespace-nowrap">{{ $buckets[$asset->bucket]['label'] ?? $asset->bucket }}</span>
+                    <span class="block whitespace-nowrap text-xs text-fg-3">Attached to {{ $asset->subjectLabel() }}</span>
+                </td>
+                <td class="whitespace-nowrap text-right tabular-nums">{{ number_format($asset->size_bytes / 1024, 0) }} KB</td>
+                <td>
+                    @if ($asset->isRetained())
+                        <x-ui.badge variant="warning" :dot="false" title="{{ $asset->retained_reason }}">Retained</x-ui.badge>
+                        <span class="mt-1 block max-w-[11rem] truncate text-xs text-fg-3" title="{{ $asset->retained_reason }}">{{ $asset->retained_reason }}</span>
+                    @else
+                        <span class="text-fg-3">—</span>
                     @endif
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-violet-900/30">
-                @forelse ($assets as $asset)
-                    <tr>
-                        <td class="px-4 py-3">
-                            <a href="{{ route('admin.storage-assets.download', $asset) }}" class="text-violet-300 hover:text-violet-100">{{ $asset->original_filename }}</a>
-                        </td>
-                        <td class="px-4 py-3 text-violet-400">{{ $buckets[$asset->bucket]['label'] ?? $asset->bucket }}</td>
-                        <td class="px-4 py-3 text-violet-400">{{ $asset->subjectLabel() }}</td>
-                        <td class="px-4 py-3 text-violet-400">{{ $asset->uploadedByStaff?->display_name ?? '—' }}</td>
-                        <td class="px-4 py-3 text-violet-400">{{ number_format($asset->size_bytes / 1024, 0) }} KB</td>
-                        <td class="px-4 py-3">
+                </td>
+                @if ($canManage)
+                    <td class="text-right">
+                        <div class="ml-auto flex max-w-[19rem] flex-wrap items-center justify-end gap-1.5">
                             @if ($asset->isRetained())
-                                <span class="rounded bg-amber-900/40 px-2 py-0.5 text-xs text-amber-300">Retained: {{ $asset->retained_reason }}</span>
+                                <x-ui.button wire:click="unretain({{ $asset->id }})" variant="ghost" size="sm">Unretain</x-ui.button>
+                            @elseif ($retainingAssetId === $asset->id)
+                                <input type="text" wire:model="retainReason" placeholder="Reason to retain" aria-label="Reason to retain {{ $asset->original_filename }}" class="mm-control h-8 w-full basis-full text-xs">
+                                <x-ui.button wire:click="retain({{ $asset->id }})" size="sm" icon="check">Save</x-ui.button>
+                                <x-ui.button wire:click="$set('retainingAssetId', null)" variant="ghost" size="sm">Cancel</x-ui.button>
                             @else
-                                <span class="text-xs text-violet-500">—</span>
+                                <x-ui.button wire:click="$set('retainingAssetId', {{ $asset->id }})" variant="ghost" size="sm">Retain</x-ui.button>
                             @endif
-                        </td>
-                        @if (auth('staff')->user()->hasPermission('storage.manage'))
-                            <td class="px-4 py-3 text-right">
-                                @if ($asset->isRetained())
-                                    <button type="button" wire:click="unretain({{ $asset->id }})" class="text-xs text-violet-400 hover:text-violet-200">Unretain</button>
-                                @elseif ($retainingAssetId === $asset->id)
-                                    <div class="flex items-center justify-end gap-2">
-                                        <input type="text" wire:model="retainReason" placeholder="Reason" class="w-32 rounded border border-violet-800/50 bg-black/30 px-2 py-1 text-xs text-white">
-                                        <button type="button" wire:click="retain({{ $asset->id }})" class="text-xs text-emerald-400 hover:text-emerald-200">Save</button>
-                                    </div>
-                                @else
-                                    <button type="button" wire:click="$set('retainingAssetId', {{ $asset->id }})" class="mr-3 text-xs text-violet-400 hover:text-violet-200">Retain</button>
-                                @endif
-                                <button type="button" wire:click="delete({{ $asset->id }})" wire:confirm="Delete this file permanently?" class="ml-3 text-xs text-red-400 hover:text-red-200">Delete</button>
-                            </td>
-                        @endif
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="px-4 py-8 text-center text-violet-400">No files uploaded yet.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+                            <x-ui.button wire:click="delete({{ $asset->id }})" variant="danger-ghost" size="sm" icon="trash" icon-only title="Delete {{ $asset->original_filename }}" aria-label="Delete {{ $asset->original_filename }}" :confirm="'Delete '.$asset->original_filename.' permanently? This can\'t be undone.'" confirm-title="Delete file" confirm-label="Delete file" />
+                        </div>
+                    </td>
+                @endif
+            </tr>
+        @empty
+            <x-ui.table-empty :colspan="$columnCount" icon="storage" title="No files uploaded yet" description="Tournament evidence, withdrawal proof and internal documents will be listed here once they're uploaded." />
+        @endforelse
 
-    <div class="mt-4">{{ $assets->links() }}</div>
+        <x-slot:footer>{{ $assets->links() }}</x-slot:footer>
+    </x-ui.table>
 </div>

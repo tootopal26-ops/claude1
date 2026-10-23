@@ -1,0 +1,1 @@
+<x-error-page code="403" title="You don't have access to this page" description="Your account isn't permitted to open this section. If you think that's a mistake, ask an administrator to review your permission preset." :detail="$exception->getMessage() ?: null" />

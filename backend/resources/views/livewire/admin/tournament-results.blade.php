@@ -1,97 +1,106 @@
 <div>
-    <a href="{{ route('admin.tournaments.entries', $tournament) }}" class="text-sm text-violet-400 hover:text-violet-200">&larr; Back to entries</a>
+    <x-ui.flash />
 
-    <h1 class="mb-1 mt-2 text-2xl font-bold text-violet-200">{{ $tournament->title }} — Results</h1>
-    <p class="mb-6 text-sm text-violet-400">
-        Prize pool: {{ $tournament->prize_pool }} coins · status: {{ $tournament->status }}
-    </p>
+    <x-ui.page-header
+        title="Results"
+        :description="$tournament->title.' · '.ucfirst($tournament->mode).'. Enter each team\'s rank, kills and prize, then save.'"
+        :breadcrumbs="[
+            ['label' => 'Tournaments', 'url' => route('admin.tournaments.index')],
+            ['label' => $tournament->title, 'url' => route('admin.tournaments.entries', $tournament)],
+            ['label' => 'Results'],
+        ]"
+    >
+        <x-slot:actions>
+            <x-ui.badge :status="$tournament->status" class="px-3 py-1 text-sm" />
+            <x-ui.button :href="route('admin.tournaments.entries', $tournament)" variant="outline" icon="arrow-left">Back to entries</x-ui.button>
+        </x-slot:actions>
+    </x-ui.page-header>
 
-    @if (session('status'))
-        <div class="mb-4 rounded-lg bg-emerald-900/40 px-4 py-3 text-sm text-emerald-300">{{ session('status') }}</div>
-    @endif
+    <x-ui.card title="Overview">
+        <dl class="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-3">
+            <x-ui.kv label="Prize pool">
+                <span class="inline-flex items-center gap-1.5 text-lg font-semibold tabular-nums"><x-coin-asset :size="18" />{{ $tournament->prize_pool }}</span>
+                <span class="block text-xs text-fg-3">The most that can be awarded</span>
+            </x-ui.kv>
+            <x-ui.kv label="Teams to score">
+                <span class="text-lg font-semibold tabular-nums">{{ count($rows) }}</span>
+                <span class="block text-xs text-fg-3">Confirmed entries</span>
+            </x-ui.kv>
+            <x-ui.kv label="Tournament status">
+                <x-ui.badge :status="$tournament->status" />
+                <span class="mt-1 block text-xs text-fg-3">{{ $tournament->status === 'completed' ? 'Results are published; saving revises them' : 'Saving publishes the results' }}</span>
+            </x-ui.kv>
+        </dl>
+    </x-ui.card>
 
     @if ($submitError)
-        <div class="mb-4 rounded-lg bg-red-900/40 px-4 py-3 text-sm text-red-300">{{ $submitError }}</div>
+        <x-ui.alert variant="danger" title="Results weren't saved" class="mt-6">{{ $submitError }}</x-ui.alert>
     @endif
 
-    <form wire:submit="submit">
-        <div class="overflow-hidden rounded-2xl border border-violet-900/40">
-            <table class="w-full text-left text-sm">
-                <thead class="bg-white/5 text-violet-300">
-                    <tr>
-                        <th class="px-4 py-3">Account</th>
-                        <th class="px-4 py-3">Rank</th>
-                        <th class="px-4 py-3">Kills</th>
-                        <th class="px-4 py-3">Prize awarded (coins)</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-violet-900/30">
-                    @forelse ($rows as $index => $row)
-                        <tr>
-                            <td class="px-4 py-3 text-white">{{ $row['username'] }}</td>
-                            <td class="px-4 py-3">
-                                <input type="number" min="1" wire:model="rows.{{ $index }}.rank" class="w-20 rounded-lg border border-violet-800/50 bg-black/30 px-2 py-1 text-white">
-                                @error("rows.{$index}.rank") <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-                            </td>
-                            <td class="px-4 py-3">
-                                <input type="number" min="0" wire:model="rows.{{ $index }}.kills" class="w-20 rounded-lg border border-violet-800/50 bg-black/30 px-2 py-1 text-white">
-                                @error("rows.{$index}.kills") <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-                            </td>
-                            <td class="px-4 py-3">
-                                <input type="number" step="0.01" min="0" wire:model="rows.{{ $index }}.prize_awarded" class="w-28 rounded-lg border border-violet-800/50 bg-black/30 px-2 py-1 text-white">
-                                @error("rows.{$index}.prize_awarded") <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" class="px-4 py-8 text-center text-violet-400">No confirmed entries to score.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+    <form wire:submit="submit" class="mt-6" novalidate>
+        <x-ui.table>
+            <x-slot:head>
+                <tr class="max-sm:hidden">
+                    <th>Account</th>
+                    <th>Rank</th>
+                    <th>Kills</th>
+                    <th>Prize awarded (coins)</th>
+                </tr>
+            </x-slot:head>
+
+            @forelse ($rows as $index => $row)
+                <tr wire:key="result-row-{{ $row['tournament_entry_id'] }}" class="max-sm:grid max-sm:grid-cols-3 max-sm:gap-3 max-sm:px-4 max-sm:py-4">
+                    <td class="mm-cell-primary max-sm:col-span-3 max-sm:p-0!"><span class="block max-w-[16rem] truncate" title="{{ $row['username'] }}">{{ $row['username'] }}</span></td>
+                    <td class="align-top max-sm:p-0!"><span class="mb-1 block text-xs font-medium text-fg-3 sm:hidden" aria-hidden="true">Rank</span><x-ui.input type="number" min="1" wire:model="rows.{{ $index }}.rank" :aria-label="'Rank for '.$row['username']" class="sm:w-24" /></td>
+                    <td class="align-top max-sm:p-0!"><span class="mb-1 block text-xs font-medium text-fg-3 sm:hidden" aria-hidden="true">Kills</span><x-ui.input type="number" min="0" wire:model="rows.{{ $index }}.kills" :aria-label="'Kills for '.$row['username']" class="sm:w-24" /></td>
+                    <td class="align-top max-sm:p-0!"><span class="mb-1 block text-xs font-medium text-fg-3 sm:hidden" aria-hidden="true">Prize</span><x-ui.input type="number" step="0.01" min="0" wire:model="rows.{{ $index }}.prize_awarded" :aria-label="'Prize awarded to '.$row['username']" class="sm:w-36" /></td>
+                </tr>
+            @empty
+                <x-ui.table-empty :colspan="4" icon="users" title="No confirmed entries to score" description="Results can be entered once teams have joined this tournament." />
+            @endforelse
+        </x-ui.table>
 
         @if (count($rows) > 0)
-            <button type="submit" wire:confirm="Save these results? Prize changes affect player wallets immediately." class="mt-4 w-full rounded-lg bg-violet-600 py-2 font-semibold text-white hover:bg-violet-500">
-                Save results
-            </button>
+            <div class="sticky bottom-0 z-10 -mx-4 mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line bg-app px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+                <p class="text-xs text-fg-3">Prize changes are applied to player wallets immediately.</p>
+                <x-ui.button type="submit" icon="check" loading="submit" confirm="Save these results? Prize changes affect player wallets immediately." confirm-title="Save results" confirm-label="Save results">Save results</x-ui.button>
+            </div>
         @endif
     </form>
 
     @if (auth('staff')->user()->hasPermission('results.upload_attachments'))
-        <div class="mt-8 rounded-2xl border border-violet-900/40 p-4">
-            <h2 class="mb-3 text-lg font-semibold text-violet-200">Result evidence</h2>
-
+        <x-ui.card title="Result evidence" description="Screenshots or recordings that back up the published results." class="mt-8">
             @if ($evidenceError)
-                <div class="mb-3 rounded-lg bg-red-900/40 px-4 py-3 text-sm text-red-300">{{ $evidenceError }}</div>
+                <x-ui.alert variant="danger" title="Upload failed" class="mb-4">{{ $evidenceError }}</x-ui.alert>
             @endif
 
-            <form wire:submit="uploadEvidence" class="mb-4 flex items-center gap-3">
-                <input type="file" wire:model="evidenceFile" class="text-sm text-violet-300">
-                <button type="submit" class="rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-600" wire:loading.attr="disabled" wire:target="evidenceFile,uploadEvidence">
-                    Upload
-                </button>
-                @error('evidenceFile') <span class="text-xs text-red-400">{{ $message }}</span> @enderror
+            <form wire:submit="uploadEvidence" class="flex flex-col gap-3 sm:flex-row sm:items-start" novalidate>
+                <div class="min-w-0 flex-1">
+                    <x-ui.input type="file" wire:model="evidenceFile" aria-label="Evidence file" />
+                </div>
+                <x-ui.button type="submit" icon="upload" loading="evidenceFile,uploadEvidence">Upload</x-ui.button>
             </form>
 
-            <ul class="divide-y divide-violet-900/30 text-sm">
+            <ul class="mt-5 divide-y divide-line rounded-lg border border-line">
                 @forelse ($this->evidence as $asset)
-                    <li class="flex items-center justify-between py-2">
-                        <div>
-                            <a href="{{ route('admin.storage-assets.download', $asset) }}" class="text-violet-300 hover:text-violet-100">{{ $asset->original_filename }}</a>
-                            <span class="ml-2 text-xs text-violet-500">{{ number_format($asset->size_bytes / 1024, 0) }} KB &middot; {{ $asset->created_at->diffForHumans() }}</span>
-                            @if ($asset->isRetained())
-                                <span class="ml-2 rounded bg-amber-900/40 px-2 py-0.5 text-xs text-amber-300">Retained: {{ $asset->retained_reason }}</span>
-                            @endif
+                    <li wire:key="evidence-{{ $asset->id }}" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                        <div class="min-w-0">
+                            <a href="{{ route('admin.storage-assets.download', $asset) }}" class="block max-w-[22rem] truncate text-sm font-medium text-brand-text hover:underline" title="{{ $asset->original_filename }}">{{ $asset->original_filename }}</a>
+                            <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-3">
+                                <span>{{ number_format($asset->size_bytes / 1024, 0) }} KB</span>
+                                <span aria-hidden="true">&middot;</span>
+                                <span>{{ $asset->created_at->diffForHumans() }}</span>
+                                @if ($asset->isRetained())
+                                    <x-ui.badge variant="warning" :dot="false">Retained: {{ $asset->retained_reason }}</x-ui.badge>
+                                @endif
+                            </p>
                         </div>
-                        <button type="button" wire:click="deleteEvidence({{ $asset->id }})" wire:confirm="Delete this evidence file permanently?" class="text-xs text-red-400 hover:text-red-200">
-                            Delete
-                        </button>
+                        <x-ui.button type="button" variant="danger-ghost" size="sm" icon="trash" wire:click="deleteEvidence({{ $asset->id }})" loading="deleteEvidence" confirm="Delete this evidence file permanently?" confirm-title="Delete evidence" confirm-label="Delete">Delete</x-ui.button>
                     </li>
                 @empty
-                    <li class="py-2 text-violet-500">No evidence uploaded yet.</li>
+                    <li class="px-4 py-6 text-center text-sm text-fg-3">No evidence uploaded yet.</li>
                 @endforelse
             </ul>
-        </div>
+        </x-ui.card>
     @endif
 </div>

@@ -1,5 +1,7 @@
 import Svg, { Circle, Line, Path, Polyline, Rect } from 'react-native-svg';
 
+import { useTheme } from './ThemeContext';
+
 /**
  * The shared 24x24 stroke icon set, mirroring
  * backend/app/View/Components/Icon.php by name and shape. Keep the two
@@ -36,15 +38,16 @@ type IconProps = {
   size?: number;
   /**
    * react-native-svg has no concept of CSS's currentColor, so this has
-   * no implicit link to surrounding text — pass the active theme's
-   * color explicitly (e.g. useTheme().colors.text) rather than relying
-   * on the default.
+   * no implicit link to surrounding text. Defaults to the active theme's
+   * primary text color; pass a token (e.g. colors.fg2 or colors.onBrand)
+   * when the icon sits on a different surface.
    */
   color?: string;
 };
 
-export function Icon({ name, size = 24, color = '#ffffff' }: IconProps) {
-  const common = { fill: 'none', stroke: color, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+export function Icon({ name, size = 24, color }: IconProps) {
+  const { colors } = useTheme();
+  const common = { fill: 'none', stroke: color ?? colors.fg, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">

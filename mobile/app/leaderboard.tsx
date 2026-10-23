@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { Redirect } from 'expo-router';
 
 import { fetchLeaderboard } from '../src/api/leaderboards';
 import { useAuth } from '../src/auth/AuthContext';
+import { StatusChip } from '../src/components/StatusChip';
+import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import type { Leaderboard } from '../src/types';
 
 const TYPES: Leaderboard['type'][] = ['daily', 'weekly', 'monthly'];
@@ -15,6 +17,8 @@ const TYPE_LABELS: Record<Leaderboard['type'], string> = {
 
 export default function LeaderboardScreen() {
   const { user, isLoading: authLoading } = useAuth();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const [type, setType] = useState<Leaderboard['type']>('daily');
   const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,7 +47,7 @@ export default function LeaderboardScreen() {
   if (authLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.brandText} />
       </View>
     );
   }
@@ -58,14 +62,20 @@ export default function LeaderboardScreen() {
     <View style={styles.container}>
       <View style={styles.tabRow}>
         {TYPES.map((t) => (
-          <Pressable key={t} style={[styles.tab, type === t && styles.tabActive]} onPress={() => setType(t)}>
+          <Pressable
+            key={t}
+            style={[styles.tab, type === t && styles.tabActive]}
+            onPress={() => setType(t)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: type === t }}
+          >
             <Text style={[styles.tabText, type === t && styles.tabTextActive]}>{TYPE_LABELS[t]}</Text>
           </Pressable>
         ))}
       </View>
 
       {loading ? (
-        <ActivityIndicator style={styles.centered} />
+        <ActivityIndicator style={styles.centered} color={colors.brandText} />
       ) : !leaderboard ? (
         <Pressable style={styles.centered} onPress={() => load(type)}>
           <Text style={styles.empty}>{error ?? 'Could not load the leaderboard.'} Tap to retry.</Text>
@@ -77,6 +87,9 @@ export default function LeaderboardScreen() {
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
+              tintColor={colors.brandText}
+              colors={[colors.brand]}
+              progressBackgroundColor={colors.surface3}
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true);
@@ -87,9 +100,10 @@ export default function LeaderboardScreen() {
           }
           ListHeaderComponent={
             <View style={styles.statusRow}>
-              <Text style={styles.statusText}>
-                {leaderboard.status === 'provisional' ? 'Live standings' : 'Final standings'}
-              </Text>
+              <StatusChip
+                tone={leaderboard.status === 'provisional' ? 'warning' : 'success'}
+                label={leaderboard.status === 'provisional' ? 'Live standings' : 'Final standings'}
+              />
             </View>
           }
           ListFooterComponent={
@@ -124,35 +138,37 @@ export default function LeaderboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1025' },
+const useStyles = makeStyles(({ colors: c }) => ({
+  container: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   tabRow: { flexDirection: 'row', padding: 16, gap: 8 },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: 'center',
     borderRadius: 12,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: c.surface2,
+    borderWidth: 1,
+    borderColor: c.border,
   },
-  tabActive: { backgroundColor: '#8B5CF6' },
-  tabText: { color: '#C4B5FD', fontWeight: '600' },
-  tabTextActive: { color: '#fff' },
+  tabActive: { backgroundColor: c.brand, borderColor: c.brand },
+  tabText: { color: c.fg2, fontWeight: '600' },
+  tabTextActive: { color: c.onBrand },
   listContent: { padding: 16, paddingTop: 0 },
   statusRow: { marginBottom: 12 },
-  statusText: { color: '#FACC15', fontSize: 12, fontWeight: '700' },
-  empty: { color: '#C4B5FD', textAlign: 'center', marginTop: 32 },
+  empty: { color: c.fg2, textAlign: 'center', marginTop: 32 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(196,181,253,0.1)',
+    borderBottomColor: c.border,
   },
-  myRow: { backgroundColor: 'rgba(139,92,246,0.15)', borderRadius: 12, paddingHorizontal: 8 },
-  rank: { color: '#C4B5FD', fontSize: 14, fontWeight: '700', width: 40 },
+  myRow: { backgroundColor: c.brandSoft, borderRadius: 12, paddingHorizontal: 8, borderBottomColor: 'transparent' },
+  rank: { color: c.fg2, fontSize: 14, fontWeight: '700', width: 40 },
   playerInfo: { flex: 1 },
-  username: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  meta: { color: '#8B7BA8', fontSize: 11, marginTop: 2 },
-  score: { color: '#34D399', fontSize: 15, fontWeight: '700' },
-});
+  username: { color: c.fg, fontSize: 14, fontWeight: '700' },
+  meta: { color: c.fg3, fontSize: 11, marginTop: 2 },
+  score: { color: c.brandText, fontSize: 15, fontWeight: '700' },
+}));

@@ -1,134 +1,240 @@
 /*
- * Design tokens for Mini Max's 7 color themes and 7 font themes.
+ * Mini Max design tokens — the single source of truth for the Admin/Staff UI.
  *
- * These are plain CSS custom properties, deliberately kept separate from
- * Tailwind's own @theme block in app.css: Tailwind's @theme generates a
- * fixed set of utility classes at build time, which can't switch at
- * runtime. Everything here is runtime-switchable instead, driven by
- * data-theme / data-font attributes on <html> (see app.js for the
- * switcher that sets them from a saved preference).
+ * Plain CSS custom properties, switchable at runtime through the data-theme /
+ * data-font attributes on <html> (set from a saved preference by the inline
+ * boot script in components/theme-boot.blade.php and by resources/js/app.js).
+ * app.css maps these onto Tailwind utilities (bg-surface, text-fg-2,
+ * border-line, bg-brand ...) so pages never hardcode a color and every theme
+ * works everywhere.
  *
- * Semantic colors (danger/success/warning) carry meaning independent of
- * the chosen theme, so they're defined once in :root rather than
- * repeated per theme.
+ * Surface hierarchy (darkest to lightest) — keep these roles distinct:
+ *   --mm-bg         app canvas
+ *   --mm-sidebar    navigation rail
+ *   --mm-surface    cards, panels, tables
+ *   --mm-surface-2  inputs, table headers, nested panels, hover rows
+ *   --mm-surface-3  menus, dialogs, popovers
+ * The brand color is reserved for actions, selection, focus and links; it is
+ * never used as a page or card background (--mm-brand-soft is the tinted
+ * "selected" surface).
+ *
+ * Android mirrors these names and values in mobile/src/theme/tokens.ts.
  */
 
 :root {
-    --mm-color-danger: #ef4444;
-    --mm-color-danger-bg: rgb(127 29 29 / 0.4);
-    --mm-color-success: #34d399;
-    --mm-color-success-bg: rgb(6 78 59 / 0.4);
-    --mm-color-warning: #fbbf24;
-    --mm-color-warning-bg: rgb(120 53 15 / 0.4);
+    color-scheme: dark;
+
+    /* Semantic colors carry meaning independent of the chosen theme. */
+    --mm-success: #34d399;
+    --mm-success-soft: rgb(52 211 153 / 0.12);
+    --mm-warning: #fbbf24;
+    --mm-warning-soft: rgb(251 191 36 / 0.12);
+    --mm-danger: #f87171;
+    --mm-danger-soft: rgb(248 113 113 / 0.12);
+    --mm-danger-solid: #dc2626;
+    --mm-danger-solid-hover: #ef4444;
+    --mm-on-danger: #ffffff;
+    --mm-info: #60a5fa;
+    --mm-info-soft: rgb(96 165 250 / 0.12);
+
+    --mm-overlay: rgb(5 3 8 / 0.7);
+    --mm-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
+    --mm-shadow-float: 0 16px 40px -12px rgb(0 0 0 / 0.65), 0 0 0 1px var(--mm-border);
+
+    /* Floating layers (menus, dialogs, toasts): opaque unless a theme opts in
+       to a restrained glass effect below. */
+    --mm-float-bg: var(--mm-surface-3);
+    --mm-float-blur: 0px;
 }
 
 /* ---------- Color themes ---------- */
 
+/* Purple Glassmorphism (default). Glass is limited to floating layers only. */
 :root,
-:root[data-theme='purple-glass'] {
-    --mm-color-bg: #140a1f;
-    --mm-color-surface: rgb(26 16 37 / 0.8);
-    --mm-color-surface-border: rgb(88 28 135 / 0.4);
-    --mm-color-primary: #8b5cf6;
-    --mm-color-primary-hover: #7c3aed;
-    --mm-color-text: #ffffff;
-    --mm-color-text-muted: #c4b5fd;
-    --mm-color-accent: #a78bfa;
+[data-theme='purple-glass'] {
+    --mm-bg: #0d0a12;
+    --mm-sidebar: #120d19;
+    --mm-surface: #19131f;
+    --mm-surface-2: #21192b;
+    --mm-surface-3: #291f35;
+    --mm-border: #382a46;
+    --mm-border-strong: #4d3a61;
+
+    --mm-fg: #f6f1fb;
+    --mm-fg-2: #c2b5d0;
+    --mm-fg-3: #9788a6;
+
+    --mm-brand: #8b35f6;
+    --mm-brand-hover: #a855f7;
+    --mm-brand-pressed: #7025d8;
+    --mm-brand-soft: #241536;
+    --mm-brand-text: #b987fb;
+    --mm-on-brand: #ffffff;
+    --mm-ring: #a855f7;
+
+    --mm-float-bg: rgb(41 31 53 / 0.86);
+    --mm-float-blur: 14px;
 }
 
-:root[data-theme='midnight-emerald'] {
-    --mm-color-bg: #0a1f17;
-    --mm-color-surface: rgb(16 37 28 / 0.8);
-    --mm-color-surface-border: rgb(6 95 70 / 0.4);
-    --mm-color-primary: #10b981;
-    --mm-color-primary-hover: #059669;
-    --mm-color-text: #ffffff;
-    --mm-color-text-muted: #6ee7b7;
-    --mm-color-accent: #34d399;
+[data-theme='midnight-emerald'] {
+    --mm-bg: #090f0d;
+    --mm-sidebar: #0d1512;
+    --mm-surface: #121c18;
+    --mm-surface-2: #19251f;
+    --mm-surface-3: #202e27;
+    --mm-border: #2b3e34;
+    --mm-border-strong: #3a5446;
+
+    --mm-fg: #f0faf5;
+    --mm-fg-2: #b5cfc2;
+    --mm-fg-3: #84a394;
+
+    --mm-brand: #10b981;
+    --mm-brand-hover: #34d399;
+    --mm-brand-pressed: #059669;
+    --mm-brand-soft: #0f2a21;
+    --mm-brand-text: #34d399;
+    --mm-on-brand: #04140e;
+    --mm-ring: #34d399;
 }
 
-:root[data-theme='crimson-arena'] {
-    --mm-color-bg: #1a0a0a;
-    --mm-color-surface: rgb(37 16 16 / 0.8);
-    --mm-color-surface-border: rgb(127 29 29 / 0.4);
-    --mm-color-primary: #ef4444;
-    --mm-color-primary-hover: #dc2626;
-    --mm-color-text: #ffffff;
-    --mm-color-text-muted: #fca5a5;
-    --mm-color-accent: #f87171;
+[data-theme='crimson-arena'] {
+    --mm-bg: #120909;
+    --mm-sidebar: #190d0d;
+    --mm-surface: #221414;
+    --mm-surface-2: #2c1a1a;
+    --mm-surface-3: #372121;
+    --mm-border: #4a2b2b;
+    --mm-border-strong: #613838;
+
+    --mm-fg: #fdf1f1;
+    --mm-fg-2: #d8b8b8;
+    --mm-fg-3: #a98888;
+
+    --mm-brand: #dc2626;
+    --mm-brand-hover: #ef4444;
+    --mm-brand-pressed: #b91c1c;
+    --mm-brand-soft: #3a1414;
+    --mm-brand-text: #f87171;
+    --mm-on-brand: #ffffff;
+    --mm-ring: #ef4444;
 }
 
-:root[data-theme='cyber-blue'] {
-    --mm-color-bg: #0a1420;
-    --mm-color-surface: rgb(16 28 37 / 0.8);
-    --mm-color-surface-border: rgb(12 74 110 / 0.4);
-    --mm-color-primary: #0ea5e9;
-    --mm-color-primary-hover: #0284c7;
-    --mm-color-text: #ffffff;
-    --mm-color-text-muted: #7dd3fc;
-    --mm-color-accent: #38bdf8;
+[data-theme='cyber-blue'] {
+    --mm-bg: #08111a;
+    --mm-sidebar: #0c1824;
+    --mm-surface: #111f2d;
+    --mm-surface-2: #182939;
+    --mm-surface-3: #1f3346;
+    --mm-border: #2a4157;
+    --mm-border-strong: #38566f;
+
+    --mm-fg: #eef6fc;
+    --mm-fg-2: #b1c8da;
+    --mm-fg-3: #809bb0;
+
+    --mm-brand: #0ea5e9;
+    --mm-brand-hover: #38bdf8;
+    --mm-brand-pressed: #0284c7;
+    --mm-brand-soft: #0f2638;
+    --mm-brand-text: #38bdf8;
+    --mm-on-brand: #04121c;
+    --mm-ring: #38bdf8;
 }
 
-:root[data-theme='sunset-gold'] {
-    --mm-color-bg: #1f1509;
-    --mm-color-surface: rgb(37 27 16 / 0.8);
-    --mm-color-surface-border: rgb(146 64 14 / 0.4);
-    --mm-color-primary: #f59e0b;
-    --mm-color-primary-hover: #d97706;
-    --mm-color-text: #ffffff;
-    --mm-color-text-muted: #fcd34d;
-    --mm-color-accent: #fbbf24;
+[data-theme='sunset-gold'] {
+    --mm-bg: #120d07;
+    --mm-sidebar: #19120a;
+    --mm-surface: #221a0f;
+    --mm-surface-2: #2c2214;
+    --mm-surface-3: #372b1a;
+    --mm-border: #4a3a22;
+    --mm-border-strong: #614c2d;
+
+    --mm-fg: #fdf6ec;
+    --mm-fg-2: #d9c6a5;
+    --mm-fg-3: #a99679;
+
+    --mm-brand: #f59e0b;
+    --mm-brand-hover: #fbbf24;
+    --mm-brand-pressed: #d97706;
+    --mm-brand-soft: #33220a;
+    --mm-brand-text: #fbbf24;
+    --mm-on-brand: #1a1004;
+    --mm-ring: #fbbf24;
 }
 
-:root[data-theme='royal-indigo'] {
-    --mm-color-bg: #0d0a1f;
-    --mm-color-surface: rgb(22 16 37 / 0.8);
-    --mm-color-surface-border: rgb(67 56 202 / 0.4);
-    --mm-color-primary: #6366f1;
-    --mm-color-primary-hover: #4f46e5;
-    --mm-color-text: #ffffff;
-    --mm-color-text-muted: #a5b4fc;
-    --mm-color-accent: #818cf8;
+[data-theme='royal-indigo'] {
+    --mm-bg: #0a0a18;
+    --mm-sidebar: #0f0f20;
+    --mm-surface: #161629;
+    --mm-surface-2: #1d1d35;
+    --mm-surface-3: #262643;
+    --mm-border: #34345a;
+    --mm-border-strong: #46467a;
+
+    --mm-fg: #f1f1fd;
+    --mm-fg-2: #babad8;
+    --mm-fg-3: #8a8aae;
+
+    --mm-brand: #5558e8;
+    --mm-brand-hover: #7c7ff5;
+    --mm-brand-pressed: #4338ca;
+    --mm-brand-soft: #1b1b3d;
+    --mm-brand-text: #a5a8fb;
+    --mm-on-brand: #ffffff;
+    --mm-ring: #7c7ff5;
 }
 
-:root[data-theme='monochrome-steel'] {
-    --mm-color-bg: #121212;
-    --mm-color-surface: rgb(30 30 30 / 0.8);
-    --mm-color-surface-border: rgb(100 116 139 / 0.4);
-    --mm-color-primary: #94a3b8;
-    --mm-color-primary-hover: #64748b;
-    --mm-color-text: #ffffff;
-    --mm-color-text-muted: #cbd5e1;
-    --mm-color-accent: #e2e8f0;
+[data-theme='monochrome-steel'] {
+    --mm-bg: #0e0f11;
+    --mm-sidebar: #131518;
+    --mm-surface: #1a1d21;
+    --mm-surface-2: #22262b;
+    --mm-surface-3: #2b3036;
+    --mm-border: #373d45;
+    --mm-border-strong: #4a525c;
+
+    --mm-fg: #f3f5f7;
+    --mm-fg-2: #bdc4cc;
+    --mm-fg-3: #8c95a0;
+
+    --mm-brand: #94a3b8;
+    --mm-brand-hover: #cbd5e1;
+    --mm-brand-pressed: #7a8799;
+    --mm-brand-soft: #20262e;
+    --mm-brand-text: #cbd5e1;
+    --mm-on-brand: #0b0f14;
+    --mm-ring: #cbd5e1;
 }
 
 /* ---------- Font themes ---------- */
 
 :root,
-:root[data-font='default-sans'] {
-    --mm-font-active: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+[data-font='default-sans'] {
+    --mm-font-active: 'Inter', 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-:root[data-font='modern-grotesk'] {
+[data-font='modern-grotesk'] {
     --mm-font-active: 'Helvetica Neue', Arial, ui-sans-serif, sans-serif;
 }
 
-:root[data-font='rounded-friendly'] {
+[data-font='rounded-friendly'] {
     --mm-font-active: ui-rounded, 'SF Pro Rounded', Nunito, ui-sans-serif, sans-serif;
 }
 
-:root[data-font='classic-serif'] {
+[data-font='classic-serif'] {
     --mm-font-active: Georgia, 'Times New Roman', ui-serif, serif;
 }
 
-:root[data-font='technical-mono'] {
+[data-font='technical-mono'] {
     --mm-font-active: 'SF Mono', 'Cascadia Code', Consolas, ui-monospace, monospace;
 }
 
-:root[data-font='condensed-impact'] {
+[data-font='condensed-impact'] {
     --mm-font-active: 'Arial Narrow', 'Helvetica Neue Condensed', ui-sans-serif, sans-serif;
 }
 
-:root[data-font='elegant-display'] {
+[data-font='elegant-display'] {
     --mm-font-active: Didot, 'Bodoni MT', Georgia, ui-serif, serif;
 }

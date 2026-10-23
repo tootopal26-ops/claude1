@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, AppState, FlatList, RefreshControl, Text, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 
 import { ApiError } from '../src/api/client';
 import { fetchDeposit, fetchDeposits, requestDeposit } from '../src/api/deposits';
 import { useAuth } from '../src/auth/AuthContext';
+import { Button } from '../src/components/Button';
+import { CoinAmount } from '../src/components/CoinAmount';
+import { Notice } from '../src/components/Notice';
+import { StatusChip, type ChipTone } from '../src/components/StatusChip';
+import { TextField } from '../src/components/TextField';
+import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import type { DepositOrder } from '../src/types';
 
 const STATUS_LABELS: Record<DepositOrder['status'], string> = {
@@ -15,15 +21,17 @@ const STATUS_LABELS: Record<DepositOrder['status'], string> = {
   expired: 'Expired',
 };
 
-const STATUS_COLORS: Record<DepositOrder['status'], string> = {
-  pending: '#FACC15',
-  success: '#34D399',
-  failed: '#F87171',
-  expired: '#8B7BA8',
+const STATUS_TONES: Record<DepositOrder['status'], ChipTone> = {
+  pending: 'warning',
+  success: 'success',
+  failed: 'danger',
+  expired: 'neutral',
 };
 
 export default function DepositScreen() {
   const { user, isLoading: authLoading } = useAuth();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const [deposits, setDeposits] = useState<DepositOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,7 +74,7 @@ export default function DepositScreen() {
   if (authLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.brandText} />
       </View>
     );
   }
@@ -99,7 +107,7 @@ export default function DepositScreen() {
   return (
     <View style={styles.container}>
       {loading ? (
-        <ActivityIndicator style={styles.centered} />
+        <ActivityIndicator style={styles.centered} color={colors.brandText} />
       ) : (
         <FlatList
           data={deposits}
@@ -107,6 +115,9 @@ export default function DepositScreen() {
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
+              tintColor={colors.brandText}
+              colors={[colors.brand]}
+              progressBackgroundColor={colors.surface3}
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true);
@@ -118,21 +129,15 @@ export default function DepositScreen() {
           ListHeaderComponent={
             <View style={styles.form}>
               <Text style={styles.heading}>Add coins</Text>
-              <TextInput
-                style={styles.input}
+              <TextField
+                label="Amount"
                 placeholder="Amount"
                 keyboardType="decimal-pad"
                 value={amount}
                 onChangeText={setAmount}
               />
-              {error && <Text style={styles.error}>{error}</Text>}
-              <Pressable
-                style={[styles.button, !canSubmit && styles.buttonDisabled]}
-                onPress={handleDeposit}
-                disabled={submitting || !canSubmit}
-              >
-                {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Deposit via UPI</Text>}
-              </Pressable>
+              {error && <Notice tone="danger">{error}</Notice>}
+              <Button label="Deposit via UPI" onPress={handleDeposit} loading={submitting} disabled={!canSubmit} />
 
               <Text style={styles.historyHeading}>Deposit history</Text>
             </View>
@@ -141,10 +146,10 @@ export default function DepositScreen() {
           renderItem={({ item }) => (
             <View style={styles.row}>
               <View>
-                <Text style={styles.rowAmount}>{item.amount} coins</Text>
+                <CoinAmount value={item.amount} size={16} suffix="coins" />
                 <Text style={styles.rowDate}>{new Date(item.created_at).toLocaleString()}</Text>
               </View>
-              <Text style={[styles.rowStatus, { color: STATUS_COLORS[item.status] }]}>{STATUS_LABELS[item.status]}</Text>
+              <StatusChip tone={STATUS_TONES[item.status]} label={STATUS_LABELS[item.status]} />
             </View>
           )}
         />
@@ -153,40 +158,21 @@ export default function DepositScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1025' },
+const useStyles = makeStyles(({ colors: c }) => ({
+  container: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: 16 },
-  form: { marginBottom: 24 },
-  heading: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 12 },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#fff',
-    marginBottom: 12,
-  },
-  button: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  error: { color: '#F87171', marginBottom: 8 },
-  historyHeading: { color: '#fff', fontSize: 15, fontWeight: '700', marginTop: 24, marginBottom: 8 },
-  empty: { color: '#C4B5FD', textAlign: 'center', marginTop: 32 },
+  form: { marginBottom: 24, gap: 12 },
+  heading: { color: c.fg, fontSize: 18, fontWeight: '700' },
+  historyHeading: { color: c.fg, fontSize: 15, fontWeight: '700', marginTop: 12 },
+  empty: { color: c.fg2, textAlign: 'center', marginTop: 32 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(196,181,253,0.1)',
+    borderBottomColor: c.border,
   },
-  rowAmount: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  rowDate: { color: '#8B7BA8', fontSize: 11, marginTop: 2 },
-  rowStatus: { fontSize: 13, fontWeight: '700' },
-});
+  rowDate: { color: c.fg3, fontSize: 11, marginTop: 2 },
+}));

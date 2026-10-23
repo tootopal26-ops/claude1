@@ -1,49 +1,59 @@
 <div>
-    <div class="mb-6 flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-violet-200">Staff salary settlements</h1>
-        @if (auth('staff')->user()->hasPermission('salary.manage'))
-            <a href="{{ route('admin.staff-salary.rules.index') }}" class="text-sm text-violet-400 hover:text-violet-200">Manage rules &rarr;</a>
-        @endif
-    </div>
+    <x-ui.flash />
 
-    <div class="mb-4">
-        <select wire:model.live="statusFilter" class="rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-sm text-white">
+    <x-ui.page-header
+        title="Salary settlements"
+        description="Weekly payouts generated from each staff member's salary rules. Open one to review its line items and record payment."
+        :breadcrumbs="[
+            ['label' => 'Team Management'],
+            ['label' => 'Salary settlements'],
+        ]"
+    >
+        <x-slot:actions>
+            @if (auth('staff')->user()->hasPermission('salary.manage'))
+                <x-ui.button :href="route('admin.staff-salary.rules.index')" variant="secondary" icon="presets">Manage rules</x-ui.button>
+            @endif
+        </x-slot:actions>
+    </x-ui.page-header>
+
+    <div class="mb-4 flex flex-wrap items-end gap-3">
+        <x-ui.select label="Status" wire:model.live="statusFilter" wrapperClass="w-full sm:w-48">
             <option value="">All statuses</option>
             <option value="pending">Pending</option>
             <option value="paid">Paid</option>
-        </select>
+        </x-ui.select>
     </div>
 
-    <div class="overflow-hidden rounded-2xl border border-violet-900/40">
-        <table class="w-full text-left text-sm">
-            <thead class="bg-white/5 text-violet-300">
-                <tr>
-                    <th class="px-4 py-3">Staff member</th>
-                    <th class="px-4 py-3">Week</th>
-                    <th class="px-4 py-3">Total</th>
-                    <th class="px-4 py-3">Status</th>
-                    <th class="px-4 py-3"></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-violet-900/30">
-                @forelse ($settlements as $settlement)
-                    <tr>
-                        <td class="px-4 py-3 text-white">{{ $settlement->staffUser->display_name }}</td>
-                        <td class="px-4 py-3 text-violet-300">{{ $settlement->period_start->format('d M Y') }} &ndash; {{ $settlement->period_end->copy()->subDay()->format('d M Y') }}</td>
-                        <td class="px-4 py-3 text-emerald-400">{{ $settlement->total_amount }}</td>
-                        <td class="px-4 py-3 text-violet-300">{{ ucfirst($settlement->status) }}</td>
-                        <td class="px-4 py-3 text-right">
-                            <a href="{{ route('admin.staff-salary.settlements.show', $settlement) }}" class="text-violet-400 hover:text-violet-200">View</a>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-violet-400">No settlements yet.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+    <x-ui.table>
+        <x-slot:head>
+            <tr>
+                <th>Staff member</th>
+                <th>Week</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th><span class="sr-only">Actions</span></th>
+            </tr>
+        </x-slot:head>
 
-    <div class="mt-4">{{ $settlements->links() }}</div>
+        @forelse ($settlements as $settlement)
+            <tr wire:key="settlement-{{ $settlement->id }}">
+                <td class="mm-cell-primary"><span class="block max-w-[16rem] truncate" title="{{ $settlement->staffUser->display_name }}">{{ $settlement->staffUser->display_name }}</span></td>
+                <td class="whitespace-nowrap">{{ $settlement->period_start->format('d M Y') }} &ndash; {{ $settlement->period_end->copy()->subDay()->format('d M Y') }}</td>
+                <td class="whitespace-nowrap"><span class="inline-flex items-center gap-1.5 tabular-nums text-fg"><x-coin-asset :size="16" />{{ $settlement->total_amount }}</span></td>
+                <td><x-ui.badge :status="$settlement->status" /></td>
+                <td class="text-right">
+                    <x-ui.button :href="route('admin.staff-salary.settlements.show', $settlement)" variant="ghost" size="sm" icon="chevron-right">View</x-ui.button>
+                </td>
+            </tr>
+        @empty
+            <x-ui.table-empty
+                :colspan="5"
+                icon="salary"
+                :title="$statusFilter !== '' ? 'No settlements match this filter' : 'No settlements yet'"
+                :description="$statusFilter !== '' ? 'Try a different status, or clear the filter to see every settlement.' : 'Settlements are generated weekly once staff perform actions covered by a salary rule.'"
+            />
+        @endforelse
+
+        <x-slot:footer>{{ $settlements->links() }}</x-slot:footer>
+    </x-ui.table>
 </div>

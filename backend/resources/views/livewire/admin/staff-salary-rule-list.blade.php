@@ -1,46 +1,51 @@
 <div>
-    <div class="mb-6 flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-violet-200">Staff salary rules</h1>
-        <a href="{{ route('admin.staff-salary.rules.create') }}"
-            class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">
-            + New rule
-        </a>
-    </div>
+    <x-ui.flash />
 
-    <div class="overflow-hidden rounded-2xl border border-violet-900/40">
-        <table class="w-full text-left text-sm">
-            <thead class="bg-white/5 text-violet-300">
-                <tr>
-                    <th class="px-4 py-3">Staff member</th>
-                    <th class="px-4 py-3">Action type</th>
-                    <th class="px-4 py-3">Amount per action</th>
-                    <th class="px-4 py-3">Status</th>
-                    <th class="px-4 py-3"></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-violet-900/30">
-                @forelse ($rules as $rule)
-                    <tr>
-                        <td class="px-4 py-3 text-white">{{ $rule->staffUser->display_name }}</td>
-                        <td class="px-4 py-3 text-violet-300">{{ $rule->action_type }}</td>
-                        <td class="px-4 py-3 text-emerald-400">{{ $rule->amount_per_action }}</td>
-                        <td class="px-4 py-3">
-                            @if ($rule->is_active)
-                                <span class="text-emerald-400">Active</span>
-                            @else
-                                <span class="text-violet-500">Inactive</span>
-                            @endif
-                        </td>
-                        <td class="px-4 py-3 text-right">
-                            <a href="{{ route('admin.staff-salary.rules.edit', $rule) }}" class="text-violet-400 hover:text-violet-200">Edit</a>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-violet-400">No salary rules yet.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+    <x-ui.page-header
+        title="Salary rules"
+        description="Rules decide how much a staff member earns each time they perform an action. Weekly settlements are generated from these rules."
+        :breadcrumbs="[
+            ['label' => 'Team Management'],
+            ['label' => 'Salary rules'],
+        ]"
+    >
+        <x-slot:actions>
+            @if (auth('staff')->user()->hasPermission('salary.view'))
+                <x-ui.button :href="route('admin.staff-salary.settlements.index')" variant="secondary" icon="salary">View settlements</x-ui.button>
+            @endif
+            @if (auth('staff')->user()->hasPermission('salary.manage'))
+                <x-ui.button :href="route('admin.staff-salary.rules.create')" icon="plus">New rule</x-ui.button>
+            @endif
+        </x-slot:actions>
+    </x-ui.page-header>
+
+    <x-ui.table>
+        <x-slot:head>
+            <tr>
+                <th>Staff member</th>
+                <th>Action type</th>
+                <th>Amount per action</th>
+                <th>Status</th>
+                <th><span class="sr-only">Actions</span></th>
+            </tr>
+        </x-slot:head>
+
+        @forelse ($rules as $rule)
+            <tr wire:key="rule-{{ $rule->id }}">
+                <td class="mm-cell-primary"><span class="block max-w-[16rem] truncate" title="{{ $rule->staffUser->display_name }}">{{ $rule->staffUser->display_name }}</span></td>
+                <td><span class="block max-w-[20rem] truncate font-mono text-xs" title="{{ $rule->action_type }}">{{ $rule->action_type }}</span></td>
+                <td class="whitespace-nowrap"><span class="inline-flex items-center gap-1.5 tabular-nums text-fg"><x-coin-asset :size="16" />{{ $rule->amount_per_action }}</span></td>
+                <td><x-ui.badge :status="$rule->is_active ? 'active' : 'inactive'" /></td>
+                <td class="text-right">
+                    <x-ui.button :href="route('admin.staff-salary.rules.edit', $rule)" variant="ghost" size="sm" icon="edit">Edit</x-ui.button>
+                </td>
+            </tr>
+        @empty
+            <x-ui.table-empty :colspan="5" icon="salary" title="No salary rules yet" description="Add a rule to start paying a staff member for an action they perform.">
+                @if (auth('staff')->user()->hasPermission('salary.manage'))
+                    <x-ui.button :href="route('admin.staff-salary.rules.create')" icon="plus" size="sm">New rule</x-ui.button>
+                @endif
+            </x-ui.table-empty>
+        @endforelse
+    </x-ui.table>
 </div>

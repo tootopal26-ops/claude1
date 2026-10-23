@@ -86,6 +86,7 @@ class WithdrawalShow extends Component
         }
 
         $this->withdrawal->refresh();
+        $this->resetValidation();
         session()->flash('status', $successMessage);
     }
 }

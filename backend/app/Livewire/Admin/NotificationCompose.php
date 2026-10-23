@@ -34,6 +34,18 @@ class NotificationCompose extends Component
 
     public bool $sent = false;
 
+    /**
+     * Friendly names for validation messages only; the rules are unchanged.
+     *
+     * @var array<string, string>
+     */
+    protected $validationAttributes = [
+        'body' => 'message',
+        'audienceType' => 'audience',
+        'selectedUserIds' => 'selected users',
+        'tournamentId' => 'tournament',
+    ];
+
     public function mount(): void
     {
         $this->idempotencyKey = (string) Str::uuid();

@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-native';
 import { Redirect } from 'expo-router';
 
 import { ApiError } from '../src/api/client';
 import { fetchWallet } from '../src/api/wallet';
 import { fetchWithdrawals, requestWithdrawal } from '../src/api/withdrawals';
 import { useAuth } from '../src/auth/AuthContext';
+import { Button } from '../src/components/Button';
+import { CoinAmount } from '../src/components/CoinAmount';
+import { Notice } from '../src/components/Notice';
+import { StatusChip, type ChipTone } from '../src/components/StatusChip';
+import { TextField } from '../src/components/TextField';
+import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import type { WithdrawalRequest } from '../src/types';
 
 const STATUS_LABELS: Record<WithdrawalRequest['status'], string> = {
@@ -17,17 +23,19 @@ const STATUS_LABELS: Record<WithdrawalRequest['status'], string> = {
   failed: 'Failed',
 };
 
-const STATUS_COLORS: Record<WithdrawalRequest['status'], string> = {
-  pending: '#FACC15',
-  approved: '#8B5CF6',
-  processing: '#8B5CF6',
-  paid: '#34D399',
-  rejected: '#F87171',
-  failed: '#F87171',
+const STATUS_TONES: Record<WithdrawalRequest['status'], ChipTone> = {
+  pending: 'warning',
+  approved: 'info',
+  processing: 'info',
+  paid: 'success',
+  rejected: 'danger',
+  failed: 'danger',
 };
 
 export default function WithdrawScreen() {
   const { user, isLoading: authLoading } = useAuth();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const [withdrawableBalance, setWithdrawableBalance] = useState<string | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +69,7 @@ export default function WithdrawScreen() {
   if (authLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.brandText} />
       </View>
     );
   }
@@ -90,7 +98,7 @@ export default function WithdrawScreen() {
   return (
     <View style={styles.container}>
       {loading ? (
-        <ActivityIndicator style={styles.centered} />
+        <ActivityIndicator style={styles.centered} color={colors.brandText} />
       ) : (
         <FlatList
           data={withdrawals}
@@ -98,6 +106,9 @@ export default function WithdrawScreen() {
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
+              tintColor={colors.brandText}
+              colors={[colors.brand]}
+              progressBackgroundColor={colors.surface3}
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true);
@@ -109,31 +120,25 @@ export default function WithdrawScreen() {
           ListHeaderComponent={
             <View>
               <Text style={styles.balanceLabel}>Withdrawable balance</Text>
-              <Text style={styles.balanceValue}>{withdrawableBalance ?? '—'} coins</Text>
+              <CoinAmount value={withdrawableBalance} size={28} suffix="coins" style={styles.balanceRow} textStyle={styles.balanceValue} />
 
               <View style={styles.form}>
-                <TextInput
-                  style={styles.input}
+                <TextField
+                  label="Amount"
                   placeholder="Amount"
                   keyboardType="decimal-pad"
                   value={amount}
                   onChangeText={setAmount}
                 />
-                <TextInput
-                  style={styles.input}
+                <TextField
+                  label="UPI ID"
                   placeholder="UPI ID (e.g. name@bank)"
                   autoCapitalize="none"
                   value={upiId}
                   onChangeText={setUpiId}
                 />
-                {error && <Text style={styles.error}>{error}</Text>}
-                <Pressable
-                  style={[styles.button, !canSubmit && styles.buttonDisabled]}
-                  onPress={handleSubmit}
-                  disabled={submitting || !canSubmit}
-                >
-                  {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Request withdrawal</Text>}
-                </Pressable>
+                {error && <Notice tone="danger">{error}</Notice>}
+                <Button label="Request withdrawal" onPress={handleSubmit} loading={submitting} disabled={!canSubmit} />
               </View>
 
               <Text style={styles.historyHeading}>Request history</Text>
@@ -143,12 +148,12 @@ export default function WithdrawScreen() {
           renderItem={({ item }) => (
             <View style={styles.row}>
               <View>
-                <Text style={styles.rowAmount}>{item.amount} coins</Text>
+                <CoinAmount value={item.amount} size={16} suffix="coins" />
                 <Text style={styles.rowDate}>{new Date(item.created_at).toLocaleString()}</Text>
                 {item.rejection_reason && <Text style={styles.rowReason}>{item.rejection_reason}</Text>}
                 {item.failure_reason && <Text style={styles.rowReason}>{item.failure_reason}</Text>}
               </View>
-              <Text style={[styles.rowStatus, { color: STATUS_COLORS[item.status] }]}>{STATUS_LABELS[item.status]}</Text>
+              <StatusChip tone={STATUS_TONES[item.status]} label={STATUS_LABELS[item.status]} />
             </View>
           )}
         />
@@ -157,41 +162,24 @@ export default function WithdrawScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1025' },
+const useStyles = makeStyles(({ colors: c }) => ({
+  container: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: 16 },
-  balanceLabel: { color: '#C4B5FD', fontSize: 13, textAlign: 'center' },
-  balanceValue: { color: '#fff', fontSize: 28, fontWeight: '800', textAlign: 'center', marginBottom: 16 },
+  balanceLabel: { color: c.fg2, fontSize: 13, textAlign: 'center' },
+  balanceRow: { justifyContent: 'center', marginTop: 4, marginBottom: 16, gap: 8 },
+  balanceValue: { color: c.fg, fontSize: 28, fontWeight: '800' },
   form: { gap: 12, marginBottom: 24 },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#fff',
-  },
-  button: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  error: { color: '#F87171' },
-  historyHeading: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 8 },
-  empty: { color: '#C4B5FD', textAlign: 'center', marginTop: 32 },
+  historyHeading: { color: c.fg, fontSize: 15, fontWeight: '700', marginBottom: 8 },
+  empty: { color: c.fg2, textAlign: 'center', marginTop: 32 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(196,181,253,0.1)',
+    borderBottomColor: c.border,
   },
-  rowAmount: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  rowDate: { color: '#8B7BA8', fontSize: 11, marginTop: 2 },
-  rowReason: { color: '#8B7BA8', fontSize: 11, marginTop: 2, fontStyle: 'italic' },
-  rowStatus: { fontSize: 13, fontWeight: '700' },
-});
+  rowDate: { color: c.fg3, fontSize: 11, marginTop: 2 },
+  rowReason: { color: c.fg3, fontSize: 11, marginTop: 2, fontStyle: 'italic' },
+}));

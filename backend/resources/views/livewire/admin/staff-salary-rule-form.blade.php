@@ -1,44 +1,41 @@
-<div class="mx-auto max-w-xl">
-    <h1 class="mb-6 text-2xl font-bold text-violet-200">{{ $rule ? 'Edit salary rule' : 'New salary rule' }}</h1>
+<div>
+    <x-ui.page-header
+        :title="$rule ? 'Edit salary rule' : 'New salary rule'"
+        description="Each time the staff member performs this action, the amount below is added to their weekly settlement."
+        :breadcrumbs="[
+            ['label' => 'Salary rules', 'url' => route('admin.staff-salary.rules.index')],
+            ['label' => $rule ? 'Edit' : 'New rule'],
+        ]"
+    />
 
-    <form wire:submit="save" class="space-y-4 rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-        <div>
-            <label class="mb-1 block text-xs text-violet-300">Staff member</label>
-            <select wire:model="staff_user_id" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
+    <form wire:submit="save" novalidate>
+        <x-ui.form-section title="Who is paid" description="The staff member this rule applies to.">
+            <x-ui.select label="Staff member" wire:model="staff_user_id" required wrapperClass="sm:col-span-2">
                 <option value="">Select a staff member</option>
                 @foreach ($staffUsers as $staffUser)
                     <option value="{{ $staffUser->id }}">{{ $staffUser->display_name }}</option>
                 @endforeach
-            </select>
-            @error('staff_user_id') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-        </div>
+            </x-ui.select>
+        </x-ui.form-section>
 
-        <div>
-            <label class="mb-1 block text-xs text-violet-300">Action type</label>
-            <input type="text" wire:model="action_type" list="action-type-options"
-                placeholder="e.g. tournament.credentials_released"
-                class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
+        <x-ui.form-section title="What earns pay" description="The action and how much each one is worth. Changing a rule later never alters pay already generated.">
+            <x-ui.input label="Action type" wire:model="action_type" list="action-type-options" required placeholder="e.g. tournament.credentials_released" autocomplete="off" spellcheck="false" hint="Pick a known action or type your own." />
             <datalist id="action-type-options">
                 @foreach ($actionTypes as $type)
                     <option value="{{ $type }}"></option>
                 @endforeach
             </datalist>
-            @error('action_type') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
+
+            <x-ui.input label="Amount per action (coins)" type="number" step="0.01" min="0.01" wire:model="amount_per_action" required hint="Must be more than 0." />
+
+            <div class="sm:col-span-2">
+                <x-ui.switch wire:model="is_active" label="Active" hint="Inactive rules stop earning pay for new actions." />
+            </div>
+        </x-ui.form-section>
+
+        <div class="sticky bottom-0 z-10 -mx-4 mt-2 flex items-center justify-end gap-2 border-t border-line bg-app px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+            <x-ui.button :href="route('admin.staff-salary.rules.index')" variant="ghost">Cancel</x-ui.button>
+            <x-ui.button type="submit" loading="save">Save rule</x-ui.button>
         </div>
-
-        <div>
-            <label class="mb-1 block text-xs text-violet-300">Amount per action</label>
-            <input type="number" step="0.01" min="0.01" wire:model="amount_per_action" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-            @error('amount_per_action') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-        </div>
-
-        <label class="flex items-center gap-2 text-sm text-violet-200">
-            <input type="checkbox" wire:model="is_active">
-            Active
-        </label>
-
-        <button type="submit" class="w-full rounded-lg bg-violet-600 py-2 font-semibold text-white hover:bg-violet-500">
-            Save rule
-        </button>
     </form>
 </div>

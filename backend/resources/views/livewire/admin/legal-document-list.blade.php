@@ -1,50 +1,60 @@
 <div>
-    <div class="mb-6 flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-violet-200">Legal documents</h1>
-        @if (auth('staff')->user()->hasPermission('legal.manage'))
-            <a href="{{ route('admin.legal.create') }}" class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Publish new version</a>
-        @endif
-    </div>
+    <x-ui.flash />
 
-    @if (session('status'))
-        <div class="mb-4 rounded-lg bg-emerald-900/40 px-4 py-3 text-sm text-emerald-300">{{ session('status') }}</div>
-    @endif
+    <x-ui.page-header title="Legal documents" description="Terms and policy documents players must accept. Every version stays on file for audit and dispute purposes.">
+        <x-slot:actions>
+            @if (auth('staff')->user()->hasPermission('legal.manage'))
+                <x-ui.button :href="route('admin.legal.create')" icon="plus">Publish new version</x-ui.button>
+            @endif
+        </x-slot:actions>
+    </x-ui.page-header>
 
     @forelse ($documentsByType as $type => $documents)
-        <div class="mb-8">
-            <h2 class="mb-3 text-lg font-semibold text-violet-200">{{ $type === 'privacy_policy' ? 'Privacy Policy' : 'Terms & Conditions' }}</h2>
-            <div class="overflow-hidden rounded-2xl border border-violet-900/40">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-white/5 text-violet-300">
-                        <tr>
-                            <th class="px-4 py-3">Version</th>
-                            <th class="px-4 py-3">Title</th>
-                            <th class="px-4 py-3">Published by</th>
-                            <th class="px-4 py-3">Published at</th>
-                            <th class="px-4 py-3">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-violet-900/30">
-                        @foreach ($documents as $document)
-                            <tr>
-                                <td class="px-4 py-3 text-white">v{{ $document->version }}</td>
-                                <td class="px-4 py-3 text-violet-300">{{ $document->title }}</td>
-                                <td class="px-4 py-3 text-violet-400">{{ $document->publishedByStaff->display_name }}</td>
-                                <td class="px-4 py-3 text-violet-400">{{ $document->published_at->format('d M Y H:i') }}</td>
-                                <td class="px-4 py-3">
-                                    @if ($document->is_current)
-                                        <span class="rounded bg-emerald-900/40 px-2 py-0.5 text-xs text-emerald-300">Current</span>
-                                    @else
-                                        <span class="text-xs text-violet-500">Superseded</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        @php($current = $documents->firstWhere('is_current', true))
+        <x-ui.card
+            :title="$type === 'privacy_policy' ? 'Privacy Policy' : 'Terms & Conditions'"
+            :description="$current ? 'Current version: v'.$current->version.', published '.$current->published_at->format('d M Y') : 'No current version'"
+            :padding="false"
+            class="mb-6"
+            wire:key="legal-{{ $type }}"
+        >
+            <x-ui.table class="rounded-none border-0">
+                <x-slot:head>
+                    <tr>
+                        <th>Version</th>
+                        <th>Title</th>
+                        <th>Published by</th>
+                        <th>Published at</th>
+                        <th>Status</th>
+                    </tr>
+                </x-slot:head>
+
+                @foreach ($documents as $document)
+                    <tr wire:key="legal-doc-{{ $document->id }}">
+                        <td class="mm-cell-primary tabular-nums">v{{ $document->version }}</td>
+                        <td><span class="block max-w-[18rem] truncate" title="{{ $document->title }}">{{ $document->title }}</span></td>
+                        <td class="whitespace-nowrap">{{ $document->publishedByStaff->display_name }}</td>
+                        <td class="whitespace-nowrap">
+                            <time datetime="{{ $document->published_at->toIso8601String() }}" title="{{ $document->published_at->format('d M Y, H:i:s') }}">{{ $document->published_at->format('d M Y H:i') }}</time>
+                        </td>
+                        <td>
+                            @if ($document->is_current)
+                                <x-ui.badge variant="success">Current</x-ui.badge>
+                            @else
+                                <x-ui.badge variant="neutral">Superseded</x-ui.badge>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+            </x-ui.table>
+        </x-ui.card>
     @empty
-        <p class="text-violet-400">No legal documents published yet.</p>
+        <x-ui.card>
+            <x-ui.empty-state icon="shield" title="No legal documents published yet" description="Publish the Terms & Conditions and Privacy Policy that players accept when they register.">
+                @if (auth('staff')->user()->hasPermission('legal.manage'))
+                    <x-ui.button :href="route('admin.legal.create')" icon="plus" size="sm">Publish new version</x-ui.button>
+                @endif
+            </x-ui.empty-state>
+        </x-ui.card>
     @endforelse
 </div>

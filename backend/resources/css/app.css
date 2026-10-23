@@ -4,41 +4,161 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
-}
-
 /*
- * The shared layout shell (nav, page background) reads the active
- * color/font theme tokens from themes.css. Individual pages built in
- * earlier phases still use hardcoded Tailwind violet-* utility classes
- * directly (they predate this token system) and won't themselves
- * reflect a theme switch yet — see the Phase 14 completion notes for
- * the follow-up to retrofit them.
+ * Token -> utility bridge. `@theme inline` makes each utility reference the
+ * runtime CSS variable (not a build-time copy), so bg-surface, text-fg-2,
+ * border-line, bg-brand/15 ... all follow whichever theme is active.
+ * The tokens themselves are documented in themes.css and docs/design-system.md.
  */
-body {
-    background-color: var(--mm-color-bg);
-    font-family: var(--mm-font-active);
+@theme inline {
+    --font-sans: var(--mm-font-active);
+
+    --color-app: var(--mm-bg);
+    --color-sidebar: var(--mm-sidebar);
+    --color-surface: var(--mm-surface);
+    --color-surface-2: var(--mm-surface-2);
+    --color-surface-3: var(--mm-surface-3);
+    --color-line: var(--mm-border);
+    --color-line-strong: var(--mm-border-strong);
+
+    --color-fg: var(--mm-fg);
+    --color-fg-2: var(--mm-fg-2);
+    --color-fg-3: var(--mm-fg-3);
+
+    --color-brand: var(--mm-brand);
+    --color-brand-hover: var(--mm-brand-hover);
+    --color-brand-pressed: var(--mm-brand-pressed);
+    --color-brand-soft: var(--mm-brand-soft);
+    --color-brand-text: var(--mm-brand-text);
+    --color-on-brand: var(--mm-on-brand);
+
+    --color-success: var(--mm-success);
+    --color-success-soft: var(--mm-success-soft);
+    --color-warning: var(--mm-warning);
+    --color-warning-soft: var(--mm-warning-soft);
+    --color-danger: var(--mm-danger);
+    --color-danger-soft: var(--mm-danger-soft);
+    --color-danger-solid: var(--mm-danger-solid);
+    --color-danger-solid-hover: var(--mm-danger-solid-hover);
+    --color-on-danger: var(--mm-on-danger);
+    --color-info: var(--mm-info);
+    --color-info-soft: var(--mm-info-soft);
+
+    --shadow-float: var(--mm-shadow-float);
 }
 
-.mm-surface {
-    background-color: var(--mm-color-surface);
-    border-color: var(--mm-color-surface-border);
+@layer base {
+    html {
+        font-family: var(--mm-font-active);
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        background-color: var(--mm-bg);
+        color: var(--mm-fg);
+        font-size: 0.875rem;
+        line-height: 1.375rem;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* One consistent, always-visible keyboard focus indicator. */
+    :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+        outline: 2px solid var(--mm-ring);
+        outline-offset: 2px;
+    }
+
+    ::selection {
+        background-color: color-mix(in oklab, var(--mm-brand) 45%, transparent);
+    }
+
+    /* Dark, low-contrast scrollbars so overflow regions don't flash white. */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--mm-border-strong) transparent;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
 }
 
-.mm-text-muted {
-    color: var(--mm-color-text-muted);
+@layer components {
+    /* Floating layers: opaque by default, restrained glass in Purple Glassmorphism. */
+    .mm-float {
+        background-color: var(--mm-float-bg);
+        -webkit-backdrop-filter: blur(var(--mm-float-blur));
+        backdrop-filter: blur(var(--mm-float-blur));
+        box-shadow: var(--mm-shadow-float);
+    }
+
+    /*
+     * One definition for every text-like control (input, select, textarea) so
+     * heights, borders, focus and error states cannot drift between pages.
+     * Used by <x-ui.input|select|textarea>.
+     */
+    .mm-control {
+        @apply block h-9 w-full rounded-lg border border-line-strong bg-surface-2 px-3 text-sm text-fg transition-colors;
+        @apply placeholder:text-fg-3 hover:border-fg-3/50;
+        @apply focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30;
+        @apply disabled:cursor-not-allowed disabled:opacity-60;
+        @apply aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/30;
+    }
+
+    textarea.mm-control {
+        @apply h-auto min-h-24 py-2 leading-relaxed;
+    }
+
+    select.mm-control {
+        @apply appearance-none bg-no-repeat pr-9;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239b93a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+        background-position: right 0.65rem center;
+        background-size: 1rem;
+    }
+
+    input[type='file'].mm-control {
+        @apply h-auto cursor-pointer py-1.5 text-fg-2 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-surface-3 file:px-3 file:py-1 file:text-xs file:font-medium file:text-fg;
+    }
+
+    /*
+     * Data tables. Cell padding, header style, row dividers and hover live
+     * here once; pages only supply content. Used by <x-ui.table>.
+     */
+    .mm-table {
+        @apply w-full border-collapse text-left text-sm;
+    }
+
+    .mm-table th {
+        @apply whitespace-nowrap bg-surface-2 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-fg-3;
+    }
+
+    .mm-table td {
+        @apply px-4 py-3 align-middle text-fg-2;
+    }
+
+    .mm-table tbody tr {
+        @apply border-t border-line transition-colors;
+    }
+
+    .mm-table tbody tr:hover {
+        background-color: color-mix(in oklab, var(--mm-surface-2) 55%, transparent);
+    }
+
+    .mm-table td.mm-cell-primary {
+        @apply font-medium text-fg;
+    }
+
+    .mm-spinner {
+        @apply inline-block size-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent;
+    }
 }
 
-.mm-accent {
-    color: var(--mm-color-accent);
-}
-
-.mm-btn-primary {
-    background-color: var(--mm-color-primary);
-}
-
-.mm-btn-primary:hover {
-    background-color: var(--mm-color-primary-hover);
+@media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

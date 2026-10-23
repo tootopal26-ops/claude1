@@ -1,0 +1,1 @@
+<x-error-page code="419" title="Your session expired" description="For your security you were signed out after a period of inactivity, or the page was open for too long. Sign in again to continue." />

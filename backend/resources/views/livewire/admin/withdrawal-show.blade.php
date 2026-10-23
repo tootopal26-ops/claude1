@@ -1,110 +1,131 @@
-<div class="mx-auto max-w-2xl space-y-6">
-    <a href="{{ route('admin.withdrawals.index') }}" class="text-sm text-violet-400 hover:text-violet-200">&larr; Back to withdrawals</a>
+@php
+    $status = $withdrawal->status;
+    $steps = ['pending' => 'Requested', 'approved' => 'Approved', 'processing' => 'Processing', 'paid' => 'Paid'];
+    $stepKeys = array_keys($steps);
+    $currentStep = array_search($status, $stepKeys, true);
+    $isTerminalFailure = in_array($status, ['rejected', 'failed'], true);
+@endphp
 
-    @if (session('status'))
-        <div class="rounded-lg bg-emerald-900/40 px-4 py-3 text-sm text-emerald-300">{{ session('status') }}</div>
-    @endif
+<div>
+    <x-ui.flash />
+
+    <x-ui.page-header
+        title="Withdrawal request"
+        :description="'Requested by '.$withdrawal->user->username.' on '.$withdrawal->created_at->format('d M Y, H:i').'.'"
+        :breadcrumbs="[
+            ['label' => 'Withdrawals', 'url' => route('admin.withdrawals.index')],
+            ['label' => '#'.$withdrawal->id],
+        ]"
+    >
+        <x-slot:actions><x-ui.badge :status="$status" class="px-3 py-1 text-sm" /></x-slot:actions>
+    </x-ui.page-header>
 
     @if ($actionError)
-        <div class="rounded-lg bg-red-900/40 px-4 py-3 text-sm text-red-300">{{ $actionError }}</div>
+        <x-ui.alert variant="danger" title="That action couldn't be completed" class="mb-6">{{ $actionError }}</x-ui.alert>
     @endif
 
-    <div class="rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-        <h1 class="text-2xl font-bold text-white">{{ $withdrawal->user->username }}</h1>
-        <p class="mt-1 text-sm text-violet-400">Requested {{ $withdrawal->created_at->format('d M Y, H:i') }}</p>
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div class="space-y-6 xl:col-span-2">
+            <x-ui.card title="Request details">
+                <dl class="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+                    <x-ui.kv label="Player">
+                        @if (auth('staff')->user()->hasPermission('users.view'))
+                            <a href="{{ route('admin.users.show', $withdrawal->user) }}" class="font-medium text-brand-text hover:underline">{{ $withdrawal->user->username }}</a>
+                        @else
+                            {{ $withdrawal->user->username }}
+                        @endif
+                    </x-ui.kv>
+                    <x-ui.kv label="Amount"><span class="inline-flex items-center gap-1.5 text-lg font-semibold tabular-nums"><x-coin-asset :size="18" />{{ $withdrawal->amount }}</span></x-ui.kv>
+                    <x-ui.kv label="UPI ID"><span class="break-all">{{ $withdrawal->upi_id }}</span></x-ui.kv>
+                    <x-ui.kv label="Requested">{{ $withdrawal->created_at->format('d M Y, H:i') }}</x-ui.kv>
+                    @if ($withdrawal->reviewed_at)
+                        <x-ui.kv label="Reviewed">
+                            {{ $withdrawal->reviewed_at->format('d M Y, H:i') }}
+                            @if ($withdrawal->reviewedByStaff)<span class="block text-xs text-fg-3">by {{ $withdrawal->reviewedByStaff->display_name }}</span>@endif
+                        </x-ui.kv>
+                    @endif
+                    @if ($withdrawal->settled_at)
+                        <x-ui.kv label="Settled">
+                            {{ $withdrawal->settled_at->format('d M Y, H:i') }}
+                            @if ($withdrawal->settledByStaff)<span class="block text-xs text-fg-3">by {{ $withdrawal->settledByStaff->display_name }}</span>@endif
+                        </x-ui.kv>
+                    @endif
+                </dl>
 
-        <div class="mt-4 grid grid-cols-3 gap-4">
-            <div>
-                <p class="text-xs text-violet-400">Amount</p>
-                <p class="text-xl font-bold text-white">{{ $withdrawal->amount }} coins</p>
-            </div>
-            <div>
-                <p class="text-xs text-violet-400">UPI ID</p>
-                <p class="text-xl font-bold text-white">{{ $withdrawal->upi_id }}</p>
-            </div>
-            <div>
-                <p class="text-xs text-violet-400">Status</p>
-                <p class="text-xl font-bold text-violet-300">{{ ucfirst($withdrawal->status) }}</p>
-            </div>
+                @if ($withdrawal->rejection_reason)
+                    <x-ui.alert variant="danger" title="Rejected" class="mt-6">{{ $withdrawal->rejection_reason }}</x-ui.alert>
+                @endif
+                @if ($withdrawal->failure_reason)
+                    <x-ui.alert variant="danger" title="Payout failed" class="mt-6">{{ $withdrawal->failure_reason }}</x-ui.alert>
+                @endif
+                @if ($withdrawal->settlement_reference)
+                    <x-ui.alert variant="success" title="Settled" class="mt-6">Reference <span class="font-mono text-fg">{{ $withdrawal->settlement_reference }}</span></x-ui.alert>
+                @endif
+            </x-ui.card>
+
+            <x-ui.card title="Progress" description="A withdrawal is only marked paid after a settlement reference is recorded.">
+                @if ($isTerminalFailure)
+                    <p class="flex items-center gap-2 text-sm text-fg-2"><x-icon name="x-circle" :size="16" class="shrink-0 text-danger" /><span>This request ended as <strong class="font-semibold text-fg">{{ $status }}</strong>; the reserved amount was returned to the player's winnings.</span></p>
+                @else
+                    <ol class="grid grid-cols-4 gap-2" aria-label="Withdrawal progress">
+                        @foreach ($steps as $key => $label)
+                            @php($index = array_search($key, $stepKeys, true))
+                            <li class="min-w-0">
+                                <div @class(['h-1 rounded-full', 'bg-brand' => $index <= $currentStep, 'bg-surface-3' => $index > $currentStep])></div>
+                                <p @class(['mt-2 truncate text-xs font-medium', 'text-fg' => $index <= $currentStep, 'text-fg-3' => $index > $currentStep])>
+                                    {{ $label }}
+                                    @if ($index === $currentStep)<span class="sr-only">(current)</span>@endif
+                                </p>
+                            </li>
+                        @endforeach
+                    </ol>
+                @endif
+            </x-ui.card>
         </div>
 
-        @if ($withdrawal->rejection_reason)
-            <p class="mt-4 text-sm text-red-400">Rejected: {{ $withdrawal->rejection_reason }}</p>
-        @endif
-        @if ($withdrawal->failure_reason)
-            <p class="mt-4 text-sm text-red-400">Failed: {{ $withdrawal->failure_reason }}</p>
-        @endif
-        @if ($withdrawal->settlement_reference)
-            <p class="mt-4 text-sm text-emerald-400">
-                Settled with reference "{{ $withdrawal->settlement_reference }}" by {{ $withdrawal->settledByStaff?->display_name }}
-                on {{ $withdrawal->settled_at?->format('d M Y, H:i') }}.
-            </p>
-        @endif
+        <div class="space-y-6">
+            @if ($status === 'pending')
+                <x-ui.card title="Review" description="Approve to move this request into payout.">
+                    <x-ui.button wire:click="approve" class="w-full" icon="check" loading="approve" confirm="Approve this withdrawal request?" confirm-title="Approve withdrawal" confirm-label="Approve">Approve</x-ui.button>
+                </x-ui.card>
+            @endif
+
+            @if ($status === 'approved')
+                <x-ui.card title="Payout" description="Mark as processing once you've started the bank transfer.">
+                    <x-ui.button wire:click="markProcessing" class="w-full" loading="markProcessing">Mark as processing</x-ui.button>
+                </x-ui.card>
+            @endif
+
+            @if ($status === 'processing')
+                <x-ui.card title="Mark as paid" description="Record the UTR / transaction ID from the bank transfer.">
+                    <form wire:submit="markPaid" class="space-y-4" novalidate>
+                        <x-ui.input label="Settlement reference" wire:model="settlementReference" required placeholder="UTR / transaction ID" />
+                        <x-ui.button type="submit" class="w-full" icon="check" loading="markPaid">Mark as paid</x-ui.button>
+                    </form>
+                </x-ui.card>
+
+                <x-ui.card title="Mark as failed" description="The amount is returned to the player's winnings.">
+                    <form wire:submit="markFailed" class="space-y-4" novalidate>
+                        <x-ui.input label="Reason" wire:model="failureReason" required hint="Shown to the player." />
+                        <x-ui.button type="submit" variant="danger" class="w-full" loading="markFailed" confirm="Mark this payout as failed and return the amount to the player?" confirm-title="Mark payout as failed" confirm-label="Mark as failed">Mark as failed</x-ui.button>
+                    </form>
+                </x-ui.card>
+            @endif
+
+            @if (in_array($status, ['pending', 'approved']))
+                <x-ui.card title="Reject" description="The reserved amount is returned to the player.">
+                    <form wire:submit="reject" class="space-y-4" novalidate>
+                        <x-ui.input label="Reason" wire:model="rejectionReason" required hint="Shown to the player." />
+                        <x-ui.button type="submit" variant="danger" class="w-full" loading="reject" confirm="Reject this withdrawal and return the amount to the player?" confirm-title="Reject withdrawal" confirm-label="Reject">Reject</x-ui.button>
+                    </form>
+                </x-ui.card>
+            @endif
+
+            @if (! in_array($status, ['pending', 'approved', 'processing']))
+                <x-ui.card title="No actions available">
+                    <p class="text-sm text-fg-2">This request is {{ $status }} and can't be changed. Every step is recorded in the audit log.</p>
+                </x-ui.card>
+            @endif
+        </div>
     </div>
-
-    @if ($withdrawal->status === 'pending')
-        <div class="rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-            <button type="button" wire:click="approve" wire:confirm="Approve this withdrawal?"
-                class="w-full rounded-lg bg-violet-600 py-2 font-semibold text-white hover:bg-violet-500">
-                Approve
-            </button>
-        </div>
-    @endif
-
-    @if (in_array($withdrawal->status, ['pending', 'approved']))
-        <div class="rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-            <h2 class="mb-4 text-lg font-bold text-violet-200">Reject</h2>
-            <form wire:submit="reject" class="space-y-4">
-                <div>
-                    <label class="mb-1 block text-xs text-violet-300">Reason (shown to the player)</label>
-                    <input type="text" wire:model="rejectionReason" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                    @error('rejectionReason') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-                </div>
-                <button type="submit" wire:confirm="Reject this withdrawal and return the amount to the player?"
-                    class="w-full rounded-lg bg-red-700 py-2 font-semibold text-white hover:bg-red-600">
-                    Reject
-                </button>
-            </form>
-        </div>
-    @endif
-
-    @if ($withdrawal->status === 'approved')
-        <div class="rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-            <button type="button" wire:click="markProcessing"
-                class="w-full rounded-lg bg-violet-600 py-2 font-semibold text-white hover:bg-violet-500">
-                Mark as processing
-            </button>
-        </div>
-    @endif
-
-    @if ($withdrawal->status === 'processing')
-        <div class="rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-            <h2 class="mb-4 text-lg font-bold text-violet-200">Mark as paid</h2>
-            <form wire:submit="markPaid" class="space-y-4">
-                <div>
-                    <label class="mb-1 block text-xs text-violet-300">Settlement reference (UTR / transaction ID)</label>
-                    <input type="text" wire:model="settlementReference" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                    @error('settlementReference') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-                </div>
-                <button type="submit" class="w-full rounded-lg bg-emerald-700 py-2 font-semibold text-white hover:bg-emerald-600">
-                    Mark as paid
-                </button>
-            </form>
-        </div>
-
-        <div class="rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-            <h2 class="mb-4 text-lg font-bold text-violet-200">Mark as failed</h2>
-            <form wire:submit="markFailed" class="space-y-4">
-                <div>
-                    <label class="mb-1 block text-xs text-violet-300">Reason (shown to the player)</label>
-                    <input type="text" wire:model="failureReason" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                    @error('failureReason') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-                </div>
-                <button type="submit" wire:confirm="Mark this payout as failed and return the amount to the player?"
-                    class="w-full rounded-lg bg-red-700 py-2 font-semibold text-white hover:bg-red-600">
-                    Mark as failed
-                </button>
-            </form>
-        </div>
-    @endif
 </div>

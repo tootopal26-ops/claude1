@@ -1,40 +1,51 @@
 <div>
-    <div class="mb-6 flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-violet-200">Permission presets</h1>
-        <a href="{{ route('admin.presets.create') }}"
-            class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">
-            + New preset
-        </a>
-    </div>
+    <x-ui.flash />
 
-    <div class="overflow-hidden rounded-2xl border border-violet-900/40">
-        <table class="w-full text-left text-sm">
-            <thead class="bg-white/5 text-violet-300">
-                <tr>
-                    <th class="px-4 py-3">Name</th>
-                    <th class="px-4 py-3">Description</th>
-                    <th class="px-4 py-3">Permissions</th>
-                    <th class="px-4 py-3">Staff assigned</th>
-                    <th class="px-4 py-3"></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-violet-900/30">
-                @forelse ($presets as $preset)
-                    <tr>
-                        <td class="px-4 py-3 font-medium text-white">{{ $preset->name }}</td>
-                        <td class="px-4 py-3 text-violet-300">{{ $preset->description }}</td>
-                        <td class="px-4 py-3 text-violet-300">{{ $preset->permissions_count }}</td>
-                        <td class="px-4 py-3 text-violet-300">{{ $preset->staff_users_count }}</td>
-                        <td class="px-4 py-3 text-right">
-                            <a href="{{ route('admin.presets.edit', $preset) }}" class="text-violet-400 hover:text-violet-200">Edit</a>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-violet-400">No presets yet.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+    <x-ui.page-header title="Permission presets" description="Reusable sets of permissions. Assign one to a staff account to decide which sections and actions it can use.">
+        <x-slot:actions>
+            <x-ui.button :href="route('admin.staff.index')" variant="secondary" icon="users">Staff accounts</x-ui.button>
+            @if (auth('staff')->user()->hasPermission('staff.manage'))
+                <x-ui.button :href="route('admin.presets.create')" icon="plus">New preset</x-ui.button>
+            @endif
+        </x-slot:actions>
+    </x-ui.page-header>
+
+    <x-ui.table>
+        <x-slot:head>
+            <tr>
+                <th>Preset</th>
+                <th>Permissions</th>
+                <th>Staff assigned</th>
+                <th><span class="sr-only">Actions</span></th>
+            </tr>
+        </x-slot:head>
+
+        @forelse ($presets as $preset)
+            <tr wire:key="preset-{{ $preset->id }}">
+                <td class="mm-cell-primary">
+                    <span class="block max-w-[22rem] truncate" title="{{ $preset->name }}">{{ $preset->name }}</span>
+                    @if ($preset->description)
+                        <span class="block max-w-[28rem] truncate text-xs font-normal text-fg-3" title="{{ $preset->description }}">{{ $preset->description }}</span>
+                    @endif
+                </td>
+                <td class="tabular-nums text-fg">{{ $preset->permissions_count }}</td>
+                <td class="tabular-nums">
+                    @if ($preset->staff_users_count > 0)
+                        <x-ui.badge variant="brand" :dot="false">{{ $preset->staff_users_count }}</x-ui.badge>
+                    @else
+                        <span class="text-fg-3">0</span>
+                    @endif
+                </td>
+                <td class="text-right">
+                    <x-ui.button :href="route('admin.presets.edit', $preset)" variant="ghost" size="sm" icon="edit">Edit</x-ui.button>
+                </td>
+            </tr>
+        @empty
+            <x-ui.table-empty :colspan="4" icon="presets" title="No presets yet" description="A preset groups permissions so you can give several people the same access.">
+                @if (auth('staff')->user()->hasPermission('staff.manage'))
+                    <x-ui.button :href="route('admin.presets.create')" icon="plus" size="sm">New preset</x-ui.button>
+                @endif
+            </x-ui.table-empty>
+        @endforelse
+    </x-ui.table>
 </div>

@@ -1,78 +1,81 @@
-<div class="mx-auto max-w-2xl space-y-6">
-    <a href="{{ route('admin.staff-salary.settlements.index') }}" class="text-sm text-violet-400 hover:text-violet-200">&larr; Back to settlements</a>
+@php
+    $periodLabel = $settlement->period_start->format('d M Y').' – '.$settlement->period_end->copy()->subDay()->format('d M Y');
+@endphp
 
-    @if (session('status'))
-        <div class="rounded-lg bg-emerald-900/40 px-4 py-3 text-sm text-emerald-300">{{ session('status') }}</div>
-    @endif
+<div>
+    <x-ui.flash />
+
+    <x-ui.page-header
+        title="Salary settlement"
+        :description="$settlement->staffUser->display_name.' · week of '.$periodLabel"
+        :breadcrumbs="[
+            ['label' => 'Salary settlements', 'url' => route('admin.staff-salary.settlements.index')],
+            ['label' => $settlement->staffUser->display_name.' · '.$settlement->period_start->format('d M')],
+        ]"
+    >
+        <x-slot:actions><x-ui.badge :status="$settlement->status" class="px-3 py-1 text-sm" /></x-slot:actions>
+    </x-ui.page-header>
 
     @if ($actionError)
-        <div class="rounded-lg bg-red-900/40 px-4 py-3 text-sm text-red-300">{{ $actionError }}</div>
+        <x-ui.alert variant="danger" title="That action couldn't be completed" class="mb-6">{{ $actionError }}</x-ui.alert>
     @endif
 
-    <div class="rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-        <h1 class="text-2xl font-bold text-white">{{ $settlement->staffUser->display_name }}</h1>
-        <p class="mt-1 text-sm text-violet-400">
-            Week of {{ $settlement->period_start->format('d M Y') }} &ndash; {{ $settlement->period_end->copy()->subDay()->format('d M Y') }}
-        </p>
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div class="min-w-0 space-y-6 xl:col-span-2">
+            <x-ui.card title="Settlement details">
+                <dl class="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
+                    <x-ui.kv label="Staff member">{{ $settlement->staffUser->display_name }}</x-ui.kv>
+                    <x-ui.kv label="Week">{{ $periodLabel }}</x-ui.kv>
+                    <x-ui.kv label="Total"><span class="inline-flex items-center gap-1.5 text-lg font-semibold tabular-nums"><x-coin-asset :size="18" />{{ $settlement->total_amount }}</span></x-ui.kv>
+                </dl>
 
-        <div class="mt-4 grid grid-cols-2 gap-4">
-            <div>
-                <p class="text-xs text-violet-400">Total</p>
-                <p class="text-xl font-bold text-emerald-400">{{ $settlement->total_amount }}</p>
-            </div>
-            <div>
-                <p class="text-xs text-violet-400">Status</p>
-                <p class="text-xl font-bold text-violet-300">{{ ucfirst($settlement->status) }}</p>
-            </div>
+                @if ($settlement->isPaid())
+                    <x-ui.alert variant="success" title="Paid" class="mt-6">
+                        Reference <span class="font-mono text-fg">{{ $settlement->payment_reference }}</span>@if ($settlement->paidByStaff) by {{ $settlement->paidByStaff->display_name }}@endif @if ($settlement->paid_at) on {{ $settlement->paid_at->format('d M Y, H:i') }}@endif.
+                    </x-ui.alert>
+                @endif
+            </x-ui.card>
+
+            <x-ui.card title="Line items" description="Each payable action that makes up this settlement." :padding="false">
+                <x-ui.table class="rounded-none border-0">
+                    <x-slot:head>
+                        <tr>
+                            <th>Action</th>
+                            <th>Occurred</th>
+                            <th class="text-right">Amount</th>
+                        </tr>
+                    </x-slot:head>
+
+                    @forelse ($items as $item)
+                        <tr wire:key="item-{{ $item->id }}">
+                            <td><span class="block max-w-[20rem] truncate font-mono text-xs text-fg" title="{{ $item->event->action_type }}">{{ $item->event->action_type }}</span></td>
+                            <td class="whitespace-nowrap">{{ $item->event->occurred_at->format('d M, H:i') }}</td>
+                            <td class="whitespace-nowrap text-right"><span class="inline-flex items-center gap-1.5 tabular-nums text-fg"><x-coin-asset :size="16" />{{ $item->amount }}</span></td>
+                        </tr>
+                    @empty
+                        <x-ui.table-empty :colspan="3" icon="audit" title="No line items" description="This settlement has no payable actions recorded." />
+                    @endforelse
+                </x-ui.table>
+            </x-ui.card>
         </div>
 
-        @if ($settlement->isPaid())
-            <p class="mt-4 text-sm text-emerald-400">
-                Paid with reference "{{ $settlement->payment_reference }}" by {{ $settlement->paidByStaff?->display_name }}
-                on {{ $settlement->paid_at?->format('d M Y, H:i') }}.
-            </p>
-        @endif
-    </div>
-
-    @if (! $settlement->isPaid() && auth('staff')->user()->hasPermission('salary.approve'))
-        <div class="rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-            <h2 class="mb-4 text-lg font-bold text-violet-200">Mark as paid</h2>
-            <form wire:submit="markPaid" class="space-y-4">
-                <div>
-                    <label class="mb-1 block text-xs text-violet-300">Payment reference</label>
-                    <input type="text" wire:model="paymentReference" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                    @error('paymentReference') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-                </div>
-                <button type="submit" wire:confirm="Mark this settlement as paid?" class="w-full rounded-lg bg-emerald-700 py-2 font-semibold text-white hover:bg-emerald-600">
-                    Mark as paid
-                </button>
-            </form>
+        <div class="min-w-0 space-y-6">
+            @if (! $settlement->isPaid() && auth('staff')->user()->hasPermission('salary.approve'))
+                <x-ui.card title="Mark as paid" description="Record the payment reference once the staff member has been paid. This can't be undone.">
+                    <form wire:submit="markPaid" class="space-y-4" novalidate>
+                        <x-ui.input label="Payment reference" wire:model="paymentReference" required placeholder="e.g. UTR / transaction ID" />
+                        <x-ui.button type="submit" class="w-full" icon="check" loading="markPaid" confirm="Mark this settlement as paid?" confirm-title="Mark settlement as paid" confirm-label="Mark as paid">Mark as paid</x-ui.button>
+                    </form>
+                </x-ui.card>
+            @elseif (! $settlement->isPaid())
+                <x-ui.card title="Awaiting payment">
+                    <p class="text-sm text-fg-2">This settlement is pending. Someone with salary approval access records the payment.</p>
+                </x-ui.card>
+            @else
+                <x-ui.card title="No actions available">
+                    <p class="text-sm text-fg-2">This settlement is paid and can't be changed. Every step is recorded in the audit log.</p>
+                </x-ui.card>
+            @endif
         </div>
-    @endif
-
-    <div class="rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-        <h2 class="mb-4 text-lg font-bold text-violet-200">Line items</h2>
-        <table class="w-full text-left text-sm">
-            <thead class="text-violet-400">
-                <tr>
-                    <th class="px-4 py-2">Action</th>
-                    <th class="px-4 py-2">Occurred</th>
-                    <th class="px-4 py-2">Amount</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-violet-900/20">
-                @forelse ($items as $item)
-                    <tr>
-                        <td class="px-4 py-2 text-violet-300">{{ $item->event->action_type }}</td>
-                        <td class="px-4 py-2 text-violet-300">{{ $item->event->occurred_at->format('d M, H:i') }}</td>
-                        <td class="px-4 py-2 text-emerald-400">{{ $item->amount }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="3" class="px-4 py-6 text-center text-violet-400">No line items.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
     </div>
 </div>

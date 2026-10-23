@@ -1,39 +1,50 @@
-<div class="mx-auto max-w-2xl">
-    <h1 class="mb-6 text-2xl font-bold text-violet-200">{{ $preset ? 'Edit preset' : 'New preset' }}</h1>
+<div>
+    <x-ui.page-header
+        :title="$preset ? 'Edit preset' : 'New preset'"
+        description="Name the preset and tick every permission that staff using it should have. Anything left unticked is denied."
+        :breadcrumbs="[
+            ['label' => 'Permission presets', 'url' => route('admin.presets.index')],
+            ['label' => $preset ? $preset->name : 'New preset'],
+        ]"
+    />
 
-    <form wire:submit="save" class="space-y-6 rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-        <div>
-            <label class="mb-1 block text-xs text-violet-300">Name</label>
-            <input type="text" wire:model="name" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-            @error('name') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-        </div>
+    <form wire:submit="save" novalidate>
+        <x-ui.form-section title="Preset details" description="How this preset appears when assigning access to a staff account.">
+            <x-ui.input label="Name" wire:model="name" required placeholder="e.g. Tournament manager" />
 
-        <div>
-            <label class="mb-1 block text-xs text-violet-300">Description</label>
-            <textarea wire:model="description" rows="2" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white"></textarea>
-        </div>
+            <x-ui.textarea label="Description" wire:model="description" optional rows="2" hint="A short note on who this preset is for." />
+        </x-ui.form-section>
 
-        <div>
-            <label class="mb-2 block text-xs text-violet-300">Permissions</label>
-            <div class="space-y-4">
+        <section class="grid grid-cols-1 gap-4 border-t border-line py-6 lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] lg:gap-10">
+            <div class="min-w-0">
+                <h2 class="text-sm font-semibold text-fg">Permissions</h2>
+                <p class="mt-1 text-xs leading-relaxed text-fg-3">Grouped by area. Each permission also protects its pages on the server, so unticking one removes access even if someone types the URL.</p>
+                @error('selectedPermissionIds') <p class="mt-3 text-xs text-danger" role="alert">{{ $message }}</p> @enderror
+            </div>
+
+            <div class="min-w-0 gap-4 xl:columns-2">
                 @foreach ($permissionsByGroup as $group => $permissions)
-                    <div>
-                        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-violet-500">{{ $group }}</p>
-                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <fieldset wire:key="permission-group-{{ $group }}" class="mb-4 min-w-0 break-inside-avoid rounded-xl border border-line bg-surface p-4">
+                        <legend class="px-1 text-xs font-semibold uppercase tracking-wide text-fg-3">{{ \Illuminate\Support\Str::headline($group) }}</legend>
+                        <div class="mt-1 space-y-2">
                             @foreach ($permissions as $permission)
-                                <label class="flex items-center gap-2 rounded-lg border border-violet-900/30 bg-black/20 px-3 py-2 text-sm text-violet-200">
-                                    <input type="checkbox" wire:model="selectedPermissionIds" value="{{ $permission->id }}">
-                                    {{ $permission->label }}
+                                <label wire:key="permission-{{ $permission->id }}" class="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-surface-2 px-3 py-2.5 transition-colors hover:border-line-strong has-[:checked]:border-brand has-[:checked]:bg-brand-soft">
+                                    <input type="checkbox" wire:model="selectedPermissionIds" value="{{ $permission->id }}" class="mt-0.5 size-4 shrink-0 cursor-pointer rounded border-line-strong bg-surface-2 accent-brand">
+                                    <span class="min-w-0">
+                                        <span class="block text-sm text-fg">{{ $permission->label }}</span>
+                                        <span class="block truncate font-mono text-xs text-fg-3" title="{{ $permission->key }}">{{ $permission->key }}</span>
+                                    </span>
                                 </label>
                             @endforeach
                         </div>
-                    </div>
+                    </fieldset>
                 @endforeach
             </div>
-        </div>
+        </section>
 
-        <button type="submit" class="w-full rounded-lg bg-violet-600 py-2 font-semibold text-white hover:bg-violet-500">
-            Save preset
-        </button>
+        <div class="sticky bottom-0 z-10 -mx-4 mt-2 flex items-center justify-end gap-2 border-t border-line bg-app px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+            <x-ui.button :href="route('admin.presets.index')" variant="ghost">Cancel</x-ui.button>
+            <x-ui.button type="submit" loading="save">Save preset</x-ui.button>
+        </div>
     </form>
 </div>

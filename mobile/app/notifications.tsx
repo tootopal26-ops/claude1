@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { Redirect, router } from 'expo-router';
 
 import { fetchNotifications, markNotificationRead } from '../src/api/notifications';
 import { useAuth } from '../src/auth/AuthContext';
+import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import type { AppNotification } from '../src/types';
 
 export default function NotificationsScreen() {
   const { user, isLoading: authLoading } = useAuth();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -35,7 +38,7 @@ export default function NotificationsScreen() {
   if (authLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.brandText} />
       </View>
     );
   }
@@ -63,7 +66,7 @@ export default function NotificationsScreen() {
   return (
     <View style={styles.container}>
       {loading ? (
-        <ActivityIndicator style={styles.centered} />
+        <ActivityIndicator style={styles.centered} color={colors.brandText} />
       ) : (
         <FlatList
           data={notifications}
@@ -71,6 +74,9 @@ export default function NotificationsScreen() {
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
+              tintColor={colors.brandText}
+              colors={[colors.brand]}
+              progressBackgroundColor={colors.surface3}
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true);
@@ -93,22 +99,22 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1025' },
+const useStyles = makeStyles(({ colors: c }) => ({
+  container: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: 16, gap: 12 },
-  empty: { color: '#C4B5FD', textAlign: 'center', marginTop: 32 },
+  empty: { color: c.fg2, textAlign: 'center', marginTop: 32 },
   card: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: c.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.15)',
+    borderColor: c.border,
   },
   cardUnread: {
-    backgroundColor: 'rgba(139,92,246,0.15)',
-    borderColor: 'rgba(139,92,246,0.4)',
+    backgroundColor: c.brandSoft,
+    borderColor: c.borderStrong,
   },
   unreadDot: {
     position: 'absolute',
@@ -117,8 +123,8 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#8B5CF6',
+    backgroundColor: c.brand,
   },
-  cardTitle: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 4, paddingRight: 16 },
-  cardBody: { color: '#C4B5FD', fontSize: 13 },
-});
+  cardTitle: { color: c.fg, fontSize: 15, fontWeight: '700', marginBottom: 4, paddingRight: 16 },
+  cardBody: { color: c.fg2, fontSize: 13, lineHeight: 18 },
+}));

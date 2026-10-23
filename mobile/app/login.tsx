@@ -1,15 +1,21 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 
 import { ApiError } from '../src/api/client';
 import { useAuth } from '../src/auth/AuthContext';
 import { BrandLogo } from '../src/components/BrandLogo';
+import { Button } from '../src/components/Button';
+import { Notice } from '../src/components/Notice';
+import { TextField } from '../src/components/TextField';
 import { Icon } from '../src/theme/icons';
+import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 
 export default function LoginScreen() {
   const { user, isLoading, login, register } = useAuth();
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +30,7 @@ export default function LoginScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.brandText} />
       </View>
     );
   }
@@ -67,73 +73,73 @@ export default function LoginScreen() {
       <BrandLogo width={200} style={styles.logo} />
       <Text style={styles.subtitle}>{mode === 'login' ? 'Sign in to continue' : 'Create your account'}</Text>
 
-      {mode === 'register' && (
-        <>
-          <TextInput
-            style={styles.input}
-            placeholder="Username"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Date of birth (YYYY-MM-DD)"
-            value={dateOfBirth}
-            onChangeText={setDateOfBirth}
-          />
-          <TextInput style={styles.input} placeholder="State" value={state} onChangeText={setState} />
-        </>
-      )}
-
-      <TextInput
-        style={styles.input}
-        placeholder="Mobile number"
-        value={mobile}
-        onChangeText={setMobile}
-        keyboardType="phone-pad"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-
-      {mode === 'register' && (
-        <Pressable style={styles.checkboxRow} onPress={() => setAcceptTerms((value) => !value)}>
-          <View style={[styles.checkbox, acceptTerms && styles.checkboxChecked]}>
-            {acceptTerms && <Icon name="check" size={14} color="#fff" />}
-          </View>
-          <Text style={styles.checkboxLabel}>
-            I agree to the{' '}
-            <Text style={styles.link} onPress={() => router.push('/legal')}>
-              Terms & Conditions and Privacy Policy
-            </Text>
-          </Text>
-        </Pressable>
-      )}
-
-      {error && <Text style={styles.error}>{error}</Text>}
-
-      <Pressable style={styles.button} onPress={handleSubmit} disabled={submitting}>
-        {submitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>{mode === 'login' ? 'Sign in' : 'Create account'}</Text>
+      <View style={styles.form}>
+        {mode === 'register' && (
+          <>
+            <TextField label="Username" placeholder="Username" value={username} onChangeText={setUsername} autoCapitalize="none" />
+            <TextField
+              label="Email"
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <TextField
+              label="Date of birth"
+              placeholder="Date of birth (YYYY-MM-DD)"
+              value={dateOfBirth}
+              onChangeText={setDateOfBirth}
+            />
+            <TextField label="State" placeholder="State" value={state} onChangeText={setState} />
+          </>
         )}
-      </Pressable>
 
-      <Pressable onPress={() => setMode(mode === 'login' ? 'register' : 'login')}>
+        <TextField
+          label="Mobile number"
+          placeholder="Mobile number"
+          value={mobile}
+          onChangeText={setMobile}
+          keyboardType="phone-pad"
+        />
+        <TextField
+          label="Password"
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        {mode === 'register' && (
+          <Pressable
+            style={styles.checkboxRow}
+            onPress={() => setAcceptTerms((value) => !value)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: acceptTerms }}
+          >
+            <View style={[styles.checkbox, acceptTerms && styles.checkboxChecked]}>
+              {acceptTerms && <Icon name="check" size={14} color={colors.onBrand} />}
+            </View>
+            <Text style={styles.checkboxLabel}>
+              I agree to the{' '}
+              <Text style={styles.link} onPress={() => router.push('/legal')}>
+                Terms & Conditions and Privacy Policy
+              </Text>
+            </Text>
+          </Pressable>
+        )}
+
+        {error && <Notice tone="danger">{error}</Notice>}
+
+        <Button
+          label={mode === 'login' ? 'Sign in' : 'Create account'}
+          onPress={handleSubmit}
+          loading={submitting}
+          style={styles.submit}
+        />
+      </View>
+
+      <Pressable onPress={() => setMode(mode === 'login' ? 'register' : 'login')} accessibilityRole="button" hitSlop={8}>
         <Text style={styles.switchText}>
           {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
         </Text>
@@ -142,41 +148,27 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1025' },
+const useStyles = makeStyles(({ colors: c }) => ({
+  container: { flex: 1 },
   content: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1025' },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   logo: { alignSelf: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#C4B5FD', textAlign: 'center', marginBottom: 24 },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#fff',
-    marginBottom: 12,
-  },
-  checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  subtitle: { fontSize: 14, color: c.fg2, textAlign: 'center', marginBottom: 24 },
+  form: { gap: 14 },
+  checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   checkbox: {
     width: 22,
     height: 22,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
+    borderColor: c.borderStrong,
+    backgroundColor: c.surface2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkboxChecked: { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' },
-  checkboxLabel: { flex: 1, color: '#C4B5FD', fontSize: 13 },
-  link: { color: '#fff', fontWeight: '600', textDecorationLine: 'underline' },
-  button: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  switchText: { color: '#C4B5FD', textAlign: 'center', marginTop: 16 },
-  error: { color: '#F87171', marginBottom: 8, textAlign: 'center' },
-});
+  checkboxChecked: { backgroundColor: c.brand, borderColor: c.brand },
+  checkboxLabel: { flex: 1, color: c.fg2, fontSize: 13 },
+  link: { color: c.brandText, fontWeight: '600', textDecorationLine: 'underline' },
+  submit: { marginTop: 4 },
+  switchText: { color: c.brandText, textAlign: 'center', marginTop: 20, fontWeight: '600' },
+}));

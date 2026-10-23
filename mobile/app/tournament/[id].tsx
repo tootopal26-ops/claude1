@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { Redirect, useLocalSearchParams } from 'expo-router';
 
 import { ApiError, apiRequest } from '../../src/api/client';
 import { useAuth } from '../../src/auth/AuthContext';
+import { Button } from '../../src/components/Button';
+import { CoinAmount } from '../../src/components/CoinAmount';
+import { Notice } from '../../src/components/Notice';
+import { StatusChip } from '../../src/components/StatusChip';
+import { TextField } from '../../src/components/TextField';
+import { makeStyles, useTheme } from '../../src/theme/ThemeContext';
 import type { Tournament, TournamentCredentials, TournamentEntry } from '../../src/types';
 
 const PLAYER_LABELS = ['Player 1 (you)', 'Player 2', 'Player 3', 'Player 4'];
@@ -13,6 +19,8 @@ type PlayerInput = { inGameName: string; uid: string };
 export default function TournamentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, isLoading: authLoading } = useAuth();
+  const { colors } = useTheme();
+  const styles = useStyles();
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,7 +71,7 @@ export default function TournamentDetailScreen() {
   if (authLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.brandText} />
       </View>
     );
   }
@@ -75,7 +83,7 @@ export default function TournamentDetailScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.brandText} />
       </View>
     );
   }
@@ -83,7 +91,7 @@ export default function TournamentDetailScreen() {
   if (!tournament) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.error}>{error ?? 'Tournament not found.'}</Text>
+        <Notice tone="danger">{error ?? 'Tournament not found.'}</Notice>
       </View>
     );
   }
@@ -117,14 +125,21 @@ export default function TournamentDetailScreen() {
   const allFilled = players.every((player) => player.inGameName.trim().length > 0);
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{tournament.title}</Text>
       <Text style={styles.meta}>
         {tournament.mode.toUpperCase()} · {tournament.joined_slots}/{tournament.total_slots} joined
       </Text>
-      <Text style={styles.meta}>
-        {Number(tournament.entry_fee) === 0 ? 'Free entry' : `Entry fee: ${tournament.entry_fee} coins`}
-      </Text>
+      <View style={styles.feeRow}>
+        {Number(tournament.entry_fee) === 0 ? (
+          <StatusChip tone="success" label="Free entry" />
+        ) : (
+          <>
+            <Text style={styles.meta}>Entry fee:</Text>
+            <CoinAmount value={tournament.entry_fee} suffix="coins" />
+          </>
+        )}
+      </View>
 
       {credentials && (
         <View style={styles.credentials}>
@@ -139,7 +154,10 @@ export default function TournamentDetailScreen() {
           <Text style={styles.resultTitle}>Your result</Text>
           <Text style={styles.resultMeta}>Rank #{tournament.my_result.rank} · {tournament.my_result.kills} kills</Text>
           {Number(tournament.my_result.prize_awarded) > 0 && (
-            <Text style={styles.resultMeta}>Prize awarded: {tournament.my_result.prize_awarded} coins</Text>
+            <View style={styles.prizeRow}>
+              <Text style={styles.prizeLabel}>Prize awarded:</Text>
+              <CoinAmount value={tournament.my_result.prize_awarded} suffix="coins" />
+            </View>
           )}
         </View>
       )}
@@ -161,15 +179,15 @@ export default function TournamentDetailScreen() {
           {players.map((player, index) => (
             <View key={index} style={styles.playerGroup}>
               <Text style={styles.playerLabel}>{PLAYER_LABELS[index] ?? `Player ${index + 1}`}</Text>
-              <TextInput
-                style={styles.input}
+              <TextField
+                label="In-game name"
                 placeholder="In-game name"
                 maxLength={20}
                 value={player.inGameName}
                 onChangeText={(value) => updatePlayer(index, 'inGameName', value)}
               />
-              <TextInput
-                style={styles.input}
+              <TextField
+                label="UID (optional)"
                 placeholder="UID (optional)"
                 maxLength={12}
                 keyboardType="number-pad"
@@ -178,79 +196,69 @@ export default function TournamentDetailScreen() {
               />
             </View>
           ))}
-          {error && <Text style={styles.error}>{error}</Text>}
-          <Pressable
-            style={[styles.button, !allFilled && styles.buttonDisabled]}
-            onPress={handleJoin}
-            disabled={submitting || !allFilled}
-          >
-            {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Join tournament</Text>}
-          </Pressable>
+          {error && <Notice tone="danger">{error}</Notice>}
+          <Button label="Join tournament" onPress={handleJoin} loading={submitting} disabled={!allFilled} style={styles.joinButton} />
         </View>
       ) : (
-        <Text style={styles.error}>
-          {isFull
-            ? 'This tournament is full.'
-            : tournament.status === 'cancelled'
-              ? 'This tournament was cancelled.'
-              : 'Joining is closed for this tournament.'}
-        </Text>
+        <View style={styles.closedNotice}>
+          <Notice tone="warning">
+            {isFull
+              ? 'This tournament is full.'
+              : tournament.status === 'cancelled'
+                ? 'This tournament was cancelled.'
+                : 'Joining is closed for this tournament.'}
+          </Notice>
+        </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1025', padding: 20 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1025' },
-  title: { color: '#fff', fontSize: 24, fontWeight: '700', marginBottom: 8 },
-  meta: { color: '#C4B5FD', fontSize: 14, marginBottom: 4 },
-  form: { marginTop: 24, gap: 12 },
-  playerGroup: { gap: 8, marginBottom: 4 },
-  playerLabel: { color: '#C4B5FD', fontSize: 13, fontWeight: '600' },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#fff',
+const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
+  container: { flex: 1 },
+  content: { padding: 20, paddingBottom: 40 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  title: { color: c.fg, fontSize: 24, fontWeight: '700', marginBottom: 8 },
+  meta: { color: c.fg2, fontSize: 14 },
+  feeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  form: { marginTop: 24, gap: 16 },
+  playerGroup: {
+    gap: 10,
+    backgroundColor: c.surface,
+    borderWidth: 1,
+    borderColor: c.border,
+    borderRadius: 16,
+    padding: 14,
   },
-  button: {
-    backgroundColor: '#8B5CF6',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  error: { color: '#F87171', marginTop: 8 },
+  playerLabel: { color: c.fg, fontSize: 14, fontWeight: '700' },
+  joinButton: { marginTop: 4 },
+  closedNotice: { marginTop: 24 },
   confirmation: {
     marginTop: 24,
-    backgroundColor: 'rgba(52,211,153,0.15)',
+    backgroundColor: s.successSoft,
     borderRadius: 16,
     padding: 16,
   },
-  confirmationTitle: { color: '#34D399', fontWeight: '700', fontSize: 16 },
-  confirmationMeta: { color: '#C4B5FD', marginTop: 4 },
+  confirmationTitle: { color: s.success, fontWeight: '700', fontSize: 16 },
+  confirmationMeta: { color: c.fg2, marginTop: 4 },
   credentials: {
     marginTop: 16,
-    backgroundColor: 'rgba(139,92,246,0.15)',
+    backgroundColor: c.brandSoft,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(139,92,246,0.4)',
+    borderColor: c.borderStrong,
   },
-  credentialsTitle: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  credentialsMeta: { color: '#C4B5FD', marginTop: 4, fontSize: 14 },
+  credentialsTitle: { color: c.fg, fontWeight: '700', fontSize: 16 },
+  credentialsMeta: { color: c.fg2, marginTop: 4, fontSize: 14 },
   result: {
     marginTop: 16,
-    backgroundColor: 'rgba(250,204,21,0.12)',
+    backgroundColor: s.warningSoft,
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(250,204,21,0.35)',
   },
-  resultTitle: { color: '#FACC15', fontWeight: '700', fontSize: 16 },
-  resultMeta: { color: '#fff', marginTop: 4, fontSize: 14 },
-});
+  resultTitle: { color: s.warning, fontWeight: '700', fontSize: 16 },
+  resultMeta: { color: c.fg, marginTop: 4, fontSize: 14 },
+  prizeLabel: { color: c.fg, fontSize: 14 },
+  prizeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+}));

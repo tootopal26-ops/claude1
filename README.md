@@ -81,3 +81,9 @@ cd mobile && npx tsc --noEmit
 - [`docs/smoke-test-checklist.md`](docs/smoke-test-checklist.md) — the
   manual end-to-end check (signup → join → result → payout →
   withdrawal) to run against a staging deploy before it goes live.
+- [`docs/design-system.md`](docs/design-system.md) — the Admin/Staff
+  design tokens (shared with the Android app), application shell,
+  component library and page conventions.
+- [`qa-report/REDESIGN_REPORT.md`](qa-report/REDESIGN_REPORT.md) — what
+  the Admin/Staff redesign changed, how it was verified, screenshots
+  (`qa-report/redesign/`), and what remains untested.

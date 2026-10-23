@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { StyleSheet, type ImageStyle, type TextStyle, type ViewStyle } from 'react-native';
 
 import {
   COLOR_THEMES,
@@ -7,8 +8,10 @@ import {
   DEFAULT_FONT_THEME,
   FONT_THEMES,
   SEMANTIC_COLORS,
+  type ColorTheme,
   type ColorThemeKey,
   type FontThemeKey,
+  type SemanticColors,
 } from './tokens';
 
 const COLOR_THEME_KEY = 'minimax_theme_color';
@@ -25,8 +28,8 @@ function isFontThemeKey(value: string | null): value is FontThemeKey {
 type ThemeContextValue = {
   colorThemeKey: ColorThemeKey;
   fontThemeKey: FontThemeKey;
-  colors: (typeof COLOR_THEMES)[ColorThemeKey];
-  semanticColors: typeof SEMANTIC_COLORS;
+  colors: ColorTheme;
+  semanticColors: SemanticColors;
   fontFamily?: string;
   setColorTheme: (key: ColorThemeKey) => void;
   setFontTheme: (key: FontThemeKey) => void;
@@ -77,4 +80,29 @@ export function useTheme(): ThemeContextValue {
     throw new Error('useTheme must be used within a ThemeProvider');
   }
   return context;
+}
+
+export type ThemeTokens = {
+  colors: ColorTheme;
+  semantic: SemanticColors;
+};
+
+/**
+ * Themed replacement for a module-level StyleSheet.create: declare the
+ * stylesheet once at module scope as a function of the active tokens, then
+ * call the returned hook inside the component. The sheet is rebuilt only
+ * when the selected theme changes, so every screen follows the Settings
+ * theme picker instead of baking colors in at load time.
+ *
+ *   const useStyles = makeStyles(({ colors: c }) => ({ card: { backgroundColor: c.surface } }));
+ *   // in the component: const styles = useStyles();
+ */
+type NamedStyles = Record<string, ViewStyle | TextStyle | ImageStyle>;
+
+export function makeStyles<T extends NamedStyles>(factory: (tokens: ThemeTokens) => T & NamedStyles): () => Readonly<T> {
+  return function useStyles() {
+    const { colors, semanticColors } = useTheme();
+
+    return useMemo(() => StyleSheet.create(factory({ colors, semantic: semanticColors })), [colors, semanticColors]);
+  };
 }

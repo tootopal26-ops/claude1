@@ -1,90 +1,126 @@
+@php
+    $canSubmitResults = auth('staff')->user()->hasPermission('results.submit');
+    $joined = $entries->count();
+    $fill = $tournament->total_slots > 0 ? min(100, round($joined / $tournament->total_slots * 100)) : 0;
+@endphp
+
 <div>
-    <a href="{{ route('admin.tournaments.index') }}" class="text-sm text-violet-400 hover:text-violet-200">&larr; Back to tournaments</a>
+    <x-ui.flash />
 
-    <h1 class="mb-1 mt-2 text-2xl font-bold text-violet-200">{{ $tournament->title }}</h1>
-    <p class="mb-6 text-sm text-violet-400">
-        {{ ucfirst($tournament->mode) }} · {{ $entries->count() }}/{{ $tournament->total_slots }} teams joined ·
-        {{ $tournament->isFree() ? 'Free entry' : $tournament->entry_fee.' coins' }}
-        @if ($tournament->min_players)
-            · min {{ $tournament->min_players }} teams
-        @endif
-        · status: {{ $tournament->status }}
-    </p>
+    <x-ui.page-header
+        :title="$tournament->title"
+        :description="ucfirst($tournament->mode).' tournament · starts '.$tournament->scheduled_start_at->format('d M Y, H:i')"
+        :breadcrumbs="[
+            ['label' => 'Tournaments', 'url' => route('admin.tournaments.index')],
+            ['label' => $tournament->title],
+        ]"
+    >
+        <x-slot:actions>
+            <x-ui.badge :status="$tournament->status" class="px-3 py-1 text-sm" />
+            @if ($canSubmitResults)
+                <x-ui.button :href="route('admin.tournaments.results', $tournament)" variant="outline" icon="leaderboard">Enter / view results</x-ui.button>
+            @endif
+        </x-slot:actions>
+    </x-ui.page-header>
 
-    @if (auth('staff')->user()->hasPermission('results.submit'))
-        <a href="{{ route('admin.tournaments.results', $tournament) }}" class="mb-6 inline-block text-sm text-violet-400 hover:text-violet-200">Enter / view results &rarr;</a>
-    @endif
-
-    @if (session('status'))
-        <div class="mb-4 rounded-lg bg-emerald-900/40 px-4 py-3 text-sm text-emerald-300">{{ session('status') }}</div>
-    @endif
+    <x-ui.card title="Overview">
+        <dl class="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
+            <x-ui.kv label="Teams joined">
+                <span class="text-lg font-semibold tabular-nums">{{ $joined }}/{{ $tournament->total_slots }}</span>
+                <div class="mt-2 h-1.5 w-full max-w-[10rem] overflow-hidden rounded-full bg-surface-3" role="img" aria-label="{{ $fill }}% full">
+                    <div class="h-full rounded-full bg-brand" style="width: {{ $fill }}%"></div>
+                </div>
+            </x-ui.kv>
+            <x-ui.kv label="Entry fee">
+                @if ($tournament->isFree())
+                    <x-ui.badge variant="success" :dot="false">Free entry</x-ui.badge>
+                @else
+                    <span class="inline-flex items-center gap-1.5 text-lg font-semibold tabular-nums"><x-coin-asset :size="18" />{{ $tournament->entry_fee }}</span>
+                    <span class="block text-xs text-fg-3">per team</span>
+                @endif
+            </x-ui.kv>
+            <x-ui.kv label="Minimum teams">
+                @if ($tournament->min_players)
+                    <span class="text-lg font-semibold tabular-nums">{{ $tournament->min_players }}</span>
+                    <span class="block text-xs text-fg-3">Cancelled and refunded if not met</span>
+                @else
+                    <span class="text-fg-2">No minimum</span>
+                @endif
+            </x-ui.kv>
+            <x-ui.kv label="Prize pool"><span class="inline-flex items-center gap-1.5 text-lg font-semibold tabular-nums"><x-coin-asset :size="18" />{{ $tournament->prize_pool }}</span></x-ui.kv>
+        </dl>
+    </x-ui.card>
 
     @if (auth('staff')->user()->hasPermission('credentials.release'))
-        <div class="mb-6 rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-            <h2 class="mb-4 text-lg font-bold text-violet-200">Room credentials</h2>
-
+        <x-ui.card title="Room credentials" description="Shared with every joined player at the moment you release them." class="mt-6">
             @if ($tournament->credentials_released_at)
-                <p class="text-sm text-emerald-400">
-                    Released {{ $tournament->credentials_released_at->format('d M, H:i') }}
+                <x-ui.alert variant="success" title="Credentials released">
+                    {{ $tournament->credentials_released_at->format('d M, H:i') }}
                     by {{ $tournament->credential?->releasedByStaff?->display_name ?? 'staff' }}.
-                </p>
-                <p class="mt-2 text-sm text-violet-300">Room ID: <span class="text-white">{{ $tournament->credential?->room_id }}</span></p>
-                <p class="text-sm text-violet-300">Password: <span class="text-white">{{ $tournament->credential?->room_password }}</span></p>
-            @else
-                <form wire:submit="releaseCredentials" class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="mb-1 block text-xs text-violet-300">Room ID</label>
-                            <input type="text" wire:model="roomId" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                            @error('roomId') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-xs text-violet-300">Password</label>
-                            <input type="text" wire:model="roomPassword" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                            @error('roomPassword') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-                        </div>
-                    </div>
+                </x-ui.alert>
 
+                <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <x-ui.kv label="Room ID"><span class="font-mono text-base">{{ $tournament->credential?->room_id }}</span></x-ui.kv>
+                    <x-ui.kv label="Password"><span class="font-mono text-base">{{ $tournament->credential?->room_password }}</span></x-ui.kv>
+                </dl>
+            @elseif (! in_array($tournament->status, ['upcoming', 'ongoing'], true))
+                <x-ui.alert variant="info" title="Credentials can't be released">Room credentials can only be released for an upcoming or ongoing tournament. This one is {{ $tournament->status }}.</x-ui.alert>
+            @else
+                <form wire:submit="releaseCredentials" class="space-y-5" novalidate>
                     @if ($releaseError)
-                        <p class="text-sm text-red-400">{{ $releaseError }}</p>
+                        <x-ui.alert variant="danger" title="Credentials weren't released">{{ $releaseError }}</x-ui.alert>
                     @endif
 
-                    <button type="submit" wire:confirm="Release room credentials to every joined player now?" class="w-full rounded-lg bg-violet-600 py-2 font-semibold text-white hover:bg-violet-500">
-                        Release to joined players
-                    </button>
+                    <div class="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2">
+                        <x-ui.input label="Room ID" wire:model="roomId" required autocomplete="off" hint="The custom-room ID players enter in the game." />
+                        <x-ui.input label="Password" wire:model="roomPassword" required autocomplete="off" hint="The custom-room password." />
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <p class="text-xs text-fg-3">Releasing closes joining, starts the match (even if the minimum isn't met) and notifies every joined player. It can only be done once.</p>
+                        <x-ui.button type="submit" icon="check" loading="releaseCredentials" confirm="Release room credentials to every joined player now?" confirm-title="Release room credentials" confirm-label="Release">Release to joined players</x-ui.button>
+                    </div>
                 </form>
             @endif
-        </div>
+        </x-ui.card>
     @endif
 
-    <div class="overflow-hidden rounded-2xl border border-violet-900/40">
-        <table class="w-full text-left text-sm">
-            <thead class="bg-white/5 text-violet-300">
-                <tr>
-                    <th class="px-4 py-3">#</th>
-                    <th class="px-4 py-3">Account</th>
-                    <th class="px-4 py-3">Players (IGN / UID)</th>
-                    <th class="px-4 py-3">Joined at</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-violet-900/30">
-                @forelse ($entries as $index => $entry)
-                    <tr>
-                        <td class="px-4 py-3 text-violet-300">{{ $index + 1 }}</td>
-                        <td class="px-4 py-3 text-white">{{ $entry->user->username }}</td>
-                        <td class="px-4 py-3 text-violet-300">
-                            @foreach ($entry->players->sortBy('slot_number') as $player)
-                                <div>{{ $player->in_game_name }} <span class="text-violet-500">({{ $player->uid ?? '—' }})</span></div>
-                            @endforeach
-                        </td>
-                        <td class="px-4 py-3 text-violet-300">{{ $entry->created_at->format('d M, H:i') }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="4" class="px-4 py-8 text-center text-violet-400">No one has joined yet.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+    <h2 class="mb-3 mt-8 text-sm font-semibold text-fg">Joined teams</h2>
+
+    <x-ui.table>
+        <x-slot:head>
+            <tr>
+                <th class="w-12">#</th>
+                <th>Account</th>
+                <th>Players (IGN / UID)</th>
+                <th>Joined at</th>
+            </tr>
+        </x-slot:head>
+
+        @forelse ($entries as $index => $entry)
+            <tr wire:key="entry-{{ $entry->id }}">
+                <td class="tabular-nums text-fg-3">{{ $index + 1 }}</td>
+                <td class="mm-cell-primary">
+                    @if (auth('staff')->user()->hasPermission('users.view'))
+                        <a href="{{ route('admin.users.show', $entry->user) }}" class="hover:text-brand-text">{{ $entry->user->username }}</a>
+                    @else
+                        {{ $entry->user->username }}
+                    @endif
+                </td>
+                <td>
+                    <ul class="space-y-0.5">
+                        @foreach ($entry->players->sortBy('slot_number') as $player)
+                            <li class="flex flex-wrap items-baseline gap-x-2">
+                                <span class="max-w-[14rem] truncate text-fg" title="{{ $player->in_game_name }}">{{ $player->in_game_name }}</span>
+                                <span class="font-mono text-xs text-fg-3">({{ $player->uid ?? '—' }})</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                </td>
+                <td class="whitespace-nowrap">{{ $entry->created_at->format('d M, H:i') }}</td>
+            </tr>
+        @empty
+            <x-ui.table-empty :colspan="4" icon="users" title="No one has joined yet" description="Teams that join this tournament will be listed here with their in-game names." />
+        @endforelse
+    </x-ui.table>
 </div>

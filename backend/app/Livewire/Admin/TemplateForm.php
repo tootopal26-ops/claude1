@@ -64,6 +64,26 @@ class TemplateForm extends Component
         }
     }
 
+    /**
+     * Friendly names for validation messages ("The game field is required").
+     *
+     * @return array<string, string>
+     */
+    protected function validationAttributes(): array
+    {
+        return [
+            'game_id' => 'game',
+            'total_slots' => 'total slots',
+            'min_players' => 'minimum teams',
+            'entry_fee' => 'entry fee',
+            'per_kill_reward' => 'per-kill reward',
+            'prize_pool' => 'prize pool',
+            'day_of_week' => 'day of week',
+            'time_of_day' => 'time of day',
+            'generate_days_ahead' => 'days ahead',
+        ];
+    }
+
     public function save(): void
     {
         abort_unless(Auth::guard('staff')->user()->hasPermission('recurring_tournaments.manage'), 403);

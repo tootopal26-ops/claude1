@@ -38,7 +38,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // The Admin/Staff login screen is currently the only guest-redirectable
         // web surface; revisit once player-facing web routes exist.
-        $middleware->redirectGuestsTo(fn () => route('admin.login'));
+        // A Livewire update that reaches the auth guard means the page was open
+        // when the session ended — say so on the login screen.
+        $middleware->redirectGuestsTo(fn (Request $request) => route(
+            'admin.login',
+            $request->hasHeader('X-Livewire') || $request->is('livewire*/update') ? ['expired' => 1] : [],
+        ));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

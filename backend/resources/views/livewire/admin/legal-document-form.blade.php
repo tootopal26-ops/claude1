@@ -1,35 +1,57 @@
-<div class="mx-auto max-w-3xl">
-    <a href="{{ route('admin.legal.index') }}" class="text-sm text-violet-400 hover:text-violet-200">&larr; Back to legal documents</a>
-
-    <h1 class="mb-6 mt-2 text-2xl font-bold text-violet-200">Publish new version</h1>
+<div>
+    <x-ui.page-header
+        title="Publish new version"
+        description="Write the next version of a legal document. Players read and accept exactly what you publish here."
+        :breadcrumbs="[
+            ['label' => 'Legal documents', 'url' => route('admin.legal.index')],
+            ['label' => 'Publish new version'],
+        ]"
+    />
 
     @if ($formError)
-        <div class="mb-4 rounded-lg bg-red-900/40 px-4 py-3 text-sm text-red-300">{{ $formError }}</div>
+        <x-ui.alert variant="danger" title="That version couldn't be published" class="mb-6">{{ $formError }}</x-ui.alert>
     @endif
 
-    <form wire:submit="publish" class="space-y-4 rounded-2xl border border-violet-900/40 bg-white/5 p-6">
-        <div>
-            <label class="mb-1 block text-xs text-violet-300">Document type</label>
-            <select wire:model.live="type" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-                <option value="terms_and_conditions">Terms & Conditions</option>
-                <option value="privacy_policy">Privacy Policy</option>
-            </select>
-        </div>
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <form wire:submit="publish" class="min-w-0 space-y-6 xl:col-span-2" novalidate>
+            <x-ui.card title="Document">
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <x-ui.select label="Document type" wire:model.live="type" required hint="Switching type loads that document's current version as a starting point.">
+                        <option value="terms_and_conditions">Terms &amp; Conditions</option>
+                        <option value="privacy_policy">Privacy Policy</option>
+                    </x-ui.select>
 
-        <div>
-            <label class="mb-1 block text-xs text-violet-300">Title</label>
-            <input type="text" wire:model="title" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 text-white">
-            @error('title') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-        </div>
+                    <x-ui.input label="Title" wire:model="title" required />
 
-        <div>
-            <label class="mb-1 block text-xs text-violet-300">Content</label>
-            <textarea wire:model="content" rows="16" class="w-full rounded-lg border border-violet-800/50 bg-black/30 px-3 py-2 font-mono text-sm text-white"></textarea>
-            @error('content') <p class="mt-1 text-xs text-red-400">{{ $message }}</p> @enderror
-        </div>
+                    <x-ui.textarea label="Content" wire:model="content" required rows="18" class="font-mono text-[13px] leading-relaxed" wrapperClass="sm:col-span-2" hint="This is the full text players will read and accept." />
+                </div>
+            </x-ui.card>
 
-        <button type="submit" wire:confirm="Publishing a new version requires every player to re-accept it before they can continue. Proceed?" class="w-full rounded-lg bg-violet-600 py-2 font-semibold text-white hover:bg-violet-500">
-            Publish version
-        </button>
-    </form>
+            <div class="flex items-center justify-end gap-2">
+                <x-ui.button :href="route('admin.legal.index')" variant="ghost">Cancel</x-ui.button>
+                <x-ui.button
+                    type="submit"
+                    loading="publish"
+                    icon="shield"
+                    confirm="Publishing a new version requires every player to re-accept it before they can continue. Proceed?"
+                    confirm-title="Publish new version"
+                    confirm-label="Publish version"
+                >Publish version</x-ui.button>
+            </div>
+        </form>
+
+        <div class="min-w-0 space-y-6 xl:sticky xl:top-20 xl:self-start">
+            <x-ui.alert variant="warning" title="Every player must re-accept">
+                Publishing creates a new version. Players who accepted an earlier version are asked to accept this one before they can continue.
+            </x-ui.alert>
+
+            <x-ui.card title="What happens when you publish">
+                <ul class="space-y-3 text-sm text-fg-2">
+                    <li class="flex gap-2.5"><x-icon name="check-circle" :size="16" class="mt-0.5 shrink-0 text-success" /><span>A new version number is created and becomes the current one.</span></li>
+                    <li class="flex gap-2.5"><x-icon name="check-circle" :size="16" class="mt-0.5 shrink-0 text-success" /><span>Earlier versions are kept unchanged on file for audit and disputes.</span></li>
+                    <li class="flex gap-2.5"><x-icon name="check-circle" :size="16" class="mt-0.5 shrink-0 text-success" /><span>The publication is recorded in the audit log.</span></li>
+                </ul>
+            </x-ui.card>
+        </div>
+    </div>
 </div>

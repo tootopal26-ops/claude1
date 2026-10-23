@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-native';
 import { Link, Redirect } from 'expo-router';
 
 import { fetchWallet, fetchWalletLedger } from '../src/api/wallet';
 import { useAuth } from '../src/auth/AuthContext';
+import { Button } from '../src/components/Button';
+import { CoinAmount } from '../src/components/CoinAmount';
+import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import type { Wallet, WalletLedgerEntry } from '../src/types';
 
 const LEDGER_TYPE_LABELS: Record<string, string> = {
@@ -16,6 +19,8 @@ const LEDGER_TYPE_LABELS: Record<string, string> = {
 
 export default function WalletScreen() {
   const { user, isLoading: authLoading } = useAuth();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [entries, setEntries] = useState<WalletLedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +50,7 @@ export default function WalletScreen() {
   if (authLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.brandText} />
       </View>
     );
   }
@@ -57,7 +62,7 @@ export default function WalletScreen() {
   return (
     <View style={styles.container}>
       {loading || !wallet ? (
-        <ActivityIndicator style={styles.centered} />
+        <ActivityIndicator style={styles.centered} color={colors.brandText} />
       ) : (
         <FlatList
           data={entries}
@@ -65,6 +70,9 @@ export default function WalletScreen() {
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
+              tintColor={colors.brandText}
+              colors={[colors.brand]}
+              progressBackgroundColor={colors.surface3}
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true);
@@ -76,29 +84,25 @@ export default function WalletScreen() {
           ListHeaderComponent={
             <View style={styles.summary}>
               <Text style={styles.totalLabel}>Total balance</Text>
-              <Text style={styles.totalValue}>{wallet.total_balance} coins</Text>
+              <CoinAmount value={wallet.total_balance} size={30} suffix="coins" style={styles.totalRow} textStyle={styles.totalValue} />
 
               <View style={styles.breakdownRow}>
                 <View style={styles.breakdownItem}>
                   <Text style={styles.breakdownLabel}>Deposit</Text>
-                  <Text style={styles.breakdownValue}>{wallet.deposit_balance}</Text>
+                  <CoinAmount value={wallet.deposit_balance} size={18} textStyle={styles.breakdownValue} />
                 </View>
                 <View style={styles.breakdownItem}>
                   <Text style={styles.breakdownLabel}>Winnings (withdrawable)</Text>
-                  <Text style={[styles.breakdownValue, styles.winningsValue]}>{wallet.withdrawable_balance}</Text>
+                  <CoinAmount value={wallet.withdrawable_balance} size={18} textStyle={[styles.breakdownValue, styles.winningsValue]} />
                 </View>
               </View>
 
               <View style={styles.actionRow}>
                 <Link href="/deposit" asChild>
-                  <Pressable style={[styles.actionButton, styles.depositButton]}>
-                    <Text style={styles.withdrawButtonText}>Add coins</Text>
-                  </Pressable>
+                  <Button label="Add coins" style={styles.actionButton} />
                 </Link>
                 <Link href="/withdraw" asChild>
-                  <Pressable style={[styles.actionButton, styles.withdrawButton]}>
-                    <Text style={styles.withdrawButtonText}>Withdraw</Text>
-                  </Pressable>
+                  <Button label="Withdraw" variant="secondary" style={styles.actionButton} />
                 </Link>
               </View>
 
@@ -115,10 +119,11 @@ export default function WalletScreen() {
                   <Text style={styles.rowDate}>{new Date(item.created_at).toLocaleString()}</Text>
                   {item.reason && <Text style={styles.rowReason}>{item.reason}</Text>}
                 </View>
-                <Text style={[styles.rowAmount, isCredit ? styles.credit : styles.debit]}>
-                  {isCredit ? '+' : ''}
-                  {item.amount}
-                </Text>
+                <CoinAmount
+                  value={`${isCredit ? '+' : ''}${item.amount}`}
+                  size={14}
+                  textStyle={[styles.rowAmount, isCredit ? styles.credit : styles.debit]}
+                />
               </View>
             );
           }}
@@ -128,49 +133,42 @@ export default function WalletScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1a1025' },
+const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
+  container: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: 16 },
   summary: { marginBottom: 16 },
-  totalLabel: { color: '#C4B5FD', fontSize: 13, textAlign: 'center' },
-  totalValue: { color: '#fff', fontSize: 32, fontWeight: '800', textAlign: 'center', marginBottom: 16 },
+  totalLabel: { color: c.fg2, fontSize: 13, textAlign: 'center' },
+  totalRow: { justifyContent: 'center', marginBottom: 16, marginTop: 4, gap: 8 },
+  totalValue: { color: c.fg, fontSize: 32, fontWeight: '800' },
   breakdownRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   breakdownItem: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: c.surface,
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.15)',
+    borderColor: c.border,
   },
-  breakdownLabel: { color: '#C4B5FD', fontSize: 12, marginBottom: 4 },
-  breakdownValue: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  winningsValue: { color: '#34D399' },
+  breakdownLabel: { color: c.fg2, fontSize: 12, marginBottom: 6 },
+  breakdownValue: { color: c.fg, fontSize: 18, fontWeight: '700' },
+  winningsValue: { color: s.success },
   actionRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
-  actionButton: {
-    flex: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  depositButton: { backgroundColor: '#34D399' },
-  withdrawButton: { backgroundColor: '#8B5CF6' },
-  withdrawButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  historyHeading: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 8 },
-  empty: { color: '#C4B5FD', textAlign: 'center', marginTop: 32 },
+  actionButton: { flex: 1 },
+  historyHeading: { color: c.fg, fontSize: 15, fontWeight: '700', marginBottom: 8 },
+  empty: { color: c.fg2, textAlign: 'center', marginTop: 32 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(196,181,253,0.1)',
+    borderBottomColor: c.border,
   },
-  rowType: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  rowDate: { color: '#8B7BA8', fontSize: 11, marginTop: 2 },
-  rowReason: { color: '#8B7BA8', fontSize: 11, marginTop: 2, fontStyle: 'italic' },
+  rowType: { color: c.fg, fontSize: 14, fontWeight: '600' },
+  rowDate: { color: c.fg3, fontSize: 11, marginTop: 2 },
+  rowReason: { color: c.fg3, fontSize: 11, marginTop: 2, fontStyle: 'italic' },
   rowAmount: { fontSize: 15, fontWeight: '700' },
-  credit: { color: '#34D399' },
-  debit: { color: '#F87171' },
-});
+  credit: { color: s.success },
+  debit: { color: s.danger },
+}));

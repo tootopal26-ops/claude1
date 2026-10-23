@@ -6,7 +6,8 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0D0A12",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.minimax.esports"
@@ -15,7 +16,7 @@
       "package": "com.minimax.esports",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#101010",
+        "backgroundColor": "#0D0A12",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -30,7 +31,7 @@
       [
         "expo-notifications",
         {
-          "color": "#8B5CF6"
+          "color": "#8B35F6"
         }
       ],
       [
@@ -38,7 +39,7 @@
         {
           "image": "./assets/splash-icon.png",
           "imageWidth": 220,
-          "backgroundColor": "#101010"
+          "backgroundColor": "#0D0A12"
         }
       ]
     ],

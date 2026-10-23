@@ -1,13 +1,23 @@
 import { Platform } from 'react-native';
 
 /**
- * The 7 color themes and 7 font themes, mirroring
- * backend/resources/css/themes.css by key, name, and palette. Keep the
- * two lists in sync by hand if either side changes.
+ * The 7 color themes and 7 font themes. The color tokens use the SAME names
+ * and values as the web Admin/Staff UI (backend/resources/css/themes.css,
+ * documented in docs/design-system.md): a neutral-dark surface hierarchy
+ * with the brand color reserved for actions, selection, focus and links.
+ * Keep the two in sync by hand if either side changes.
  *
- * Semantic colors (danger/success/warning) carry meaning independent of
- * the chosen theme, so they live outside ColorTheme and stay fixed
- * across all 7 — see SEMANTIC_COLORS below.
+ * Surface hierarchy, darkest to lightest:
+ *   bg        screen canvas
+ *   sidebar   navigation chrome (stack header)
+ *   surface   cards and panels
+ *   surface2  inputs, inactive chips/tabs, nested panels
+ *   surface3  menus, dialogs, popovers
+ *
+ * Semantic colors (success/warning/danger/info) carry meaning independent of
+ * the chosen theme, so they live outside ColorTheme and stay fixed across all
+ * 7 — see SEMANTIC_COLORS below. This is the ONLY file that may contain raw
+ * color values; screens and components read tokens via useTheme()/makeStyles.
  */
 export type ColorThemeKey =
   | 'purple-glass'
@@ -29,102 +39,181 @@ export type FontThemeKey =
 
 export type ColorTheme = {
   label: string;
-  background: string;
+  bg: string;
+  sidebar: string;
   surface: string;
-  surfaceBorder: string;
-  primary: string;
-  primaryHover: string;
-  text: string;
-  textMuted: string;
-  accent: string;
+  surface2: string;
+  surface3: string;
+  border: string;
+  borderStrong: string;
+  fg: string;
+  fg2: string;
+  fg3: string;
+  brand: string;
+  brandHover: string;
+  brandPressed: string;
+  brandSoft: string;
+  brandText: string;
+  onBrand: string;
+  ring: string;
 };
 
 export const SEMANTIC_COLORS = {
-  danger: '#ef4444',
-  dangerBg: 'rgba(127,29,29,0.4)',
   success: '#34d399',
-  successBg: 'rgba(6,78,59,0.4)',
+  successSoft: 'rgba(52,211,153,0.12)',
   warning: '#fbbf24',
-  warningBg: 'rgba(120,53,15,0.4)',
+  warningSoft: 'rgba(251,191,36,0.12)',
+  danger: '#f87171',
+  dangerSoft: 'rgba(248,113,113,0.12)',
+  dangerSolid: '#dc2626',
+  onDanger: '#ffffff',
+  info: '#60a5fa',
+  infoSoft: 'rgba(96,165,250,0.12)',
+  overlay: 'rgba(5,3,8,0.7)',
 };
+
+export type SemanticColors = typeof SEMANTIC_COLORS;
 
 export const COLOR_THEMES: Record<ColorThemeKey, ColorTheme> = {
   'purple-glass': {
     label: 'Purple Glassmorphism',
-    background: '#140a1f',
-    surface: 'rgba(26,16,37,0.8)',
-    surfaceBorder: 'rgba(88,28,135,0.4)',
-    primary: '#8b5cf6',
-    primaryHover: '#7c3aed',
-    text: '#ffffff',
-    textMuted: '#c4b5fd',
-    accent: '#a78bfa',
+    bg: '#0d0a12',
+    sidebar: '#120d19',
+    surface: '#19131f',
+    surface2: '#21192b',
+    surface3: '#291f35',
+    border: '#382a46',
+    borderStrong: '#4d3a61',
+    fg: '#f6f1fb',
+    fg2: '#c2b5d0',
+    fg3: '#9788a6',
+    brand: '#8b35f6',
+    brandHover: '#a855f7',
+    brandPressed: '#7025d8',
+    brandSoft: '#241536',
+    brandText: '#b987fb',
+    onBrand: '#ffffff',
+    ring: '#a855f7',
   },
   'midnight-emerald': {
     label: 'Midnight Emerald',
-    background: '#0a1f17',
-    surface: 'rgba(16,37,28,0.8)',
-    surfaceBorder: 'rgba(6,95,70,0.4)',
-    primary: '#10b981',
-    primaryHover: '#059669',
-    text: '#ffffff',
-    textMuted: '#6ee7b7',
-    accent: '#34d399',
+    bg: '#090f0d',
+    sidebar: '#0d1512',
+    surface: '#121c18',
+    surface2: '#19251f',
+    surface3: '#202e27',
+    border: '#2b3e34',
+    borderStrong: '#3a5446',
+    fg: '#f0faf5',
+    fg2: '#b5cfc2',
+    fg3: '#84a394',
+    brand: '#10b981',
+    brandHover: '#34d399',
+    brandPressed: '#059669',
+    brandSoft: '#0f2a21',
+    brandText: '#34d399',
+    onBrand: '#04140e',
+    ring: '#34d399',
   },
   'crimson-arena': {
     label: 'Crimson Arena',
-    background: '#1a0a0a',
-    surface: 'rgba(37,16,16,0.8)',
-    surfaceBorder: 'rgba(127,29,29,0.4)',
-    primary: '#ef4444',
-    primaryHover: '#dc2626',
-    text: '#ffffff',
-    textMuted: '#fca5a5',
-    accent: '#f87171',
+    bg: '#120909',
+    sidebar: '#190d0d',
+    surface: '#221414',
+    surface2: '#2c1a1a',
+    surface3: '#372121',
+    border: '#4a2b2b',
+    borderStrong: '#613838',
+    fg: '#fdf1f1',
+    fg2: '#d8b8b8',
+    fg3: '#a98888',
+    brand: '#dc2626',
+    brandHover: '#ef4444',
+    brandPressed: '#b91c1c',
+    brandSoft: '#3a1414',
+    brandText: '#f87171',
+    onBrand: '#ffffff',
+    ring: '#ef4444',
   },
   'cyber-blue': {
     label: 'Cyber Blue',
-    background: '#0a1420',
-    surface: 'rgba(16,28,37,0.8)',
-    surfaceBorder: 'rgba(12,74,110,0.4)',
-    primary: '#0ea5e9',
-    primaryHover: '#0284c7',
-    text: '#ffffff',
-    textMuted: '#7dd3fc',
-    accent: '#38bdf8',
+    bg: '#08111a',
+    sidebar: '#0c1824',
+    surface: '#111f2d',
+    surface2: '#182939',
+    surface3: '#1f3346',
+    border: '#2a4157',
+    borderStrong: '#38566f',
+    fg: '#eef6fc',
+    fg2: '#b1c8da',
+    fg3: '#809bb0',
+    brand: '#0ea5e9',
+    brandHover: '#38bdf8',
+    brandPressed: '#0284c7',
+    brandSoft: '#0f2638',
+    brandText: '#38bdf8',
+    onBrand: '#04121c',
+    ring: '#38bdf8',
   },
   'sunset-gold': {
     label: 'Sunset Gold',
-    background: '#1f1509',
-    surface: 'rgba(37,27,16,0.8)',
-    surfaceBorder: 'rgba(146,64,14,0.4)',
-    primary: '#f59e0b',
-    primaryHover: '#d97706',
-    text: '#ffffff',
-    textMuted: '#fcd34d',
-    accent: '#fbbf24',
+    bg: '#120d07',
+    sidebar: '#19120a',
+    surface: '#221a0f',
+    surface2: '#2c2214',
+    surface3: '#372b1a',
+    border: '#4a3a22',
+    borderStrong: '#614c2d',
+    fg: '#fdf6ec',
+    fg2: '#d9c6a5',
+    fg3: '#a99679',
+    brand: '#f59e0b',
+    brandHover: '#fbbf24',
+    brandPressed: '#d97706',
+    brandSoft: '#33220a',
+    brandText: '#fbbf24',
+    onBrand: '#1a1004',
+    ring: '#fbbf24',
   },
   'royal-indigo': {
     label: 'Royal Indigo',
-    background: '#0d0a1f',
-    surface: 'rgba(22,16,37,0.8)',
-    surfaceBorder: 'rgba(67,56,202,0.4)',
-    primary: '#6366f1',
-    primaryHover: '#4f46e5',
-    text: '#ffffff',
-    textMuted: '#a5b4fc',
-    accent: '#818cf8',
+    bg: '#0a0a18',
+    sidebar: '#0f0f20',
+    surface: '#161629',
+    surface2: '#1d1d35',
+    surface3: '#262643',
+    border: '#34345a',
+    borderStrong: '#46467a',
+    fg: '#f1f1fd',
+    fg2: '#babad8',
+    fg3: '#8a8aae',
+    brand: '#5558e8',
+    brandHover: '#7c7ff5',
+    brandPressed: '#4338ca',
+    brandSoft: '#1b1b3d',
+    brandText: '#a5a8fb',
+    onBrand: '#ffffff',
+    ring: '#7c7ff5',
   },
   'monochrome-steel': {
     label: 'Monochrome Steel',
-    background: '#121212',
-    surface: 'rgba(30,30,30,0.8)',
-    surfaceBorder: 'rgba(100,116,139,0.4)',
-    primary: '#94a3b8',
-    primaryHover: '#64748b',
-    text: '#ffffff',
-    textMuted: '#cbd5e1',
-    accent: '#e2e8f0',
+    bg: '#0e0f11',
+    sidebar: '#131518',
+    surface: '#1a1d21',
+    surface2: '#22262b',
+    surface3: '#2b3036',
+    border: '#373d45',
+    borderStrong: '#4a525c',
+    fg: '#f3f5f7',
+    fg2: '#bdc4cc',
+    fg3: '#8c95a0',
+    brand: '#94a3b8',
+    brandHover: '#cbd5e1',
+    brandPressed: '#7a8799',
+    brandSoft: '#20262e',
+    brandText: '#cbd5e1',
+    onBrand: '#0b0f14',
+    ring: '#cbd5e1',
   },
 };
 

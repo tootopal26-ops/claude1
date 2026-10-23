@@ -1,62 +1,82 @@
+@php
+    $payouts = $period->rewardPayouts()->get()->keyBy('user_id');
+    $isFinalized = $period->status !== 'provisional';
+@endphp
+
 <div>
-    <h1 class="mb-6 text-2xl font-bold text-violet-200">Leaderboards</h1>
+    <x-ui.page-header title="Leaderboards" description="Rankings are recomputed from published results. Finalizing a period pays out its rewards.">
+        <x-slot:actions>
+            <x-ui.button variant="outline" icon="clock" wire:click="recomputeNow" loading="recomputeNow">Recompute now</x-ui.button>
+            @if (! $isFinalized)
+                <x-ui.button
+                    variant="danger"
+                    icon="check"
+                    wire:click="finalizeNow"
+                    loading="finalizeNow"
+                    confirm="Finalize this period and pay out any configured rewards now?"
+                    confirm-title="Finalize period"
+                    confirm-label="Finalize and pay out"
+                >Finalize now</x-ui.button>
+            @endif
+        </x-slot:actions>
+    </x-ui.page-header>
 
     @if ($actionStatus)
-        <div class="mb-4 rounded-lg bg-emerald-900/40 px-4 py-3 text-sm text-emerald-300">{{ $actionStatus }}</div>
+        <x-ui.alert variant="success" class="mb-6">{{ $actionStatus }}</x-ui.alert>
     @endif
 
-    <div class="mb-6 flex items-center justify-between">
-        <div class="flex gap-2">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+        <x-ui.tabs label="Leaderboard period">
             @foreach (['daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly'] as $value => $label)
-                <button type="button" wire:click="$set('type', '{{ $value }}')"
-                    class="rounded-lg px-4 py-2 text-sm font-semibold {{ $type === $value ? 'bg-violet-600 text-white' : 'bg-white/5 text-violet-300' }}">
-                    {{ $label }}
-                </button>
+                <x-ui.tab :active="$type === $value" wire:click="$set('type', '{{ $value }}')">{{ $label }}</x-ui.tab>
             @endforeach
-        </div>
+        </x-ui.tabs>
 
-        <div class="flex gap-3">
-            <button type="button" wire:click="recomputeNow" class="text-sm text-violet-400 hover:text-violet-200">Recompute now</button>
-            @if ($period->status === 'provisional')
-                <button type="button" wire:click="finalizeNow" wire:confirm="Finalize this period and pay out any configured rewards now?" class="text-sm text-red-400 hover:text-red-300">Finalize now</button>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-2">
+            <span>{{ $period->period_start->format('d M Y, H:i') }} &ndash; {{ $period->period_end->format('d M Y, H:i') }} <span class="text-fg-3">(UTC)</span></span>
+            <x-ui.badge :variant="$isFinalized ? 'success' : 'warning'">{{ ucfirst($period->status) }}</x-ui.badge>
+            @if ($period->finalized_at)
+                <span class="text-xs text-fg-3">Finalized {{ $period->finalized_at->format('d M, H:i') }}</span>
             @endif
         </div>
     </div>
 
-    <p class="mb-4 text-sm text-violet-400">
-        {{ $period->period_start->format('d M Y, H:i') }} &ndash; {{ $period->period_end->format('d M Y, H:i') }} (UTC)
-        · status: {{ ucfirst($period->status) }}
-        @if ($period->finalized_at)
-            · finalized {{ $period->finalized_at->format('d M, H:i') }}
-        @endif
-    </p>
+    <x-ui.table wire:loading.class="opacity-60">
+        <x-slot:head>
+            <tr>
+                <th class="w-20">Rank</th>
+                <th>Player</th>
+                <th class="text-right">Score</th>
+                <th class="text-right">Kills</th>
+                <th class="text-right">Tournaments</th>
+                <th class="text-right">Reward</th>
+            </tr>
+        </x-slot:head>
 
-    <div class="overflow-hidden rounded-2xl border border-violet-900/40">
-        <table class="w-full text-left text-sm">
-            <thead class="bg-white/5 text-violet-300">
-                <tr>
-                    <th class="px-4 py-3">Rank</th>
-                    <th class="px-4 py-3">Player</th>
-                    <th class="px-4 py-3">Score</th>
-                    <th class="px-4 py-3">Kills</th>
-                    <th class="px-4 py-3">Tournaments</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-violet-900/30">
-                @forelse ($entries as $entry)
-                    <tr>
-                        <td class="px-4 py-3 text-violet-300">#{{ $entry->rank }}</td>
-                        <td class="px-4 py-3 text-white">{{ $entry->user->username }}</td>
-                        <td class="px-4 py-3 text-emerald-400">{{ $entry->score }}</td>
-                        <td class="px-4 py-3 text-violet-300">{{ $entry->total_kills }}</td>
-                        <td class="px-4 py-3 text-violet-300">{{ $entry->tournaments_played }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-violet-400">No entries for this period yet.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+        @forelse ($entries as $entry)
+            @php($payout = $payouts->get($entry->user_id))
+            <tr wire:key="entry-{{ $entry->id }}">
+                <td>
+                    @if ($entry->rank <= 3)
+                        <x-ui.badge variant="brand" :dot="false" class="tabular-nums">#{{ $entry->rank }}</x-ui.badge>
+                    @else
+                        <span class="tabular-nums">#{{ $entry->rank }}</span>
+                    @endif
+                </td>
+                <td class="mm-cell-primary"><span class="block max-w-[16rem] truncate" title="{{ $entry->user->username }}">{{ $entry->user->username }}</span></td>
+                <td class="text-right font-medium tabular-nums text-fg">{{ $entry->score }}</td>
+                <td class="text-right tabular-nums">{{ $entry->total_kills }}</td>
+                <td class="text-right tabular-nums">{{ $entry->tournaments_played }}</td>
+                <td class="whitespace-nowrap text-right">
+                    @if ($payout)
+                        <span class="inline-flex items-center gap-1.5 tabular-nums text-success"><x-coin-asset :size="14" />{{ $payout->amount }}</span>
+                    @else
+                        <span class="text-fg-3" title="{{ $isFinalized ? 'No reward was paid for this rank' : 'Rewards are paid when the period is finalized' }}">—</span>
+                    @endif
+                </td>
+            </tr>
+        @empty
+            <x-ui.table-empty :colspan="6" icon="leaderboard" title="No entries for this period yet" description="Players appear here once tournaments in this period have published results." />
+        @endforelse
+    </x-ui.table>
 </div>
