@@ -1,0 +1,1039 @@
+{
+  "generatedAt": "2026-10-23T07:41:40.892Z",
+  "renderer": "react-native-web in headless Chromium (NOT an Android emulator)",
+  "backend": "local Laravel backend with QA data",
+  "captures": [
+    {
+      "n": 1,
+      "file": "01-login.webp",
+      "title": "Sign in",
+      "route": "/login",
+      "note": "Real logo, Sign in / Create account tabs, labelled fields, password show/hide.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 2,
+      "file": "02-login-field-errors.webp",
+      "title": "Sign in \u2014 empty submit",
+      "route": "/login",
+      "note": "Each field shows its own error; nothing is sent to the server.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 3,
+      "file": "03-login-server-error.webp",
+      "title": "Sign in \u2014 wrong password (server message, password shown)",
+      "route": "/login",
+      "note": "The server's own message under the field it belongs to; the eye toggle reveals the password.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 4,
+      "file": "04-register.webp",
+      "title": "Create account",
+      "route": "/login",
+      "note": "Username, email, date of birth, state, mobile, password, terms checkbox.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 5,
+      "file": "05-register-errors.webp",
+      "title": "Create account \u2014 empty submit",
+      "route": "/login",
+      "note": "Field-level errors, including the terms checkbox.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 6,
+      "file": "06-boot-checking-session.webp",
+      "title": "Boot \u2014 checking the saved session",
+      "route": "/",
+      "note": "Real logo at the splash size, quiet spinner. (/auth/me delayed 4 s by the test harness to make this visible.)",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": "/auth/me delayed 4 s"
+    },
+    {
+      "n": 7,
+      "file": "07-boot-offline.webp",
+      "title": "Boot \u2014 server unreachable",
+      "route": "/",
+      "note": "Says so and offers Retry; the player is NOT signed out. (/auth/me failed by the test harness.)",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": "/auth/me network failure"
+    },
+    {
+      "n": 8,
+      "file": "08-home.webp",
+      "title": "Home",
+      "route": "/",
+      "note": "Header (avatar ring, Welcome Back, wallet pill, bell) \u00b7 16:9 hero \u00b7 shortcuts \u00b7 games.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 9,
+      "file": "09-home-full.webp",
+      "title": "Home \u2014 whole screen",
+      "route": "/",
+      "note": "Games grid: 16:9 art, title below, green dot + upcoming count.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 10,
+      "file": "10-home-hero-transition.webp",
+      "title": "Home hero \u2014 mid auto-advance",
+      "route": "/",
+      "note": "Outgoing banner slides left and dims; edges soften only during the change.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 11,
+      "file": "11-tournaments-upcoming.webp",
+      "title": "Tournaments \u2014 Upcoming",
+      "route": "/tournaments?status=upcoming",
+      "note": "Back header, status tabs with server counts, tournament cards.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 12,
+      "file": "12-tournaments-upcoming-full.webp",
+      "title": "Tournaments \u2014 Upcoming (whole list)",
+      "route": "/tournaments?status=upcoming",
+      "note": "Join / Joined / Full states; Rules only where the tournament has rules.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 13,
+      "file": "13-rules-sheet.webp",
+      "title": "Rules sheet",
+      "route": "/tournaments",
+      "note": "The rules exactly as staff wrote them.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 14,
+      "file": "14-join-players.webp",
+      "title": "Join \u2014 squad players",
+      "route": "/tournaments",
+      "note": "Four in-game names for a squad (player 1 is you); UID optional.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 15,
+      "file": "15-join-players-errors.webp",
+      "title": "Join \u2014 missing names",
+      "route": "/tournaments",
+      "note": "Each empty name is flagged before anything is sent.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 16,
+      "file": "16-join-review.webp",
+      "title": "Join \u2014 review and confirm",
+      "route": "/tournaments",
+      "note": "Fee beside the current balance and the balance after joining. Nothing is charged yet.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 17,
+      "file": "17-join-success.webp",
+      "title": "Join \u2014 confirmed by the server",
+      "route": "/tournaments",
+      "note": "Shown only from the server's response: fee paid and the registered players.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 18,
+      "file": "18-tournaments-ongoing.webp",
+      "title": "Tournaments \u2014 Ongoing",
+      "route": "/tournaments?status=ongoing",
+      "note": "Live status; joined players get Room details.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 19,
+      "file": "19-tournament-live-credentials.webp",
+      "title": "Tournament \u2014 room ID and password",
+      "route": "/tournament/8",
+      "note": "Only for joined players, once released; each value has Copy.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 20,
+      "file": "20-tournament-copied.webp",
+      "title": "Room ID copied",
+      "route": "/tournament/8",
+      "note": "Copy confirms with \"Copied\".",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 21,
+      "file": "21-tournaments-completed.webp",
+      "title": "Tournaments \u2014 Completed",
+      "route": "/tournaments?status=completed",
+      "note": "Completed and cancelled; Results on each.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 22,
+      "file": "22-results.webp",
+      "title": "Results \u2014 published standings",
+      "route": "/tournament/9/results",
+      "note": "Rank, rings for the top three, in-game names, kills and the prize the server awarded; you are highlighted.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 23,
+      "file": "23-tournament-completed-details.webp",
+      "title": "Tournament \u2014 completed, your result",
+      "route": "/tournament/9",
+      "note": "Rank, kills and prize from the server.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 24,
+      "file": "24-results-pending.webp",
+      "title": "Results \u2014 not yet published",
+      "route": "/tournament/10/results",
+      "note": "No provisional or invented standings.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 25,
+      "file": "25-tournament-upcoming.webp",
+      "title": "Tournament \u2014 upcoming, open to join",
+      "route": "/tournament/5",
+      "note": "Artwork, chips, rewards, slots, join cut-off, rules, Join.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 26,
+      "file": "26-tournament-joined-waiting.webp",
+      "title": "Tournament \u2014 joined, room not released yet",
+      "route": "/tournament/4",
+      "note": "Waiting state instead of blanks.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 27,
+      "file": "27-game-tournaments.webp",
+      "title": "Game \u2014 Portrait Poker tournaments",
+      "route": "/game/13",
+      "note": "One game's tournaments (by its ID); a full tournament offers a disabled Full.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 28,
+      "file": "28-leaderboard-daily.webp",
+      "title": "Leaderboard \u2014 Daily",
+      "route": "/leaderboard",
+      "note": "Hero \u00b7 Daily/Weekly/Monthly \u00b7 podium 2\u00b71\u00b73 \u00b7 ranks from 4.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 29,
+      "file": "29-leaderboard-daily-full.webp",
+      "title": "Leaderboard \u2014 Daily (whole screen)",
+      "route": "/leaderboard",
+      "note": "Earnings with the coin artwork on the right; your row tinted.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 30,
+      "file": "30-leaderboard-weekly.webp",
+      "title": "Leaderboard \u2014 Weekly",
+      "route": "/leaderboard",
+      "note": "Weekly standings from the server.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 31,
+      "file": "31-leaderboard-monthly.webp",
+      "title": "Leaderboard \u2014 Monthly",
+      "route": "/leaderboard",
+      "note": "Monthly standings from the server.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 32,
+      "file": "32-leaderboard-locked.webp",
+      "title": "Leaderboard \u2014 locked by Admin price",
+      "route": "/leaderboard",
+      "note": "Banners stay; the unlock card replaces the rankings (server decides).",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 33,
+      "file": "33-leaderboard-unlock-confirm.webp",
+      "title": "Unlock \u2014 confirmation sheet",
+      "route": "/leaderboard",
+      "note": "Nothing is spent until the player confirms (not confirmed here).",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 34,
+      "file": "34-profile.webp",
+      "title": "Profile",
+      "route": "/profile",
+      "note": "Avatar ring, name, real stats, menu; Support is omitted (no backend feature).",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 35,
+      "file": "35-logout-confirm.webp",
+      "title": "Log out \u2014 confirmation",
+      "route": "/profile",
+      "note": "Logout always asks first.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 36,
+      "file": "36-redeem-error.webp",
+      "title": "Redeem Code \u2014 server refusal",
+      "route": "/profile",
+      "note": "Uppercased, 5 characters, red Redeem; the message is the server\u2019s.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 37,
+      "file": "37-my-profile.webp",
+      "title": "My Profile",
+      "route": "/account",
+      "note": "Account details from /auth/me and signed-in devices (each can be signed out).",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 38,
+      "file": "38-wallet.webp",
+      "title": "Wallet",
+      "route": "/wallet",
+      "note": "The one shared balance, deposit and withdrawable winnings, actions, history.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 39,
+      "file": "39-deposit.webp",
+      "title": "Add coins",
+      "route": "/deposit",
+      "note": "UPI deposit form and history (status chips no longer clipped).",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 40,
+      "file": "40-withdraw.webp",
+      "title": "Withdraw",
+      "route": "/withdraw",
+      "note": "Withdrawable balance, form, history.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 41,
+      "file": "41-notifications.webp",
+      "title": "Notifications",
+      "route": "/notifications",
+      "note": "Unread tinted with a dot; tournament notifications open the tournament.",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 42,
+      "file": "42-settings.webp",
+      "title": "Settings",
+      "route": "/settings",
+      "note": "Colour and font themes (existing feature, kept).",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 43,
+      "file": "43-legal.webp",
+      "title": "Terms and privacy",
+      "route": "/legal",
+      "note": "Current legal documents from the server.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 44,
+      "file": "44-wallet-history-error.webp",
+      "title": "Wallet \u2014 history failed to load",
+      "route": "/wallet",
+      "note": "Balance still shown; history says so and offers Try again. (/wallet/ledger failed by the harness.)",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": "/wallet/ledger network failure"
+    },
+    {
+      "n": 45,
+      "file": "45-home-games-error.webp",
+      "title": "Home \u2014 games failed to load",
+      "route": "/",
+      "note": "The rest of Home (balance, hero, counts) still works. (/games failed by the harness.)",
+      "viewport": "390\u00d7844 (full height)",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": "/games network failure"
+    },
+    {
+      "n": 46,
+      "file": "46-tournaments-error.webp",
+      "title": "Tournaments \u2014 failed to load",
+      "route": "/tournaments",
+      "note": "Plain message and Try again. (/tournaments failed by the harness.)",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": "/tournaments network failure"
+    },
+    {
+      "n": 47,
+      "file": "47-home-reduced-motion.webp",
+      "title": "Home \u2014 reduced motion",
+      "route": "/",
+      "note": "System \"reduce motion\" on: no autoplay, no ring pulse; swipe still works.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "phone",
+      "simulated": null
+    },
+    {
+      "n": 48,
+      "file": "48-home-small-360x640.webp",
+      "title": "Home @ 360\u00d7640",
+      "route": "/",
+      "note": "Content capped at 560 dp and centred on wide screens.",
+      "viewport": "360\u00d7640 (full height)",
+      "overflowPx": 0,
+      "group": "small-360x640",
+      "simulated": null
+    },
+    {
+      "n": 49,
+      "file": "49-tournaments-small-360x640.webp",
+      "title": "Tournaments @ 360\u00d7640",
+      "route": "/tournaments",
+      "note": "",
+      "viewport": "360\u00d7640",
+      "overflowPx": 0,
+      "group": "small-360x640",
+      "simulated": null
+    },
+    {
+      "n": 50,
+      "file": "50-leaderboard-small-360x640.webp",
+      "title": "Leaderboard @ 360\u00d7640",
+      "route": "/leaderboard",
+      "note": "",
+      "viewport": "360\u00d7640 (full height)",
+      "overflowPx": 0,
+      "group": "small-360x640",
+      "simulated": null
+    },
+    {
+      "n": 51,
+      "file": "51-profile-small-360x640.webp",
+      "title": "Profile @ 360\u00d7640",
+      "route": "/profile",
+      "note": "",
+      "viewport": "360\u00d7640 (full height)",
+      "overflowPx": 0,
+      "group": "small-360x640",
+      "simulated": null
+    },
+    {
+      "n": 52,
+      "file": "52-home-large-430x932.webp",
+      "title": "Home @ 430\u00d7932",
+      "route": "/",
+      "note": "Content capped at 560 dp and centred on wide screens.",
+      "viewport": "430\u00d7932 (full height)",
+      "overflowPx": 0,
+      "group": "large-430x932",
+      "simulated": null
+    },
+    {
+      "n": 53,
+      "file": "53-tournaments-large-430x932.webp",
+      "title": "Tournaments @ 430\u00d7932",
+      "route": "/tournaments",
+      "note": "",
+      "viewport": "430\u00d7932",
+      "overflowPx": 0,
+      "group": "large-430x932",
+      "simulated": null
+    },
+    {
+      "n": 54,
+      "file": "54-leaderboard-large-430x932.webp",
+      "title": "Leaderboard @ 430\u00d7932",
+      "route": "/leaderboard",
+      "note": "",
+      "viewport": "430\u00d7932 (full height)",
+      "overflowPx": 0,
+      "group": "large-430x932",
+      "simulated": null
+    },
+    {
+      "n": 55,
+      "file": "55-profile-large-430x932.webp",
+      "title": "Profile @ 430\u00d7932",
+      "route": "/profile",
+      "note": "",
+      "viewport": "430\u00d7932 (full height)",
+      "overflowPx": 0,
+      "group": "large-430x932",
+      "simulated": null
+    },
+    {
+      "n": 56,
+      "file": "56-home-tablet-768x1024.webp",
+      "title": "Home @ 768\u00d71024",
+      "route": "/",
+      "note": "Content capped at 560 dp and centred on wide screens.",
+      "viewport": "768\u00d71024 (full height)",
+      "overflowPx": 0,
+      "group": "tablet-768x1024",
+      "simulated": null
+    },
+    {
+      "n": 57,
+      "file": "57-tournaments-tablet-768x1024.webp",
+      "title": "Tournaments @ 768\u00d71024",
+      "route": "/tournaments",
+      "note": "",
+      "viewport": "768\u00d71024",
+      "overflowPx": 0,
+      "group": "tablet-768x1024",
+      "simulated": null
+    },
+    {
+      "n": 58,
+      "file": "58-leaderboard-tablet-768x1024.webp",
+      "title": "Leaderboard @ 768\u00d71024",
+      "route": "/leaderboard",
+      "note": "",
+      "viewport": "768\u00d71024 (full height)",
+      "overflowPx": 0,
+      "group": "tablet-768x1024",
+      "simulated": null
+    },
+    {
+      "n": 59,
+      "file": "59-profile-tablet-768x1024.webp",
+      "title": "Profile @ 768\u00d71024",
+      "route": "/profile",
+      "note": "",
+      "viewport": "768\u00d71024 (full height)",
+      "overflowPx": 0,
+      "group": "tablet-768x1024",
+      "simulated": null
+    },
+    {
+      "n": 60,
+      "file": "60-home-theme-cyber-blue.webp",
+      "title": "Home \u2014 Cyber Blue theme",
+      "route": "/",
+      "note": "Every colour comes from the selected theme tokens.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "themes",
+      "simulated": null
+    },
+    {
+      "n": 61,
+      "file": "61-leaderboard-theme-cyber-blue.webp",
+      "title": "Leaderboard \u2014 Cyber Blue theme",
+      "route": "/leaderboard",
+      "note": "Rank rings keep their gold / silver / bronze / green meaning in every theme.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "themes",
+      "simulated": null
+    },
+    {
+      "n": 62,
+      "file": "62-home-theme-sunset-gold.webp",
+      "title": "Home \u2014 Sunset Gold theme",
+      "route": "/",
+      "note": "Every colour comes from the selected theme tokens.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "themes",
+      "simulated": null
+    },
+    {
+      "n": 63,
+      "file": "63-leaderboard-theme-sunset-gold.webp",
+      "title": "Leaderboard \u2014 Sunset Gold theme",
+      "route": "/leaderboard",
+      "note": "Rank rings keep their gold / silver / bronze / green meaning in every theme.",
+      "viewport": "390\u00d7844",
+      "overflowPx": 0,
+      "group": "themes",
+      "simulated": null
+    },
+    {
+      "n": 64,
+      "file": "64-stress-home.webp",
+      "title": "Stress \u2014 8-digit balance on Home @ 360\u00d7640",
+      "route": "/",
+      "note": "The balance is never cut; the greeting gives way first.",
+      "viewport": "360\u00d7640",
+      "overflowPx": 0,
+      "group": "stress",
+      "simulated": null
+    },
+    {
+      "n": 65,
+      "file": "65-stress-wallet.webp",
+      "title": "Stress \u2014 8-digit balance in Wallet @ 360\u00d7640",
+      "route": "/wallet",
+      "note": "Tiles keep their size; the figure scales down instead of overflowing.",
+      "viewport": "360\u00d7640",
+      "overflowPx": 0,
+      "group": "stress",
+      "simulated": null
+    },
+    {
+      "n": 66,
+      "file": "66-stress-tournaments.webp",
+      "title": "Stress \u2014 very long title and 7-digit prize @ 360\u00d7640",
+      "route": "/tournaments",
+      "note": "Titles wrap to two lines; amounts stay readable.",
+      "viewport": "360\u00d7640 (full height)",
+      "overflowPx": 0,
+      "group": "stress",
+      "simulated": null
+    }
+  ],
+  "checks": [
+    {
+      "id": "R01",
+      "name": "Signed-out visit to / shows Sign in (no bypass, no other screen)",
+      "pass": true,
+      "detail": "http://127.0.0.1:8090/login"
+    },
+    {
+      "id": "R02",
+      "name": "Empty sign-in shows field-level errors",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R03",
+      "name": "Wrong password shows the server message, stays on sign-in",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R04",
+      "name": "Network failure at boot keeps the session; Retry signs straight back in",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R05",
+      "name": "Wallet pill shows the server total_balance",
+      "pass": true,
+      "detail": "Wallet balance 1,730.50 coins. Opens your wallet."
+    },
+    {
+      "id": "R06",
+      "name": "Ongoing shortcut count matches meta.counts",
+      "pass": true,
+      "detail": "2 Ongoing"
+    },
+    {
+      "id": "R06",
+      "name": "Upcoming shortcut count matches meta.counts",
+      "pass": true,
+      "detail": "5 Upcoming"
+    },
+    {
+      "id": "R06",
+      "name": "Completed shortcut count matches meta.counts",
+      "pass": true,
+      "detail": "3 Completed"
+    },
+    {
+      "id": "R07",
+      "name": "Game card \"Free Fire\" shows its upcoming count",
+      "pass": true,
+      "detail": "Free Fire 1 upcoming"
+    },
+    {
+      "id": "R07",
+      "name": "Game card \"Free Fire Showdown\" shows its upcoming count",
+      "pass": true,
+      "detail": "Free Fire Showdown 2 upcoming"
+    },
+    {
+      "id": "R07",
+      "name": "Game card \"Chess Blitz\" shows its upcoming count",
+      "pass": true,
+      "detail": "Chess Blitz 1 upcoming"
+    },
+    {
+      "id": "R07",
+      "name": "Game card \"Portrait Poker\" shows its upcoming count",
+      "pass": true,
+      "detail": "Portrait Poker 1 upcoming"
+    },
+    {
+      "id": "R08",
+      "name": "Home order: header \u2192 hero \u2192 shortcuts \u2192 games",
+      "pass": true,
+      "detail": "{\"header\":17,\"hero\":84,\"shortcuts\":305,\"games\":439}"
+    },
+    {
+      "id": "R09",
+      "name": "Bottom nav has exactly Leaderboard \u00b7 Home \u00b7 Profile",
+      "pass": true,
+      "detail": "Leaderboard | Home | Profile"
+    },
+    {
+      "id": "R10",
+      "name": "Bell reflects the real unread count",
+      "pass": true,
+      "detail": "Notifications, 9 unread / api 9"
+    },
+    {
+      "id": "R11",
+      "name": "Hero auto-advances after ~5 s",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R12",
+      "name": "Bottom nav is not shown on pushed screens",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R13",
+      "name": "List opens on the tab the shortcut asked for",
+      "pass": true,
+      "detail": "Upcoming, 5"
+    },
+    {
+      "id": "R14",
+      "name": "No deduction before confirmation",
+      "pass": true,
+      "detail": "1730.50 vs 1730.50"
+    },
+    {
+      "id": "R15",
+      "name": "Exactly the entry fee is deducted after confirmation",
+      "pass": true,
+      "detail": "1730.50 \u2192 1690.50"
+    },
+    {
+      "id": "R16",
+      "name": "List refreshes: the card now says Joined",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R17",
+      "name": "A second join is refused by the server (no double charge)",
+      "pass": true,
+      "detail": "422 You have already joined this tournament."
+    },
+    {
+      "id": "R18",
+      "name": "Copy puts the exact room ID on the clipboard",
+      "pass": true,
+      "detail": "7351 9026"
+    },
+    {
+      "id": "R19",
+      "name": "Credentials API refuses before release (joined, not released)",
+      "pass": true,
+      "detail": "404"
+    },
+    {
+      "id": "R20",
+      "name": "Back returns to the list (history back = Android Back on web)",
+      "pass": true,
+      "detail": "http://127.0.0.1:8090/tournaments?status=upcoming"
+    },
+    {
+      "id": "R21",
+      "name": "Results screen lists every published result",
+      "pass": true,
+      "detail": "8 vs 8"
+    },
+    {
+      "id": "R22",
+      "name": "A full tournament cannot be joined (disabled)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R23",
+      "name": "Podium order is 2 \u00b7 1 \u00b7 3",
+      "pass": true,
+      "detail": "[138,16,260]"
+    },
+    {
+      "id": "R24",
+      "name": "Every server entry is shown (podium + rows)",
+      "pass": true,
+      "detail": "8 vs 8"
+    },
+    {
+      "id": "R25",
+      "name": "First place shows the server earnings",
+      "pass": true,
+      "detail": "Rank 1, qaplayerone, earned 250.00 coins"
+    },
+    {
+      "id": "R26",
+      "name": "Re-tapping the active tab pushes nothing",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R27",
+      "name": "Profile stats equal /profile/stats",
+      "pass": true,
+      "detail": "{\"total_earnings\":\"150.00\",\"matches\":1,\"deposits_total\":\"0.00\",\"deposits_count\":0}"
+    },
+    {
+      "id": "R28",
+      "name": "Cancelling logout keeps the session",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R29",
+      "name": "Wallet total equals the server balance (same figure as Home)",
+      "pass": true,
+      "detail": "1,690.50"
+    },
+    {
+      "id": "R30",
+      "name": "Tapping a tournament notification opens that tournament",
+      "pass": true,
+      "detail": "http://127.0.0.1:8090/tournament/4"
+    },
+    {
+      "id": "R31",
+      "name": "Try again recovers once the network is back",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R32",
+      "name": "Reduced motion: hero does not auto-advance",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R35",
+      "name": "Bottom nav width stays within the content column @ 360",
+      "pass": true,
+      "detail": "328"
+    },
+    {
+      "id": "R36",
+      "name": "\"Welcome Back\" is not truncated @ 360",
+      "pass": true,
+      "detail": "false"
+    },
+    {
+      "id": "R35",
+      "name": "Bottom nav width stays within the content column @ 430",
+      "pass": true,
+      "detail": "398"
+    },
+    {
+      "id": "R36",
+      "name": "\"Welcome Back\" is not truncated @ 430",
+      "pass": true,
+      "detail": "false"
+    },
+    {
+      "id": "R35",
+      "name": "Bottom nav width stays within the content column @ 768",
+      "pass": true,
+      "detail": "528"
+    },
+    {
+      "id": "R36",
+      "name": "\"Welcome Back\" is not truncated @ 768",
+      "pass": true,
+      "detail": "false"
+    },
+    {
+      "id": "R37",
+      "name": "An 8-digit balance is shown in full (not truncated) in the wallet pill",
+      "pass": true,
+      "detail": "12,347,368.50 truncated=false"
+    },
+    {
+      "id": "R33",
+      "name": "No horizontal overflow on any captured screen",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R34",
+      "name": "No uncaught JS errors",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "problems": [],
+  "errors": [],
+  "axe": [
+    {
+      "screen": "home",
+      "violations": []
+    },
+    {
+      "screen": "tournaments",
+      "violations": []
+    },
+    {
+      "screen": "tournament-live",
+      "violations": []
+    },
+    {
+      "screen": "leaderboard",
+      "violations": []
+    },
+    {
+      "screen": "profile",
+      "violations": []
+    },
+    {
+      "screen": "wallet",
+      "violations": []
+    }
+  ]
+}

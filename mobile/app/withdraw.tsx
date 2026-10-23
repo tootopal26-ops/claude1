@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, Text, View } from 'react-native';
-import { Redirect } from 'expo-router';
+import { FlatList, RefreshControl, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ApiError } from '../src/api/client';
-import { fetchWallet } from '../src/api/wallet';
 import { fetchWithdrawals, requestWithdrawal } from '../src/api/withdrawals';
-import { useAuth } from '../src/auth/AuthContext';
+import { AmbientGlow } from '../src/components/AmbientGlow';
 import { Button } from '../src/components/Button';
 import { CoinAmount } from '../src/components/CoinAmount';
 import { Notice } from '../src/components/Notice';
+import { EmptyState, ErrorState, Skeleton } from '../src/components/states/States';
 import { StatusChip, type ChipTone } from '../src/components/StatusChip';
 import { TextField } from '../src/components/TextField';
+import { glassPanel } from '../src/theme/glass';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
+import { MAX_CONTENT_WIDTH, RADIUS, SPACE, TYPE } from '../src/theme/tokens';
 import type { WithdrawalRequest } from '../src/types';
+import { formatDateTime } from '../src/utils/time';
+import { useRefreshWalletOnFocus, useWallet } from '../src/wallet/WalletContext';
 
 const STATUS_LABELS: Record<WithdrawalRequest['status'], string> = {
   pending: 'Pending review',
@@ -32,62 +36,53 @@ const STATUS_TONES: Record<WithdrawalRequest['status'], ChipTone> = {
   failed: 'danger',
 };
 
+/**
+ * Withdraw winnings to a UPI ID. The withdrawable figure is the one shared wallet's (the
+ * server's); a request reserves the amount on the server and staff review it, so the
+ * history shows each request's real status and any reason the server gives.
+ */
 export default function WithdrawScreen() {
-  const { user, isLoading: authLoading } = useAuth();
-  const { colors } = useTheme();
   const styles = useStyles();
-  const [withdrawableBalance, setWithdrawableBalance] = useState<string | null>(null);
-  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { colors, semanticColors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const contentWidth = Math.min(width, MAX_CONTENT_WIDTH) - SPACE.md * 2;
+  const { wallet, loading: walletLoading, refresh: refreshWallet } = useWallet();
+  useRefreshWalletOnFocus();
+  const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [amount, setAmount] = useState('');
   const [upiId, setUpiId] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
-    setLoadError(null);
     try {
-      const [walletResponse, withdrawalsResponse] = await Promise.all([fetchWallet(), fetchWithdrawals()]);
-      setWithdrawableBalance(walletResponse.data.withdrawable_balance);
-      setWithdrawals(withdrawalsResponse.data);
+      const response = await fetchWithdrawals();
+      setWithdrawals(response.data);
+      setLoadFailed(false);
     } catch {
-      setLoadError('Could not load your withdrawals. Pull to retry.');
+      setLoadFailed(true);
     }
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    (async () => {
-      setLoading(true);
-      await load();
-      setLoading(false);
-    })();
-  }, [user, load]);
-
-  if (authLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={colors.brandText} />
-      </View>
-    );
-  }
-
-  if (!user) {
-    return <Redirect href="/login" />;
-  }
+    void load();
+  }, [load]);
 
   async function handleSubmit() {
+    if (submitting) return;
     setError(null);
     setSubmitting(true);
     try {
       await requestWithdrawal(amount, upiId);
       setAmount('');
       setUpiId('');
+      void refreshWallet({ force: true }); // the amount is now reserved from winnings
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit your withdrawal request.');
+      setError(err instanceof ApiError ? err.message : "We couldn't submit your request. Check your connection and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -96,90 +91,109 @@ export default function WithdrawScreen() {
   const canSubmit = Number(amount) > 0 && upiId.trim().length > 0;
 
   return (
-    <View style={styles.container}>
-      {loading ? (
-        <ActivityIndicator style={styles.centered} color={colors.brandText} />
-      ) : (
-        <FlatList
-          data={withdrawals}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              tintColor={colors.brandText}
-              colors={[colors.brand]}
-              progressBackgroundColor={colors.surface3}
-              refreshing={refreshing}
-              onRefresh={async () => {
-                setRefreshing(true);
-                await load();
-                setRefreshing(false);
-              }}
-            />
-          }
-          ListHeaderComponent={
-            <View>
+    <View style={styles.screen}>
+      <AmbientGlow />
+      <FlatList
+        data={withdrawals ?? []}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + SPACE.xxl }]}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            tintColor={colors.brandText}
+            colors={[colors.brand]}
+            progressBackgroundColor={colors.surface3}
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              await Promise.all([load(), refreshWallet({ force: true })]);
+              setRefreshing(false);
+            }}
+          />
+        }
+        ListHeaderComponent={
+          <View style={[styles.header, { width: contentWidth }]}>
+            <View style={styles.card}>
               <Text style={styles.balanceLabel}>Withdrawable balance</Text>
-              <CoinAmount value={withdrawableBalance} size={28} suffix="coins" style={styles.balanceRow} textStyle={styles.balanceValue} />
-
-              <View style={styles.form}>
-                <TextField
-                  label="Amount"
-                  placeholder="Amount"
-                  keyboardType="decimal-pad"
-                  value={amount}
-                  onChangeText={setAmount}
-                />
-                <TextField
-                  label="UPI ID"
-                  placeholder="UPI ID (e.g. name@bank)"
-                  autoCapitalize="none"
-                  value={upiId}
-                  onChangeText={setUpiId}
-                />
-                {error && <Notice tone="danger">{error}</Notice>}
-                <Button label="Request withdrawal" onPress={handleSubmit} loading={submitting} disabled={!canSubmit} />
-              </View>
-
-              <Text style={styles.historyHeading}>Request history</Text>
+              {walletLoading ? (
+                <Skeleton width={160} height={32} />
+              ) : (
+                <CoinAmount value={wallet?.withdrawable_balance ?? null} size={26} textStyle={[styles.balance, { color: semanticColors.success }]} style={styles.balanceRow} />
+              )}
+              <Text style={styles.hint}>Only tournament winnings can be withdrawn; deposited coins are for entry fees.</Text>
+              <TextField
+                label="Amount (coins)"
+                placeholder="How many coins?"
+                keyboardType="decimal-pad"
+                value={amount}
+                onChangeText={(value) => {
+                  setAmount(value.replace(/[^\d.]/g, ''));
+                  setError(null);
+                }}
+              />
+              <TextField
+                label="UPI ID"
+                placeholder="name@bank"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                value={upiId}
+                onChangeText={(value) => {
+                  setUpiId(value.trim());
+                  setError(null);
+                }}
+              />
+              {error ? <Notice tone="danger">{error}</Notice> : null}
+              <Button label="Request withdrawal" icon="withdrawal" onPress={handleSubmit} loading={submitting} disabled={!canSubmit} />
             </View>
-          }
-          ListEmptyComponent={<Text style={styles.empty}>{loadError ?? 'No withdrawal requests yet.'}</Text>}
-          renderItem={({ item }) => (
-            <View style={styles.row}>
-              <View>
-                <CoinAmount value={item.amount} size={16} suffix="coins" />
-                <Text style={styles.rowDate}>{new Date(item.created_at).toLocaleString()}</Text>
-                {item.rejection_reason && <Text style={styles.rowReason}>{item.rejection_reason}</Text>}
-                {item.failure_reason && <Text style={styles.rowReason}>{item.failure_reason}</Text>}
-              </View>
-              <StatusChip tone={STATUS_TONES[item.status]} label={STATUS_LABELS[item.status]} />
+            <Text style={styles.sectionTitle} accessibilityRole="header">
+              Request history
+            </Text>
+          </View>
+        }
+        ItemSeparatorComponent={() => <View style={{ height: SPACE.xs }} />}
+        renderItem={({ item }) => (
+          <View style={[styles.row, { width: contentWidth }]}>
+            <View style={styles.rowText}>
+              <CoinAmount value={item.amount} size={16} suffix="coins" />
+              <Text style={styles.rowMeta} numberOfLines={1}>
+                {formatDateTime(item.created_at)} · {item.upi_id}
+              </Text>
+              {item.rejection_reason ? <Text style={styles.rowReason}>{item.rejection_reason}</Text> : null}
+              {item.failure_reason ? <Text style={styles.rowReason}>{item.failure_reason}</Text> : null}
             </View>
-          )}
-        />
-      )}
+            <StatusChip tone={STATUS_TONES[item.status]} label={STATUS_LABELS[item.status]} />
+          </View>
+        )}
+        ListEmptyComponent={
+          <View style={{ width: contentWidth }}>
+            {loadFailed && withdrawals === null ? (
+              <ErrorState compact title="Couldn't load your requests" onRetry={() => load()} />
+            ) : withdrawals === null ? (
+              <Skeleton height={64} radius={RADIUS.md} />
+            ) : (
+              <EmptyState compact icon="withdrawal" title="No withdrawal requests yet" message="Requests and their review status appear here." />
+            )}
+          </View>
+        }
+      />
     </View>
   );
 }
 
 const useStyles = makeStyles(({ colors: c }) => ({
-  container: { flex: 1 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  listContent: { padding: 16 },
-  balanceLabel: { color: c.fg2, fontSize: 13, textAlign: 'center' },
-  balanceRow: { justifyContent: 'center', marginTop: 4, marginBottom: 16, gap: 8 },
-  balanceValue: { color: c.fg, fontSize: 28, fontWeight: '800' },
-  form: { gap: 12, marginBottom: 24 },
-  historyHeading: { color: c.fg, fontSize: 15, fontWeight: '700', marginBottom: 8 },
-  empty: { color: c.fg2, textAlign: 'center', marginTop: 32 },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: c.border,
-  },
-  rowDate: { color: c.fg3, fontSize: 11, marginTop: 2 },
-  rowReason: { color: c.fg3, fontSize: 11, marginTop: 2, fontStyle: 'italic' },
+  screen: { flex: 1 },
+  content: { alignItems: 'center', paddingTop: SPACE.xs },
+  header: { gap: SPACE.lg, marginBottom: SPACE.sm },
+  card: { ...glassPanel(c, 'surface2'), borderRadius: RADIUS.xl, padding: SPACE.md, gap: SPACE.md },
+  balanceLabel: { ...TYPE.label, color: c.fg3, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: -SPACE.xs },
+  balanceRow: { gap: SPACE.xs },
+  balance: { fontSize: 28, lineHeight: 34, fontWeight: '800' },
+  hint: { ...TYPE.meta, color: c.fg3, marginTop: -SPACE.xs },
+  sectionTitle: { ...TYPE.section, color: c.fg },
+  // The text column shrinks and wraps; the status chip keeps its full width.
+  row: { ...glassPanel(c), flexDirection: 'row', alignItems: 'flex-start', gap: SPACE.sm, borderRadius: RADIUS.md, padding: SPACE.sm },
+  rowText: { flex: 1, minWidth: 0, gap: 2 },
+  rowMeta: { ...TYPE.meta, color: c.fg3 },
+  rowReason: { ...TYPE.meta, color: c.fg2 },
 }));

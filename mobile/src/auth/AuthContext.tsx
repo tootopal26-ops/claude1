@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { apiRequest } from '../api/client';
+import { ApiError, apiRequest, setUnauthorizedHandler } from '../api/client';
 import { fetchLegalAcceptanceStatus } from '../api/legal';
 import { registerForPushNotificationsAsync, unregisterPushNotificationsAsync } from '../notifications/pushRegistration';
 import type { LegalDocument, User } from '../types';
@@ -20,6 +20,10 @@ type RegisterPayload = {
 
 type AuthContextValue = {
   isLoading: boolean;
+  /** The saved session could not be checked (no connection, server error). The token is kept. */
+  bootError: string | null;
+  /** Check the saved session again after a boot error. */
+  retryBoot: () => void;
   user: User | null;
   needsLegalAcceptance: boolean;
   outstandingLegalDocuments: LegalDocument[];
@@ -34,6 +38,8 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [bootError, setBootError] = useState<string | null>(null);
+  const [bootAttempt, setBootAttempt] = useState(0);
   const [needsLegalAcceptance, setNeedsLegalAcceptance] = useState(false);
   const [outstandingLegalDocuments, setOutstandingLegalDocuments] = useState<LegalDocument[]>([]);
 
@@ -47,29 +53,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Check the saved session. Only the server saying it is no longer valid (401) signs the
+  // player out; a network or server failure keeps the token and offers a retry instead.
   useEffect(() => {
+    let active = true;
     (async () => {
+      setIsLoading(true);
+      setBootError(null);
       const token = await getToken();
       if (!token) {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
         return;
       }
       try {
         const payload = await apiRequest<{ data: User }>('/auth/me');
+        if (!active) return;
         setUser(payload.data);
         void registerForPushNotificationsAsync();
         void refreshLegalStatus();
-      } catch {
-        await clearToken();
+      } catch (error) {
+        if (!active) return;
+        if (error instanceof ApiError && error.status === 401) {
+          await clearToken();
+        } else {
+          setBootError("We couldn't reach Mini Max. Check your connection and try again.");
+        }
       } finally {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     })();
+
+    return () => {
+      active = false;
+    };
+  }, [bootAttempt]);
+
+  const retryBoot = useCallback(() => setBootAttempt((value) => value + 1), []);
+
+  // A token the server no longer accepts ends the local session (back to sign-in).
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      void clearToken();
+      setUser(null);
+      setNeedsLegalAcceptance(false);
+      setOutstandingLegalDocuments([]);
+    });
+
+    return () => setUnauthorizedHandler(null);
   }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       isLoading,
+      bootError,
+      retryBoot,
       user,
       needsLegalAcceptance,
       outstandingLegalDocuments,
@@ -109,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setOutstandingLegalDocuments([]);
       },
     }),
-    [isLoading, user, needsLegalAcceptance, outstandingLegalDocuments]
+    [isLoading, bootError, retryBoot, user, needsLegalAcceptance, outstandingLegalDocuments]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

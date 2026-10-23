@@ -202,4 +202,17 @@ class AppContractsTest extends TestCase
         $this->assertNull($data['entries'][1]['prize']);
         $this->assertTrue($data['prizes_final']);
     }
+
+    public function test_the_signed_in_player_sees_their_own_account_details(): void
+    {
+        $user = User::factory()->create(['email' => 'ace@example.com', 'state' => 'Maharashtra']);
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/v1/auth/me')
+            ->assertOk()
+            ->assertJsonPath('data.username', $user->username)
+            ->assertJsonPath('data.email', 'ace@example.com')
+            ->assertJsonPath('data.state', 'Maharashtra')
+            ->assertJsonPath('data.member_since', $user->created_at->toIso8601String());
+    }
 }

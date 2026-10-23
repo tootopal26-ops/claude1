@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 
 import { iconForSection, routeForSection } from '../sections/registry';
@@ -7,6 +6,7 @@ import { Icon } from '../theme/icons';
 import { makeStyles, useTheme } from '../theme/ThemeContext';
 import type { SectionStatus } from '../types';
 import { formatCoins } from '../utils/coins';
+import { openAppLink } from '../utils/links';
 
 type Props = {
   section: SectionStatus;
@@ -66,7 +66,7 @@ export function SectionCard({ section, onUnlock }: Props) {
 
   return (
     <Pressable
-      onPress={() => route && router.push(route as never)}
+      onPress={() => openAppLink(route)}
       disabled={!route}
       accessibilityRole={route ? 'button' : undefined}
       accessibilityLabel={`${section.title}. Unlocked${route ? '. Open' : ''}`}

@@ -18,6 +18,10 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'username' => $this->username,
             'mobile' => $this->mobile,
+            // The signed-in player's own account details (My Profile). Never sent for other players.
+            'email' => $this->email,
+            'state' => $this->state,
+            'member_since' => $this->created_at?->toIso8601String(),
         ];
     }
 }

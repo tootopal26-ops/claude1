@@ -1,19 +1,20 @@
-import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { ApiError } from '../api/client';
 import { unlockSection } from '../api/sections';
 import { routeForSection } from '../sections/registry';
 import { useSections } from '../sections/SectionsContext';
-import { glassFloat } from '../theme/glass';
 import { makeStyles } from '../theme/ThemeContext';
+import { RADIUS, SPACE, TYPE } from '../theme/tokens';
 import type { SectionStatus, Wallet } from '../types';
 import { formatCoins } from '../utils/coins';
+import { openAppLink } from '../utils/links';
 import { useWallet } from '../wallet/WalletContext';
 import { Button } from './Button';
 import { CoinAmount } from './CoinAmount';
 import { Notice } from './Notice';
+import { Sheet } from './sheet/Sheet';
 
 type Props = {
   section: SectionStatus | null;
@@ -123,7 +124,7 @@ export function UnlockSectionDialog({ section, visible, onClose }: Props) {
 
   function go(path: string) {
     onClose();
-    router.push(path as never);
+    openAppLink(path);
   }
 
   if (!section) return null;
@@ -133,116 +134,93 @@ export function UnlockSectionDialog({ section, visible, onClose }: Props) {
   const shortBy =
     state.phase === 'insufficient' ? Math.max(0, Number(state.required) - Number(state.available)) : 0;
 
+  const title =
+    state.phase === 'done'
+      ? `${section.title} unlocked`
+      : state.phase === 'insufficient'
+        ? 'Not enough coins'
+        : state.phase === 'not_for_sale'
+          ? 'Nothing to unlock'
+          : `Unlock ${section.title}?`;
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
-      <View style={styles.backdrop}>
-        <Pressable style={styles.scrim} onPress={close} accessibilityLabel="Close" accessibilityRole="button" />
-        <ScrollView contentContainerStyle={styles.scrollContent} bounces={false} showsVerticalScrollIndicator={false}>
-          <View style={styles.card} accessibilityViewIsModal>
-            {state.phase === 'done' ? (
-              <>
-                <Text style={styles.title} accessibilityRole="header">
-                  {section.title} unlocked
-                </Text>
-                <Text style={styles.text} accessibilityLiveRegion="polite">
-                  {state.already
-                    ? "You'd already unlocked this section — nothing was charged."
-                    : `${formatCoins(state.charged)} coins were deducted from your wallet.`}
-                </Text>
-                <View style={styles.row}>
-                  <Text style={styles.rowLabel}>Wallet balance</Text>
-                  <CoinAmount value={state.balance.total_balance} size={16} />
-                </View>
-                {route ? <Button label={`Open ${section.title}`} onPress={() => go(route)} /> : null}
-                <Button label="Done" variant={route ? 'secondary' : 'primary'} onPress={close} />
-              </>
-            ) : state.phase === 'insufficient' ? (
-              <>
-                <Text style={styles.title} accessibilityRole="header">
-                  Not enough coins
-                </Text>
-                <Text style={styles.text}>Unlocking {section.title} needs more coins than your wallet has right now. Nothing was charged.</Text>
-                <View style={styles.rowGroup}>
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Price</Text>
-                    <CoinAmount value={state.required} size={16} />
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>You have</Text>
-                    <CoinAmount value={state.available} size={16} />
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>You need</Text>
-                    <CoinAmount value={shortBy} size={16} />
-                  </View>
-                </View>
-                <Button label="Add coins" onPress={() => go('/deposit')} />
-                <Button label="Redeem a code" variant="secondary" onPress={() => go('/profile')} />
-                <Button label="Close" variant="secondary" onPress={close} />
-              </>
-            ) : state.phase === 'not_for_sale' ? (
-              <>
-                <Text style={styles.title} accessibilityRole="header">
-                  Nothing to unlock
-                </Text>
-                <Text style={styles.text}>{section.title} isn't locked right now. Nothing was charged.</Text>
-                <Button label="Close" onPress={close} />
-              </>
-            ) : (
-              <>
-                <Text style={styles.title} accessibilityRole="header">
-                  Unlock {section.title}?
-                </Text>
-                <Text style={styles.text}>
-                  {price === null ? '' : `${formatCoins(price)} coins`} will be deducted from your wallet balance — deposit balance first, then
-                  withdrawable winnings. You pay once and keep access.
-                </Text>
-                <View style={styles.rowGroup}>
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Price</Text>
-                    <CoinAmount value={price} size={16} />
-                  </View>
-                  <View style={styles.row}>
-                    <Text style={styles.rowLabel}>Your balance</Text>
-                    <CoinAmount value={wallet?.total_balance} size={16} />
-                  </View>
-                </View>
-                {state.phase === 'confirm' && state.notice ? <Notice tone={state.notice.tone}>{state.notice.text}</Notice> : null}
-                <Button label={label} loading={submitting} onPress={submit} accessibilityLabel={submitting ? 'Unlocking' : `${label}. Confirm and pay`} />
-                <Button label="Cancel" variant="secondary" onPress={close} disabled={submitting} />
-              </>
-            )}
+    <Sheet visible={visible} onClose={close} title={title} dismissible={!submitting}>
+      {state.phase === 'done' ? (
+        <>
+          <Text style={styles.text} accessibilityLiveRegion="polite">
+            {state.already ? "You'd already unlocked this section — nothing was charged." : `${formatCoins(state.charged)} coins were deducted from your wallet.`}
+          </Text>
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Wallet balance</Text>
+            <CoinAmount value={state.balance.total_balance} size={16} />
           </View>
-        </ScrollView>
-      </View>
-    </Modal>
+          {route ? <Button label={`Open ${section.title}`} onPress={() => go(route)} /> : null}
+          <Button label="Done" variant={route ? 'secondary' : 'primary'} onPress={close} />
+        </>
+      ) : state.phase === 'insufficient' ? (
+        <>
+          <Text style={styles.text}>Unlocking {section.title} needs more coins than your wallet has right now. Nothing was charged.</Text>
+          <View style={styles.rowGroup}>
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Price</Text>
+              <CoinAmount value={state.required} size={16} />
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>You have</Text>
+              <CoinAmount value={state.available} size={16} />
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>You need</Text>
+              <CoinAmount value={shortBy} size={16} />
+            </View>
+          </View>
+          <Button label="Add coins" icon="deposit" onPress={() => go('/deposit')} />
+          <Button label="Redeem a code" variant="secondary" onPress={() => go('/profile')} />
+          <Button label="Close" variant="secondary" onPress={close} />
+        </>
+      ) : state.phase === 'not_for_sale' ? (
+        <>
+          <Text style={styles.text}>{section.title} isn&apos;t locked right now. Nothing was charged.</Text>
+          <Button label="Close" onPress={close} />
+        </>
+      ) : (
+        <>
+          <Text style={styles.text}>
+            {price === null ? '' : `${formatCoins(price)} coins`} will be deducted from your wallet balance — deposit balance first, then withdrawable winnings. You pay
+            once and keep access.
+          </Text>
+          <View style={styles.rowGroup}>
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Price</Text>
+              <CoinAmount value={price} size={16} />
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Your balance</Text>
+              <CoinAmount value={wallet?.total_balance} size={16} />
+            </View>
+          </View>
+          {state.phase === 'confirm' && state.notice ? <Notice tone={state.notice.tone}>{state.notice.text}</Notice> : null}
+          <Button label={label} loading={submitting} onPress={submit} accessibilityLabel={submitting ? 'Unlocking' : `${label}. Confirm and pay`} />
+          <Button label="Cancel" variant="secondary" onPress={close} disabled={submitting} />
+        </>
+      )}
+    </Sheet>
   );
 }
 
-const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
-  backdrop: { flex: 1, justifyContent: 'center' },
-  scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: s.overlay },
-  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 20 },
-  // A glass sheet; Android has no backdrop blur here, so it uses the solid fallback (theme/glass.ts).
-  card: {
-    ...glassFloat(c),
-    borderRadius: 22,
-    padding: 22,
-    gap: 14,
-  },
-  title: { color: c.fg, fontSize: 20, fontWeight: '700' },
-  text: { color: c.fg2, fontSize: 14, lineHeight: 20 },
-  rowGroup: { gap: 8 },
+const useStyles = makeStyles(({ colors: c }) => ({
+  text: { ...TYPE.body, color: c.fg2 },
+  rowGroup: { gap: SPACE.xs },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: c.surface2,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: c.border,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.sm,
   },
-  rowLabel: { color: c.fg2, fontSize: 13, fontWeight: '600' },
+  rowLabel: { ...TYPE.bodyStrong, fontSize: 13, color: c.fg2 },
 }));

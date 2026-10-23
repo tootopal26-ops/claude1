@@ -18,6 +18,10 @@ const ALLOWED_SVG_FILES = [
   path.join(ROOT, 'src', 'theme', 'icons.tsx'),
   // Purely decorative background glow (a radial gradient) — no coin or currency imagery.
   path.join(ROOT, 'src', 'components', 'AmbientGlow.tsx'),
+  // Avatar rings and their glow (circles only) — no coin or currency imagery.
+  path.join(ROOT, 'src', 'components', 'avatar', 'Avatar.tsx'),
+  // The hero carousel's edge-softening gradient — no coin or currency imagery.
+  path.join(ROOT, 'src', 'components', 'carousel', 'HeroCarousel.tsx'),
 ];
 const RUPEE_PATTERN = /₹/;
 const SVG_TAG_PATTERN = /<Svg\b/;

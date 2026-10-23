@@ -1,0 +1,12 @@
+{
+  "note": "Pre-redesign captures (react-native-web render in Chromium, not Android) kept as evidence of the defects fixed by the redesign.",
+  "images": {
+    "01-login-signin.webp": "login form pushed below the fold (logo 1000 px tall)",
+    "12-game.webp": "tournament cards rendered as bare text (Link asChild style loss)",
+    "29-profile.webp": "profile rows stacked icon / label / chevron vertically",
+    "23-wallet-error.webp": "wallet stuck on a spinner after a failed load",
+    "43-withdraw-history.webp": "history status chip clipped by a long reason",
+    "66-stress-wallet-360.webp": "wallet tiles overflowing with 8-digit balances",
+    "06-home-loading.webp": "home hid the balance while tournaments loaded"
+  }
+}

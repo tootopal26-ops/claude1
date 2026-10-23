@@ -38,7 +38,7 @@ export default function LegalScreen() {
               onPress={() => setActiveIndex(index)}
               style={[styles.tab, index === activeIndex && styles.tabActive]}
               accessibilityRole="tab"
-              accessibilityState={{ selected: index === activeIndex }}
+              aria-selected={index === activeIndex}
             >
               <Text style={[styles.tabText, index === activeIndex && styles.tabTextActive]}>{doc.title}</Text>
             </Pressable>

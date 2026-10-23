@@ -3,9 +3,10 @@ import Svg, { Circle, Line, Path, Polyline, Rect } from 'react-native-svg';
 import { useTheme } from './ThemeContext';
 
 /**
- * The shared 24x24 stroke icon set, mirroring
- * backend/app/View/Components/Icon.php by name and shape. Keep the two
- * in sync by hand if either list changes.
+ * The shared 24x24 stroke icon set (2px rounded strokes, one optical size),
+ * mirroring backend/app/View/Components/Icon.php by name and shape where both
+ * use an icon; app-only icons (trophy, play, eye …) follow the same rules.
+ * Icons with a second tone take it from `accent`.
  *
  * Every icon draws with fill="none" and stroke={color}, defaulting to
  * the active theme's text color (see ThemeContext) rather than a
@@ -36,7 +37,23 @@ export type IconName =
   | 'alert'
   | 'redeem'
   | 'lock'
-  | 'unlock';
+  | 'unlock'
+  | 'trophy'
+  | 'play'
+  | 'calendar'
+  | 'clock'
+  | 'check-circle'
+  | 'copy'
+  | 'eye'
+  | 'eye-off'
+  | 'chevron-left'
+  | 'users'
+  | 'target'
+  | 'file-text'
+  | 'settings'
+  | 'refresh'
+  | 'wifi-off'
+  | 'info';
 
 type IconProps = {
   name: IconName;
@@ -243,6 +260,135 @@ function renderIcon(name: IconName, common: Record<string, unknown>, accent: str
           <Path d={name === 'lock' ? 'M8 10.5V7.5a4 4 0 0 1 8 0v3' : 'M8 10.5V7.5a4 4 0 0 1 7.5-1.6'} {...common} />
           <Circle cx={12} cy={14.8} r={1.35} fill={accent} stroke="none" />
           <Line x1={12} y1={15.6} x2={12} y2={18} {...common} stroke={accent} strokeWidth={1.7} />
+        </>
+      );
+    case 'trophy':
+      return (
+        <>
+          <Path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" {...common} />
+          <Path d="M8 6H5a2 2 0 0 0 2 4h1" {...common} />
+          <Path d="M16 6h3a2 2 0 0 1-2 4h-1" {...common} />
+          <Path d="M12 13v4" {...common} />
+          <Path d="M8.5 20h7" {...common} />
+          <Path d="M10 17h4v3h-4z" {...common} />
+        </>
+      );
+    case 'play':
+      return (
+        <>
+          <Circle cx={12} cy={12} r={9} {...common} />
+          <Path d="M10.2 8.8v6.4l5-3.2-5-3.2Z" {...common} fill={accent} stroke={accent} />
+        </>
+      );
+    case 'calendar':
+      return (
+        <>
+          <Rect x={3.5} y={5} width={17} height={15} rx={2.5} {...common} />
+          <Path d="M3.5 10h17" {...common} />
+          <Path d="M8 3v4" {...common} />
+          <Path d="M16 3v4" {...common} />
+          <Circle cx={12} cy={15} r={1.3} fill={accent} stroke="none" />
+        </>
+      );
+    case 'clock':
+      return (
+        <>
+          <Circle cx={12} cy={12} r={9} {...common} />
+          <Path d="M12 7.5V12l3 2" {...common} />
+        </>
+      );
+    case 'check-circle':
+      return (
+        <>
+          <Circle cx={12} cy={12} r={9} {...common} />
+          <Path d="M8.2 12.3l2.6 2.6 5-5.4" {...common} stroke={accent} />
+        </>
+      );
+    case 'copy':
+      return (
+        <>
+          <Rect x={9} y={9} width={11} height={11} rx={2} {...common} />
+          <Path d="M5 15V6a2 2 0 0 1 2-2h9" {...common} />
+        </>
+      );
+    case 'eye':
+      return (
+        <>
+          <Path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" {...common} />
+          <Circle cx={12} cy={12} r={3} {...common} />
+        </>
+      );
+    case 'eye-off':
+      return (
+        <>
+          <Path d="M10.6 5.6A10 10 0 0 1 12 5.5C18 5.5 21.5 12 21.5 12a17 17 0 0 1-3 3.8" {...common} />
+          <Path d="M6.6 6.6C3.9 8.3 2.5 12 2.5 12S6 18.5 12 18.5c1.8 0 3.3-.5 4.6-1.2" {...common} />
+          <Path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" {...common} />
+          <Line x1={3} y1={3} x2={21} y2={21} {...common} />
+        </>
+      );
+    case 'chevron-left':
+      return <Polyline points="15 18 9 12 15 6" {...common} />;
+    case 'users':
+      return (
+        <>
+          <Circle cx={9} cy={8} r={3.5} {...common} />
+          <Path d="M2.5 20a6.5 6.5 0 0 1 13 0" {...common} />
+          <Path d="M16 4.6a3.5 3.5 0 0 1 0 6.8" {...common} />
+          <Path d="M18 14.2a6.5 6.5 0 0 1 3.5 5.8" {...common} />
+        </>
+      );
+    case 'target':
+      return (
+        <>
+          <Circle cx={12} cy={12} r={8.5} {...common} />
+          <Circle cx={12} cy={12} r={4.5} {...common} />
+          <Circle cx={12} cy={12} r={1.2} fill={accent} stroke="none" />
+        </>
+      );
+    case 'file-text':
+      return (
+        <>
+          <Path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" {...common} />
+          <Path d="M14 3v5h5" {...common} />
+          <Path d="M9 13h6" {...common} />
+          <Path d="M9 17h6" {...common} />
+        </>
+      );
+    case 'settings':
+      return (
+        <>
+          <Circle cx={12} cy={12} r={3} {...common} />
+          <Path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z" {...common} />
+        </>
+      );
+    case 'refresh':
+      return (
+        <>
+          <Path d="M20 11a8 8 0 0 0-14.3-4.9L4 8" {...common} />
+          <Path d="M4 3.5V8h4.5" {...common} />
+          <Path d="M4 13a8 8 0 0 0 14.3 4.9L20 16" {...common} />
+          <Path d="M20 20.5V16h-4.5" {...common} />
+        </>
+      );
+    case 'wifi-off':
+      return (
+        <>
+          <Line x1={3} y1={3} x2={21} y2={21} {...common} />
+          <Path d="M8.5 16.4a5 5 0 0 1 7 0" {...common} />
+          <Path d="M5 12.9a10 10 0 0 1 4.2-2.5" {...common} />
+          <Path d="M14.7 10.4A10 10 0 0 1 19 12.9" {...common} />
+          <Path d="M2 9.4a15 15 0 0 1 4.3-2.8" {...common} />
+          <Path d="M11 5.1A15 15 0 0 1 22 9.4" {...common} />
+          <Circle cx={12} cy={19.5} r={0.9} fill={String(common.stroke)} stroke="none" />
+        </>
+      );
+    case 'info':
+      return (
+        <>
+          <Circle cx={12} cy={12} r={9} {...common} />
+          <Path d="M12 11v5" {...common} />
+          <Circle cx={12} cy={7.8} r={0.9} fill={String(common.stroke)} stroke="none" />
         </>
       );
     case 'alert':

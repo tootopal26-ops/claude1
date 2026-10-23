@@ -1,24 +1,15 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 
 import { redeemCode } from '../api/redeem';
 import { ApiError } from '../api/client';
-import { glassFloat } from '../theme/glass';
 import { makeStyles, useTheme } from '../theme/ThemeContext';
+import { RADIUS, SPACE, TYPE } from '../theme/tokens';
 import type { Wallet } from '../types';
 import { Button } from './Button';
 import { CoinAmount } from './CoinAmount';
 import { Notice } from './Notice';
+import { Sheet } from './sheet/Sheet';
 
 const CODE_LENGTH = 5;
 
@@ -44,7 +35,7 @@ const INITIAL: State = { phase: 'entering', error: null };
  * retrying is safe: the server never credits one player twice.
  */
 export function RedeemCodeDialog({ visible, onClose, onRedeemed }: Props) {
-  const { colors, semanticColors } = useTheme();
+  const { colors } = useTheme();
   const styles = useStyles();
   const [code, setCode] = useState('');
   const [state, setState] = useState<State>(INITIAL);
@@ -91,112 +82,75 @@ export function RedeemCodeDialog({ visible, onClose, onRedeemed }: Props) {
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
-      <KeyboardAvoidingView style={styles.backdrop} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <Pressable style={styles.scrim} onPress={close} accessibilityLabel="Close" accessibilityRole="button" />
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          bounces={false}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.card} accessibilityViewIsModal>
-            {state.phase === 'done' ? (
-              <>
-                <Text style={styles.title} accessibilityRole="header">
-                  Code redeemed
-                </Text>
-                <View style={styles.reward} accessibilityLiveRegion="polite">
-                  <Text style={styles.rewardPlus}>+</Text>
-                  <CoinAmount value={state.coins} size={30} textStyle={styles.rewardValue} />
-                  <Text style={styles.rewardUnit}>coins</Text>
-                </View>
-                <Text style={styles.subtitle}>Added to your deposit balance.</Text>
-                <View style={styles.balanceRow}>
-                  <Text style={styles.balanceLabel}>Deposit balance</Text>
-                  <CoinAmount value={state.balance.deposit_balance} size={16} />
-                </View>
-                <Button label="Done" onPress={close} style={styles.fullButton} />
-              </>
-            ) : (
-              <>
-                <Text style={styles.title} accessibilityRole="header">
-                  Redeem Your Code
-                </Text>
-                <Text style={styles.subtitle}>Enter your 5-character reward code.</Text>
-
-                <TextInput
-                  value={code}
-                  onChangeText={onChange}
-                  onSubmitEditing={submit}
-                  editable={!submitting}
-                  autoFocus
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  autoComplete="off"
-                  importantForAutofill="no"
-                  spellCheck={false}
-                  maxLength={CODE_LENGTH + 4}
-                  returnKeyType="done"
-                  placeholder="•••••"
-                  placeholderTextColor={colors.fg3}
-                  selectionColor={colors.brand}
-                  accessibilityLabel="Reward code, 5 characters"
-                  accessibilityHint="Letters and numbers only"
-                  style={[styles.input, state.phase === 'entering' && state.error ? styles.inputError : null]}
-                />
-
-                {state.phase === 'entering' && state.error ? (
-                  <View style={styles.errorWrap}>
-                    <Notice tone="danger">{state.error}</Notice>
-                  </View>
-                ) : null}
-
-                <Pressable
-                  onPress={submit}
-                  disabled={!valid || submitting}
-                  accessibilityRole="button"
-                  accessibilityLabel={submitting ? 'Redeeming' : 'Redeem'}
-                  accessibilityState={{ disabled: !valid || submitting, busy: submitting }}
-                  style={({ pressed }) => [
-                    styles.redeem,
-                    (!valid || submitting) && styles.redeemDisabled,
-                    pressed && valid && !submitting && styles.redeemPressed,
-                  ]}
-                >
-                  {submitting ? (
-                    <ActivityIndicator color={semanticColors.onDanger} />
-                  ) : (
-                    <Text style={styles.redeemText}>Redeem</Text>
-                  )}
-                </Pressable>
-
-                <Button label="Cancel" variant="secondary" onPress={close} disabled={submitting} style={styles.fullButton} />
-              </>
-            )}
+    <Sheet
+      visible={visible}
+      onClose={close}
+      title={state.phase === 'done' ? 'Code redeemed' : 'Redeem Your Code'}
+      subtitle={state.phase === 'done' ? undefined : 'Enter your 5-character reward code.'}
+      dismissible={!submitting}
+    >
+      {state.phase === 'done' ? (
+        <>
+          <View style={styles.reward} accessibilityLiveRegion="polite">
+            <Text style={styles.rewardPlus}>+</Text>
+            <CoinAmount value={state.coins} size={30} textStyle={styles.rewardValue} />
+            <Text style={styles.rewardUnit}>coins</Text>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </Modal>
+          <Text style={styles.subtitle}>Added to your deposit balance.</Text>
+          <View style={styles.balanceRow}>
+            <Text style={styles.balanceLabel}>Deposit balance</Text>
+            <CoinAmount value={state.balance.deposit_balance} size={16} />
+          </View>
+          <Button label="Done" onPress={close} />
+        </>
+      ) : (
+        <>
+          <TextInput
+            value={code}
+            onChangeText={onChange}
+            onSubmitEditing={submit}
+            editable={!submitting}
+            autoFocus
+            autoCapitalize="characters"
+            autoCorrect={false}
+            autoComplete="off"
+            importantForAutofill="no"
+            spellCheck={false}
+            maxLength={CODE_LENGTH + 4}
+            returnKeyType="done"
+            placeholder="•••••"
+            placeholderTextColor={colors.fg3}
+            selectionColor={colors.brand}
+            accessibilityLabel="Reward code, 5 characters"
+            accessibilityHint="Letters and numbers only"
+            style={[styles.input, state.phase === 'entering' && state.error ? styles.inputError : null]}
+          />
+          <Text style={styles.counter}>
+            {code.length}/{CODE_LENGTH}
+          </Text>
+
+          {state.phase === 'entering' && state.error ? <Notice tone="danger">{state.error}</Notice> : null}
+
+          <Button
+            label="Redeem"
+            variant="danger"
+            onPress={submit}
+            loading={submitting}
+            disabled={!valid}
+            accessibilityLabel={submitting ? 'Redeeming' : 'Redeem'}
+          />
+          <Button label="Cancel" variant="secondary" onPress={close} disabled={submitting} />
+        </>
+      )}
+    </Sheet>
   );
 }
 
 const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
-  backdrop: { flex: 1, justifyContent: 'center' },
-  scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: s.overlay },
-  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 20 },
-  // A glass sheet; Android has no backdrop blur here, so it uses the solid fallback (theme/glass.ts).
-  card: {
-    ...glassFloat(c),
-    borderRadius: 22,
-    padding: 22,
-    gap: 14,
-  },
-  title: { color: c.fg, fontSize: 20, fontWeight: '700' },
-  subtitle: { color: c.fg2, fontSize: 14, lineHeight: 20 },
+  subtitle: { ...TYPE.body, color: c.fg2, textAlign: 'center' },
   input: {
     height: 62,
-    borderRadius: 14,
+    borderRadius: RADIUS.md,
     borderWidth: 1.5,
     borderColor: c.borderStrong,
     backgroundColor: c.surface2,
@@ -207,22 +161,8 @@ const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
     textAlign: 'center',
   },
   inputError: { borderColor: s.danger },
-  errorWrap: { marginTop: -2 },
-  // A deliberate red action: solid red, white label (6.5:1), never a red background.
-  redeem: {
-    minHeight: 52,
-    borderRadius: 14,
-    backgroundColor: s.dangerSolid,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-  },
-  redeemDisabled: { opacity: 0.45 },
-  redeemPressed: { opacity: 0.88 },
-  redeemText: { color: s.onDanger, fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
-  fullButton: { alignSelf: 'stretch' },
-  reward: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 8 },
+  counter: { ...TYPE.meta, color: c.fg3, textAlign: 'right', marginTop: -SPACE.xxs },
+  reward: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACE.xs, paddingVertical: SPACE.xs },
   rewardPlus: { color: s.success, fontSize: 30, fontWeight: '800' },
   rewardValue: { color: c.fg, fontSize: 34, fontWeight: '800' },
   rewardUnit: { color: c.fg3, fontSize: 15, fontWeight: '600' },
@@ -231,11 +171,11 @@ const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: c.surface2,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: c.border,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.sm,
   },
-  balanceLabel: { color: c.fg2, fontSize: 13, fontWeight: '600' },
+  balanceLabel: { ...TYPE.bodyStrong, fontSize: 13, color: c.fg2 },
 }));

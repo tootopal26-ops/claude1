@@ -17,7 +17,7 @@ export default function SettingsScreen() {
           onPress={() => setColorTheme(key)}
           style={[styles.option, colorThemeKey === key && styles.optionSelected]}
           accessibilityRole="radio"
-          accessibilityState={{ selected: colorThemeKey === key }}
+          aria-selected={colorThemeKey === key}
         >
           <View style={[styles.swatch, { backgroundColor: COLOR_THEMES[key].brand, borderColor: COLOR_THEMES[key].surface3 }]} />
           <Text style={styles.optionLabel}>{COLOR_THEMES[key].label}</Text>
@@ -32,7 +32,7 @@ export default function SettingsScreen() {
           onPress={() => setFontTheme(key)}
           style={[styles.option, fontThemeKey === key && styles.optionSelected]}
           accessibilityRole="radio"
-          accessibilityState={{ selected: fontThemeKey === key }}
+          aria-selected={fontThemeKey === key}
         >
           <Text style={[styles.optionLabel, { fontFamily: FONT_THEMES[key].fontFamily }]}>{FONT_THEMES[key].label}</Text>
           {fontThemeKey === key && <Icon name="check" size={16} color={colors.brandText} />}

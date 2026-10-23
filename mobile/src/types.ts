@@ -2,6 +2,9 @@ export type User = {
   id: number;
   username: string;
   mobile: string;
+  email?: string | null;
+  state?: string | null;
+  member_since?: string | null;
 };
 
 export type Game = {
@@ -11,7 +14,12 @@ export type Game = {
   image_url: string | null;
   thumbnail_url: string | null;
   display_order: number;
+  /** This game's tournaments that are upcoming (not players, not all tournaments). */
+  upcoming_tournaments_count: number;
 };
+
+/** The three tournament tabs; Completed also holds cancelled tournaments. */
+export type TournamentTab = 'upcoming' | 'ongoing' | 'completed';
 
 export type Tournament = {
   id: number;
@@ -28,8 +36,12 @@ export type Tournament = {
   joined_slots: number;
   scheduled_start_at: string;
   status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  join_closes_at?: string;
+  /** The server's view: upcoming, before the join cut-off, credentials not out, a slot free. */
+  joining_open?: boolean;
   credentials_released: boolean;
   already_joined: boolean;
+  game?: { id: number; title: string; image_url: string | null; thumbnail_url: string | null };
   my_result: { rank: number; kills: number; prize_awarded: string } | null;
 };
 
@@ -63,8 +75,12 @@ export type DepositOrder = {
 
 export type LeaderboardEntry = {
   rank: number;
+  user_id: number;
   username: string;
+  /** Total prize winnings in the period (the ranking key). */
   score: string;
+  /** Coins this rank pays for the period (frozen once finalized); null when the rank has no prize. */
+  prize: number | null;
   total_kills: number;
   tournaments_played: number;
 };
@@ -76,6 +92,7 @@ export type Leaderboard = {
   status: 'provisional' | 'finalized';
   entries: LeaderboardEntry[];
   my_entry: LeaderboardEntry | null;
+  prizes_final: boolean;
 };
 
 export type WithdrawalRequest = {
@@ -127,6 +144,8 @@ export type LegalDocument = {
 export type LeaderboardBanner = {
   id: number;
   title: string | null;
+  /** An in-app path (e.g. /tournaments?status=upcoming) or an https address; null when not a link. */
+  link_url: string | null;
   image_url: string | null;
   thumbnail_url: string | null;
   display_order: number;
@@ -155,4 +174,35 @@ export type SectionStatus = {
 export type SectionUnlockResult = {
   message: string;
   data: { section: SectionStatus; charged: string; already_unlocked: boolean; balance: Wallet };
+};
+
+export type TournamentResultRow = {
+  rank: number;
+  user_id: number;
+  username: string;
+  players: { slot_number: number; in_game_name: string }[];
+  kills: number;
+  prize_awarded: string;
+};
+
+export type TournamentResults = {
+  tournament_id: number;
+  status: Tournament['status'];
+  published: boolean;
+  results: TournamentResultRow[];
+};
+
+export type ProfileStats = {
+  total_earnings: string;
+  matches: number;
+  deposits_total: string;
+  deposits_count: number;
+};
+
+export type Session = {
+  id: number;
+  device_name: string | null;
+  last_used_at: string | null;
+  created_at: string;
+  is_current: boolean;
 };

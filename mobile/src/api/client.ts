@@ -21,6 +21,17 @@ export class ApiError extends Error {
   }
 }
 
+let onUnauthorized: (() => void) | null = null;
+
+/**
+ * Called when the server rejects the saved token (401) on a signed-in request — for
+ * example after the player signed this device out from another one. AuthProvider uses it
+ * to end the local session so the app returns to sign-in instead of failing on every screen.
+ */
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler;
+}
+
 type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
@@ -52,6 +63,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const payload = isJson ? await response.json() : undefined;
 
   if (!response.ok) {
+    if (response.status === 401 && authenticated && path !== '/auth/me') {
+      onUnauthorized?.();
+    }
     throw new ApiError(
       payload?.message ?? `Request failed with status ${response.status}`,
       response.status,

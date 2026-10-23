@@ -70,9 +70,53 @@ export const SEMANTIC_COLORS = {
   info: '#60a5fa',
   infoSoft: 'rgba(96,165,250,0.12)',
   overlay: 'rgba(5,3,8,0.7)',
+  // Leaderboard rank rings. Gold also marks first place elsewhere; ranks 4–100 use `success`.
+  rankGold: '#ffc857',
+  rankSilver: '#cdd3dc',
+  rankBronze: '#c98b5e',
 };
 
 export type SemanticColors = typeof SEMANTIC_COLORS;
+
+/**
+ * Layout scale shared by every screen (dp). Page padding is `md`. Nothing on a
+ * screen uses a spacing value outside this list.
+ */
+export const SPACE = { xxs: 4, xs: 8, sm: 12, md: 16, lg: 20, xl: 24, xxl: 32 } as const;
+
+/** Corner radii: labels/compact controls, buttons/inputs, cards, hero cards and sheets. */
+export const RADIUS = { sm: 8, md: 12, lg: 16, xl: 20, pill: 999 } as const;
+
+/** Component dimensions that must match wherever the component appears. */
+export const SIZE = {
+  touch: 44,
+  button: 48,
+  buttonSm: 40,
+  navIcon: 22,
+  navBar: 64,
+  avatarHeader: 46,
+  avatarRow: 42,
+  avatarPodium: 64,
+  avatarPodiumFirst: 80,
+  avatarProfile: 88,
+  coinPill: 20,
+} as const;
+
+/** Content never stretches wider than this on tablets and large phones (dp); it centres instead. */
+export const MAX_CONTENT_WIDTH = 560;
+
+/** Type scale (sp). Screens pick a role; they do not invent sizes. */
+export const TYPE = {
+  hero: { fontSize: 24, lineHeight: 30, fontWeight: '700' },
+  screenTitle: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
+  section: { fontSize: 17, lineHeight: 22, fontWeight: '600' },
+  cardTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600' },
+  body: { fontSize: 14, lineHeight: 20, fontWeight: '400' },
+  bodyStrong: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
+  meta: { fontSize: 12, lineHeight: 16, fontWeight: '400' },
+  label: { fontSize: 11, lineHeight: 14, fontWeight: '600' },
+  money: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
+} as const;
 
 export const COLOR_THEMES: Record<ColorThemeKey, ColorTheme> = {
   'purple-glass': {
