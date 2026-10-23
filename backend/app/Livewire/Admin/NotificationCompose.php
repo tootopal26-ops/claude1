@@ -6,6 +6,7 @@ use App\Domain\Notifications\NotificationService;
 use App\Models\Tournament;
 use App\Models\TournamentEntry;
 use App\Models\User;
+use App\Support\Portal;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -148,7 +149,7 @@ class NotificationCompose extends Component
 
         session()->flash('status', 'Notification sent to '.$recipients->count().' player(s).');
 
-        $this->redirectRoute('admin.notifications.index', navigate: false);
+        $this->redirectRoute(Portal::routeName('notifications.index'), navigate: false);
     }
 
     public function render()

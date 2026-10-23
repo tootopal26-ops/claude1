@@ -32,7 +32,7 @@ class AdminStaffSalaryUiTest extends TestCase
     {
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.staff-salary.rules.index'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.staff-salary.rules.index'))->assertForbidden();
     }
 
     public function test_saving_a_rule_is_denied_without_the_permission(): void

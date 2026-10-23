@@ -78,7 +78,7 @@
         @forelse ($assets as $asset)
             <tr wire:key="asset-{{ $asset->id }}">
                 <td class="mm-cell-primary">
-                    <a href="{{ route('admin.storage-assets.download', $asset) }}" class="inline-flex max-w-[15rem] items-center gap-2 hover:text-brand-text" title="Download {{ $asset->original_filename }}">
+                    <a href="{{ portal_route('storage-assets.download', $asset) }}" class="inline-flex max-w-[15rem] items-center gap-2 hover:text-brand-text" title="Download {{ $asset->original_filename }}">
                         <x-icon name="download" :size="14" class="shrink-0 text-fg-3" />
                         <span class="truncate">{{ $asset->original_filename }}</span>
                     </a>

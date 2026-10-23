@@ -7,12 +7,15 @@ to the same names (see "Token mapping").
 
 ## 1. Architecture facts that shape the redesign
 
-- **There is one web panel, not two.** Admin and Staff share `routes/admin.php`
-  (prefix `/admin`, name prefix `admin.`), one `staff_users` table, one `staff`
-  guard, and one set of Livewire components. "Admin" is an account with
-  `is_super_admin` (or the full permission preset); "Staff" is any account with
-  a narrower permission preset. There is no `/staff/*` route tree.
-- Every route except `admin.home`, `admin.login` and `admin.logout` carries a
+- **One page set, two portals.** Admin (`/admin/*`, route names `admin.*`) and
+  Staff (`/staff/*`, `staff.*`) are registered from the same list in
+  `routes/admin.php`, share one `staff_users` table, one `staff` guard and one
+  set of Livewire components, but the `portal` middleware keeps each account in
+  its own portal: `is_super_admin` accounts belong to Admin, every other
+  account to Staff (see `docs/portals.md`). Views and redirects use
+  `portal_route('tournaments.index')` so a page always links inside the portal
+  the user is in.
+- Every route except `home`, `login` and `logout` (in either portal) carries a
   `permission:<key>` middleware. **UI hiding is cosmetic; the middleware stays
   the authority** and is not touched by the redesign.
 - The shell therefore adapts **by role**: a super-admin sees the "Admin Console"

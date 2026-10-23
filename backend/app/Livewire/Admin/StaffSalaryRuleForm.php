@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\AuditLog;
 use App\Models\StaffSalaryRule;
 use App\Models\StaffUser;
+use App\Support\Portal;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -56,7 +57,7 @@ class StaffSalaryRuleForm extends Component
 
         session()->flash('status', 'Salary rule saved.');
 
-        $this->redirectRoute('admin.staff-salary.rules.index', navigate: false);
+        $this->redirectRoute(Portal::routeName('staff-salary.rules.index'), navigate: false);
     }
 
     public function render()

@@ -23,7 +23,7 @@ class AdminNotificationComposeTest extends TestCase
     {
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.notifications.create'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.notifications.create'))->assertForbidden();
     }
 
     public function test_sending_to_all_active_users_reaches_every_non_banned_player(): void
@@ -144,7 +144,7 @@ class AdminNotificationComposeTest extends TestCase
         $preset->permissions()->attach($permission);
         $staff = StaffUser::factory()->create(['permission_preset_id' => $preset->id, 'is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.notifications.create'))->assertOk();
+        $this->actingAs($staff, 'staff')->get(route('staff.notifications.create'))->assertOk();
     }
 
     /**

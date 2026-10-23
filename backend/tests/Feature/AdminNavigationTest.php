@@ -90,12 +90,12 @@ class AdminNavigationTest extends TestCase
     {
         $user = $this->staffWith('legal.manage');
 
-        $response = $this->actingAs($user, 'staff')->get(route('admin.home'));
+        $response = $this->actingAs($user, 'staff')->get(route('staff.home'));
 
         $response->assertOk()
             ->assertSee('Staff Portal')
-            ->assertSee(route('admin.legal.index'), false)
-            ->assertDontSee(route('admin.withdrawals.index'), false)
-            ->assertDontSee(route('admin.staff.index'), false);
+            ->assertSee(route('staff.legal.index'), false)
+            ->assertDontSee(route('staff.withdrawals.index'), false)
+            ->assertDontSee(route('staff.staff.index'), false);
     }
 }

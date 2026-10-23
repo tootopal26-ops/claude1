@@ -35,7 +35,7 @@ class AdminResultsUiTest extends TestCase
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
         $tournament = Tournament::factory()->create(['status' => 'ongoing']);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.tournaments.results', $tournament))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.tournaments.results', $tournament))->assertForbidden();
     }
 
     public function test_submitting_results_is_denied_without_the_permission(): void

@@ -36,7 +36,7 @@ class AdminWithdrawalUiTest extends TestCase
     {
         $staff = $this->unauthorizedStaff();
 
-        $this->actingAs($staff, 'staff')->get(route('admin.withdrawals.index'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.withdrawals.index'))->assertForbidden();
     }
 
     public function test_a_staff_user_without_the_permission_cannot_view_a_withdrawal(): void
@@ -46,7 +46,7 @@ class AdminWithdrawalUiTest extends TestCase
         $withdrawal = app(WithdrawalService::class)->request($user, '40.00', 'player@upi');
         $staff = $this->unauthorizedStaff();
 
-        $this->actingAs($staff, 'staff')->get(route('admin.withdrawals.show', $withdrawal))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.withdrawals.show', $withdrawal))->assertForbidden();
     }
 
     public function test_approve_is_denied_without_the_permission(): void

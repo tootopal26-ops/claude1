@@ -150,6 +150,86 @@
     .mm-spinner {
         @apply inline-block size-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent;
     }
+
+    /*
+     * Glass surface: a translucent charcoal panel with a hairline border and a
+     * soft blur. Falls back to the plain surface wherever backdrop-filter is
+     * unavailable, so text never sits on an unpredictable backdrop.
+     */
+    .mm-glass {
+        background-color: color-mix(in oklab, var(--mm-surface) 78%, transparent);
+        border: 1px solid var(--mm-border);
+        border-top-color: color-mix(in oklab, var(--mm-brand) 24%, var(--mm-border));
+        box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 30px 70px -32px rgb(0 0 0 / 0.75);
+        -webkit-backdrop-filter: blur(18px) saturate(1.15);
+        backdrop-filter: blur(18px) saturate(1.15);
+    }
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+        .mm-glass {
+            background-color: var(--mm-surface);
+        }
+    }
+
+    /*
+     * Portal sign-in pages. The Admin and Staff portals share one brand and one
+     * set of tokens; each only nudges the neutral surfaces — Admin deeper and
+     * more austere, Staff a step lighter — and never the brand colour, so
+     * contrast and the purple-as-accent rule hold in both.
+     */
+    .mm-portal--admin {
+        --mm-bg: #0a0810;
+        --mm-sidebar: #0e0b14;
+        --mm-surface: #130f1a;
+        --mm-surface-2: #1a1423;
+        --mm-surface-3: #221a2d;
+        --mm-border: #2d2338;
+        --mm-border-strong: #40324f;
+    }
+
+    .mm-portal--staff {
+        --mm-bg: #17131f;
+        --mm-sidebar: #1b1624;
+        --mm-surface: #211b2b;
+        --mm-surface-2: #272031;
+        --mm-surface-3: #2d2538;
+        --mm-border: #3c3149;
+        --mm-border-strong: #50425f;
+    }
+
+    .mm-eyebrow {
+        @apply text-xs font-semibold uppercase tracking-[0.22em] text-brand-text;
+    }
+
+    /* Entrance: a short rise-and-fade, staggered with --mm-delay. */
+    .mm-rise {
+        animation: mm-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+        animation-delay: var(--mm-delay, 0ms);
+    }
+
+    .mm-drift {
+        animation: mm-drift 28s ease-in-out infinite alternate;
+    }
+}
+
+@keyframes mm-rise {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes mm-drift {
+    from {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+        transform: translate3d(-1.5%, 1.5%, 0) scale(1.03);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

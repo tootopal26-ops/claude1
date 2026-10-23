@@ -100,7 +100,7 @@ class AdminUiDesignSystemTest extends TestCase
 
             // A form that flashes and then redirects shows the message on the redirect target;
             // one that stays on the page must render it itself.
-            if (preg_match("/redirectRoute\\('([^']+)'/", $php, $match) && ($route = Route::getRoutes()->getByName($match[1]))) {
+            if (preg_match("/redirectRoute\\(Portal::routeName\\('([^']+)'\\)/", $php, $match) && ($route = Route::getRoutes()->getByName('admin.'.$match[1]))) {
                 $needsFlash[ltrim($route->getActionName(), '\\')] = "redirect target of {$file->getBasename('.php')}";
             } else {
                 $needsFlash['App\\Livewire\\Admin\\'.$file->getBasename('.php')] = 'itself';
@@ -157,6 +157,31 @@ class AdminUiDesignSystemTest extends TestCase
         }
 
         $this->assertSame([], $failures, implode("\n", $failures));
+    }
+
+    public function test_solid_button_hover_states_darken_so_text_stays_readable(): void
+    {
+        $root = preg_replace('#/\*.*?\*/#s', '', File::get(resource_path('css/themes.css')));
+        preg_match('/:root\s*\{([^{}]*)\}/', $root, $block);
+        preg_match_all('/(--mm-[\w-]+)\s*:\s*(#[0-9a-fA-F]{6})\s*;/', $block[1], $matches, PREG_SET_ORDER);
+        $semantic = array_column($matches, 2, 1);
+
+        foreach (['--mm-danger-solid', '--mm-danger-solid-hover'] as $token) {
+            $ratio = $this->contrast($semantic['--mm-on-danger'], $semantic[$token]);
+            $this->assertGreaterThanOrEqual(4.5, $ratio, sprintf('--mm-on-danger on %s is %.2f:1', $token, $ratio));
+        }
+
+        // A lighter hover colour drops white text under 4.5:1 in the default theme, so solid
+        // brand surfaces hover to the darker pressed shade (already covered by the pairs above).
+        $offenders = [];
+
+        foreach ($this->themedViewFiles() as $path) {
+            if (str_contains(File::get($path), 'hover:bg-brand-hover')) {
+                $offenders[] = str_replace(base_path().'/', '', $path);
+            }
+        }
+
+        $this->assertSame([], $offenders, 'Use hover:bg-brand-pressed on solid brand backgrounds: '.implode(', ', $offenders));
     }
 
     public function test_android_theme_tokens_match_the_web_tokens_exactly(): void

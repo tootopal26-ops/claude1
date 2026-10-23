@@ -1,14 +1,18 @@
+@props(['portal' => 'admin', 'title' => 'Sign in · Mini Max'])
 <!DOCTYPE html>
-<html lang="en" data-sidebar="expanded">
+{{-- Sign-in pages carry the portal's identity, so they ignore a stored theme/font preference. --}}
+<html lang="en" data-theme="purple-glass" data-font="default-sans" data-portal="{{ $portal }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title ?? 'Sign in' }} · Mini Max Admin &amp; Staff</title>
-    <x-theme-boot />
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="{{ $portal === 'staff' ? 'rgb(23, 19, 31)' : 'rgb(10, 8, 16)' }}">
+    <title>{{ $title }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="min-h-screen bg-app text-fg antialiased">
+<body class="min-h-dvh bg-app text-fg antialiased">
     {{ $slot }}
     @livewireScripts
 </body>

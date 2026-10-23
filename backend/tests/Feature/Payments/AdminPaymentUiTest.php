@@ -31,7 +31,7 @@ class AdminPaymentUiTest extends TestCase
     {
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.deposits.index'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.deposits.index'))->assertForbidden();
     }
 
     public function test_a_staff_user_without_payments_manage_cannot_see_payment_settings(): void
@@ -39,7 +39,7 @@ class AdminPaymentUiTest extends TestCase
         $preset = $this->grantPreset(['payments.view']);
         $staff = StaffUser::factory()->create(['permission_preset_id' => $preset->id, 'is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.payment-settings'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.payment-settings'))->assertForbidden();
     }
 
     public function test_saving_payment_settings_is_denied_without_the_permission(): void

@@ -14,7 +14,7 @@
 
 @php
     $variants = [
-        'primary' => 'bg-brand text-on-brand hover:bg-brand-hover active:bg-brand-pressed',
+        'primary' => 'bg-brand text-on-brand hover:bg-brand-pressed active:brightness-90',
         'secondary' => 'border border-line bg-surface-2 text-fg hover:bg-surface-3',
         'outline' => 'border border-line-strong text-fg hover:bg-surface-2',
         'ghost' => 'text-fg-2 hover:bg-surface-2 hover:text-fg',

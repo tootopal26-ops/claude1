@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\AuditLog;
 use App\Models\Permission;
 use App\Models\PermissionPreset;
+use App\Support\Portal;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -59,7 +60,7 @@ class PresetForm extends Component
 
         session()->flash('status', "Preset \"{$preset->name}\" saved.");
 
-        $this->redirectRoute('admin.presets.index', navigate: false);
+        $this->redirectRoute(Portal::routeName('presets.index'), navigate: false);
     }
 
     public function render()

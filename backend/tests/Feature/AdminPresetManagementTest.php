@@ -18,7 +18,7 @@ class AdminPresetManagementTest extends TestCase
     {
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.presets.index'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.presets.index'))->assertForbidden();
     }
 
     public function test_an_admin_can_create_a_preset_with_permissions(): void
@@ -74,8 +74,8 @@ class AdminPresetManagementTest extends TestCase
         $preset->permissions()->attach($permission);
         $staff = StaffUser::factory()->create(['permission_preset_id' => $preset->id, 'is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.tournaments.index'))->assertOk();
-        $this->actingAs($staff, 'staff')->get(route('admin.tournaments.create'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.tournaments.index'))->assertOk();
+        $this->actingAs($staff, 'staff')->get(route('staff.tournaments.create'))->assertForbidden();
     }
 
     /**

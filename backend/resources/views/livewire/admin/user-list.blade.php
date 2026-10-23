@@ -45,7 +45,7 @@
                 </td>
                 <td class="whitespace-nowrap">{{ $user->created_at->format('d M Y') }}</td>
                 <td class="text-right">
-                    <x-ui.button :href="route('admin.users.show', $user)" variant="ghost" size="sm" icon="user">View profile</x-ui.button>
+                    <x-ui.button :href="portal_route('users.show', $user)" variant="ghost" size="sm" icon="user">View profile</x-ui.button>
                 </td>
             </tr>
         @empty

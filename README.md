@@ -29,10 +29,13 @@ scale. Every money-moving operation instead lives in exactly one
 `app/Domain/*` action class, called by both the API controllers and the
 Livewire admin/staff components.
 
-Admin and Staff share one `staff_users` table and one `staff` guard — an
-"Admin" is simply a staff account holding the full permission preset (or
-`is_super_admin`), not a separate authentication system. Players use a
-separate `api` guard (Sanctum tokens, one per device).
+Admin and Staff share one `staff_users` table and one `staff` guard but
+are two separate web portals with their own URLs and sign-in pages: the
+**Admin portal** (`/admin/login`) is for super-admin accounts and the
+**Staff portal** (`/staff/login`) for every other account, and a server-side
+middleware refuses an account that addresses the other portal (see
+[`docs/portals.md`](docs/portals.md)). Players use a separate `api` guard
+(Sanctum tokens, one per device).
 
 ## Getting started (local development)
 
@@ -81,6 +84,9 @@ cd mobile && npx tsc --noEmit
 - [`docs/smoke-test-checklist.md`](docs/smoke-test-checklist.md) — the
   manual end-to-end check (signup → join → result → payout →
   withdrawal) to run against a staging deploy before it goes live.
+- [`docs/portals.md`](docs/portals.md) — the Admin and Staff portals: URLs,
+  who belongs where, the server-side boundary, sign-in protections, and
+  the hosting/DNS/SSL notes for the path-based setup and for subdomains.
 - [`docs/design-system.md`](docs/design-system.md) — the Admin/Staff
   design tokens (shared with the Android app), application shell,
   component library and page conventions.

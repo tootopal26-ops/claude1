@@ -39,7 +39,7 @@
                 <td><x-ui.badge :status="$withdrawal->status" /></td>
                 <td class="whitespace-nowrap">{{ $withdrawal->created_at->format('d M, H:i') }}</td>
                 <td class="text-right">
-                    <x-ui.button :href="route('admin.withdrawals.show', $withdrawal)" variant="ghost" size="sm" icon="chevron-right">Review</x-ui.button>
+                    <x-ui.button :href="portal_route('withdrawals.show', $withdrawal)" variant="ghost" size="sm" icon="chevron-right">Review</x-ui.button>
                 </td>
             </tr>
         @empty

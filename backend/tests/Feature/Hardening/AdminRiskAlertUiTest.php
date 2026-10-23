@@ -32,7 +32,7 @@ class AdminRiskAlertUiTest extends TestCase
     {
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.risk-alerts.index'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.risk-alerts.index'))->assertForbidden();
     }
 
     public function test_mark_reviewed_is_denied_without_the_permission(): void

@@ -3,7 +3,7 @@
         :title="$staffUser ? 'Edit staff account' : 'New staff account'"
         :description="$staffUser ? 'Update how this person signs in and what they can access.' : 'Create a sign-in for a team member and choose what they can access.'"
         :breadcrumbs="[
-            ['label' => 'Staff', 'url' => route('admin.staff.index')],
+            ['label' => 'Staff', 'url' => portal_route('staff.index')],
             ['label' => $staffUser ? $staffUser->display_name : 'New account'],
         ]"
     />
@@ -64,7 +64,7 @@
         </x-ui.form-section>
 
         <div class="sticky bottom-0 z-10 -mx-4 mt-2 flex items-center justify-end gap-2 border-t border-line bg-app px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-            <x-ui.button :href="route('admin.staff.index')" variant="ghost">Cancel</x-ui.button>
+            <x-ui.button :href="portal_route('staff.index')" variant="ghost">Cancel</x-ui.button>
             <x-ui.button
                 type="submit"
                 loading="save"

@@ -11,10 +11,10 @@
     >
         <x-slot:actions>
             @if (auth('staff')->user()->hasPermission('salary.view'))
-                <x-ui.button :href="route('admin.staff-salary.settlements.index')" variant="secondary" icon="salary">View settlements</x-ui.button>
+                <x-ui.button :href="portal_route('staff-salary.settlements.index')" variant="secondary" icon="salary">View settlements</x-ui.button>
             @endif
             @if (auth('staff')->user()->hasPermission('salary.manage'))
-                <x-ui.button :href="route('admin.staff-salary.rules.create')" icon="plus">New rule</x-ui.button>
+                <x-ui.button :href="portal_route('staff-salary.rules.create')" icon="plus">New rule</x-ui.button>
             @endif
         </x-slot:actions>
     </x-ui.page-header>
@@ -37,13 +37,13 @@
                 <td class="whitespace-nowrap"><span class="inline-flex items-center gap-1.5 tabular-nums text-fg"><x-coin-asset :size="16" />{{ $rule->amount_per_action }}</span></td>
                 <td><x-ui.badge :status="$rule->is_active ? 'active' : 'inactive'" /></td>
                 <td class="text-right">
-                    <x-ui.button :href="route('admin.staff-salary.rules.edit', $rule)" variant="ghost" size="sm" icon="edit">Edit</x-ui.button>
+                    <x-ui.button :href="portal_route('staff-salary.rules.edit', $rule)" variant="ghost" size="sm" icon="edit">Edit</x-ui.button>
                 </td>
             </tr>
         @empty
             <x-ui.table-empty :colspan="5" icon="salary" title="No salary rules yet" description="Add a rule to start paying a staff member for an action they perform.">
                 @if (auth('staff')->user()->hasPermission('salary.manage'))
-                    <x-ui.button :href="route('admin.staff-salary.rules.create')" icon="plus" size="sm">New rule</x-ui.button>
+                    <x-ui.button :href="portal_route('staff-salary.rules.create')" icon="plus" size="sm">New rule</x-ui.button>
                 @endif
             </x-ui.table-empty>
         @endforelse

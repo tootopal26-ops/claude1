@@ -21,7 +21,7 @@ class AdminAuditLogViewerTest extends TestCase
     {
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.audit-logs.index'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.audit-logs.index'))->assertForbidden();
     }
 
     public function test_a_staff_user_with_audit_logs_view_sees_recorded_events(): void
@@ -35,7 +35,7 @@ class AdminAuditLogViewerTest extends TestCase
         $tournament = Tournament::factory()->create();
         AuditLog::record('tournament.joined', $user, $tournament, ['note' => 'test']);
 
-        $response = $this->actingAs($staff, 'staff')->get(route('admin.audit-logs.index'));
+        $response = $this->actingAs($staff, 'staff')->get(route('staff.audit-logs.index'));
 
         $response->assertOk()
             ->assertSee('traceable_player')

@@ -32,7 +32,7 @@
             :inert="mobile && ! drawer"
         >
             <div class="flex h-14 shrink-0 items-center gap-3 border-b border-line px-4 lg:group-data-[sidebar=collapsed]/html:justify-center lg:group-data-[sidebar=collapsed]/html:px-0">
-                <a href="{{ route('admin.home') }}" class="flex min-w-0 items-center gap-3" aria-label="Mini Max {{ $portal }} — dashboard">
+                <a href="{{ portal_route('home') }}" class="flex min-w-0 items-center gap-3" aria-label="Mini Max {{ $portal }} — dashboard">
                     <x-logo-asset :height="30" />
                     <span class="min-w-0 leading-tight lg:group-data-[sidebar=collapsed]/html:sr-only">
                         <span class="block truncate text-sm font-semibold text-fg">Mini Max</span>
@@ -176,7 +176,7 @@
                         </dl>
                     </div>
                     <div class="border-t border-line pt-1.5">
-                        <form method="POST" action="{{ route('admin.logout') }}">
+                        <form method="POST" action="{{ portal_route('logout') }}">
                             @csrf
                             <button type="submit" class="flex h-9 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-danger transition-colors hover:bg-danger-soft">
                                 <x-icon name="logout" :size="16" /> Log out
@@ -201,7 +201,7 @@
                 <h2 id="mm-expired-title" class="text-base font-semibold text-fg">Your session has expired</h2>
                 <p id="mm-expired-desc" class="mt-1 text-sm text-fg-2">For your security you were signed out. Sign in again to continue — anything you hadn't saved on this page was not submitted.</p>
                 <div class="mt-5 flex gap-2">
-                    <a href="{{ route('admin.login') }}" class="inline-flex h-9 flex-1 items-center justify-center rounded-lg bg-brand px-4 text-sm font-medium text-on-brand hover:bg-brand-hover">Sign in again</a>
+                    <a href="{{ portal_route('login') }}" class="inline-flex h-9 flex-1 items-center justify-center rounded-lg bg-brand px-4 text-sm font-medium text-on-brand hover:bg-brand-pressed">Sign in again</a>
                     <button type="button" class="inline-flex h-9 items-center justify-center rounded-lg border border-line-strong px-4 text-sm font-medium text-fg hover:bg-surface-2" @click="window.location.reload()">Reload</button>
                 </div>
             </div>
@@ -235,7 +235,7 @@
             <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button type="button" @click="cancel()" class="inline-flex h-9 items-center justify-center rounded-lg border border-line-strong px-4 text-sm font-medium text-fg hover:bg-surface-2" x-ref="cancelButton">Cancel</button>
                 <button type="button" @click="accept()" class="inline-flex h-9 items-center justify-center rounded-lg px-4 text-sm font-medium"
-                    :class="variant === 'danger' ? 'bg-danger-solid text-on-danger hover:bg-danger-solid-hover' : 'bg-brand text-on-brand hover:bg-brand-hover'" x-text="confirmLabel"></button>
+                    :class="variant === 'danger' ? 'bg-danger-solid text-on-danger hover:bg-danger-solid-hover' : 'bg-brand text-on-brand hover:bg-brand-pressed'" x-text="confirmLabel"></button>
             </div>
         </div>
     </div>

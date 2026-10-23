@@ -28,7 +28,7 @@ class AdminTemplateManagementTest extends TestCase
     {
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.templates.index'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.templates.index'))->assertForbidden();
     }
 
     public function test_a_super_admin_can_create_a_recurring_template(): void

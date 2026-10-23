@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\AuditLog;
 use App\Models\Game;
 use App\Models\Tournament;
+use App\Support\Portal;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -83,7 +84,7 @@ class TournamentCreate extends Component
 
         session()->flash('status', "Tournament \"{$tournament->title}\" created.");
 
-        $this->redirectRoute('admin.tournaments.index', navigate: false);
+        $this->redirectRoute(Portal::routeName('tournaments.index'), navigate: false);
     }
 
     public function render()

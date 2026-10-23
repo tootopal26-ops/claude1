@@ -48,7 +48,7 @@
                 <td><x-ui.badge :status="$alert->risk_level">{{ ucfirst($alert->risk_level) }}</x-ui.badge></td>
                 <td class="whitespace-nowrap">
                     @if ($alert->targetUser && auth('staff')->user()->hasPermission('users.view'))
-                        <a href="{{ route('admin.users.show', $alert->targetUser) }}" class="text-brand-text hover:underline">{{ $alert->targetUser->username }}</a>
+                        <a href="{{ portal_route('users.show', $alert->targetUser) }}" class="text-brand-text hover:underline">{{ $alert->targetUser->username }}</a>
                     @else
                         {{ $alert->targetUser?->username ?? '—' }}
                     @endif

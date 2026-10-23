@@ -18,7 +18,7 @@ class AdminLeaderboardUiTest extends TestCase
     {
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.leaderboards.index'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.leaderboards.index'))->assertForbidden();
     }
 
     public function test_recompute_is_denied_without_the_permission(): void

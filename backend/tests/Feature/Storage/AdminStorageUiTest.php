@@ -94,7 +94,7 @@ class AdminStorageUiTest extends TestCase
     {
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.storage.index'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.storage.index'))->assertForbidden();
     }
 
     public function test_retaining_and_deleting_an_asset_is_denied_without_storage_manage(): void
@@ -147,14 +147,14 @@ class AdminStorageUiTest extends TestCase
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
         $asset = $this->makeAsset();
 
-        $this->actingAs($staff, 'staff')->get(route('admin.storage-assets.download', $asset))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.storage-assets.download', $asset))->assertForbidden();
 
         $preset = $this->grantPreset(['results.upload_attachments']);
         $staff->permission_preset_id = $preset->id;
         $staff->save();
         $staff->load('permissionPreset');
 
-        $this->actingAs($staff, 'staff')->get(route('admin.storage-assets.download', $asset))->assertOk();
+        $this->actingAs($staff, 'staff')->get(route('staff.storage-assets.download', $asset))->assertOk();
     }
 
     private function makeAsset(): StorageAsset

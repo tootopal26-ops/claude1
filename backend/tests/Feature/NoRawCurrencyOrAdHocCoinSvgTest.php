@@ -39,6 +39,9 @@ class NoRawCurrencyOrAdHocCoinSvgTest extends TestCase
         $allowed = [
             resource_path('views/components/icon.blade.php'),
             resource_path('views/components/coin-asset.blade.php'),
+            // Purely decorative sign-in artwork (no coin or currency imagery).
+            resource_path('views/components/portal/arena-rings.blade.php'),
+            resource_path('views/components/portal/bracket-motif.blade.php'),
             // Laravel's default framework stub, decorative only, unrelated
             // to the product's coin/currency UI.
             resource_path('views/welcome.blade.php'),

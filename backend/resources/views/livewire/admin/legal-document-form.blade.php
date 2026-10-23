@@ -3,7 +3,7 @@
         title="Publish new version"
         description="Write the next version of a legal document. Players read and accept exactly what you publish here."
         :breadcrumbs="[
-            ['label' => 'Legal documents', 'url' => route('admin.legal.index')],
+            ['label' => 'Legal documents', 'url' => portal_route('legal.index')],
             ['label' => 'Publish new version'],
         ]"
     />
@@ -28,7 +28,7 @@
             </x-ui.card>
 
             <div class="flex items-center justify-end gap-2">
-                <x-ui.button :href="route('admin.legal.index')" variant="ghost">Cancel</x-ui.button>
+                <x-ui.button :href="portal_route('legal.index')" variant="ghost">Cancel</x-ui.button>
                 <x-ui.button
                     type="submit"
                     loading="publish"

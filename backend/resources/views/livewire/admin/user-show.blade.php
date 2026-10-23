@@ -15,7 +15,7 @@
         :title="$user->username"
         :description="$user->mobile.' · '.$user->email.' · Joined '.$user->created_at->format('d M Y')"
         :breadcrumbs="[
-            ['label' => 'Players', 'url' => route('admin.users.index')],
+            ['label' => 'Players', 'url' => portal_route('users.index')],
             ['label' => $user->username],
         ]"
     >
@@ -105,7 +105,7 @@
                         <tr wire:key="entry-{{ $entry->id }}">
                             <td class="mm-cell-primary">
                                 @if ($staff->hasPermission('tournaments.view'))
-                                    <a href="{{ route('admin.tournaments.entries', $entry->tournament) }}" class="block max-w-[18rem] truncate hover:text-brand-text" title="{{ $entry->tournament->title }}">{{ $entry->tournament->title }}</a>
+                                    <a href="{{ portal_route('tournaments.entries', $entry->tournament) }}" class="block max-w-[18rem] truncate hover:text-brand-text" title="{{ $entry->tournament->title }}">{{ $entry->tournament->title }}</a>
                                 @else
                                     <span class="block max-w-[18rem] truncate" title="{{ $entry->tournament->title }}">{{ $entry->tournament->title }}</span>
                                 @endif

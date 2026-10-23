@@ -2,7 +2,7 @@
     <x-ui.page-header title="Deposits" description="Payment orders players have started, with the gateway's verdict on each.">
         <x-slot:actions>
             @if (auth('staff')->user()->hasPermission('payments.manage'))
-                <x-ui.button :href="route('admin.payment-settings')" variant="outline" icon="settings">Payment settings</x-ui.button>
+                <x-ui.button :href="portal_route('payment-settings')" variant="outline" icon="settings">Payment settings</x-ui.button>
             @endif
         </x-slot:actions>
     </x-ui.page-header>

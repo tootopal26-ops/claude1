@@ -24,7 +24,7 @@
         title="Send notification"
         description="Compose a message and choose who receives it. It is delivered to real players immediately."
         :breadcrumbs="[
-            ['label' => 'Notifications', 'url' => route('admin.notifications.index')],
+            ['label' => 'Notifications', 'url' => portal_route('notifications.index')],
             ['label' => 'Send'],
         ]"
     />

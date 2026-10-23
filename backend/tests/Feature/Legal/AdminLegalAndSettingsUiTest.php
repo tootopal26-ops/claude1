@@ -31,7 +31,7 @@ class AdminLegalAndSettingsUiTest extends TestCase
     {
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.legal.index'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.legal.index'))->assertForbidden();
     }
 
     public function test_publishing_a_document_is_denied_without_legal_manage(): void
@@ -58,7 +58,7 @@ class AdminLegalAndSettingsUiTest extends TestCase
             ->set('title', 'Terms')
             ->set('content', 'Body')
             ->call('publish')
-            ->assertRedirect(route('admin.legal.index'));
+            ->assertRedirect(route('staff.legal.index'));
 
         $this->assertDatabaseHas('legal_documents', ['title' => 'Terms', 'is_current' => true]);
     }
@@ -67,7 +67,7 @@ class AdminLegalAndSettingsUiTest extends TestCase
     {
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.settings.index'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.settings.index'))->assertForbidden();
     }
 
     public function test_saving_settings_is_denied_without_settings_manage(): void

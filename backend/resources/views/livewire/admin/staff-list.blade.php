@@ -3,9 +3,9 @@
 
     <x-ui.page-header title="Staff accounts" description="Everyone who can sign in to the Admin Console or Staff Portal, and the access each account has.">
         <x-slot:actions>
-            <x-ui.button :href="route('admin.presets.index')" variant="secondary" icon="presets">Permission presets</x-ui.button>
+            <x-ui.button :href="portal_route('presets.index')" variant="secondary" icon="presets">Permission presets</x-ui.button>
             @if (auth('staff')->user()->hasPermission('staff.manage'))
-                <x-ui.button :href="route('admin.staff.create')" icon="plus">New staff account</x-ui.button>
+                <x-ui.button :href="portal_route('staff.create')" icon="plus">New staff account</x-ui.button>
             @endif
         </x-slot:actions>
     </x-ui.page-header>
@@ -44,13 +44,13 @@
                 </td>
                 <td><x-ui.badge :status="$staff->is_active ? 'active' : 'inactive'" /></td>
                 <td class="text-right">
-                    <x-ui.button :href="route('admin.staff.edit', $staff)" variant="ghost" size="sm" icon="edit">Edit</x-ui.button>
+                    <x-ui.button :href="portal_route('staff.edit', $staff)" variant="ghost" size="sm" icon="edit">Edit</x-ui.button>
                 </td>
             </tr>
         @empty
             <x-ui.table-empty :colspan="5" icon="user" title="No staff accounts yet" description="Create an account and assign a permission preset to give someone access.">
                 @if (auth('staff')->user()->hasPermission('staff.manage'))
-                    <x-ui.button :href="route('admin.staff.create')" icon="plus" size="sm">New staff account</x-ui.button>
+                    <x-ui.button :href="portal_route('staff.create')" icon="plus" size="sm">New staff account</x-ui.button>
                 @endif
             </x-ui.table-empty>
         @endforelse

@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\AuditLog;
 use App\Models\Game;
 use App\Models\RecurringTournamentTemplate;
+use App\Support\Portal;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -119,7 +120,7 @@ class TemplateForm extends Component
 
         session()->flash('status', "Template \"{$template->title}\" saved.");
 
-        $this->redirectRoute('admin.templates.index', navigate: false);
+        $this->redirectRoute(Portal::routeName('templates.index'), navigate: false);
     }
 
     public function render()

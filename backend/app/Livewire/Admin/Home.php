@@ -10,6 +10,7 @@ use App\Models\StaffUser;
 use App\Models\Tournament;
 use App\Models\User;
 use App\Models\WithdrawalRequest;
+use App\Support\Portal;
 use App\View\AdminNavigation;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -41,7 +42,7 @@ class Home extends Component
         $groups = AdminNavigation::forUser($user);
         $sections = collect($groups)
             ->flatMap(fn (array $group) => $group['items'])
-            ->reject(fn (array $item) => $item['route'] === 'admin.home')
+            ->reject(fn (array $item) => $item['route'] === Portal::routeName('home'))
             ->values();
 
         $stats = [];
@@ -55,7 +56,7 @@ class Home extends Component
                 'hint' => "{$upcoming} upcoming · {$live} live",
                 'icon' => 'tournaments',
                 'tone' => 'brand',
-                'href' => route('admin.tournaments.index'),
+                'href' => portal_route('tournaments.index'),
             ];
         }
 
@@ -66,7 +67,7 @@ class Home extends Component
                 'hint' => number_format(User::where('created_at', '>=', now()->subDays(7))->count()).' joined in the last 7 days',
                 'icon' => 'users',
                 'tone' => 'info',
-                'href' => route('admin.users.index'),
+                'href' => portal_route('users.index'),
             ];
         }
 
@@ -78,7 +79,7 @@ class Home extends Component
                 'hint' => 'Successful orders · '.number_format((float) (clone $paid)->sum('amount'), 2).' coins',
                 'icon' => 'deposit',
                 'tone' => 'success',
-                'href' => route('admin.deposits.index'),
+                'href' => portal_route('deposits.index'),
             ];
         }
 
@@ -91,7 +92,7 @@ class Home extends Component
                 'hint' => "{$inFlight} approved or processing",
                 'icon' => 'withdrawal',
                 'tone' => $pending > 0 ? 'warning' : 'neutral',
-                'href' => route('admin.withdrawals.index'),
+                'href' => portal_route('withdrawals.index'),
             ];
         }
 
@@ -103,7 +104,7 @@ class Home extends Component
                 'hint' => $open > 0 ? 'Awaiting review' : 'Nothing awaiting review',
                 'icon' => 'alert',
                 'tone' => $open > 0 ? 'danger' : 'neutral',
-                'href' => route('admin.risk-alerts.index'),
+                'href' => portal_route('risk-alerts.index'),
             ];
         }
 
@@ -111,22 +112,22 @@ class Home extends Component
 
         if ($user->hasPermission('withdrawals.manage')) {
             $count = WithdrawalRequest::where('status', 'pending')->count();
-            $count > 0 && $attention->push(['label' => 'Withdrawal requests to review', 'count' => $count, 'href' => route('admin.withdrawals.index')]);
+            $count > 0 && $attention->push(['label' => 'Withdrawal requests to review', 'count' => $count, 'href' => portal_route('withdrawals.index')]);
         }
 
         if ($user->hasPermission('results.submit')) {
             $count = Tournament::where('status', 'ongoing')->count();
-            $count > 0 && $attention->push(['label' => 'Live tournaments awaiting results', 'count' => $count, 'href' => route('admin.tournaments.index')]);
+            $count > 0 && $attention->push(['label' => 'Live tournaments awaiting results', 'count' => $count, 'href' => portal_route('tournaments.index')]);
         }
 
         if ($user->hasPermission('salary.view')) {
             $count = StaffSalarySettlement::where('status', 'pending')->count();
-            $count > 0 && $attention->push(['label' => 'Salary settlements awaiting payment', 'count' => $count, 'href' => route('admin.staff-salary.settlements.index')]);
+            $count > 0 && $attention->push(['label' => 'Salary settlements awaiting payment', 'count' => $count, 'href' => portal_route('staff-salary.settlements.index')]);
         }
 
         if ($user->hasPermission('audit_logs.view')) {
             $count = RiskAlert::whereNull('reviewed_at')->count();
-            $count > 0 && $attention->push(['label' => 'Risk alerts to review', 'count' => $count, 'href' => route('admin.risk-alerts.index')]);
+            $count > 0 && $attention->push(['label' => 'Risk alerts to review', 'count' => $count, 'href' => portal_route('risk-alerts.index')]);
         }
 
         $upcomingTournaments = $user->hasPermission('tournaments.view')

@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Middleware\EnsurePermission;
+use App\Http\Middleware\EnsurePortalAccess;
 use App\Http\Middleware\EnsureStaffSecurityVersionIsCurrent;
+use App\Support\Portal;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -33,17 +35,21 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'permission' => EnsurePermission::class,
+            'portal' => EnsurePortalAccess::class,
             'staff.security_version' => EnsureStaffSecurityVersionIsCurrent::class,
         ]);
 
-        // The Admin/Staff login screen is currently the only guest-redirectable
-        // web surface; revisit once player-facing web routes exist.
-        // A Livewire update that reaches the auth guard means the page was open
-        // when the session ended — say so on the login screen.
+        // A guest who reaches a protected page goes to the login of the portal
+        // they were addressing. A Livewire update that reaches the auth guard
+        // means the page was open when the session ended — say so on the login
+        // screen.
         $middleware->redirectGuestsTo(fn (Request $request) => route(
-            'admin.login',
+            Portal::loginRouteName(Portal::fromRequest($request)),
             $request->hasHeader('X-Livewire') || $request->is('livewire*/update') ? ['expired' => 1] : [],
         ));
+
+        // A signed-in account that opens a login page lands in its own portal.
+        $middleware->redirectUsersTo(fn (Request $request) => Portal::homeUrl(Portal::for($request->user('staff')) ?? Portal::ADMIN));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

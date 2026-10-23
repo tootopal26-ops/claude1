@@ -34,7 +34,7 @@ class AdminUserManagementTest extends TestCase
     {
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.users.index'))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.users.index'))->assertForbidden();
     }
 
     public function test_a_staff_user_without_users_view_is_denied_the_detail_page(): void
@@ -42,7 +42,7 @@ class AdminUserManagementTest extends TestCase
         $staff = StaffUser::factory()->create(['is_super_admin' => false]);
         $player = User::factory()->create();
 
-        $this->actingAs($staff, 'staff')->get(route('admin.users.show', $player))->assertForbidden();
+        $this->actingAs($staff, 'staff')->get(route('staff.users.show', $player))->assertForbidden();
     }
 
     public function test_a_staff_user_with_users_view_sees_the_player_in_the_list(): void
@@ -51,7 +51,7 @@ class AdminUserManagementTest extends TestCase
         $staff = StaffUser::factory()->create(['permission_preset_id' => $preset->id, 'is_super_admin' => false]);
         $player = User::factory()->create(['username' => 'findable_player']);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.users.index'))
+        $this->actingAs($staff, 'staff')->get(route('staff.users.index'))
             ->assertOk()
             ->assertSee('findable_player');
     }
@@ -76,7 +76,7 @@ class AdminUserManagementTest extends TestCase
         $staff = StaffUser::factory()->create(['permission_preset_id' => $preset->id, 'is_super_admin' => false]);
         $player = User::factory()->create(['username' => 'viewable_player']);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.users.show', $player))
+        $this->actingAs($staff, 'staff')->get(route('staff.users.show', $player))
             ->assertOk()
             ->assertSee('viewable_player');
     }
@@ -209,7 +209,7 @@ class AdminUserManagementTest extends TestCase
         $tournament = Tournament::factory()->create(['title' => 'Friday Night Solo']);
         TournamentEntry::factory()->create(['user_id' => $player->id, 'tournament_id' => $tournament->id]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.users.show', $player))
+        $this->actingAs($staff, 'staff')->get(route('staff.users.show', $player))
             ->assertOk()
             ->assertSee('Friday Night Solo');
     }

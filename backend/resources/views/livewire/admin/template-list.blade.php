@@ -3,7 +3,7 @@
 
     <x-ui.page-header title="Recurring Templates" description="Templates generate tournaments automatically on a schedule. Pause one to stop new tournaments without touching existing ones.">
         <x-slot:actions>
-            <x-ui.button :href="route('admin.templates.create')" icon="plus">New template</x-ui.button>
+            <x-ui.button :href="portal_route('templates.create')" icon="plus">New template</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
 
@@ -46,13 +46,13 @@
                 <td class="text-right">
                     <div class="flex items-center justify-end gap-1">
                         <x-ui.button type="button" variant="ghost" size="sm" icon="calendar" wire:click="generateNow({{ $template->id }})" loading="generateNow({{ $template->id }})" confirm="Generate the upcoming tournaments for this template now? Occurrences that already exist are skipped." confirm-title="Generate tournaments" confirm-label="Generate now">Generate now</x-ui.button>
-                        <x-ui.button :href="route('admin.templates.edit', $template)" variant="outline" size="sm" icon="edit">Edit</x-ui.button>
+                        <x-ui.button :href="portal_route('templates.edit', $template)" variant="outline" size="sm" icon="edit">Edit</x-ui.button>
                     </div>
                 </td>
             </tr>
         @empty
             <x-ui.table-empty :colspan="5" icon="calendar" title="No recurring templates yet" description="Create a template to have daily or weekly tournaments generated for you.">
-                <x-ui.button :href="route('admin.templates.create')" icon="plus" size="sm">New template</x-ui.button>
+                <x-ui.button :href="portal_route('templates.create')" icon="plus" size="sm">New template</x-ui.button>
             </x-ui.table-empty>
         @endforelse
     </x-ui.table>

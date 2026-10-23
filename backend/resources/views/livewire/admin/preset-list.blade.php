@@ -3,9 +3,9 @@
 
     <x-ui.page-header title="Permission presets" description="Reusable sets of permissions. Assign one to a staff account to decide which sections and actions it can use.">
         <x-slot:actions>
-            <x-ui.button :href="route('admin.staff.index')" variant="secondary" icon="users">Staff accounts</x-ui.button>
+            <x-ui.button :href="portal_route('staff.index')" variant="secondary" icon="users">Staff accounts</x-ui.button>
             @if (auth('staff')->user()->hasPermission('staff.manage'))
-                <x-ui.button :href="route('admin.presets.create')" icon="plus">New preset</x-ui.button>
+                <x-ui.button :href="portal_route('presets.create')" icon="plus">New preset</x-ui.button>
             @endif
         </x-slot:actions>
     </x-ui.page-header>
@@ -37,13 +37,13 @@
                     @endif
                 </td>
                 <td class="text-right">
-                    <x-ui.button :href="route('admin.presets.edit', $preset)" variant="ghost" size="sm" icon="edit">Edit</x-ui.button>
+                    <x-ui.button :href="portal_route('presets.edit', $preset)" variant="ghost" size="sm" icon="edit">Edit</x-ui.button>
                 </td>
             </tr>
         @empty
             <x-ui.table-empty :colspan="4" icon="presets" title="No presets yet" description="A preset groups permissions so you can give several people the same access.">
                 @if (auth('staff')->user()->hasPermission('staff.manage'))
-                    <x-ui.button :href="route('admin.presets.create')" icon="plus" size="sm">New preset</x-ui.button>
+                    <x-ui.button :href="portal_route('presets.create')" icon="plus" size="sm">New preset</x-ui.button>
                 @endif
             </x-ui.table-empty>
         @endforelse

@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Domain\Legal\PublishLegalDocumentAction;
 use App\Models\LegalDocument;
+use App\Support\Portal;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -50,7 +51,7 @@ class LegalDocumentForm extends Component
 
         session()->flash('status', 'New version published. Every player will be asked to re-accept it.');
 
-        $this->redirectRoute('admin.legal.index', navigate: false);
+        $this->redirectRoute(Portal::routeName('legal.index'), navigate: false);
     }
 
     public function render()

@@ -24,7 +24,7 @@
                 @if ($user->hasPermission('tournaments.view'))
                     <x-ui.card title="Upcoming tournaments" description="Next scheduled starts" :padding="false">
                         <x-slot:actions>
-                            <x-ui.button :href="route('admin.tournaments.index')" variant="ghost" size="sm">View all</x-ui.button>
+                            <x-ui.button :href="portal_route('tournaments.index')" variant="ghost" size="sm">View all</x-ui.button>
                         </x-slot:actions>
 
                         <x-ui.table class="rounded-none border-0">
@@ -38,7 +38,7 @@
                             </x-slot:head>
                             @forelse ($upcomingTournaments as $tournament)
                                 <tr>
-                                    <td class="mm-cell-primary"><a href="{{ route('admin.tournaments.entries', $tournament) }}" class="block max-w-[16rem] truncate hover:text-brand-text" title="{{ $tournament->title }}">{{ $tournament->title }}</a></td>
+                                    <td class="mm-cell-primary"><a href="{{ portal_route('tournaments.entries', $tournament) }}" class="block max-w-[16rem] truncate hover:text-brand-text" title="{{ $tournament->title }}">{{ $tournament->title }}</a></td>
                                     <td class="uppercase">{{ $tournament->mode }}</td>
                                     <td class="tabular-nums">{{ $tournament->joined_count }}/{{ $tournament->total_slots }}</td>
                                     <td class="whitespace-nowrap">{{ $tournament->scheduled_start_at->format('d M, H:i') }}</td>
@@ -53,7 +53,7 @@
                 <x-ui.card :title="$canSeeAllActivity ? 'Recent activity' : 'Your recent activity'" :description="$canSeeAllActivity ? 'The latest administrative actions across the platform' : 'The latest actions you performed'" :padding="false">
                     @if ($canSeeAllActivity)
                         <x-slot:actions>
-                            <x-ui.button :href="route('admin.audit-logs.index')" variant="ghost" size="sm">Audit log</x-ui.button>
+                            <x-ui.button :href="portal_route('audit-logs.index')" variant="ghost" size="sm">Audit log</x-ui.button>
                         </x-slot:actions>
                     @endif
 

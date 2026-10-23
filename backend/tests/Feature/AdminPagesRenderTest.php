@@ -58,7 +58,7 @@ class AdminPagesRenderTest extends TestCase
 
     public function test_the_login_page_uses_the_auth_layout_without_the_shell(): void
     {
-        $this->get(route('admin.login'))
+        $this->get(route('staff.login'))
             ->assertOk()
             ->assertSee('Sign in')
             ->assertDontSee('id="mm-sidebar"', false);
@@ -74,7 +74,7 @@ class AdminPagesRenderTest extends TestCase
         $preset = PermissionPreset::create(['name' => 'Nothing']);
         $staff = StaffUser::factory()->create(['permission_preset_id' => $preset->id, 'is_super_admin' => false]);
 
-        $this->actingAs($staff, 'staff')->get(route('admin.withdrawals.index'))
+        $this->actingAs($staff, 'staff')->get(route('staff.withdrawals.index'))
             ->assertForbidden()
             ->assertSee("You don't have access to this page")
             ->assertSee('Back to dashboard');

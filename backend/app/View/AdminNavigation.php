@@ -3,14 +3,18 @@
 namespace App\View;
 
 use App\Models\StaffUser;
+use App\Support\Portal;
 
 /**
  * The one catalog of Admin/Staff navigation. The sidebar, the dashboard's
  * section cards and the header's "where am I" context all read from here, so
  * a new route needs adding in exactly one place.
  *
- * Filtering by permission here only decides what is *shown*. Every route
- * still carries its own `permission:` middleware, which remains the authority.
+ * The catalog is written with the Admin portal's route names (admin.*);
+ * forUser() re-targets every route and active-pattern to the account's own
+ * portal (admin.* or staff.*). Filtering by permission here only decides what
+ * is *shown*. Every route still carries its own `portal:` and `permission:`
+ * middleware, which remain the authority.
  */
 class AdminNavigation
 {
@@ -79,13 +83,21 @@ class AdminNavigation
      */
     public static function forUser(StaffUser $user): array
     {
+        $portal = Portal::for($user);
         $groups = [];
 
         foreach (self::catalog() as $group) {
-            $items = array_values(array_filter(
-                $group['items'],
-                fn (array $item) => $item['permission'] === null || $user->hasPermission($item['permission']),
-            ));
+            $items = [];
+
+            foreach ($group['items'] as $item) {
+                if ($item['permission'] !== null && ! $user->hasPermission($item['permission'])) {
+                    continue;
+                }
+
+                $item['route'] = self::forPortal($item['route'], $portal);
+                $item['active'] = array_map(fn (string $pattern) => self::forPortal($pattern, $portal), $item['active']);
+                $items[] = $item;
+            }
 
             if ($items !== []) {
                 $groups[] = ['label' => $group['label'], 'items' => $items];
@@ -93,6 +105,11 @@ class AdminNavigation
         }
 
         return $groups;
+    }
+
+    private static function forPortal(string $routeName, string $portal): string
+    {
+        return $portal.substr($routeName, strlen(Portal::ADMIN));
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\PermissionPreset;
 use App\Models\RiskAlert;
 use App\Models\StaffUser;
+use App\Support\Portal;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -125,7 +126,7 @@ class StaffForm extends Component
 
         session()->flash('status', "Staff account \"{$staff->display_name}\" saved.");
 
-        $this->redirectRoute('admin.staff.index', navigate: false);
+        $this->redirectRoute(Portal::routeName('staff.index'), navigate: false);
     }
 
     public function render()

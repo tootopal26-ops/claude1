@@ -11,14 +11,14 @@
         :title="$tournament->title"
         :description="ucfirst($tournament->mode).' tournament · starts '.$tournament->scheduled_start_at->format('d M Y, H:i')"
         :breadcrumbs="[
-            ['label' => 'Tournaments', 'url' => route('admin.tournaments.index')],
+            ['label' => 'Tournaments', 'url' => portal_route('tournaments.index')],
             ['label' => $tournament->title],
         ]"
     >
         <x-slot:actions>
             <x-ui.badge :status="$tournament->status" class="px-3 py-1 text-sm" />
             @if ($canSubmitResults)
-                <x-ui.button :href="route('admin.tournaments.results', $tournament)" variant="outline" icon="leaderboard">Enter / view results</x-ui.button>
+                <x-ui.button :href="portal_route('tournaments.results', $tournament)" variant="outline" icon="leaderboard">Enter / view results</x-ui.button>
             @endif
         </x-slot:actions>
     </x-ui.page-header>
@@ -102,7 +102,7 @@
                 <td class="tabular-nums text-fg-3">{{ $index + 1 }}</td>
                 <td class="mm-cell-primary">
                     @if (auth('staff')->user()->hasPermission('users.view'))
-                        <a href="{{ route('admin.users.show', $entry->user) }}" class="hover:text-brand-text">{{ $entry->user->username }}</a>
+                        <a href="{{ portal_route('users.show', $entry->user) }}" class="hover:text-brand-text">{{ $entry->user->username }}</a>
                     @else
                         {{ $entry->user->username }}
                     @endif

@@ -3,7 +3,7 @@
         :title="$preset ? 'Edit preset' : 'New preset'"
         description="Name the preset and tick every permission that staff using it should have. Anything left unticked is denied."
         :breadcrumbs="[
-            ['label' => 'Permission presets', 'url' => route('admin.presets.index')],
+            ['label' => 'Permission presets', 'url' => portal_route('presets.index')],
             ['label' => $preset ? $preset->name : 'New preset'],
         ]"
     />
@@ -43,7 +43,7 @@
         </section>
 
         <div class="sticky bottom-0 z-10 -mx-4 mt-2 flex items-center justify-end gap-2 border-t border-line bg-app px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-            <x-ui.button :href="route('admin.presets.index')" variant="ghost">Cancel</x-ui.button>
+            <x-ui.button :href="portal_route('presets.index')" variant="ghost">Cancel</x-ui.button>
             <x-ui.button type="submit" loading="save">Save preset</x-ui.button>
         </div>
     </form>

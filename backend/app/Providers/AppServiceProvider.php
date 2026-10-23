@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Domain\Payments\AlphaUpiAdapter;
 use App\Domain\Payments\PaymentGatewayInterface;
+use App\Http\Middleware\EnsurePortalAccess;
+use App\Http\Middleware\EnsureStaffSecurityVersionIsCurrent;
 use App\Models\PaymentProviderConfig;
 use App\Models\PlatformSetting;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -12,6 +14,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -51,6 +54,12 @@ class AppServiceProvider extends ServiceProvider
                 ], 429, $headers),
             );
         });
+
+        // Livewire updates are separate requests from the page load. Re-apply
+        // the portal boundary and the security-version check to them, so a page
+        // left open can't be driven across the boundary, or keep acting after
+        // its account was deactivated or its permissions changed.
+        Livewire::addPersistentMiddleware([EnsurePortalAccess::class, EnsureStaffSecurityVersionIsCurrent::class]);
 
         $this->overrideConfigFromPlatformSettings();
     }

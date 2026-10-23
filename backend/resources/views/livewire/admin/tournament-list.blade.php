@@ -4,7 +4,7 @@
     <x-ui.page-header title="Tournaments" description="Every scheduled, live and finished tournament, with how full each one is.">
         <x-slot:actions>
             @if (auth('staff')->user()->hasPermission('tournaments.manage'))
-                <x-ui.button :href="route('admin.tournaments.create')" icon="plus">Create tournament</x-ui.button>
+                <x-ui.button :href="portal_route('tournaments.create')" icon="plus">Create tournament</x-ui.button>
             @endif
         </x-slot:actions>
     </x-ui.page-header>
@@ -48,13 +48,13 @@
                 <td><x-ui.badge :status="$tournament->status" /></td>
                 <td class="whitespace-nowrap">{{ $tournament->scheduled_start_at->format('d M, H:i') }}</td>
                 <td class="text-right">
-                    <x-ui.button :href="route('admin.tournaments.entries', $tournament)" variant="ghost" size="sm" icon="users">View entries</x-ui.button>
+                    <x-ui.button :href="portal_route('tournaments.entries', $tournament)" variant="ghost" size="sm" icon="users">View entries</x-ui.button>
                 </td>
             </tr>
         @empty
             <x-ui.table-empty :colspan="7" icon="tournaments" title="No tournaments yet" description="Tournaments you schedule will be listed here with their entries and results.">
                 @if (auth('staff')->user()->hasPermission('tournaments.manage'))
-                    <x-ui.button :href="route('admin.tournaments.create')" icon="plus" size="sm">Create tournament</x-ui.button>
+                    <x-ui.button :href="portal_route('tournaments.create')" icon="plus" size="sm">Create tournament</x-ui.button>
                 @endif
             </x-ui.table-empty>
         @endforelse

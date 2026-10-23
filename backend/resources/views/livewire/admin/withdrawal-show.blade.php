@@ -13,7 +13,7 @@
         title="Withdrawal request"
         :description="'Requested by '.$withdrawal->user->username.' on '.$withdrawal->created_at->format('d M Y, H:i').'.'"
         :breadcrumbs="[
-            ['label' => 'Withdrawals', 'url' => route('admin.withdrawals.index')],
+            ['label' => 'Withdrawals', 'url' => portal_route('withdrawals.index')],
             ['label' => '#'.$withdrawal->id],
         ]"
     >
@@ -30,7 +30,7 @@
                 <dl class="grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
                     <x-ui.kv label="Player">
                         @if (auth('staff')->user()->hasPermission('users.view'))
-                            <a href="{{ route('admin.users.show', $withdrawal->user) }}" class="font-medium text-brand-text hover:underline">{{ $withdrawal->user->username }}</a>
+                            <a href="{{ portal_route('users.show', $withdrawal->user) }}" class="font-medium text-brand-text hover:underline">{{ $withdrawal->user->username }}</a>
                         @else
                             {{ $withdrawal->user->username }}
                         @endif

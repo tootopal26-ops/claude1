@@ -4,7 +4,7 @@
     <x-ui.page-header title="Legal documents" description="Terms and policy documents players must accept. Every version stays on file for audit and dispute purposes.">
         <x-slot:actions>
             @if (auth('staff')->user()->hasPermission('legal.manage'))
-                <x-ui.button :href="route('admin.legal.create')" icon="plus">Publish new version</x-ui.button>
+                <x-ui.button :href="portal_route('legal.create')" icon="plus">Publish new version</x-ui.button>
             @endif
         </x-slot:actions>
     </x-ui.page-header>
@@ -52,7 +52,7 @@
         <x-ui.card>
             <x-ui.empty-state icon="shield" title="No legal documents published yet" description="Publish the Terms & Conditions and Privacy Policy that players accept when they register.">
                 @if (auth('staff')->user()->hasPermission('legal.manage'))
-                    <x-ui.button :href="route('admin.legal.create')" icon="plus" size="sm">Publish new version</x-ui.button>
+                    <x-ui.button :href="portal_route('legal.create')" icon="plus" size="sm">Publish new version</x-ui.button>
                 @endif
             </x-ui.empty-state>
         </x-ui.card>

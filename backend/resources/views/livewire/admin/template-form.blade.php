@@ -3,7 +3,7 @@
         :title="$template ? 'Edit template' : 'Create template'"
         description="A template generates tournaments automatically on a schedule, using the settings below."
         :breadcrumbs="[
-            ['label' => 'Recurring Templates', 'url' => route('admin.templates.index')],
+            ['label' => 'Recurring Templates', 'url' => portal_route('templates.index')],
             ['label' => $template ? 'Edit' : 'Create'],
         ]"
     />
@@ -70,7 +70,7 @@
         </x-ui.form-section>
 
         <div class="sticky bottom-0 z-10 -mx-4 mt-2 flex items-center justify-end gap-2 border-t border-line bg-app px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-            <x-ui.button :href="route('admin.templates.index')" variant="ghost">Cancel</x-ui.button>
+            <x-ui.button :href="portal_route('templates.index')" variant="ghost">Cancel</x-ui.button>
             <x-ui.button type="submit" loading="save">Save template</x-ui.button>
         </div>
     </form>

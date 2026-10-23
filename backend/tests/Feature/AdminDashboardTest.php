@@ -58,7 +58,7 @@ class AdminDashboardTest extends TestCase
 
         $user = $this->staffWith('withdrawals.manage');
 
-        $this->actingAs($user, 'staff')->get(route('admin.home'))
+        $this->actingAs($user, 'staff')->get(route('staff.home'))
             ->assertOk()
             ->assertSeeInOrder(['Pending withdrawals', '1', '1 approved or processing'])
             ->assertSee('Withdrawal requests to review');
@@ -71,7 +71,7 @@ class AdminDashboardTest extends TestCase
 
         $user = $this->staffWith('legal.manage');
 
-        $this->actingAs($user, 'staff')->get(route('admin.home'))
+        $this->actingAs($user, 'staff')->get(route('staff.home'))
             ->assertOk()
             ->assertSee('Staff Portal')
             ->assertSee('Your workspace')
@@ -89,7 +89,7 @@ class AdminDashboardTest extends TestCase
         AuditLog::record('own.action_done', $viewer);
         AuditLog::record('someone_elses.secret_action', $other);
 
-        $this->actingAs($viewer, 'staff')->get(route('admin.home'))
+        $this->actingAs($viewer, 'staff')->get(route('staff.home'))
             ->assertOk()
             ->assertSee('Your recent activity')
             ->assertSee('own.action_done')
@@ -103,7 +103,7 @@ class AdminDashboardTest extends TestCase
 
         AuditLog::record('someone_elses.visible_action', $other);
 
-        $this->actingAs($viewer, 'staff')->get(route('admin.home'))
+        $this->actingAs($viewer, 'staff')->get(route('staff.home'))
             ->assertOk()
             ->assertSee('Recent activity')
             ->assertSee('someone_elses.visible_action');
@@ -113,7 +113,7 @@ class AdminDashboardTest extends TestCase
     {
         $user = $this->staffWith();
 
-        $this->actingAs($user, 'staff')->get(route('admin.home'))
+        $this->actingAs($user, 'staff')->get(route('staff.home'))
             ->assertOk()
             ->assertSee('No sections available')
             ->assertSee("doesn't have access to any section");

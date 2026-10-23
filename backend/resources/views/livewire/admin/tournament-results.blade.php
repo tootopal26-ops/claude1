@@ -5,14 +5,14 @@
         title="Results"
         :description="$tournament->title.' · '.ucfirst($tournament->mode).'. Enter each team\'s rank, kills and prize, then save.'"
         :breadcrumbs="[
-            ['label' => 'Tournaments', 'url' => route('admin.tournaments.index')],
-            ['label' => $tournament->title, 'url' => route('admin.tournaments.entries', $tournament)],
+            ['label' => 'Tournaments', 'url' => portal_route('tournaments.index')],
+            ['label' => $tournament->title, 'url' => portal_route('tournaments.entries', $tournament)],
             ['label' => 'Results'],
         ]"
     >
         <x-slot:actions>
             <x-ui.badge :status="$tournament->status" class="px-3 py-1 text-sm" />
-            <x-ui.button :href="route('admin.tournaments.entries', $tournament)" variant="outline" icon="arrow-left">Back to entries</x-ui.button>
+            <x-ui.button :href="portal_route('tournaments.entries', $tournament)" variant="outline" icon="arrow-left">Back to entries</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
 
@@ -85,7 +85,7 @@
                 @forelse ($this->evidence as $asset)
                     <li wire:key="evidence-{{ $asset->id }}" class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                         <div class="min-w-0">
-                            <a href="{{ route('admin.storage-assets.download', $asset) }}" class="block max-w-[22rem] truncate text-sm font-medium text-brand-text hover:underline" title="{{ $asset->original_filename }}">{{ $asset->original_filename }}</a>
+                            <a href="{{ portal_route('storage-assets.download', $asset) }}" class="block max-w-[22rem] truncate text-sm font-medium text-brand-text hover:underline" title="{{ $asset->original_filename }}">{{ $asset->original_filename }}</a>
                             <p class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-3">
                                 <span>{{ number_format($asset->size_bytes / 1024, 0) }} KB</span>
                                 <span aria-hidden="true">&middot;</span>

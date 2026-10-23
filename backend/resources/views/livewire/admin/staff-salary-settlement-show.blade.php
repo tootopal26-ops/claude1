@@ -9,7 +9,7 @@
         title="Salary settlement"
         :description="$settlement->staffUser->display_name.' · week of '.$periodLabel"
         :breadcrumbs="[
-            ['label' => 'Salary settlements', 'url' => route('admin.staff-salary.settlements.index')],
+            ['label' => 'Salary settlements', 'url' => portal_route('staff-salary.settlements.index')],
             ['label' => $settlement->staffUser->display_name.' · '.$settlement->period_start->format('d M')],
         ]"
     >

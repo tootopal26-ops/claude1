@@ -2,7 +2,7 @@
 
 @php
     $signedIn = auth('staff')->check();
-    $primaryHref = $signedIn ? route('admin.home') : route('admin.login');
+    $primaryHref = $signedIn ? portal_route('home') : portal_route('login');
     $primaryLabel = $signedIn ? 'Back to dashboard' : 'Go to sign in';
 @endphp
 <!DOCTYPE html>

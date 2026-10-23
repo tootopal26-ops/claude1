@@ -11,7 +11,7 @@
     >
         <x-slot:actions>
             @if (auth('staff')->user()->hasPermission('salary.manage'))
-                <x-ui.button :href="route('admin.staff-salary.rules.index')" variant="secondary" icon="presets">Manage rules</x-ui.button>
+                <x-ui.button :href="portal_route('staff-salary.rules.index')" variant="secondary" icon="presets">Manage rules</x-ui.button>
             @endif
         </x-slot:actions>
     </x-ui.page-header>
@@ -42,7 +42,7 @@
                 <td class="whitespace-nowrap"><span class="inline-flex items-center gap-1.5 tabular-nums text-fg"><x-coin-asset :size="16" />{{ $settlement->total_amount }}</span></td>
                 <td><x-ui.badge :status="$settlement->status" /></td>
                 <td class="text-right">
-                    <x-ui.button :href="route('admin.staff-salary.settlements.show', $settlement)" variant="ghost" size="sm" icon="chevron-right">View</x-ui.button>
+                    <x-ui.button :href="portal_route('staff-salary.settlements.show', $settlement)" variant="ghost" size="sm" icon="chevron-right">View</x-ui.button>
                 </td>
             </tr>
         @empty

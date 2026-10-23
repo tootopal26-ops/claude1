@@ -3,7 +3,7 @@
 
     <x-ui.page-header title="Notifications" description="Every broadcast sent to players, with how many received it.">
         <x-slot:actions>
-            <x-ui.button :href="route('admin.notifications.create')" icon="plus">Send notification</x-ui.button>
+            <x-ui.button :href="portal_route('notifications.create')" icon="plus">Send notification</x-ui.button>
         </x-slot:actions>
     </x-ui.page-header>
 
@@ -54,7 +54,7 @@
             </tr>
         @empty
             <x-ui.table-empty :colspan="7" icon="notifications" title="No notifications sent yet" description="Broadcasts you send to players will be listed here with their delivery results.">
-                <x-ui.button :href="route('admin.notifications.create')" icon="plus" size="sm">Send notification</x-ui.button>
+                <x-ui.button :href="portal_route('notifications.create')" icon="plus" size="sm">Send notification</x-ui.button>
             </x-ui.table-empty>
         @endforelse
 

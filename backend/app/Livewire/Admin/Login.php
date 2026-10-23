@@ -2,47 +2,27 @@
 
 namespace App\Livewire\Admin;
 
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
-use Livewire\Attributes\Layout;
+use App\Livewire\Concerns\SignsInToPortal;
+use App\Support\Portal;
 use Livewire\Component;
 
-#[Layout('components.layouts.auth')]
+/**
+ * Admin portal sign-in (/admin/login) — super-admin accounts only.
+ */
 class Login extends Component
 {
-    public string $username = '';
+    use SignsInToPortal;
 
-    public string $password = '';
-
-    public function login(): void
+    protected function portal(): string
     {
-        $this->validate([
-            'username' => ['required', 'string'],
-            'password' => ['required', 'string'],
-        ]);
-
-        if (! Auth::guard('staff')->attempt(['username' => $this->username, 'password' => $this->password], remember: true)) {
-            throw ValidationException::withMessages([
-                'username' => 'Those credentials do not match an active staff account.',
-            ]);
-        }
-
-        if (! Auth::guard('staff')->user()->is_active) {
-            Auth::guard('staff')->logout();
-
-            throw ValidationException::withMessages([
-                'username' => 'This staff account has been deactivated.',
-            ]);
-        }
-
-        session()->regenerate();
-        session(['staff_security_version' => Auth::guard('staff')->user()->security_version]);
-
-        $this->redirectRoute('admin.home', navigate: false);
+        return Portal::ADMIN;
     }
 
     public function render()
     {
-        return view('livewire.admin.login');
+        return view('livewire.admin.login')->layout('components.layouts.auth', [
+            'portal' => Portal::ADMIN,
+            'title' => 'Admin sign in · Mini Max Control Center',
+        ]);
     }
 }
