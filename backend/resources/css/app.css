@@ -83,12 +83,75 @@
 }
 
 @layer components {
-    /* Floating layers: opaque by default, restrained glass in Purple Glassmorphism. */
+    /*
+     * Glass. Static panels are translucent only (a hairline border and a faint
+     * top highlight), so a page of cards stays cheap to paint. Layers that
+     * overlap content — menus, dialogs, toasts, the header and sticky action
+     * bars — also blur what is behind them. Opacity and blur come from the
+     * --mm-glass-* tokens, which the fallbacks at the end of this file drop to
+     * solid surfaces.
+     */
+    .mm-panel {
+        background-color: color-mix(in oklab, var(--mm-surface) var(--mm-glass-opacity), transparent);
+        border: 1px solid var(--mm-border);
+        box-shadow: 0 1px 0 color-mix(in oklab, var(--mm-fg) 5%, transparent) inset;
+    }
+
+    /* Floating layers: menus, dialogs, toasts, tooltips. */
     .mm-float {
-        background-color: var(--mm-float-bg);
-        -webkit-backdrop-filter: blur(var(--mm-float-blur));
-        backdrop-filter: blur(var(--mm-float-blur));
+        background-color: color-mix(in oklab, var(--mm-surface-3) var(--mm-glass-float-opacity), transparent);
+        -webkit-backdrop-filter: var(--mm-glass-filter);
+        backdrop-filter: var(--mm-glass-filter);
         box-shadow: var(--mm-shadow-float);
+    }
+
+    /*
+     * Bars that stay put while the page scrolls under them (header, sticky
+     * action bars, the sidebar). The colour and blur sit on a pseudo-element:
+     * a blurred element becomes the backdrop root for its descendants, which
+     * would stop the menus inside the header from seeing the page behind them.
+     */
+    .mm-glass-bar {
+        position: relative;
+        isolation: isolate;
+    }
+
+    .mm-glass-bar::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background-color: color-mix(in oklab, var(--mm-bar-color, var(--mm-bg)) var(--mm-glass-float-opacity), transparent);
+        -webkit-backdrop-filter: var(--mm-glass-filter);
+        backdrop-filter: var(--mm-glass-filter);
+    }
+
+    .mm-glass-bar--sidebar {
+        --mm-bar-color: var(--mm-sidebar);
+    }
+
+    /*
+     * A quiet brand-tinted glow behind the whole workspace; it is the only thing
+     * the glass has to show. Browsers without color-mix() get no glow at all
+     * rather than a full-strength one.
+     */
+    .mm-ambient {
+        position: relative;
+        isolation: isolate;
+    }
+
+    @supports (color: color-mix(in oklab, red 50%, transparent)) {
+        .mm-ambient::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                radial-gradient(60rem 34rem at 78% -10%, color-mix(in oklab, var(--mm-brand) var(--mm-glow-strength), transparent), transparent 72%),
+                radial-gradient(46rem 30rem at 6% 100%, color-mix(in oklab, var(--mm-brand) var(--mm-glow-strength-2), transparent), transparent 72%);
+        }
     }
 
     /*
@@ -157,18 +220,12 @@
      * unavailable, so text never sits on an unpredictable backdrop.
      */
     .mm-glass {
-        background-color: color-mix(in oklab, var(--mm-surface) 78%, transparent);
+        background-color: color-mix(in oklab, var(--mm-surface) var(--mm-glass-hero-opacity), transparent);
         border: 1px solid var(--mm-border);
         border-top-color: color-mix(in oklab, var(--mm-brand) 24%, var(--mm-border));
         box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 30px 70px -32px rgb(0 0 0 / 0.75);
-        -webkit-backdrop-filter: blur(18px) saturate(1.15);
-        backdrop-filter: blur(18px) saturate(1.15);
-    }
-
-    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-        .mm-glass {
-            background-color: var(--mm-surface);
-        }
+        -webkit-backdrop-filter: var(--mm-glass-filter);
+        backdrop-filter: var(--mm-glass-filter);
     }
 
     /*
@@ -229,6 +286,49 @@
     }
     to {
         transform: translate3d(-1.5%, 1.5%, 0) scale(1.03);
+    }
+}
+
+/*
+ * Glass fallbacks. Where the browser cannot blur, text must not depend on what
+ * happens to be behind a half-transparent surface, so every glass layer becomes
+ * a solid surface; the same when the visitor asks for reduced transparency or
+ * more contrast, and the background glow goes with it.
+ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    :root {
+        --mm-glass-opacity: 100%;
+        --mm-glass-float-opacity: 100%;
+        --mm-glass-hero-opacity: 100%;
+        --mm-glass-filter: none;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+    :root {
+        --mm-glass-opacity: 100%;
+        --mm-glass-float-opacity: 100%;
+        --mm-glass-hero-opacity: 100%;
+        --mm-glass-filter: none;
+        --mm-glow-strength: 0%;
+        --mm-glow-strength-2: 0%;
+    }
+}
+
+@media (forced-colors: active) {
+    .mm-panel,
+    .mm-float,
+    .mm-glass {
+        background-color: Canvas;
+        border-color: CanvasText;
+    }
+
+    .mm-glass-bar::before {
+        background-color: Canvas;
+    }
+
+    .mm-ambient::before {
+        display: none;
     }
 }
 

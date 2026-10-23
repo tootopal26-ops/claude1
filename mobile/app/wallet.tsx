@@ -4,6 +4,7 @@ import { Link, Redirect } from 'expo-router';
 
 import { fetchWallet, fetchWalletLedger } from '../src/api/wallet';
 import { useAuth } from '../src/auth/AuthContext';
+import { AmbientGlow } from '../src/components/AmbientGlow';
 import { Button } from '../src/components/Button';
 import { CoinAmount } from '../src/components/CoinAmount';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
@@ -61,6 +62,7 @@ export default function WalletScreen() {
 
   return (
     <View style={styles.container}>
+      <AmbientGlow />
       {loading || !wallet ? (
         <ActivityIndicator style={styles.centered} color={colors.brandText} />
       ) : (

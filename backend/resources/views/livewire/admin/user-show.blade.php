@@ -42,7 +42,7 @@
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         @foreach ($balances as $balance)
-            <div class="flex min-w-0 flex-col gap-2 rounded-xl border border-line bg-surface p-4">
+            <div class="flex min-w-0 flex-col gap-2 mm-panel rounded-xl p-4">
                 <p class="truncate text-xs font-medium text-fg-3">{{ $balance['label'] }}</p>
                 <p class="flex items-center gap-2 text-2xl font-semibold tabular-nums tracking-tight text-fg"><x-coin-asset :size="22" />{{ $balance['value'] }}</p>
                 <p class="text-xs leading-snug text-fg-3">{{ $balance['hint'] }}</p>

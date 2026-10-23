@@ -4,6 +4,7 @@ import { Redirect } from 'expo-router';
 
 import { fetchLeaderboard } from '../src/api/leaderboards';
 import { useAuth } from '../src/auth/AuthContext';
+import { AmbientGlow } from '../src/components/AmbientGlow';
 import { BannerCarousel } from '../src/components/BannerCarousel';
 import { StatusChip } from '../src/components/StatusChip';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
@@ -91,6 +92,7 @@ export default function LeaderboardScreen() {
 
   return (
     <View style={styles.container}>
+      <AmbientGlow />
       <FlatList
         data={leaderboard?.entries ?? []}
         keyExtractor={(item) => String(item.rank)}

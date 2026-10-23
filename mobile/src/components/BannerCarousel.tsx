@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { fetchLeaderboardBanners } from '../api/leaderboards';
+import { glassPanel, glassScrim } from '../theme/glass';
 import { Icon } from '../theme/icons';
 import { makeStyles, useTheme } from '../theme/ThemeContext';
 import type { LeaderboardBanner } from '../types';
@@ -192,9 +193,7 @@ const useStyles = makeStyles(({ colors: c }) => ({
     aspectRatio: 16 / 9,
     borderRadius: 18,
     overflow: 'hidden',
-    backgroundColor: `${c.surface}e6`,
-    borderWidth: 1,
-    borderColor: c.borderStrong,
+    ...glassPanel(c),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -212,7 +211,7 @@ const useStyles = makeStyles(({ colors: c }) => ({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: `${c.bg}b8`,
+    backgroundColor: glassScrim(c.bg, 'chip'),
     borderWidth: 1,
     borderColor: c.border,
   },

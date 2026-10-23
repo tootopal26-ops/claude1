@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { glassScrim } from '../theme/glass';
 import { Icon } from '../theme/icons';
 import { makeStyles, useTheme } from '../theme/ThemeContext';
 import type { Game } from '../types';
@@ -94,7 +95,7 @@ const useStyles = makeStyles(({ colors: c }) => ({
     bottom: 0,
     paddingHorizontal: 10,
     paddingVertical: 7,
-    backgroundColor: `${c.bg}d1`,
+    backgroundColor: glassScrim(c.bg, 'bar'),
     borderTopWidth: 1,
     borderTopColor: c.border,
   },

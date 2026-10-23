@@ -68,7 +68,7 @@
                 </div>
             </x-ui.card>
 
-            <details class="rounded-xl border border-line bg-surface p-5 text-sm text-fg-2">
+            <details class="mm-panel rounded-xl p-5 text-sm text-fg-2">
                 <summary class="cursor-pointer text-sm font-semibold text-fg">How ranks and prizes are decided</summary>
                 <ul class="mt-3 list-disc space-y-2 pl-5 leading-relaxed">
                     <li><span class="text-fg">Ranking</span> is by total prize winnings in the period, then total kills, then player ID — so every player has a different rank and a tie never splits or duplicates a prize.</li>
@@ -108,7 +108,7 @@
             </div>
         </x-ui.card>
 
-        <div class="sticky bottom-0 z-10 -mx-4 flex items-center justify-end gap-2 border-t border-line bg-app px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 xl:col-span-2">
+        <div class="mm-glass-bar sticky bottom-0 z-10 -mx-4 flex items-center justify-end gap-2 border-t border-line px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 xl:col-span-2">
             <x-ui.button type="button" variant="ghost" wire:click="cancel" :disabled="! $hasChanges">Cancel</x-ui.button>
             <x-ui.button type="submit" loading="save" :disabled="! $hasChanges">Save {{ $type }} prizes</x-ui.button>
         </div>

@@ -61,7 +61,7 @@
         </x-ui.table>
 
         @if (count($rows) > 0)
-            <div class="sticky bottom-0 z-10 -mx-4 mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line bg-app px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+            <div class="mm-glass-bar sticky bottom-0 z-10 -mx-4 mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
                 <p class="text-xs text-fg-3">Prize changes are applied to player wallets immediately.</p>
                 <x-ui.button type="submit" icon="check" loading="submit" confirm="Save these results? Prize changes affect player wallets immediately." confirm-title="Save results" confirm-label="Save results">Save results</x-ui.button>
             </div>

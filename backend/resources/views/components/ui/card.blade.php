@@ -1,6 +1,6 @@
 @props(['title' => null, 'description' => null, 'padding' => true])
 
-<section {{ $attributes->class('rounded-xl border border-line bg-surface') }}>
+<section {{ $attributes->class('mm-panel rounded-xl') }}>
     @if ($title || isset($actions))
         <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4">
             <div class="min-w-0">

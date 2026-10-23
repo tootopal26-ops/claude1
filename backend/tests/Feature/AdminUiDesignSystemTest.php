@@ -142,7 +142,8 @@ class AdminUiDesignSystemTest extends TestCase
             $pairs = [
                 ['--mm-fg', '--mm-bg'], ['--mm-fg', '--mm-surface'],
                 ['--mm-fg-2', '--mm-surface'], ['--mm-fg-2', '--mm-surface-2'],
-                ['--mm-fg-3', '--mm-surface'], ['--mm-fg-3', '--mm-surface-2'], ['--mm-fg-3', '--mm-bg'],
+                ['--mm-fg-3', '--mm-surface'], ['--mm-fg-3', '--mm-surface-2'], ['--mm-fg-3', '--mm-surface-3'], ['--mm-fg-3', '--mm-bg'],
+                ['--mm-fg-2', '--mm-surface-3'], ['--mm-brand-text', '--mm-surface-3'], ['--mm-fg-3', '--mm-sidebar'],
                 ['--mm-brand-text', '--mm-surface'], ['--mm-brand-text', '--mm-surface-2'], ['--mm-brand-text', '--mm-brand-soft'],
                 ['--mm-on-brand', '--mm-brand'], ['--mm-on-brand', '--mm-brand-pressed'],
             ];
@@ -157,6 +158,107 @@ class AdminUiDesignSystemTest extends TestCase
         }
 
         $this->assertSame([], $failures, implode("\n", $failures));
+    }
+
+    public function test_glass_surfaces_keep_aa_contrast_in_the_worst_case_behind_them_for_every_theme(): void
+    {
+        $css = preg_replace('#/\*.*?\*/#s', '', File::get(resource_path('css/themes.css')));
+        preg_match('/:root\s*\{([^{}]*)\}/', $css, $root);
+
+        $percent = function (string $token) use ($root): float {
+            $this->assertSame(1, preg_match('/'.preg_quote($token, '/').'\s*:\s*(\d+(?:\.\d+)?)%/', $root[1], $match), "themes.css must define {$token}");
+
+            return (float) $match[1] / 100;
+        };
+
+        $panel = $percent('--mm-glass-opacity');
+        $float = $percent('--mm-glass-float-opacity');
+        $glow = $percent('--mm-glow-strength') + $percent('--mm-glow-strength-2');
+
+        $failures = [];
+
+        foreach ($this->parseThemes() as $key => $t) {
+            // Static panels sit on the page background plus, at worst, both glows stacked.
+            $behindPanel = $this->blend($t['--mm-brand'], $t['--mm-bg'], $glow);
+            $panelBackground = $this->blend($t['--mm-surface'], $behindPanel, $panel);
+
+            // Layers that overlap content can have anything behind them. The blur averages it out, so the
+            // brightest large area the UI ever paints — the solid brand colour of a primary button — is
+            // the worst case; glyphs and badges are small and disappear into the average.
+            $menuBackground = $this->blend($t['--mm-surface-3'], $t['--mm-brand'], $float);
+            $barBackground = $this->blend($t['--mm-bg'], $t['--mm-brand'], $float);
+            $sidebarBackground = $this->blend($t['--mm-sidebar'], $t['--mm-brand'], $float);
+
+            $checks = [
+                'panel' => [$panelBackground, ['--mm-fg', '--mm-fg-2', '--mm-fg-3', '--mm-brand-text']],
+                'menu' => [$menuBackground, ['--mm-fg', '--mm-fg-2', '--mm-fg-3', '--mm-brand-text']],
+                'header/action bar' => [$barBackground, ['--mm-fg', '--mm-fg-2', '--mm-fg-3', '--mm-brand-text']],
+                'sidebar' => [$sidebarBackground, ['--mm-fg', '--mm-fg-2', '--mm-fg-3', '--mm-brand-text']],
+            ];
+
+            foreach ($checks as $surface => [$background, $foregrounds]) {
+                foreach ($foregrounds as $foreground) {
+                    $ratio = $this->contrast($t[$foreground], $background);
+
+                    if ($ratio < 4.5) {
+                        $failures[] = sprintf('%s: %s on the glass %s is %.2f:1 (needs 4.5:1)', $key, $foreground, $surface, $ratio);
+                    }
+                }
+            }
+        }
+
+        $this->assertSame([], $failures, implode("\n", $failures));
+    }
+
+    public function test_glass_has_solid_fallbacks_and_views_do_not_roll_their_own_blur(): void
+    {
+        $css = File::get(resource_path('css/app.css'));
+
+        $this->assertStringContainsString('@supports not ((backdrop-filter: blur(1px))', $css, 'Glass needs a no-backdrop-filter fallback');
+        $this->assertStringContainsString('prefers-reduced-transparency: reduce', $css);
+        $this->assertStringContainsString('prefers-contrast: more', $css);
+        $this->assertStringContainsString('forced-colors: active', $css);
+        $this->assertStringContainsString('@supports (color: color-mix(', $css, 'The ambient glow must be skipped where color-mix() is unsupported');
+
+        $offenders = [];
+
+        foreach ($this->themedViewFiles() as $path) {
+            if (preg_match('/\bbackdrop-blur|\bbackdrop-filter\b/', File::get($path))) {
+                $offenders[] = str_replace(base_path().'/', '', $path);
+            }
+        }
+
+        $this->assertSame([], $offenders, 'Use .mm-float / .mm-glass-bar instead of ad-hoc blur: '.implode(', ', $offenders));
+    }
+
+    public function test_android_glass_constants_match_the_web_glass_tokens_and_no_screen_hand_rolls_alpha(): void
+    {
+        $css = preg_replace('#/\*.*?\*/#s', '', File::get(resource_path('css/themes.css')));
+        preg_match('/:root\s*\{([^{}]*)\}/', $css, $root);
+        $glass = File::get(base_path('../mobile/src/theme/glass.ts'));
+
+        foreach ([
+            '--mm-glass-opacity' => 'panel',
+            '--mm-glow-strength' => 'glow',
+            '--mm-glow-strength-2' => 'glowSoft',
+        ] as $token => $property) {
+            $this->assertSame(1, preg_match('/'.preg_quote($token, '/').'\s*:\s*(\d+(?:\.\d+)?)%/', $root[1], $web), "themes.css must define {$token}");
+            $this->assertSame(1, preg_match('/\b'.$property.':\s*(\d*\.?\d+)/', $glass, $android), "glass.ts must define {$property}");
+            $this->assertEqualsWithDelta((float) $web[1] / 100, (float) $android[1], 0.0001, "{$property} in glass.ts drifted from {$token}");
+        }
+
+        // `${color}e6`-style hex-alpha suffixes bypass the shared recipe; use glassPanel()/glassScrim().
+        $offenders = [];
+
+        foreach ([base_path('../mobile/app'), base_path('../mobile/src')] as $directory) {
+            foreach (File::allFiles($directory) as $file) {
+                if (preg_match('/\$\{[^}]+\}[0-9a-fA-F]{2}[`\'"]/', File::get($file->getPathname()))) {
+                    $offenders[] = str_replace(base_path('../').'', '', $file->getPathname());
+                }
+            }
+        }
+
+        $this->assertSame([], $offenders, 'Use theme/glass.ts instead of hex-alpha suffixes: '.implode(', ', $offenders));
     }
 
     public function test_solid_button_hover_states_darken_so_text_stays_readable(): void
@@ -266,5 +368,20 @@ class AdminUiDesignSystemTest extends TestCase
         }, str_split($hex, 2));
 
         return 0.2126 * $r + 0.7152 * $g + 0.0722 * $b;
+    }
+
+    /**
+     * Source-over blend of a colour at the given opacity over another, in sRGB like a browser.
+     */
+    private function blend(string $foregroundHex, string $backgroundHex, float $opacity): string
+    {
+        $channels = fn (string $hex): array => array_map('hexdec', str_split(ltrim($hex, '#'), 2));
+        [$f, $b] = [$channels($foregroundHex), $channels($backgroundHex)];
+
+        return '#'.implode('', array_map(
+            fn (int $front, int $back): string => str_pad(dechex((int) round($front * $opacity + $back * (1 - $opacity))), 2, '0', STR_PAD_LEFT),
+            $f,
+            $b,
+        ));
     }
 }

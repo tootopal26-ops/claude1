@@ -66,7 +66,7 @@
             </div>
         @endif
 
-        <div x-show="uploading" x-cloak class="absolute inset-x-0 bottom-0 bg-app/80 p-3 backdrop-blur-sm" role="progressbar" aria-label="Upload progress" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100">
+        <div x-show="uploading" x-cloak class="mm-glass-bar absolute inset-x-0 bottom-0 p-3" role="progressbar" aria-label="Upload progress" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100">
             <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full rounded-full bg-brand transition-[width]" :style="`width: ${progress}%`"></div></div>
             <p class="mt-1.5 text-xs text-fg-2">Uploading… <span x-text="progress + '%'"></span></p>
         </div>

@@ -6,7 +6,7 @@
         <h2 class="text-sm font-semibold text-fg">{{ $title }}</h2>
         @if ($description)<p class="mt-1 text-xs leading-relaxed text-fg-3">{{ $description }}</p>@endif
     </div>
-    <div class="rounded-xl border border-line bg-surface p-5">
+    <div class="mm-panel rounded-xl p-5">
         <div class="grid grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2">{{ $slot }}</div>
     </div>
 </section>

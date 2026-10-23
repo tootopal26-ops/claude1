@@ -3,7 +3,7 @@
 // graphic is always <CoinAsset> (see src/components/CoinAsset.tsx) —
 // never a raw rupee symbol or a hand-rolled coin <Svg> that would drift
 // from it. This walks app/ and src/ and fails if it finds either
-// outside the two files allowed to define shapes/symbols directly.
+// outside the files allowed to define shapes/symbols directly.
 //
 // Run via `npm run check:currency`. No test runner is configured in
 // this project yet (see AGENTS.md's verification commands), so this is
@@ -14,7 +14,11 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const SCAN_DIRS = ['app', 'src'];
-const ALLOWED_SVG_FILES = [path.join(ROOT, 'src', 'theme', 'icons.tsx')];
+const ALLOWED_SVG_FILES = [
+  path.join(ROOT, 'src', 'theme', 'icons.tsx'),
+  // Purely decorative background glow (a radial gradient) — no coin or currency imagery.
+  path.join(ROOT, 'src', 'components', 'AmbientGlow.tsx'),
+];
 const RUPEE_PATTERN = /₹/;
 const SVG_TAG_PATTERN = /<Svg\b/;
 
@@ -46,7 +50,7 @@ function main() {
     }
 
     if (!ALLOWED_SVG_FILES.includes(file) && SVG_TAG_PATTERN.test(contents)) {
-      offenders.push(`${file}: inline <Svg> tag outside src/theme/icons.tsx`);
+      offenders.push(`${file}: inline <Svg> tag outside the allowed SVG files`);
     }
   }
 

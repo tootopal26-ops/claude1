@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
+import { glassPanel } from '../theme/glass';
 import { makeStyles, useTheme } from '../theme/ThemeContext';
 import { Icon } from '../theme/icons';
 import { formatCoins } from '../utils/coins';
@@ -93,17 +94,14 @@ export function WalletCard() {
 }
 
 const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
-  // A compact glass card: translucent surface and a hairline border (no backdrop blur,
-  // so it renders identically on every Android version).
+  // A compact glass card (see theme/glass.ts).
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     padding: 14,
     borderRadius: 18,
-    backgroundColor: `${c.surface2}e6`,
-    borderWidth: 1,
-    borderColor: c.borderStrong,
+    ...glassPanel(c, 'surface2'),
     marginBottom: 20,
   },
   cardPressed: { backgroundColor: c.surface3 },

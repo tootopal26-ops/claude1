@@ -14,7 +14,7 @@
     <x-theme-boot />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-app text-fg antialiased">
+<body class="mm-ambient min-h-screen bg-app text-fg antialiased">
     <main class="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-12">
         <div class="pointer-events-none absolute inset-0" style="background: radial-gradient(50% 40% at 50% 0%, color-mix(in oklab, var(--mm-brand) 14%, transparent), transparent 70%);"></div>
         <div class="relative w-full max-w-md text-center">

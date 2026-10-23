@@ -4,7 +4,9 @@ import { Link, Redirect } from 'expo-router';
 
 import { useAuth } from '../src/auth/AuthContext';
 import { Button } from '../src/components/Button';
+import { AmbientGlow } from '../src/components/AmbientGlow';
 import { RedeemCodeDialog } from '../src/components/RedeemCodeDialog';
+import { glassPanel } from '../src/theme/glass';
 import { Icon, type IconName } from '../src/theme/icons';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import { useWallet } from '../src/wallet/WalletContext';
@@ -30,6 +32,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <AmbientGlow />
       <View style={styles.header}>
         <View style={styles.avatar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <Text style={styles.avatarText}>{user.username.slice(0, 2).toUpperCase()}</Text>
@@ -114,9 +117,7 @@ const useStyles = makeStyles(({ colors: c }) => ({
     minHeight: 76,
     padding: 14,
     borderRadius: 18,
-    backgroundColor: `${c.surface2}e6`,
-    borderWidth: 1,
-    borderColor: c.borderStrong,
+    ...glassPanel(c, 'surface2'),
   },
   redeemCardPressed: { backgroundColor: c.surface3 },
   redeemIcon: {

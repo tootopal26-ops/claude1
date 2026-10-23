@@ -41,15 +41,28 @@
     --mm-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
     --mm-shadow-float: 0 16px 40px -12px rgb(0 0 0 / 0.65), 0 0 0 1px var(--mm-border);
 
-    /* Floating layers (menus, dialogs, toasts): opaque unless a theme opts in
-       to a restrained glass effect below. */
-    --mm-float-bg: var(--mm-surface-3);
-    --mm-float-blur: 0px;
+    /*
+     * Glass. One set of tunables shared by every theme (the surfaces themselves
+     * come from the active theme). Each glass surface keeps this share of its
+     * colour; the rest lets the soft background glow show through. The blur is
+     * used only by layers that overlap other content — the header, sticky
+     * action bars, menus, dialogs and toasts — never by static cards.
+     * AdminUiDesignSystemTest asserts WCAG AA text contrast for every theme at
+     * these values, in the worst case behind the surface. app.css drops all of
+     * this to solid surfaces when the browser cannot blur, or the visitor asks
+     * for reduced transparency or more contrast.
+     */
+    --mm-glass-opacity: 88%;
+    --mm-glass-float-opacity: 94%;
+    --mm-glass-hero-opacity: 78%;
+    --mm-glass-filter: blur(16px) saturate(1.15);
+    --mm-glow-strength: 14%;
+    --mm-glow-strength-2: 8%;
 }
 
 /* ---------- Color themes ---------- */
 
-/* Purple Glassmorphism (default). Glass is limited to floating layers only. */
+/* Purple Glassmorphism (default). */
 :root,
 [data-theme='purple-glass'] {
     --mm-bg: #0d0a12;
@@ -71,9 +84,6 @@
     --mm-brand-text: #b987fb;
     --mm-on-brand: #ffffff;
     --mm-ring: #a855f7;
-
-    --mm-float-bg: rgb(41 31 53 / 0.86);
-    --mm-float-blur: 14px;
 }
 
 [data-theme='midnight-emerald'] {
@@ -109,7 +119,7 @@
 
     --mm-fg: #fdf1f1;
     --mm-fg-2: #d8b8b8;
-    --mm-fg-3: #a98888;
+    --mm-fg-3: #ab8b8b;
 
     --mm-brand: #dc2626;
     --mm-brand-hover: #ef4444;
@@ -131,7 +141,7 @@
 
     --mm-fg: #eef6fc;
     --mm-fg-2: #b1c8da;
-    --mm-fg-3: #809bb0;
+    --mm-fg-3: #8da5b8;
 
     --mm-brand: #0ea5e9;
     --mm-brand-hover: #38bdf8;
@@ -153,7 +163,7 @@
 
     --mm-fg: #fdf6ec;
     --mm-fg-2: #d9c6a5;
-    --mm-fg-3: #a99679;
+    --mm-fg-3: #ae9c80;
 
     --mm-brand: #f59e0b;
     --mm-brand-hover: #fbbf24;
@@ -175,7 +185,7 @@
 
     --mm-fg: #f1f1fd;
     --mm-fg-2: #babad8;
-    --mm-fg-3: #8a8aae;
+    --mm-fg-3: #9292b4;
 
     --mm-brand: #5558e8;
     --mm-brand-hover: #7c7ff5;
@@ -197,7 +207,7 @@
 
     --mm-fg: #f3f5f7;
     --mm-fg-2: #bdc4cc;
-    --mm-fg-3: #8c95a0;
+    --mm-fg-3: #99a1ab;
 
     --mm-brand: #94a3b8;
     --mm-brand-hover: #cbd5e1;

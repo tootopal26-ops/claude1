@@ -118,9 +118,39 @@ steel) the theme sets a dark `--mm-on-brand`. `AdminUiDesignSystemTest` asserts
 each theme defines every token and meets WCAG AA (4.5:1) for its core pairings.
 Selection is made in the header **Appearance** menu and persisted in
 `localStorage` (`mm_theme_color`, `mm_theme_font`); an inline boot script
-(`components/theme-boot`) applies it before first paint. The glass effect
-(translucency + blur) applies only to floating layers (`.mm-float`: menus,
-dialogs, toasts) and only in Purple Glassmorphism.
+(`components/theme-boot`) applies it before first paint. Glass (below) works
+the same in every theme.
+
+### Glass
+
+One restrained recipe, driven by tokens in `themes.css` so every theme and both
+portals share it, and mirrored in the Android app:
+
+| Token | Value | Used by |
+|---|---|---|
+| `--mm-glass-opacity` | 88% | `.mm-panel` — cards, form sections, tables: a translucent surface with a hairline border and a faint top highlight; **no blur** (static panels stay cheap to paint) |
+| `--mm-glass-float-opacity` | 94% | `.mm-float` (menus, dialogs, toasts, tooltips) and `.mm-glass-bar` (the header, the sidebar/drawer, sticky action bars) — these overlap content, so they also blur it |
+| `--mm-glass-filter` | `blur(16px) saturate(1.15)` | the blur above |
+| `--mm-glass-hero-opacity` | 78% | `.mm-glass` — the sign-in panels over their artwork |
+| `--mm-glow-strength` / `-2` | 14% / 8% | `.mm-ambient` — the quiet brand-tinted radial glow behind the workspace, the only thing the glass has to show |
+
+`.mm-glass-bar` puts its colour and blur on a `::before`, because a blurred
+element becomes the backdrop root for its descendants and would stop the menus
+inside the header from seeing the page behind them.
+
+**Fallbacks.** Where the browser cannot blur (`@supports not (backdrop-filter)`),
+or the visitor asks for reduced transparency or more contrast, every opacity
+becomes 100%, the filter `none` and the glow 0 — solid surfaces, never a
+half-transparent one over unpredictable content. `forced-colors` uses the system
+canvas with a `CanvasText` border and no glow. Browsers without `color-mix()`
+get no glow at all.
+
+**Contrast.** `AdminUiDesignSystemTest` checks WCAG AA for text on each glass
+surface in the worst case behind it (both glows stacked behind a panel; the
+solid brand colour behind a blurred layer) for every theme, which is how the
+muted text colour of five themes was found to be slightly too dim on menus and
+dialogs and lightened. A rendered check measures the pixels actually behind
+7,385 text samples across 7 themes × 6 pages × (page, menu open): lowest 4.83:1.
 
 ### Typography, spacing, shape
 
@@ -134,7 +164,12 @@ with `p-5`; controls `rounded-lg`. Page content is centered in `max-w-[90rem]`.
 
 `mobile/src/theme/tokens.ts` carries the same names and values (see that file);
 the Android app is dark-only on the neutral surface hierarchy with purple used
-the same restrained way.
+the same restrained way. `mobile/src/theme/glass.ts` is the Android side of the
+glass recipe (`glassPanel`, `glassFloat`, `glassScrim`; `AmbientGlow` is the
+glow): cards are translucent over the glow with a hairline border, and since
+there is no backdrop blur on Android in this build, dialogs use the solid
+fallback. A test keeps its numbers equal to the CSS tokens and rejects
+hand-rolled `${color}e6` alpha suffixes in screens and components.
 
 ## 4. Application shell
 
@@ -200,7 +235,8 @@ Coins: always `<x-coin-asset :size="16" />` next to the number — never `₹`.
 ## 7. Guard tests
 
 `AdminUiDesignSystemTest` (tokens only, no `wire:confirm`, full token set per
-theme, WCAG contrast per theme), `AdminNavigationTest` (nav ↔ routes ↔
+theme, WCAG contrast per theme and on every glass surface, glass fallbacks present,
+no ad-hoc `backdrop-blur` in views, Android glass constants equal the web tokens), `AdminNavigationTest` (nav ↔ routes ↔
 permissions stay in sync, role-filtered), `AdminPagesRenderTest` (every
 parameter-free admin page renders in the shell; branded error pages).
 

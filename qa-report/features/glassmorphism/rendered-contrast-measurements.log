@@ -1,0 +1,84 @@
+purple-glass      dashboard/page                 texts=78   min=5.16 (Tournament) failing<AA=0
+purple-glass      dashboard/menu                 texts=89   min=5.16 (Tournament) failing<AA=0
+purple-glass      tournaments/page               texts=62   min=5.16 (Tournament) failing<AA=0
+purple-glass      tournaments/menu               texts=77   min=5.16 (Tournament) failing<AA=0
+purple-glass      presets-create-scrolled/page   texts=68   min=5.01 (Tournaments) failing<AA=0
+purple-glass      presets-create-scrolled/menu   texts=73   min=5.01 (Notifications) failing<AA=0
+purple-glass      audit-log-scrolled/page        texts=116  min=5.58 (127.0.0.1) failing<AA=0
+purple-glass      audit-log-scrolled/menu        texts=111  min=5.58 (127.0.0.1) failing<AA=0
+purple-glass      player-detail/page             texts=112  min=5.16 (When) failing<AA=0
+purple-glass      player-detail/menu             texts=115  min=5.16 (When) failing<AA=0
+purple-glass      prizes/page                    texts=67   min=5.16 (Rank) failing<AA=0
+purple-glass      prizes/menu                    texts=87   min=5.16 (Rank) failing<AA=0
+midnight-emerald  dashboard/page                 texts=78   min=5.77 (Tournament) failing<AA=0
+midnight-emerald  dashboard/menu                 texts=89   min=5.77 (Tournament) failing<AA=0
+midnight-emerald  tournaments/page               texts=62   min=5.48 (Cancelled) failing<AA=0
+midnight-emerald  tournaments/menu               texts=77   min=5.77 (Tournament) failing<AA=0
+midnight-emerald  presets-create-scrolled/page   texts=68   min=5.69 (Notifications) failing<AA=0
+midnight-emerald  presets-create-scrolled/menu   texts=73   min=5.69 (Notifications) failing<AA=0
+midnight-emerald  audit-log-scrolled/page        texts=116  min=6.36 (127.0.0.1) failing<AA=0
+midnight-emerald  audit-log-scrolled/menu        texts=111  min=6.36 (127.0.0.1) failing<AA=0
+midnight-emerald  player-detail/page             texts=112  min=5.77 (When) failing<AA=0
+midnight-emerald  player-detail/menu             texts=115  min=5.77 (When) failing<AA=0
+midnight-emerald  prizes/page                    texts=67   min=5.77 (Rank) failing<AA=0
+midnight-emerald  prizes/menu                    texts=87   min=5.77 (Rank) failing<AA=0
+crimson-arena     dashboard/page                 texts=78   min=5.35 (Tournament) failing<AA=0
+crimson-arena     dashboard/menu                 texts=89   min=5.35 (Tournament) failing<AA=0
+crimson-arena     tournaments/page               texts=62   min=4.83 (Create tournament) failing<AA=0
+crimson-arena     tournaments/menu               texts=77   min=4.83 (Create tournament) failing<AA=0
+crimson-arena     presets-create-scrolled/page   texts=68   min=4.83 (Save preset) failing<AA=0
+crimson-arena     presets-create-scrolled/menu   texts=73   min=4.83 (Save preset) failing<AA=0
+crimson-arena     audit-log-scrolled/page        texts=116  min=5.81 (127.0.0.1) failing<AA=0
+crimson-arena     audit-log-scrolled/menu        texts=111  min=5.81 (127.0.0.1) failing<AA=0
+crimson-arena     player-detail/page             texts=112  min=4.83 (Apply adjustment) failing<AA=0
+crimson-arena     player-detail/menu             texts=115  min=4.83 (Apply adjustment) failing<AA=0
+crimson-arena     prizes/page                    texts=67   min=5.35 (Rank) failing<AA=0
+crimson-arena     prizes/menu                    texts=87   min=5.35 (Rank) failing<AA=0
+cyber-blue        dashboard/page                 texts=78   min=5.80 (Tournament) failing<AA=0
+cyber-blue        dashboard/menu                 texts=89   min=5.80 (Tournament) failing<AA=0
+cyber-blue        tournaments/page               texts=62   min=5.32 (Cancelled) failing<AA=0
+cyber-blue        tournaments/menu               texts=77   min=5.80 (Tournament) failing<AA=0
+cyber-blue        presets-create-scrolled/page   texts=68   min=5.80 (notifications.send) failing<AA=0
+cyber-blue        presets-create-scrolled/menu   texts=73   min=5.80 (notifications.send) failing<AA=0
+cyber-blue        audit-log-scrolled/page        texts=116  min=6.59 (127.0.0.1) failing<AA=0
+cyber-blue        audit-log-scrolled/menu        texts=111  min=6.59 (127.0.0.1) failing<AA=0
+cyber-blue        player-detail/page             texts=112  min=5.80 (When) failing<AA=0
+cyber-blue        player-detail/menu             texts=115  min=5.80 (When) failing<AA=0
+cyber-blue        prizes/page                    texts=67   min=5.80 (Rank) failing<AA=0
+cyber-blue        prizes/menu                    texts=87   min=5.80 (Rank) failing<AA=0
+sunset-gold       dashboard/page                 texts=78   min=5.84 (Tournament) failing<AA=0
+sunset-gold       dashboard/menu                 texts=89   min=5.84 (Tournament) failing<AA=0
+sunset-gold       tournaments/page               texts=62   min=5.29 (Cancelled) failing<AA=0
+sunset-gold       tournaments/menu               texts=77   min=5.84 (Tournament) failing<AA=0
+sunset-gold       presets-create-scrolled/page   texts=68   min=5.73 (Tournaments) failing<AA=0
+sunset-gold       presets-create-scrolled/menu   texts=73   min=5.80 (Notifications) failing<AA=0
+sunset-gold       audit-log-scrolled/page        texts=116  min=6.49 (127.0.0.1) failing<AA=0
+sunset-gold       audit-log-scrolled/menu        texts=111  min=6.49 (127.0.0.1) failing<AA=0
+sunset-gold       player-detail/page             texts=112  min=5.84 (When) failing<AA=0
+sunset-gold       player-detail/menu             texts=115  min=5.84 (When) failing<AA=0
+sunset-gold       prizes/page                    texts=67   min=5.84 (Rank) failing<AA=0
+sunset-gold       prizes/menu                    texts=87   min=5.84 (Rank) failing<AA=0
+royal-indigo      dashboard/page                 texts=78   min=5.47 (Tournament) failing<AA=0
+royal-indigo      dashboard/menu                 texts=89   min=5.47 (Tournament) failing<AA=0
+royal-indigo      tournaments/page               texts=62   min=5.32 (Create tournament) failing<AA=0
+royal-indigo      tournaments/menu               texts=77   min=5.32 (Create tournament) failing<AA=0
+royal-indigo      presets-create-scrolled/page   texts=68   min=5.32 (Save preset) failing<AA=0
+royal-indigo      presets-create-scrolled/menu   texts=73   min=5.32 (Save preset) failing<AA=0
+royal-indigo      audit-log-scrolled/page        texts=116  min=6.03 (127.0.0.1) failing<AA=0
+royal-indigo      audit-log-scrolled/menu        texts=111  min=6.03 (127.0.0.1) failing<AA=0
+royal-indigo      player-detail/page             texts=112  min=5.32 (Apply adjustment) failing<AA=0
+royal-indigo      player-detail/menu             texts=115  min=5.32 (Apply adjustment) failing<AA=0
+royal-indigo      prizes/page                    texts=67   min=5.47 (Rank) failing<AA=0
+royal-indigo      prizes/menu                    texts=87   min=5.47 (Rank) failing<AA=0
+monochrome-steel  dashboard/page                 texts=78   min=5.83 (Tournament) failing<AA=0
+monochrome-steel  dashboard/menu                 texts=89   min=5.83 (Tournament) failing<AA=0
+monochrome-steel  tournaments/page               texts=62   min=5.33 (Cancelled) failing<AA=0
+monochrome-steel  tournaments/menu               texts=77   min=5.83 (Tournament) failing<AA=0
+monochrome-steel  presets-create-scrolled/page   texts=68   min=5.83 (notifications.send) failing<AA=0
+monochrome-steel  presets-create-scrolled/menu   texts=73   min=5.83 (notifications.send) failing<AA=0
+monochrome-steel  audit-log-scrolled/page        texts=116  min=6.53 (127.0.0.1) failing<AA=0
+monochrome-steel  audit-log-scrolled/menu        texts=111  min=6.53 (127.0.0.1) failing<AA=0
+monochrome-steel  player-detail/page             texts=112  min=5.83 (When) failing<AA=0
+monochrome-steel  player-detail/menu             texts=115  min=5.83 (When) failing<AA=0
+monochrome-steel  prizes/page                    texts=67   min=5.83 (Rank) failing<AA=0
+monochrome-steel  prizes/menu                    texts=87   min=5.83 (Rank) failing<AA=0

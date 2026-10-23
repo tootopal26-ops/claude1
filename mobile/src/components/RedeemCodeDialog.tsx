@@ -13,6 +13,7 @@ import {
 
 import { redeemCode } from '../api/redeem';
 import { ApiError } from '../api/client';
+import { glassFloat } from '../theme/glass';
 import { makeStyles, useTheme } from '../theme/ThemeContext';
 import type { Wallet } from '../types';
 import { Button } from './Button';
@@ -184,13 +185,10 @@ const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
   backdrop: { flex: 1, justifyContent: 'center' },
   scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: s.overlay },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 20 },
-  // A glass panel: translucent surface, hairline border. No blur — it stays crisp and
-  // equally legible on every Android version.
+  // A glass sheet; Android has no backdrop blur here, so it uses the solid fallback (theme/glass.ts).
   card: {
-    backgroundColor: `${c.surface3}f2`,
+    ...glassFloat(c),
     borderRadius: 22,
-    borderWidth: 1,
-    borderColor: c.borderStrong,
     padding: 22,
     gap: 14,
   },

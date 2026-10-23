@@ -4,6 +4,7 @@ import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
 
 import { fetchGames, fetchTournaments } from '../../src/api/games';
 import { useAuth } from '../../src/auth/AuthContext';
+import { AmbientGlow } from '../../src/components/AmbientGlow';
 import { TournamentCard } from '../../src/components/TournamentCard';
 import { makeStyles, useTheme } from '../../src/theme/ThemeContext';
 import type { Game, Tournament } from '../../src/types';
@@ -58,6 +59,7 @@ export default function GameTournamentsScreen() {
 
   return (
     <View style={styles.container}>
+      <AmbientGlow />
       <Stack.Screen options={{ title: game?.title ?? 'Game' }} />
       {loading ? (
         <ActivityIndicator style={styles.centered} color={colors.brandText} />

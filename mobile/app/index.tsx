@@ -5,6 +5,7 @@ import { Link, Redirect, router } from 'expo-router';
 import { fetchGames, fetchTournaments } from '../src/api/games';
 import { fetchNotifications } from '../src/api/notifications';
 import { useAuth } from '../src/auth/AuthContext';
+import { AmbientGlow } from '../src/components/AmbientGlow';
 import { GameCard, GameCardSkeleton } from '../src/components/GameCard';
 import { TournamentCard } from '../src/components/TournamentCard';
 import { WalletCard } from '../src/components/WalletCard';
@@ -76,6 +77,7 @@ export default function TournamentListScreen() {
 
   return (
     <View style={styles.container}>
+      <AmbientGlow />
       <View style={styles.header}>
         <Text style={styles.welcome}>Welcome, {user.username}</Text>
         <View style={styles.headerActions}>

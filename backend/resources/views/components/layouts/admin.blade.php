@@ -16,7 +16,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="min-h-screen bg-app text-fg antialiased">
+<body class="mm-ambient min-h-screen bg-app text-fg antialiased">
     <a href="#main" class="sr-only z-[80] rounded-lg bg-brand text-sm font-medium text-on-brand focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:px-4 focus:py-2">Skip to content</a>
 
     <div x-data="shell" @mm-session-expired.window="sessionExpired = true" @keydown.escape.window="drawer = false" class="min-h-screen lg:flex">
@@ -27,7 +27,7 @@
         <aside
             id="mm-sidebar"
             aria-label="Primary"
-            class="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-line bg-sidebar transition-transform duration-200 max-lg:-translate-x-full motion-reduce:transition-none lg:sticky lg:top-0 lg:z-20 lg:h-screen lg:shrink-0 lg:transition-[width] lg:group-data-[sidebar=collapsed]/html:w-[4.75rem]"
+            class="mm-glass-bar mm-glass-bar--sidebar fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-line transition-transform duration-200 max-lg:-translate-x-full motion-reduce:transition-none lg:sticky lg:top-0 lg:z-20 lg:h-screen lg:shrink-0 lg:transition-[width] lg:group-data-[sidebar=collapsed]/html:w-[4.75rem]"
             :class="drawer && 'max-lg:translate-x-0!'"
             :inert="mobile && ! drawer"
         >
@@ -104,7 +104,7 @@
 
         <div class="flex min-w-0 flex-1 flex-col">
             {{-- Header --}}
-            <header class="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-line bg-app px-4 sm:px-6 lg:px-8">
+            <header class="mm-glass-bar sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-line px-4 sm:px-6 lg:px-8">
                 <button type="button" class="inline-flex size-9 items-center justify-center rounded-lg text-fg-2 hover:bg-surface-2 hover:text-fg lg:hidden" @click="drawer = true" aria-controls="mm-sidebar" :aria-expanded="drawer" aria-label="Open navigation">
                     <x-icon name="menu" :size="20" />
                 </button>

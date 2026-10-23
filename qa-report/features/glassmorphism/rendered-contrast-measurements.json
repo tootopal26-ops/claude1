@@ -1,0 +1,758 @@
+[
+ {
+  "theme": "purple-glass",
+  "slug": "dashboard",
+  "state": "page",
+  "texts": 78,
+  "min": 5.16,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "purple-glass",
+  "slug": "dashboard",
+  "state": "menu",
+  "texts": 89,
+  "min": 5.16,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "purple-glass",
+  "slug": "tournaments",
+  "state": "page",
+  "texts": 62,
+  "min": 5.16,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "purple-glass",
+  "slug": "tournaments",
+  "state": "menu",
+  "texts": 77,
+  "min": 5.16,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "purple-glass",
+  "slug": "presets-create-scrolled",
+  "state": "page",
+  "texts": 68,
+  "min": 5.01,
+  "minText": "Tournaments",
+  "failing": 0
+ },
+ {
+  "theme": "purple-glass",
+  "slug": "presets-create-scrolled",
+  "state": "menu",
+  "texts": 73,
+  "min": 5.01,
+  "minText": "Notifications",
+  "failing": 0
+ },
+ {
+  "theme": "purple-glass",
+  "slug": "audit-log-scrolled",
+  "state": "page",
+  "texts": 116,
+  "min": 5.58,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "purple-glass",
+  "slug": "audit-log-scrolled",
+  "state": "menu",
+  "texts": 111,
+  "min": 5.58,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "purple-glass",
+  "slug": "player-detail",
+  "state": "page",
+  "texts": 112,
+  "min": 5.16,
+  "minText": "When",
+  "failing": 0
+ },
+ {
+  "theme": "purple-glass",
+  "slug": "player-detail",
+  "state": "menu",
+  "texts": 115,
+  "min": 5.16,
+  "minText": "When",
+  "failing": 0
+ },
+ {
+  "theme": "purple-glass",
+  "slug": "prizes",
+  "state": "page",
+  "texts": 67,
+  "min": 5.16,
+  "minText": "Rank",
+  "failing": 0
+ },
+ {
+  "theme": "purple-glass",
+  "slug": "prizes",
+  "state": "menu",
+  "texts": 87,
+  "min": 5.16,
+  "minText": "Rank",
+  "failing": 0
+ },
+ {
+  "theme": "midnight-emerald",
+  "slug": "dashboard",
+  "state": "page",
+  "texts": 78,
+  "min": 5.77,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "midnight-emerald",
+  "slug": "dashboard",
+  "state": "menu",
+  "texts": 89,
+  "min": 5.77,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "midnight-emerald",
+  "slug": "tournaments",
+  "state": "page",
+  "texts": 62,
+  "min": 5.48,
+  "minText": "Cancelled",
+  "failing": 0
+ },
+ {
+  "theme": "midnight-emerald",
+  "slug": "tournaments",
+  "state": "menu",
+  "texts": 77,
+  "min": 5.77,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "midnight-emerald",
+  "slug": "presets-create-scrolled",
+  "state": "page",
+  "texts": 68,
+  "min": 5.69,
+  "minText": "Notifications",
+  "failing": 0
+ },
+ {
+  "theme": "midnight-emerald",
+  "slug": "presets-create-scrolled",
+  "state": "menu",
+  "texts": 73,
+  "min": 5.69,
+  "minText": "Notifications",
+  "failing": 0
+ },
+ {
+  "theme": "midnight-emerald",
+  "slug": "audit-log-scrolled",
+  "state": "page",
+  "texts": 116,
+  "min": 6.36,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "midnight-emerald",
+  "slug": "audit-log-scrolled",
+  "state": "menu",
+  "texts": 111,
+  "min": 6.36,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "midnight-emerald",
+  "slug": "player-detail",
+  "state": "page",
+  "texts": 112,
+  "min": 5.77,
+  "minText": "When",
+  "failing": 0
+ },
+ {
+  "theme": "midnight-emerald",
+  "slug": "player-detail",
+  "state": "menu",
+  "texts": 115,
+  "min": 5.77,
+  "minText": "When",
+  "failing": 0
+ },
+ {
+  "theme": "midnight-emerald",
+  "slug": "prizes",
+  "state": "page",
+  "texts": 67,
+  "min": 5.77,
+  "minText": "Rank",
+  "failing": 0
+ },
+ {
+  "theme": "midnight-emerald",
+  "slug": "prizes",
+  "state": "menu",
+  "texts": 87,
+  "min": 5.77,
+  "minText": "Rank",
+  "failing": 0
+ },
+ {
+  "theme": "crimson-arena",
+  "slug": "dashboard",
+  "state": "page",
+  "texts": 78,
+  "min": 5.35,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "crimson-arena",
+  "slug": "dashboard",
+  "state": "menu",
+  "texts": 89,
+  "min": 5.35,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "crimson-arena",
+  "slug": "tournaments",
+  "state": "page",
+  "texts": 62,
+  "min": 4.83,
+  "minText": "Create tournament",
+  "failing": 0
+ },
+ {
+  "theme": "crimson-arena",
+  "slug": "tournaments",
+  "state": "menu",
+  "texts": 77,
+  "min": 4.83,
+  "minText": "Create tournament",
+  "failing": 0
+ },
+ {
+  "theme": "crimson-arena",
+  "slug": "presets-create-scrolled",
+  "state": "page",
+  "texts": 68,
+  "min": 4.83,
+  "minText": "Save preset",
+  "failing": 0
+ },
+ {
+  "theme": "crimson-arena",
+  "slug": "presets-create-scrolled",
+  "state": "menu",
+  "texts": 73,
+  "min": 4.83,
+  "minText": "Save preset",
+  "failing": 0
+ },
+ {
+  "theme": "crimson-arena",
+  "slug": "audit-log-scrolled",
+  "state": "page",
+  "texts": 116,
+  "min": 5.81,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "crimson-arena",
+  "slug": "audit-log-scrolled",
+  "state": "menu",
+  "texts": 111,
+  "min": 5.81,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "crimson-arena",
+  "slug": "player-detail",
+  "state": "page",
+  "texts": 112,
+  "min": 4.83,
+  "minText": "Apply adjustment",
+  "failing": 0
+ },
+ {
+  "theme": "crimson-arena",
+  "slug": "player-detail",
+  "state": "menu",
+  "texts": 115,
+  "min": 4.83,
+  "minText": "Apply adjustment",
+  "failing": 0
+ },
+ {
+  "theme": "crimson-arena",
+  "slug": "prizes",
+  "state": "page",
+  "texts": 67,
+  "min": 5.35,
+  "minText": "Rank",
+  "failing": 0
+ },
+ {
+  "theme": "crimson-arena",
+  "slug": "prizes",
+  "state": "menu",
+  "texts": 87,
+  "min": 5.35,
+  "minText": "Rank",
+  "failing": 0
+ },
+ {
+  "theme": "cyber-blue",
+  "slug": "dashboard",
+  "state": "page",
+  "texts": 78,
+  "min": 5.8,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "cyber-blue",
+  "slug": "dashboard",
+  "state": "menu",
+  "texts": 89,
+  "min": 5.8,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "cyber-blue",
+  "slug": "tournaments",
+  "state": "page",
+  "texts": 62,
+  "min": 5.32,
+  "minText": "Cancelled",
+  "failing": 0
+ },
+ {
+  "theme": "cyber-blue",
+  "slug": "tournaments",
+  "state": "menu",
+  "texts": 77,
+  "min": 5.8,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "cyber-blue",
+  "slug": "presets-create-scrolled",
+  "state": "page",
+  "texts": 68,
+  "min": 5.8,
+  "minText": "notifications.send",
+  "failing": 0
+ },
+ {
+  "theme": "cyber-blue",
+  "slug": "presets-create-scrolled",
+  "state": "menu",
+  "texts": 73,
+  "min": 5.8,
+  "minText": "notifications.send",
+  "failing": 0
+ },
+ {
+  "theme": "cyber-blue",
+  "slug": "audit-log-scrolled",
+  "state": "page",
+  "texts": 116,
+  "min": 6.59,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "cyber-blue",
+  "slug": "audit-log-scrolled",
+  "state": "menu",
+  "texts": 111,
+  "min": 6.59,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "cyber-blue",
+  "slug": "player-detail",
+  "state": "page",
+  "texts": 112,
+  "min": 5.8,
+  "minText": "When",
+  "failing": 0
+ },
+ {
+  "theme": "cyber-blue",
+  "slug": "player-detail",
+  "state": "menu",
+  "texts": 115,
+  "min": 5.8,
+  "minText": "When",
+  "failing": 0
+ },
+ {
+  "theme": "cyber-blue",
+  "slug": "prizes",
+  "state": "page",
+  "texts": 67,
+  "min": 5.8,
+  "minText": "Rank",
+  "failing": 0
+ },
+ {
+  "theme": "cyber-blue",
+  "slug": "prizes",
+  "state": "menu",
+  "texts": 87,
+  "min": 5.8,
+  "minText": "Rank",
+  "failing": 0
+ },
+ {
+  "theme": "sunset-gold",
+  "slug": "dashboard",
+  "state": "page",
+  "texts": 78,
+  "min": 5.84,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "sunset-gold",
+  "slug": "dashboard",
+  "state": "menu",
+  "texts": 89,
+  "min": 5.84,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "sunset-gold",
+  "slug": "tournaments",
+  "state": "page",
+  "texts": 62,
+  "min": 5.29,
+  "minText": "Cancelled",
+  "failing": 0
+ },
+ {
+  "theme": "sunset-gold",
+  "slug": "tournaments",
+  "state": "menu",
+  "texts": 77,
+  "min": 5.84,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "sunset-gold",
+  "slug": "presets-create-scrolled",
+  "state": "page",
+  "texts": 68,
+  "min": 5.73,
+  "minText": "Tournaments",
+  "failing": 0
+ },
+ {
+  "theme": "sunset-gold",
+  "slug": "presets-create-scrolled",
+  "state": "menu",
+  "texts": 73,
+  "min": 5.8,
+  "minText": "Notifications",
+  "failing": 0
+ },
+ {
+  "theme": "sunset-gold",
+  "slug": "audit-log-scrolled",
+  "state": "page",
+  "texts": 116,
+  "min": 6.49,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "sunset-gold",
+  "slug": "audit-log-scrolled",
+  "state": "menu",
+  "texts": 111,
+  "min": 6.49,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "sunset-gold",
+  "slug": "player-detail",
+  "state": "page",
+  "texts": 112,
+  "min": 5.84,
+  "minText": "When",
+  "failing": 0
+ },
+ {
+  "theme": "sunset-gold",
+  "slug": "player-detail",
+  "state": "menu",
+  "texts": 115,
+  "min": 5.84,
+  "minText": "When",
+  "failing": 0
+ },
+ {
+  "theme": "sunset-gold",
+  "slug": "prizes",
+  "state": "page",
+  "texts": 67,
+  "min": 5.84,
+  "minText": "Rank",
+  "failing": 0
+ },
+ {
+  "theme": "sunset-gold",
+  "slug": "prizes",
+  "state": "menu",
+  "texts": 87,
+  "min": 5.84,
+  "minText": "Rank",
+  "failing": 0
+ },
+ {
+  "theme": "royal-indigo",
+  "slug": "dashboard",
+  "state": "page",
+  "texts": 78,
+  "min": 5.47,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "royal-indigo",
+  "slug": "dashboard",
+  "state": "menu",
+  "texts": 89,
+  "min": 5.47,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "royal-indigo",
+  "slug": "tournaments",
+  "state": "page",
+  "texts": 62,
+  "min": 5.32,
+  "minText": "Create tournament",
+  "failing": 0
+ },
+ {
+  "theme": "royal-indigo",
+  "slug": "tournaments",
+  "state": "menu",
+  "texts": 77,
+  "min": 5.32,
+  "minText": "Create tournament",
+  "failing": 0
+ },
+ {
+  "theme": "royal-indigo",
+  "slug": "presets-create-scrolled",
+  "state": "page",
+  "texts": 68,
+  "min": 5.32,
+  "minText": "Save preset",
+  "failing": 0
+ },
+ {
+  "theme": "royal-indigo",
+  "slug": "presets-create-scrolled",
+  "state": "menu",
+  "texts": 73,
+  "min": 5.32,
+  "minText": "Save preset",
+  "failing": 0
+ },
+ {
+  "theme": "royal-indigo",
+  "slug": "audit-log-scrolled",
+  "state": "page",
+  "texts": 116,
+  "min": 6.03,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "royal-indigo",
+  "slug": "audit-log-scrolled",
+  "state": "menu",
+  "texts": 111,
+  "min": 6.03,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "royal-indigo",
+  "slug": "player-detail",
+  "state": "page",
+  "texts": 112,
+  "min": 5.32,
+  "minText": "Apply adjustment",
+  "failing": 0
+ },
+ {
+  "theme": "royal-indigo",
+  "slug": "player-detail",
+  "state": "menu",
+  "texts": 115,
+  "min": 5.32,
+  "minText": "Apply adjustment",
+  "failing": 0
+ },
+ {
+  "theme": "royal-indigo",
+  "slug": "prizes",
+  "state": "page",
+  "texts": 67,
+  "min": 5.47,
+  "minText": "Rank",
+  "failing": 0
+ },
+ {
+  "theme": "royal-indigo",
+  "slug": "prizes",
+  "state": "menu",
+  "texts": 87,
+  "min": 5.47,
+  "minText": "Rank",
+  "failing": 0
+ },
+ {
+  "theme": "monochrome-steel",
+  "slug": "dashboard",
+  "state": "page",
+  "texts": 78,
+  "min": 5.83,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "monochrome-steel",
+  "slug": "dashboard",
+  "state": "menu",
+  "texts": 89,
+  "min": 5.83,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "monochrome-steel",
+  "slug": "tournaments",
+  "state": "page",
+  "texts": 62,
+  "min": 5.33,
+  "minText": "Cancelled",
+  "failing": 0
+ },
+ {
+  "theme": "monochrome-steel",
+  "slug": "tournaments",
+  "state": "menu",
+  "texts": 77,
+  "min": 5.83,
+  "minText": "Tournament",
+  "failing": 0
+ },
+ {
+  "theme": "monochrome-steel",
+  "slug": "presets-create-scrolled",
+  "state": "page",
+  "texts": 68,
+  "min": 5.83,
+  "minText": "notifications.send",
+  "failing": 0
+ },
+ {
+  "theme": "monochrome-steel",
+  "slug": "presets-create-scrolled",
+  "state": "menu",
+  "texts": 73,
+  "min": 5.83,
+  "minText": "notifications.send",
+  "failing": 0
+ },
+ {
+  "theme": "monochrome-steel",
+  "slug": "audit-log-scrolled",
+  "state": "page",
+  "texts": 116,
+  "min": 6.53,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "monochrome-steel",
+  "slug": "audit-log-scrolled",
+  "state": "menu",
+  "texts": 111,
+  "min": 6.53,
+  "minText": "127.0.0.1",
+  "failing": 0
+ },
+ {
+  "theme": "monochrome-steel",
+  "slug": "player-detail",
+  "state": "page",
+  "texts": 112,
+  "min": 5.83,
+  "minText": "When",
+  "failing": 0
+ },
+ {
+  "theme": "monochrome-steel",
+  "slug": "player-detail",
+  "state": "menu",
+  "texts": 115,
+  "min": 5.83,
+  "minText": "When",
+  "failing": 0
+ },
+ {
+  "theme": "monochrome-steel",
+  "slug": "prizes",
+  "state": "page",
+  "texts": 67,
+  "min": 5.83,
+  "minText": "Rank",
+  "failing": 0
+ },
+ {
+  "theme": "monochrome-steel",
+  "slug": "prizes",
+  "state": "menu",
+  "texts": 87,
+  "min": 5.83,
+  "minText": "Rank",
+  "failing": 0
+ }
+]

@@ -24,7 +24,7 @@
 
             <div class="min-w-0 gap-4 xl:columns-2">
                 @foreach ($permissionsByGroup as $group => $permissions)
-                    <fieldset wire:key="permission-group-{{ $group }}" class="mb-4 min-w-0 break-inside-avoid rounded-xl border border-line bg-surface p-4">
+                    <fieldset wire:key="permission-group-{{ $group }}" class="mb-4 min-w-0 break-inside-avoid mm-panel rounded-xl p-4">
                         <legend class="px-1 text-xs font-semibold uppercase tracking-wide text-fg-3">{{ \Illuminate\Support\Str::headline($group) }}</legend>
                         <div class="mt-1 space-y-2">
                             @foreach ($permissions as $permission)
@@ -42,7 +42,7 @@
             </div>
         </section>
 
-        <div class="sticky bottom-0 z-10 -mx-4 mt-2 flex items-center justify-end gap-2 border-t border-line bg-app px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div class="mm-glass-bar sticky bottom-0 z-10 -mx-4 mt-2 flex items-center justify-end gap-2 border-t border-line px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
             <x-ui.button :href="portal_route('presets.index')" variant="ghost">Cancel</x-ui.button>
             <x-ui.button type="submit" loading="save">Save preset</x-ui.button>
         </div>

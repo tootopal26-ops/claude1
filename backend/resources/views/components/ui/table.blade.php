@@ -2,7 +2,7 @@
 
 {{-- Wrapper + horizontal scroll for wide tables. Cell styling comes from .mm-table (app.css); essential columns scroll rather than hide.
      The scroll region is keyboard-focusable and named so it can be scrolled without a mouse. --}}
-<div {{ $attributes->class('overflow-hidden rounded-xl border border-line bg-surface') }}>
+<div {{ $attributes->class('mm-panel overflow-hidden rounded-xl') }}>
     <div class="relative overflow-x-auto" tabindex="0" role="region" aria-label="{{ $label }}">
         <table class="mm-table">
             @isset($head)<thead>{{ $head }}</thead>@endisset
