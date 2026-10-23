@@ -22,6 +22,8 @@ const ALLOWED_SVG_FILES = [
   path.join(ROOT, 'src', 'components', 'avatar', 'Avatar.tsx'),
   // The hero carousel's edge-softening gradient — no coin or currency imagery.
   path.join(ROOT, 'src', 'components', 'carousel', 'HeroCarousel.tsx'),
+  // The caption fade laid over game and tournament artwork — no coin or currency imagery.
+  path.join(ROOT, 'src', 'components', 'visual', 'BottomFade.tsx'),
 ];
 const RUPEE_PATTERN = /₹/;
 const SVG_TAG_PATTERN = /<Svg\b/;

@@ -118,7 +118,7 @@ export default function AccountScreen() {
               {sessions.map((session, index) => (
                 <View key={session.id} style={[styles.session, index < sessions.length - 1 && styles.divider]}>
                   <View style={styles.sessionIcon}>
-                    <Icon name="user" size={18} color={colors.fg2} />
+                    <Icon name="user" size={20} />
                   </View>
                   <View style={styles.sessionText}>
                     <Text style={styles.detailValue} numberOfLines={1}>

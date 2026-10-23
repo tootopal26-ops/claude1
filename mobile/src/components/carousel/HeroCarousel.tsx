@@ -224,7 +224,7 @@ function Slide({ banner, width, height, onOpenLink }: { banner: HeroBanner; widt
         />
       ) : (
         <View style={[styles.fill, styles.failed]}>
-          <Icon name="image" size={26} color={colors.fg3} />
+          <Icon name="image" size={30} />
           <Text style={styles.failedText}>Banner unavailable</Text>
         </View>
       )}

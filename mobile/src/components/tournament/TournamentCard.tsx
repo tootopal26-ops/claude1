@@ -3,7 +3,7 @@ import { Image, Text, View } from 'react-native';
 
 import { glassPanel } from '../../theme/glass';
 import { Icon, type IconName } from '../../theme/icons';
-import { makeStyles, useTheme } from '../../theme/ThemeContext';
+import { makeStyles } from '../../theme/ThemeContext';
 import { RADIUS, SPACE, TYPE } from '../../theme/tokens';
 import type { Tournament } from '../../types';
 import { formatDateTime } from '../../utils/time';
@@ -33,7 +33,6 @@ const THUMB_WIDTH = 104;
  */
 export function TournamentCard({ tournament, onOpen, onJoin, onRules, onResults }: Props) {
   const styles = useStyles();
-  const { colors } = useTheme();
   const [imageFailed, setImageFailed] = useState(false);
   const picture = tournament.game?.thumbnail_url ?? tournament.game?.image_url ?? null;
   const fill = tournament.total_slots > 0 ? Math.min(1, tournament.joined_slots / tournament.total_slots) : 0;
@@ -56,7 +55,7 @@ export function TournamentCard({ tournament, onOpen, onJoin, onRules, onResults 
             {picture && !imageFailed ? (
               <Image source={{ uri: picture }} style={styles.thumbImage} resizeMode="cover" onError={() => setImageFailed(true)} />
             ) : (
-              <Icon name="tournaments" size={22} color={colors.fg3} />
+              <Icon name="tournaments" size={26} />
             )}
           </View>
           <View style={styles.heading}>
@@ -64,14 +63,14 @@ export function TournamentCard({ tournament, onOpen, onJoin, onRules, onResults 
               {tournament.title}
             </Text>
             <View style={styles.when}>
-              <Icon name="calendar" size={13} color={colors.fg3} />
+              <Icon name="calendar" size={14} />
               <Text style={styles.whenText} numberOfLines={1}>
                 {formatDateTime(tournament.scheduled_start_at)}
               </Text>
             </View>
             <View style={styles.chips}>
               <View style={styles.mode}>
-                <Icon name="users" size={12} color={colors.fg2} />
+                <Icon name="users" size={14} />
                 <Text style={styles.modeText}>{MODE_LABELS[tournament.mode]}</Text>
               </View>
               <StatusChip tone={chip.tone} label={chip.label} />

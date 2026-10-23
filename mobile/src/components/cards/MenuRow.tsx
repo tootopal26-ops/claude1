@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 import { PRESS_SCALE } from '../../theme/motion';
 import { Icon, type IconName } from '../../theme/icons';
 import { makeStyles, useTheme } from '../../theme/ThemeContext';
-import { RADIUS, SIZE, SPACE, TYPE } from '../../theme/tokens';
+import { ICON_SIZE, RADIUS, SIZE, SPACE, TYPE } from '../../theme/tokens';
 import { PressableScale } from '../interaction/PressableScale';
 
 type Props = {
@@ -26,7 +26,7 @@ export function MenuRow({ icon, label, onPress, detail, tone = 'default', last }
     <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={detail ? `${label}, ${detail}` : label} scaleTo={PRESS_SCALE.card} pressedStyle={styles.pressed}>
       <View style={[styles.row, !last && styles.divider]}>
         <View style={[styles.tile, tone === 'danger' && { backgroundColor: semanticColors.dangerSoft }]}>
-          <Icon name={icon} size={18} color={tone === 'danger' ? semanticColors.danger : colors.fg2} accent={colors.brandText} />
+          <Icon name={icon} size={ICON_SIZE.row} />
         </View>
         <Text style={[styles.label, { color }]} numberOfLines={1}>
           {label}

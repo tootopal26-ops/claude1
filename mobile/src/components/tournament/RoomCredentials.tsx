@@ -23,13 +23,13 @@ type Props =
  */
 export function RoomCredentials(props: Props) {
   const styles = useStyles();
-  const { colors, semanticColors } = useTheme();
+  const { colors } = useTheme();
 
   return (
     <View style={styles.card}>
       <View style={styles.head}>
         <View style={styles.headIcon}>
-          <Icon name={props.state === 'released' ? 'unlock' : 'lock'} size={18} color={props.state === 'released' ? semanticColors.success : colors.fg2} />
+          <Icon name={props.state === 'released' ? 'unlock' : 'lock'} size={20} />
         </View>
         <Text style={styles.title} accessibilityRole="header">
           Room details
@@ -60,7 +60,7 @@ export function RoomCredentials(props: Props) {
 
 function CopyRow({ label, value }: { label: string; value: string }) {
   const styles = useStyles();
-  const { colors, semanticColors } = useTheme();
+  const { semanticColors } = useTheme();
   const [copied, setCopied] = useState(false);
   const confirm = useRef(new Animated.Value(0)).current;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -99,7 +99,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
             </Animated.View>
           ) : (
             <View style={styles.copyInner}>
-              <Icon name="copy" size={16} color={colors.fg} />
+              <Icon name="copy" size={18} />
               <Text style={styles.copyText}>Copy</Text>
             </View>
           )}

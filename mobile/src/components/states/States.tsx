@@ -44,12 +44,11 @@ type StateProps = {
 /** Nothing to show yet: what is missing and, when there is one, what to do next. */
 export function EmptyState({ icon = 'info', title, message, actionLabel, onAction, compact }: StateProps) {
   const styles = useStyles();
-  const { colors } = useTheme();
 
   return (
     <View style={[styles.box, compact && styles.compact]}>
       <View style={styles.iconWrap}>
-        <Icon name={icon} size={22} color={colors.fg3} accent={colors.brandText} />
+        <Icon name={icon} size={28} />
       </View>
       <Text style={styles.title}>{title}</Text>
       {message ? <Text style={styles.message}>{message}</Text> : null}
@@ -61,12 +60,11 @@ export function EmptyState({ icon = 'info', title, message, actionLabel, onActio
 /** A failed load: a plain message and a working Retry — never a stack trace, never a made-up value. */
 export function ErrorState({ title = "Couldn't load this", message = 'Check your connection and try again.', onRetry, compact }: { title?: string; message?: string; onRetry: () => void; compact?: boolean }) {
   const styles = useStyles();
-  const { semanticColors } = useTheme();
 
   return (
     <View style={[styles.box, compact && styles.compact]} accessibilityRole="alert">
       <View style={styles.iconWrap}>
-        <Icon name="wifi-off" size={22} color={semanticColors.danger} />
+        <Icon name="wifi-off" size={26} />
       </View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>

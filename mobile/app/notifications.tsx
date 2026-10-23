@@ -93,8 +93,8 @@ export default function NotificationsScreen() {
               layoutStyle={{ width: contentWidth }}
               style={[styles.card, !item.read && styles.unread]}
             >
-              <View style={[styles.icon, !item.read && styles.iconUnread]}>
-                <Icon name={linked ? 'tournaments' : 'notifications'} size={18} color={item.read ? colors.fg3 : colors.brandText} />
+              <View style={[styles.icon, !item.read && styles.iconUnread, item.read && styles.iconRead]}>
+                <Icon name={linked ? 'tournaments' : 'notifications'} size={20} />
               </View>
               <View style={styles.text}>
                 <View style={styles.titleRow}>
@@ -138,6 +138,7 @@ const useStyles = makeStyles(({ colors: c }) => ({
   unread: { backgroundColor: c.brandSoft, borderColor: c.borderStrong },
   icon: { width: 36, height: 36, borderRadius: RADIUS.sm, backgroundColor: c.surface2, alignItems: 'center', justifyContent: 'center' },
   iconUnread: { backgroundColor: c.surface3 },
+  iconRead: { opacity: 0.6 },
   text: { flex: 1, minWidth: 0, gap: 2 },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACE.xs },
   title: { ...TYPE.bodyStrong, color: c.fg2, flex: 1 },

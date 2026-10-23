@@ -1,5 +1,6 @@
 import { ActivityIndicator, Text, View } from 'react-native';
 
+import { withOpacity } from '../../theme/glass';
 import { PRESS_SCALE } from '../../theme/motion';
 import { makeStyles, useTheme } from '../../theme/ThemeContext';
 import { RADIUS, SIZE, SPACE, TYPE } from '../../theme/tokens';
@@ -11,10 +12,10 @@ import { PressableScale } from '../interaction/PressableScale';
 import { Skeleton } from '../states/States';
 
 /**
- * The balance in the Home header: the coin artwork and the player's total balance, read
- * from the one shared wallet (the server's figure, never a local copy). It keeps the last
- * number while refreshing, marks a figure that could not be refreshed, and always opens
- * the Wallet.
+ * The Home header's wallet tile: a compact rounded rectangle (not a capsule) with the coin
+ * artwork and the player's total balance from the one shared wallet — the server's figure,
+ * never a local copy. It sizes to the figure (which is never truncated), keeps the last
+ * number while refreshing, marks a figure that could not be refreshed, and opens the Wallet.
  */
 export function WalletPill() {
   const styles = useStyles();
@@ -22,7 +23,7 @@ export function WalletPill() {
   const { wallet, loading, refreshing, failed } = useWallet();
 
   if (loading) {
-    return <Skeleton width={96} height={SIZE.touch - 6} radius={RADIUS.pill} />;
+    return <Skeleton width={96} height={SIZE.headerControl} radius={RADIUS.md} />;
   }
 
   const total = wallet ? formatCoins(wallet.total_balance) : null;
@@ -32,7 +33,7 @@ export function WalletPill() {
 
   return (
     <PressableScale onPress={() => pushOnce('/wallet')} accessibilityRole="button" accessibilityLabel={label} scaleTo={PRESS_SCALE.button} hitSlop={4}>
-      <View style={styles.pill}>
+      <View style={styles.tile}>
         <CoinAsset size={SIZE.coinPill} />
         <Text style={styles.value}>{total ?? '—'}</Text>
         {refreshing && wallet ? <ActivityIndicator size="small" color={colors.fg3} style={styles.spinner} /> : null}
@@ -43,20 +44,19 @@ export function WalletPill() {
 }
 
 const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
-  pill: {
+  tile: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    minHeight: SIZE.touch - 6,
-    paddingLeft: SPACE.xs,
-    paddingRight: SPACE.sm,
-    borderRadius: RADIUS.pill,
-    backgroundColor: c.surface2,
+    gap: SPACE.xs,
+    height: SIZE.headerControl,
+    paddingHorizontal: SPACE.sm - 2,
+    borderRadius: RADIUS.md,
+    backgroundColor: withOpacity(c.surface2, 0.9),
     borderWidth: 1,
     borderColor: c.borderStrong,
   },
-  // Never truncated: the pill takes the room the figure needs and the greeting gives way.
-  value: { ...TYPE.bodyStrong, fontSize: 15, color: c.fg },
-  spinner: { transform: [{ scale: 0.7 }], marginLeft: -2 },
+  // Never truncated: the tile takes the room the figure needs and the greeting gives way.
+  value: { ...TYPE.bodyStrong, fontSize: 15, color: c.fg, fontVariant: ['tabular-nums'] },
+  spinner: { transform: [{ scale: 0.7 }], marginLeft: -SPACE.xxs },
   staleDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: s.warning },
 }));

@@ -1,85 +1,99 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fetchCurrentLegalDocuments } from '../src/api/legal';
-import { makeStyles, useTheme } from '../src/theme/ThemeContext';
+import { AmbientGlow } from '../src/components/AmbientGlow';
+import { SegmentedControl } from '../src/components/controls/SegmentedControl';
+import { EmptyState, ErrorState, Skeleton } from '../src/components/states/States';
+import { glassPanel } from '../src/theme/glass';
+import { makeStyles } from '../src/theme/ThemeContext';
+import { MAX_CONTENT_WIDTH, RADIUS, SPACE, TYPE } from '../src/theme/tokens';
 import type { LegalDocument } from '../src/types';
+import { formatDate } from '../src/utils/time';
 
+/**
+ * The current Terms and Conditions and Privacy Policy exactly as published by staff, at a
+ * readable width with comfortable line spacing. A failed load says so and offers a retry —
+ * it is never shown as "nothing published".
+ */
 export default function LegalScreen() {
-  const { colors } = useTheme();
   const styles = useStyles();
-  const [documents, setDocuments] = useState<LegalDocument[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const contentWidth = Math.min(width, MAX_CONTENT_WIDTH) - SPACE.md * 2;
+  const [documents, setDocuments] = useState<LegalDocument[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [active, setActive] = useState<string>('0');
 
-  useEffect(() => {
-    fetchCurrentLegalDocuments()
-      .then((response) => setDocuments(response.data))
-      .finally(() => setLoading(false));
+  const load = useCallback(async () => {
+    setFailed(false);
+    try {
+      const response = await fetchCurrentLegalDocuments();
+      setDocuments(response.data);
+    } catch {
+      setFailed(true);
+    }
   }, []);
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={colors.brandText} />
-      </View>
-    );
-  }
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const document = documents[activeIndex];
+  const document = documents?.[Number(active)] ?? null;
 
   return (
-    <View style={styles.container}>
-      {documents.length > 1 && (
-        <View style={styles.tabRow}>
-          {documents.map((doc, index) => (
-            <Pressable
-              key={doc.id}
-              onPress={() => setActiveIndex(index)}
-              style={[styles.tab, index === activeIndex && styles.tabActive]}
-              accessibilityRole="tab"
-              aria-selected={index === activeIndex}
-            >
-              <Text style={[styles.tabText, index === activeIndex && styles.tabTextActive]}>{doc.title}</Text>
-            </Pressable>
-          ))}
+    <View style={styles.screen}>
+      <AmbientGlow />
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + SPACE.xxl }]}>
+        <View style={[styles.column, { width: contentWidth }]}>
+          {failed && documents === null ? (
+            <ErrorState title="Couldn't load the terms" onRetry={() => load()} />
+          ) : documents === null ? (
+            <View style={styles.skeletons}>
+              <Skeleton height={40} radius={RADIUS.md} />
+              <Skeleton height={320} radius={RADIUS.lg} />
+            </View>
+          ) : documents.length === 0 ? (
+            <EmptyState icon="file-text" title="Nothing published yet" message="The terms appear here once Mini Max publishes them." />
+          ) : (
+            <>
+              {documents.length > 1 ? (
+                <SegmentedControl
+                  options={documents.map((doc, index) => ({ value: String(index), label: doc.type === 'privacy_policy' ? 'Privacy' : 'Terms' }))}
+                  value={active}
+                  onChange={setActive}
+                  accessibilityLabel="Legal document"
+                />
+              ) : null}
+              {document ? (
+                <View style={styles.card}>
+                  <Text style={styles.title} accessibilityRole="header">
+                    {document.title}
+                  </Text>
+                  <Text style={styles.meta}>
+                    Version {document.version} · published {formatDate(document.published_at)}
+                  </Text>
+                  <Text style={styles.body} selectable>
+                    {document.content}
+                  </Text>
+                </View>
+              ) : null}
+            </>
+          )}
         </View>
-      )}
-
-      {document ? (
-        <ScrollView style={styles.contentBox}>
-          <Text style={styles.content}>{document.content}</Text>
-        </ScrollView>
-      ) : (
-        <Text style={styles.empty}>Nothing published yet.</Text>
-      )}
+      </ScrollView>
     </View>
   );
 }
 
 const useStyles = makeStyles(({ colors: c }) => ({
-  container: { flex: 1, padding: 16 },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  tabRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  tab: {
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surface2,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  tabActive: { backgroundColor: c.brandSoft, borderColor: c.brand },
-  tabText: { color: c.fg2, fontWeight: '600' },
-  tabTextActive: { color: c.fg },
-  contentBox: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: c.border,
-    backgroundColor: c.surface,
-    borderRadius: 12,
-    padding: 16,
-  },
-  content: { color: c.fg, fontSize: 14, lineHeight: 20 },
-  empty: { color: c.fg2, textAlign: 'center', marginTop: 24 },
+  screen: { flex: 1 },
+  content: { alignItems: 'center', paddingTop: SPACE.md },
+  column: { gap: SPACE.md },
+  skeletons: { gap: SPACE.md },
+  card: { ...glassPanel(c), borderRadius: RADIUS.lg, padding: SPACE.lg, gap: SPACE.xs },
+  title: { ...TYPE.section, color: c.fg },
+  meta: { ...TYPE.meta, color: c.fg3, marginBottom: SPACE.xs },
+  body: { ...TYPE.body, fontSize: 15, lineHeight: 24, color: c.fg2 },
 }));

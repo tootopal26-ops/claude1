@@ -1,6 +1,6 @@
-import { useScrollToTop } from 'expo-router';
+import { useIsFocused, useScrollToTop } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, FlatList, RefreshControl, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, AppState, FlatList, RefreshControl, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ApiError } from '../../src/api/client';
@@ -121,6 +121,19 @@ export default function LeaderboardScreen() {
     void load(period);
   }, [user, period, locked, load, contentOpacity]);
 
+  // Provisional standings are recomputed by the server on a schedule, so re-read them once a
+  // minute while this tab is on screen and the app is in the foreground — never in the
+  // background, never for a finalized period.
+  const focused = useIsFocused();
+  const provisional = board?.status === 'provisional';
+  useEffect(() => {
+    if (!focused || locked || !provisional) return;
+    const timer = setInterval(() => {
+      if (AppState.currentState === 'active') void load(period);
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [focused, locked, provisional, period, load]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([loadBanners(), refreshSections(), locked ? Promise.resolve() : load(period)]);
@@ -187,7 +200,7 @@ export default function LeaderboardScreen() {
       ) : board ? (
         <Animated.View style={[styles.boardHead, { opacity: contentOpacity }]}>
           <View style={styles.statusRow}>
-            <StatusChip tone={board.status === 'provisional' ? 'warning' : 'success'} label={board.status === 'provisional' ? 'Live standings' : 'Final standings'} />
+            <StatusChip tone={board.status === 'provisional' ? 'warning' : 'success'} label={board.status === 'provisional' ? 'Provisional standings' : 'Final standings'} />
             <Text style={styles.period} numberOfLines={1}>
               {board.status === 'provisional' ? `Ends ${formatDateTime(board.period_end)}` : `Ended ${formatDateTime(board.period_end)}`}
             </Text>

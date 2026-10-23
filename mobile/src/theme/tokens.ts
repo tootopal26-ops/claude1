@@ -79,6 +79,31 @@ export const SEMANTIC_COLORS = {
 export type SemanticColors = typeof SEMANTIC_COLORS;
 
 /**
+ * Category colours for the filled icon set (src/theme/icons.tsx). Each family has a main
+ * fill, a deeper shade for depth and a light tint for highlights. Purple icons (home,
+ * wallet, redeem, tournaments) take the active theme's brand colours instead, so they
+ * follow the Settings theme picker.
+ */
+export const ICON_COLORS = {
+  gold: { main: '#fbbf24', deep: '#d97706', light: '#fde68a' },
+  green: { main: '#22c55e', deep: '#15803d', light: '#bbf7d0' },
+  blue: { main: '#3b82f6', deep: '#1d4ed8', light: '#dbeafe' },
+  sky: { main: '#38bdf8', deep: '#0369a1', light: '#e0f2fe' },
+  violet: { main: '#a78bfa', deep: '#6d28d9', light: '#ede9fe' },
+  slate: { main: '#94a3b8', deep: '#334155', light: '#e2e8f0' },
+  red: { main: '#f87171', deep: '#b91c1c', light: '#fee2e2' },
+  silver: { main: '#cdd3dc', deep: '#8b95a3', light: '#f1f5f9' },
+  bronze: { main: '#c98b5e', deep: '#8a5532', light: '#f3d9c4' },
+  white: '#ffffff',
+} as const;
+
+/** Icon sizes by role. */
+export const ICON_SIZE = { inline: 14, small: 16, row: 20, control: 22, tile: 24, feature: 28, nav: 30 } as const;
+
+/** Image aspect ratios used across the app. */
+export const ASPECT = { hero: 16 / 9, game: 16 / 9, tournament: 16 / 9 } as const;
+
+/**
  * Layout scale shared by every screen (dp). Page padding is `md`. Nothing on a
  * screen uses a spacing value outside this list.
  */
@@ -92,12 +117,14 @@ export const SIZE = {
   touch: 44,
   button: 48,
   buttonSm: 40,
+  /** Wallet tile and bell button in the Home header. */
+  headerControl: 42,
   navIcon: 22,
   navBar: 64,
   avatarHeader: 46,
   avatarRow: 42,
-  avatarPodium: 64,
-  avatarPodiumFirst: 80,
+  avatarPodium: 56,
+  avatarPodiumFirst: 70,
   avatarProfile: 88,
   coinPill: 20,
 } as const;

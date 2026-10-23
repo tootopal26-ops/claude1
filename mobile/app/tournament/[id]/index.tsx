@@ -142,7 +142,7 @@ export default function TournamentDetailScreen() {
             {picture && !imageFailed ? (
               <Image source={{ uri: picture }} style={styles.heroImage} resizeMode="cover" onError={() => setImageFailed(true)} accessibilityIgnoresInvertColors />
             ) : (
-              <Icon name="tournaments" size={34} color={colors.fg3} />
+              <Icon name="tournaments" size={40} />
             )}
           </View>
 
@@ -156,7 +156,7 @@ export default function TournamentDetailScreen() {
               {tournament.game ? <StatusChip tone="brand" label={tournament.game.title} /> : null}
             </View>
             <View style={styles.when}>
-              <Icon name="calendar" size={15} color={colors.fg2} />
+              <Icon name="calendar" size={16} />
               <Text style={styles.whenText}>{formatDateTime(tournament.scheduled_start_at)}</Text>
             </View>
           </View>

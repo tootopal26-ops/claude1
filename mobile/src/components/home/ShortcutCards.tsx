@@ -1,46 +1,63 @@
-import { Text, View } from 'react-native';
+import { Image, Text, View, type ImageSourcePropType } from 'react-native';
 
-import { glassPanel, withOpacity } from '../../theme/glass';
+import { glassPanel } from '../../theme/glass';
 import { PRESS_SCALE } from '../../theme/motion';
-import { Icon, type IconName } from '../../theme/icons';
-import { makeStyles, useTheme } from '../../theme/ThemeContext';
+import { makeStyles } from '../../theme/ThemeContext';
 import { RADIUS, SPACE, TYPE } from '../../theme/tokens';
 import type { TournamentTab } from '../../types';
 import { pushOnce } from '../../utils/navigation';
 import { PressableScale } from '../interaction/PressableScale';
 import { Skeleton } from '../states/States';
 
-const SHORTCUTS: { tab: TournamentTab; label: string; icon: IconName; tone: 'success' | 'info' | 'warning' }[] = [
-  { tab: 'ongoing', label: 'Ongoing', icon: 'play', tone: 'success' },
-  { tab: 'upcoming', label: 'Upcoming', icon: 'calendar', tone: 'info' },
-  { tab: 'completed', label: 'Completed', icon: 'trophy', tone: 'warning' },
+/**
+ * The supplied badge artwork (mobile/assets/badges, cut out of the user's
+ * "Ongoing Upcoming Completed Gaming Badges" sheet). Each badge carries its own label.
+ */
+const BADGES: Record<TournamentTab, ImageSourcePropType> = {
+  ongoing: require('../../../assets/badges/ongoing.png'),
+  upcoming: require('../../../assets/badges/upcoming.png'),
+  completed: require('../../../assets/badges/completed.png'),
+};
+
+const SHORTCUTS: { tab: TournamentTab; label: string }[] = [
+  { tab: 'ongoing', label: 'Ongoing' },
+  { tab: 'upcoming', label: 'Upcoming' },
+  { tab: 'completed', label: 'Completed' },
 ];
 
 type Props = {
   /** The server's tab sizes; null while loading, 'error' when they could not be loaded. */
   counts: Record<TournamentTab, number> | null | 'error';
+  /** Width of the row (the content column). */
+  width: number;
 };
 
+const GAP = SPACE.sm;
+const PAD = SPACE.xs;
+/** All three badges share one box (width : height), so the cards line up. */
+const BADGE_ASPECT = 1.08;
+
 /**
- * Three equal cards under the hero: Ongoing, Upcoming and Completed tournaments, each with
- * its own colour and the server's count. Each opens the tournament list on that tab.
+ * Three equal cards under the hero — Ongoing, Upcoming, Completed — each showing the
+ * supplied badge and the server's count for that tab. Each opens the tournament list on it.
  */
-export function ShortcutCards({ counts }: Props) {
+export function ShortcutCards({ counts, width }: Props) {
   const styles = useStyles();
+  // A require()d image keeps its intrinsic pixel size unless given both dimensions.
+  const badgeWidth = Math.floor((width - GAP * 2) / 3) - PAD * 2;
+  const badge = { width: badgeWidth, height: Math.round(badgeWidth / BADGE_ASPECT) };
 
   return (
     <View style={styles.row}>
       {SHORTCUTS.map((shortcut) => (
-        <Shortcut key={shortcut.tab} {...shortcut} count={counts === null ? null : counts === 'error' ? undefined : counts[shortcut.tab]} />
+        <Shortcut key={shortcut.tab} {...shortcut} badge={badge} count={counts === null ? null : counts === 'error' ? undefined : counts[shortcut.tab]} />
       ))}
     </View>
   );
 }
 
-function Shortcut({ tab, label, icon, tone, count }: (typeof SHORTCUTS)[number] & { count: number | null | undefined }) {
+function Shortcut({ tab, label, count, badge }: (typeof SHORTCUTS)[number] & { count: number | null | undefined; badge: { width: number; height: number } }) {
   const styles = useStyles();
-  const { semanticColors } = useTheme();
-  const color = semanticColors[tone];
   const countText = count === undefined ? '—' : count === null ? null : String(count);
 
   return (
@@ -52,31 +69,28 @@ function Shortcut({ tab, label, icon, tone, count }: (typeof SHORTCUTS)[number] 
       layoutStyle={styles.layout}
       style={styles.card}
     >
-      <View style={[styles.tile, { backgroundColor: withOpacity(color, 0.14), borderColor: withOpacity(color, 0.32) }]}>
-        <Icon name={icon} size={20} color={color} accent={color} />
-      </View>
-      {countText === null ? <Skeleton width={26} height={20} /> : <Text style={styles.count}>{countText}</Text>}
-      <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
-        {label}
-      </Text>
+      <Image source={BADGES[tab]} style={badge} resizeMode="contain" accessibilityLabel={label} />
+      {countText === null ? (
+        <Skeleton width={28} height={24} />
+      ) : (
+        <Text style={[styles.count, countText === '—' && styles.countMissing]}>{countText}</Text>
+      )}
     </PressableScale>
   );
 }
 
 const useStyles = makeStyles(({ colors: c }) => ({
-  row: { flexDirection: 'row', gap: SPACE.sm },
+  row: { flexDirection: 'row', gap: GAP },
   layout: { flex: 1 },
   card: {
     ...glassPanel(c),
     borderRadius: RADIUS.lg,
-    paddingVertical: SPACE.sm,
-    paddingHorizontal: SPACE.xs,
+    paddingTop: SPACE.sm,
+    paddingBottom: SPACE.xs,
+    paddingHorizontal: PAD,
     alignItems: 'center',
-    gap: SPACE.xxs + 2,
-    minHeight: 112,
-    justifyContent: 'center',
+    gap: SPACE.xxs,
   },
-  tile: { width: 40, height: 40, borderRadius: RADIUS.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  count: { ...TYPE.section, fontSize: 18, color: c.fg },
-  label: { ...TYPE.label, fontSize: 12, color: c.fg2 },
+  count: { ...TYPE.section, fontSize: 20, lineHeight: 26, color: c.fg, fontVariant: ['tabular-nums'] },
+  countMissing: { color: c.fg3 },
 }));

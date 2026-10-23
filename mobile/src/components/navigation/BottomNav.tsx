@@ -1,20 +1,22 @@
 import type { BottomTabBarProps } from 'expo-router/tabs';
 import { useEffect, useRef } from 'react';
-import { Animated, Text, View } from 'react-native';
+import { Animated, Text, View, type ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { withOpacity } from '../../theme/glass';
 import { DURATION, EASE, PRESS_SCALE, useReducedMotion } from '../../theme/motion';
-import { Icon, type IconName } from '../../theme/icons';
-import { makeStyles, useTheme } from '../../theme/ThemeContext';
-import { MAX_CONTENT_WIDTH, RADIUS, SIZE, SPACE } from '../../theme/tokens';
+import { makeStyles } from '../../theme/ThemeContext';
+import { ICON_SIZE, MAX_CONTENT_WIDTH, RADIUS, SIZE, SPACE } from '../../theme/tokens';
 import { PressableScale } from '../interaction/PressableScale';
 
-/** The three primary destinations, in order. Nothing else is a primary tab. */
-const ITEMS: Record<string, { label: string; icon: IconName }> = {
-  leaderboard: { label: 'Leaderboard', icon: 'trophy' },
-  index: { label: 'Home', icon: 'home' },
-  profile: { label: 'Profile', icon: 'user' },
+/**
+ * The three primary destinations, in order. Nothing else is a primary tab. The artwork is
+ * the user-supplied "Glossy Neon Navigation Icon Set" (mobile/assets/nav).
+ */
+const ITEMS: Record<string, { label: string; icon: ImageSourcePropType }> = {
+  leaderboard: { label: 'Leaderboard', icon: require('../../../assets/nav/leaderboard.png') },
+  index: { label: 'Home', icon: require('../../../assets/nav/home.png') },
+  profile: { label: 'Profile', icon: require('../../../assets/nav/profile.png') },
 };
 
 /** Space a scrolling screen must leave at its bottom so nothing hides behind the bar. */
@@ -77,9 +79,8 @@ export function BottomNav({ state, descriptors, emitter, navigateToTab }: Bottom
   );
 }
 
-function NavItem({ label, icon, focused, onPress, onLongPress, accessibilityLabel }: { label: string; icon: IconName; focused: boolean; onPress: () => void; onLongPress: () => void; accessibilityLabel: string }) {
+function NavItem({ label, icon, focused, onPress, onLongPress, accessibilityLabel }: { label: string; icon: ImageSourcePropType; focused: boolean; onPress: () => void; onLongPress: () => void; accessibilityLabel: string }) {
   const styles = useStyles();
-  const { colors } = useTheme();
   const active = useRef(new Animated.Value(focused ? 1 : 0)).current;
 
   useEffect(() => {
@@ -98,7 +99,18 @@ function NavItem({ label, icon, focused, onPress, onLongPress, accessibilityLabe
       style={styles.item}
     >
       <Animated.View style={[styles.indicator, { opacity: active, transform: [{ scaleX: active.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) }] }]} />
-      <Icon name={icon} size={SIZE.navIcon} color={focused ? colors.brandText : colors.fg3} accent={focused ? colors.brandText : colors.fg3} />
+      {/* Selected: full colour at full size. Others: quieter (dimmed, a little smaller) but readable. */}
+      <Animated.Image
+        source={icon}
+        resizeMode="contain"
+        style={[
+          styles.icon,
+          {
+            opacity: active.interpolate({ inputRange: [0, 1], outputRange: [0.72, 1] }),
+            transform: [{ scale: active.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }) }],
+          },
+        ]}
+      />
       <Text style={[styles.label, focused && styles.labelActive]} numberOfLines={1}>
         {label}
       </Text>
@@ -121,7 +133,8 @@ const useStyles = makeStyles(({ colors: c }) => ({
     paddingHorizontal: SPACE.xs,
   },
   itemLayout: { flex: 1 },
-  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: SPACE.xxs, minHeight: SIZE.touch },
+  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, minHeight: SIZE.touch },
+  icon: { width: ICON_SIZE.nav, height: ICON_SIZE.nav },
   indicator: { position: 'absolute', top: 0, width: 20, height: 3, borderBottomLeftRadius: 2, borderBottomRightRadius: 2, backgroundColor: c.brand },
   label: { fontSize: 11, lineHeight: 14, fontWeight: '600', color: c.fg3 },
   labelActive: { color: c.fg },

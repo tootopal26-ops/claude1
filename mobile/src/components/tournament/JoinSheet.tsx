@@ -141,7 +141,7 @@ export function JoinSheet({ tournament: requested, onClose, onJoined, onDetailsS
             <View key={index} style={styles.player}>
               <Text style={styles.playerLabel}>{index === 0 ? 'Player 1 (you)' : `Player ${index + 1}`}</Text>
               <TextField
-                label="In-game name"
+                label="In-game name (required)"
                 placeholder="Name in the game"
                 maxLength={20}
                 autoCapitalize="none"
@@ -222,9 +222,7 @@ export function JoinSheet({ tournament: requested, onClose, onJoined, onDetailsS
       {step.name === 'done' && (
         <>
           <View style={styles.success} accessibilityLiveRegion="polite">
-            <View style={[styles.successIcon, { borderColor: semanticColors.success }]}>
-              <Icon name="check" size={26} color={semanticColors.success} />
-            </View>
+            <Icon name="check-circle" size={52} />
             <Text style={styles.successText}>Your entry is confirmed.</Text>
             {Number(step.entry.entry_fee_paid) > 0 ? (
               <View style={styles.charged}>
@@ -276,7 +274,6 @@ const useStyles = makeStyles(({ colors: c }) => ({
   rowLabel: { ...TYPE.body, color: c.fg3 },
   rowValue: { ...TYPE.bodyStrong, color: c.fg, flexShrink: 1, textAlign: 'right' },
   success: { alignItems: 'center', gap: SPACE.xs, paddingVertical: SPACE.xs },
-  successIcon: { width: 56, height: 56, borderRadius: 28, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   successText: { ...TYPE.cardTitle, color: c.fg },
   charged: { flexDirection: 'row', alignItems: 'center', gap: SPACE.xs },
 }));

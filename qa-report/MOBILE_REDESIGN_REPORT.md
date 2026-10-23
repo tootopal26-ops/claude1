@@ -2,6 +2,7 @@
 
 Companion to [`MOBILE_REDESIGN_AUDIT.md`](MOBILE_REDESIGN_AUDIT.md) (the audit and plan written first).
 Screenshots and the per-run check results are in [`app-web-render/`](app-web-render/README.md).
+The captures there were refreshed by the later UI repair pass; see [`MOBILE_UI_REPAIR_REPORT.md`](MOBILE_UI_REPAIR_REPORT.md). The run figures below (66 captures, 46 checks) are from the redesign run.
 
 > **Platform honesty.** Everything below was verified on the real app code rendered by
 > react-native-web in headless Chromium against the real local backend — **not** on an Android

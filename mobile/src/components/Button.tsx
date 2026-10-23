@@ -49,7 +49,8 @@ export function Button({ label, variant = 'primary', size = 'md', icon, loading 
         <ActivityIndicator color={foreground} />
       ) : (
         <View style={styles.content}>
-          {icon ? <Icon name={icon} size={size === 'sm' ? 16 : 18} color={foreground} accent={foreground} /> : null}
+          {/* White glyphs on purple / red; the filled, coloured icon on dark buttons. */}
+          {icon ? <Icon name={icon} size={size === 'sm' ? 16 : 18} color={variant === 'primary' || variant === 'danger' ? foreground : undefined} accent={foreground} /> : null}
           <Text style={[styles.label, size === 'sm' && styles.labelSmall, { color: foreground }]} numberOfLines={1}>
             {label}
           </Text>

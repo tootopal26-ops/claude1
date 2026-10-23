@@ -117,7 +117,7 @@ export default function HomeScreen() {
             onOpenLink={(banner) => openAppLink(banner.link_url)}
           />
 
-          <ShortcutCards counts={counts} />
+          <ShortcutCards counts={counts} width={contentWidth} />
 
           <View style={styles.sectionHead}>
             <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -156,5 +156,5 @@ const useStyles = makeStyles(({ colors: c }) => ({
   sectionHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: -SPACE.xs },
   sectionTitle: { ...TYPE.section, color: c.fg },
   sectionMeta: { ...TYPE.meta, color: c.fg3 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: SPACE.sm, rowGap: SPACE.md },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: SPACE.sm, rowGap: SPACE.sm },
 }));

@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { iconForSection, routeForSection } from '../sections/registry';
 import { glassPanel, withOpacity } from '../theme/glass';
 import { Icon } from '../theme/icons';
-import { makeStyles, useTheme } from '../theme/ThemeContext';
+import { makeStyles } from '../theme/ThemeContext';
 import type { SectionStatus } from '../types';
 import { formatCoins } from '../utils/coins';
 import { openAppLink } from '../utils/links';
@@ -22,7 +22,6 @@ type Props = {
  */
 export function SectionCard({ section, onUnlock }: Props) {
   const styles = useStyles();
-  const { colors } = useTheme();
   const route = routeForSection(section.key);
   const icon = iconForSection(section);
   const price = section.price;
@@ -30,7 +29,7 @@ export function SectionCard({ section, onUnlock }: Props) {
   const body = (
     <>
       <View style={styles.tile}>
-        <Icon name={icon} size={22} color={colors.brandText} accent={colors.brandText} />
+        <Icon name={icon} size={24} />
       </View>
       <View style={styles.body}>
         <Text style={styles.title} numberOfLines={2}>
@@ -57,7 +56,7 @@ export function SectionCard({ section, onUnlock }: Props) {
           hitSlop={4}
           style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
         >
-          <Icon name="lock" size={16} color={colors.fg} accent={colors.brandText} />
+          <Icon name="lock" size={16} />
           <Text style={styles.actionText}>{label}</Text>
         </Pressable>
       </View>
@@ -74,7 +73,7 @@ export function SectionCard({ section, onUnlock }: Props) {
     >
       {body}
       <View style={styles.unlocked}>
-        <Icon name="unlock" size={16} color={colors.fg2} accent={colors.brandText} />
+        <Icon name="unlock" size={16} />
         <Text style={styles.unlockedText}>Unlocked</Text>
       </View>
     </Pressable>

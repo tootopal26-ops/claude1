@@ -13,7 +13,7 @@ import { StatCard } from '../../src/components/cards/StatCard';
 import { useBottomNavSpace } from '../../src/components/navigation/BottomNav';
 import { RedeemCodeDialog } from '../../src/components/RedeemCodeDialog';
 import { Sheet } from '../../src/components/sheet/Sheet';
-import { glassPanel } from '../../src/theme/glass';
+import { glassPanel, withOpacity } from '../../src/theme/glass';
 import { makeStyles } from '../../src/theme/ThemeContext';
 import { MAX_CONTENT_WIDTH, RADIUS, SIZE, SPACE, TYPE } from '../../src/theme/tokens';
 import type { ProfileStats } from '../../src/types';
@@ -67,11 +67,15 @@ export default function ProfileScreen() {
   return (
     <View style={styles.screen}>
       <AmbientGlow />
-      <ScrollView ref={scrollRef} contentContainerStyle={[styles.content, { paddingTop: insets.top + SPACE.lg, paddingBottom: bottomSpace }]} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} contentContainerStyle={[styles.content, { paddingTop: insets.top + SPACE.xs, paddingBottom: bottomSpace }]} showsVerticalScrollIndicator={false}>
         <View style={[styles.column, { width: contentWidth }]}>
+          <Text style={styles.screenTitle} accessibilityRole="header">
+            Profile
+          </Text>
+
           <View style={styles.identity}>
             <Avatar username={user.username} size={SIZE.avatarProfile} ring="home" pulse />
-            <Text style={styles.username} numberOfLines={1} accessibilityRole="header">
+            <Text style={styles.username} numberOfLines={1}>
               {user.username}
             </Text>
             <Text style={styles.meta}>{memberSince ? `Member since ${memberSince}` : `Mobile ending ${user.mobile.slice(-4)}`}</Text>
@@ -83,6 +87,9 @@ export default function ProfileScreen() {
             <StatCard label="Deposits" value={stats ? { coins: stats.deposits_total } : null} failed={statsFailed && !stats} />
           </View>
 
+          <Text style={styles.sectionLabel} accessibilityRole="header">
+            Account
+          </Text>
           <View style={styles.menu}>
             <MenuRow icon="user" label="My Profile" onPress={() => pushOnce('/account')} />
             <MenuRow icon="wallet" label="Wallet" onPress={() => pushOnce('/wallet')} />
@@ -92,7 +99,10 @@ export default function ProfileScreen() {
             <MenuRow icon="file-text" label="Terms and privacy" onPress={() => pushOnce('/legal')} last />
           </View>
 
-          <View style={styles.menu}>
+          {/* Logout stays last: it sits at the bottom of the screen when there is room, and at the
+              end of the scroll on small phones — never between the account rows. */}
+          <View style={styles.spacer} />
+          <View style={[styles.menu, styles.logout]}>
             <MenuRow icon="logout" label="Log out" tone="danger" onPress={() => setConfirmLogout(true)} last />
           </View>
         </View>
@@ -117,13 +127,17 @@ export default function ProfileScreen() {
   );
 }
 
-const useStyles = makeStyles(({ colors: c }) => ({
+const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
   screen: { flex: 1 },
-  content: { alignItems: 'center' },
-  column: { gap: SPACE.lg },
-  identity: { alignItems: 'center', gap: SPACE.xxs },
+  content: { alignItems: 'center', flexGrow: 1 },
+  column: { gap: SPACE.lg, flexGrow: 1 },
+  screenTitle: { ...TYPE.screenTitle, color: c.fg, minHeight: 44, paddingTop: SPACE.xs },
+  identity: { alignItems: 'center', gap: SPACE.xxs, marginTop: -SPACE.xs },
   username: { ...TYPE.screenTitle, color: c.fg, marginTop: SPACE.xs, maxWidth: '100%' },
   meta: { ...TYPE.meta, color: c.fg3 },
   stats: { flexDirection: 'row', gap: SPACE.xs },
+  sectionLabel: { ...TYPE.label, color: c.fg3, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: -SPACE.sm, marginLeft: SPACE.xxs },
   menu: { ...glassPanel(c), borderRadius: RADIUS.lg, overflow: 'hidden' },
+  spacer: { flexGrow: 1, minHeight: 0 },
+  logout: { borderColor: withOpacity(s.danger, 0.35) },
 }));

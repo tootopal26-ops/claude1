@@ -6,7 +6,7 @@ import { fetchNotifications } from '../../api/notifications';
 import { PRESS_SCALE } from '../../theme/motion';
 import { Icon } from '../../theme/icons';
 import { makeStyles, useTheme } from '../../theme/ThemeContext';
-import { RADIUS, SIZE, SPACE, TYPE } from '../../theme/tokens';
+import { ICON_SIZE, RADIUS, SIZE, SPACE, TYPE } from '../../theme/tokens';
 import { pushOnce } from '../../utils/navigation';
 import { Avatar } from '../avatar/Avatar';
 import { PressableScale } from '../interaction/PressableScale';
@@ -58,8 +58,8 @@ export function HomeHeader({ username }: { username: string }) {
         hitSlop={4}
       >
         <View style={styles.bell}>
-          <Icon name="notifications" size={20} color={colors.fg} />
-          {unread > 0 ? <View style={[styles.dot, { backgroundColor: semanticColors.danger, borderColor: colors.surface2 }]} /> : null}
+          <Icon name="notifications" size={ICON_SIZE.control} />
+          {unread > 0 ? <View style={[styles.dot, { backgroundColor: semanticColors.dangerSolid, borderColor: colors.surface2 }]} /> : null}
         </View>
       </PressableScale>
     </View>
@@ -72,15 +72,16 @@ const useStyles = makeStyles(({ colors: c }) => ({
   text: { flex: 1, minWidth: 0, marginLeft: SPACE.xxs },
   welcome: { ...TYPE.meta, color: c.fg3 },
   username: { ...TYPE.section, color: c.fg },
+  // A rounded square, the same height as the wallet tile.
   bell: {
-    width: SIZE.touch,
-    height: SIZE.touch,
-    borderRadius: RADIUS.pill,
+    width: SIZE.headerControl,
+    height: SIZE.headerControl,
+    borderRadius: RADIUS.md,
     backgroundColor: c.surface2,
     borderWidth: 1,
     borderColor: c.borderStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dot: { position: 'absolute', top: 9, right: 10, width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
+  dot: { position: 'absolute', top: 7, right: 7, width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
 }));
