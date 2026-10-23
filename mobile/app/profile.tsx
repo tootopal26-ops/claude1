@@ -7,11 +7,13 @@ import { Button } from '../src/components/Button';
 import { RedeemCodeDialog } from '../src/components/RedeemCodeDialog';
 import { Icon, type IconName } from '../src/theme/icons';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
+import { useWallet } from '../src/wallet/WalletContext';
 
 export default function ProfileScreen() {
   const { user, isLoading, logout } = useAuth();
   const { colors } = useTheme();
   const styles = useStyles();
+  const { refresh: refreshWallet } = useWallet();
   const [redeemOpen, setRedeemOpen] = useState(false);
 
   if (isLoading) {
@@ -65,7 +67,7 @@ export default function ProfileScreen() {
 
       <Button label="Log out" variant="secondary" onPress={() => logout()} style={styles.logout} />
 
-      <RedeemCodeDialog visible={redeemOpen} onClose={() => setRedeemOpen(false)} />
+      <RedeemCodeDialog visible={redeemOpen} onClose={() => setRedeemOpen(false)} onRedeemed={() => refreshWallet({ force: true })} />
     </ScrollView>
   );
 }

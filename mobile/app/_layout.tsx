@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '../src/auth/AuthContext';
 import { LegalAcceptanceGate } from '../src/components/LegalAcceptanceGate';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
+import { WalletProvider } from '../src/wallet/WalletContext';
 
 function useNotificationTapNavigation() {
   useEffect(() => {
@@ -94,9 +95,11 @@ export default function RootLayout() {
       <ThemeProvider>
         <ThemedRoot>
           <AuthProvider>
-            <LegalGate>
-              <ThemedStack />
-            </LegalGate>
+            <WalletProvider>
+              <LegalGate>
+                <ThemedStack />
+              </LegalGate>
+            </WalletProvider>
           </AuthProvider>
         </ThemedRoot>
       </ThemeProvider>

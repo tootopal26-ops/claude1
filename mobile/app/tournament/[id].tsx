@@ -10,6 +10,7 @@ import { Notice } from '../../src/components/Notice';
 import { StatusChip } from '../../src/components/StatusChip';
 import { TextField } from '../../src/components/TextField';
 import { makeStyles, useTheme } from '../../src/theme/ThemeContext';
+import { useWallet } from '../../src/wallet/WalletContext';
 import type { Tournament, TournamentCredentials, TournamentEntry } from '../../src/types';
 
 const PLAYER_LABELS = ['Player 1 (you)', 'Player 2', 'Player 3', 'Player 4'];
@@ -21,6 +22,7 @@ export default function TournamentDetailScreen() {
   const { user, isLoading: authLoading } = useAuth();
   const { colors } = useTheme();
   const styles = useStyles();
+  const { refresh: refreshWallet } = useWallet();
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,6 +113,7 @@ export default function TournamentDetailScreen() {
         },
       });
       setJoinedEntry(response.data);
+      refreshWallet({ force: true }); // the entry fee was just charged
       await loadTournament();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not join this tournament.');

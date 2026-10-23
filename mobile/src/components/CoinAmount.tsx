@@ -1,6 +1,7 @@
 import { Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
 import { makeStyles } from '../theme/ThemeContext';
+import { formatCoins } from '../utils/coins';
 import { CoinAsset } from './CoinAsset';
 
 type CoinAmountProps = {
@@ -22,7 +23,7 @@ export function CoinAmount({ value, size = 16, suffix, textStyle, style }: CoinA
   return (
     <View style={[styles.row, style]}>
       <CoinAsset size={size} />
-      <Text style={[styles.value, textStyle]}>{value ?? '—'}</Text>
+      <Text style={[styles.value, textStyle]}>{formatCoins(value)}</Text>
       {suffix ? <Text style={styles.suffix}>{suffix}</Text> : null}
     </View>
   );

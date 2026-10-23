@@ -90,9 +90,12 @@ export function BannerCarousel({ refreshKey = 0 }: Props) {
     return () => clearInterval(timer);
   }, [autoSlideAllowed, count, index]);
 
-  const onMomentumEnd = useCallback(
+  // Follow the scroll position itself (not only the end of a fling), so the indicator is right
+  // however the gesture ends: a slow drag released between snaps, a fling, or a programmatic scroll.
+  const onScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      setIndex(Math.round(event.nativeEvent.contentOffset.x / width));
+      const next = Math.round(event.nativeEvent.contentOffset.x / width);
+      setIndex((current) => (next === current ? current : next));
     },
     [width],
   );
@@ -131,7 +134,8 @@ export function BannerCarousel({ refreshKey = 0 }: Props) {
         showsHorizontalScrollIndicator={false}
         getItemLayout={(_, itemIndex) => ({ length: width, offset: width * itemIndex, index: itemIndex })}
         onScrollBeginDrag={pause}
-        onMomentumScrollEnd={onMomentumEnd}
+        onScroll={onScroll}
+        scrollEventThrottle={32}
         renderItem={({ item }) => <BannerSlide banner={item} width={width} />}
       />
       {count > 1 && (

@@ -4,25 +4,26 @@ import { Link, Redirect, router } from 'expo-router';
 
 import { fetchGames, fetchTournaments } from '../src/api/games';
 import { fetchNotifications } from '../src/api/notifications';
-import { fetchWallet } from '../src/api/wallet';
 import { useAuth } from '../src/auth/AuthContext';
-import { CoinAmount } from '../src/components/CoinAmount';
 import { GameCard, GameCardSkeleton } from '../src/components/GameCard';
 import { TournamentCard } from '../src/components/TournamentCard';
+import { WalletCard } from '../src/components/WalletCard';
 import { Icon } from '../src/theme/icons';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
+import { useRefreshWalletOnFocus, useWallet } from '../src/wallet/WalletContext';
 import type { Game, Tournament } from '../src/types';
 
 export default function TournamentListScreen() {
   const { user, isLoading: authLoading } = useAuth();
   const { colors } = useTheme();
   const styles = useStyles();
+  const { refresh: refreshWallet } = useWallet();
+  useRefreshWalletOnFocus();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [totalBalance, setTotalBalance] = useState<string | null>(null);
   const [games, setGames] = useState<Game[]>([]);
   const [gamesState, setGamesState] = useState<'loading' | 'ready' | 'error'>('loading');
 
@@ -59,11 +60,6 @@ export default function TournamentListScreen() {
       .catch(() => {
         // Non-fatal: the badge just stays at its last known value.
       });
-    fetchWallet()
-      .then((response) => setTotalBalance(response.data.total_balance))
-      .catch(() => {
-        // Non-fatal: the header just omits the balance until the next load.
-      });
   }, [user, loadTournaments, loadGames]);
 
   if (authLoading) {
@@ -83,11 +79,6 @@ export default function TournamentListScreen() {
       <View style={styles.header}>
         <Text style={styles.welcome}>Welcome, {user.username}</Text>
         <View style={styles.headerActions}>
-          <Link href="/wallet" asChild>
-            <Pressable style={styles.balanceChip} accessibilityRole="button" accessibilityLabel="Open wallet">
-              <CoinAmount value={totalBalance} size={14} textStyle={styles.balanceText} />
-            </Pressable>
-          </Link>
           <Link href="/leaderboard" asChild>
             <Pressable style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Leaderboard">
               <Icon name="leaderboard" size={20} color={colors.fg2} />
@@ -130,13 +121,14 @@ export default function TournamentListScreen() {
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true);
-                await Promise.all([loadTournaments(), loadGames()]);
+                await Promise.all([loadTournaments(), loadGames(), refreshWallet({ force: true })]);
                 setRefreshing(false);
               }}
             />
           }
           ListHeaderComponent={
             <View>
+              <WalletCard />
               <GamesSection games={games} state={gamesState} onRetry={loadGames} />
               <Text style={styles.sectionTitle} accessibilityRole="header">
                 Tournaments
@@ -216,15 +208,6 @@ const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
   },
   welcome: { color: c.fg, fontSize: 16, fontWeight: '600', flexShrink: 1, marginRight: 8 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  balanceChip: {
-    backgroundColor: c.brandSoft,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: c.borderStrong,
-  },
-  balanceText: { fontSize: 13 },
   iconButton: { position: 'relative', width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   badge: {
     position: 'absolute',
