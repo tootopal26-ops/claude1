@@ -55,6 +55,14 @@ class AppServiceProvider extends ServiceProvider
             );
         });
 
+        // Redeeming is a reward-granting, guessable-input endpoint: a few tries a minute per
+        // player (and per IP, so one device can't fan out across accounts). A separate
+        // counter in RedeemController closes the door after repeated wrong codes.
+        RateLimiter::for('redeem', fn (Request $request) => [
+            Limit::perMinute(12)->by('redeem-user:'.($request->user()?->id ?? $request->ip())),
+            Limit::perMinute(40)->by('redeem-ip:'.$request->ip()),
+        ]);
+
         // Livewire updates are separate requests from the page load. Re-apply
         // the portal boundary and the security-version check to them, so a page
         // left open can't be driven across the boundary, or keep acting after

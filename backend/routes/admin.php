@@ -20,6 +20,8 @@ use App\Livewire\Admin\PaymentSettings;
 use App\Livewire\Admin\PlatformSettingsEditor;
 use App\Livewire\Admin\PresetForm;
 use App\Livewire\Admin\PresetList;
+use App\Livewire\Admin\RedeemCodes;
+use App\Livewire\Admin\RedeemHistory;
 use App\Livewire\Admin\RiskAlertList;
 use App\Livewire\Admin\StaffForm;
 use App\Livewire\Admin\StaffList;
@@ -184,6 +186,14 @@ foreach ($portals as $portal => $config) {
             Route::get('/deposits', DepositList::class)
                 ->name('deposits.index')
                 ->middleware('permission:payments.view');
+
+            Route::get('/redeem-codes', RedeemCodes::class)
+                ->name('redeem-codes.index')
+                ->middleware('permission:redeem_codes.manage');
+
+            Route::get('/redeem-codes/history', RedeemHistory::class)
+                ->name('redeem-codes.history')
+                ->middleware('permission:redeem_codes.manage');
 
             Route::get('/payment-settings', PaymentSettings::class)
                 ->name('payment-settings')

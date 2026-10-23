@@ -228,6 +228,10 @@ class Icon extends Component
             ['circle', ['cx' => 9, 'cy' => 10, 'r' => 1.5]],
             ['path', ['d' => 'M21 16l-5-5L7 20']],
         ],
+        'copy' => [
+            ['rect', ['x' => 9, 'y' => 9, 'width' => 11, 'height' => 11, 'rx' => 2]],
+            ['path', ['d' => 'M5 15V6a2 2 0 0 1 2-2h9']],
+        ],
         'ticket' => [
             ['path', ['d' => 'M3 8a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2a2 2 0 0 0 0 4v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a2 2 0 0 0 0-4V8Z']],
             ['path', ['d' => 'M9 9.5v5']],

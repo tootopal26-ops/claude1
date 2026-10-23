@@ -7,11 +7,14 @@ const API_BASE_URL =
 export class ApiError extends Error {
   status: number;
   errors?: Record<string, string[]>;
+  /** The API's machine-readable error slug (for example "expired"), when it sends one. */
+  code?: string;
 
-  constructor(message: string, status: number, errors?: Record<string, string[]>) {
+  constructor(message: string, status: number, errors?: Record<string, string[]>, code?: string) {
     super(message);
     this.status = status;
     this.errors = errors;
+    this.code = code;
   }
 }
 
@@ -49,7 +52,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     throw new ApiError(
       payload?.message ?? `Request failed with status ${response.status}`,
       response.status,
-      payload?.errors
+      payload?.errors,
+      typeof payload?.error === 'string' ? payload.error : undefined
     );
   }
 

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\GameController;
 use App\Http\Controllers\Api\V1\LeaderboardController;
 use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\RedeemController;
 use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\Api\V1\TournamentController;
 use App\Http\Controllers\Api\V1\WalletController;
@@ -47,6 +48,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/wallet', [WalletController::class, 'show']);
         Route::get('/wallet/ledger', [WalletController::class, 'ledger']);
+
+        Route::post('/redeem', [RedeemController::class, 'store'])->middleware('throttle:redeem');
 
         Route::get('/withdrawals', [WithdrawalController::class, 'index']);
         Route::post('/withdrawals', [WithdrawalController::class, 'store']);

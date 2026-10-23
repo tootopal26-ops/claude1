@@ -131,3 +131,8 @@ export type LeaderboardBanner = {
   thumbnail_url: string | null;
   display_order: number;
 };
+
+export type RedeemResult = {
+  message: string;
+  data: { coins: number; balance: Wallet };
+};

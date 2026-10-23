@@ -75,6 +75,7 @@ function ThemedStack() {
       <Stack.Screen name="game/[id]" options={{ title: 'Game' }} />
       <Stack.Screen name="tournament/[id]" options={{ title: 'Tournament' }} />
       <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+      <Stack.Screen name="profile" options={{ title: 'Profile' }} />
       <Stack.Screen name="wallet" options={{ title: 'Wallet' }} />
       <Stack.Screen name="deposit" options={{ title: 'Deposit' }} />
       <Stack.Screen name="withdraw" options={{ title: 'Withdraw' }} />

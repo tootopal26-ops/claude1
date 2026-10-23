@@ -14,7 +14,7 @@ import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import type { Game, Tournament } from '../src/types';
 
 export default function TournamentListScreen() {
-  const { user, isLoading: authLoading, logout } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { colors } = useTheme();
   const styles = useStyles();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -107,14 +107,11 @@ export default function TournamentListScreen() {
               )}
             </Pressable>
           </Link>
-          <Link href="/settings" asChild>
-            <Pressable style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Settings">
-              <Icon name="presets" size={20} color={colors.fg2} />
+          <Link href="/profile" asChild>
+            <Pressable style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Profile">
+              <Icon name="user" size={20} color={colors.fg2} />
             </Pressable>
           </Link>
-          <Pressable onPress={() => logout()} accessibilityRole="button" hitSlop={8}>
-            <Text style={styles.logout}>Log out</Text>
-          </Pressable>
         </View>
       </View>
 
@@ -242,7 +239,6 @@ const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
     paddingHorizontal: 3,
   },
   badgeText: { color: c.onBrand, fontSize: 9, fontWeight: '700' },
-  logout: { color: s.danger, fontWeight: '600', paddingLeft: 4 },
   listContent: { padding: 16, gap: 12 },
   empty: { color: c.fg2, textAlign: 'center', marginTop: 32 },
   gamesSection: { marginBottom: 20 },

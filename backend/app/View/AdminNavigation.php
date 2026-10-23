@@ -43,6 +43,7 @@ class AdminNavigation
                 'items' => [
                     ['label' => 'Players', 'route' => 'admin.users.index', 'icon' => 'users', 'permission' => 'users.view', 'active' => ['admin.users.*'], 'description' => 'Look up players, wallets and account status.'],
                     ['label' => 'Deposits', 'route' => 'admin.deposits.index', 'icon' => 'deposit', 'permission' => 'payments.view', 'active' => ['admin.deposits.*'], 'description' => 'Review incoming payment orders.'],
+                    ['label' => 'Redeem Codes', 'route' => 'admin.redeem-codes.index', 'icon' => 'ticket', 'permission' => 'redeem_codes.manage', 'active' => ['admin.redeem-codes.*'], 'description' => 'Reward codes players can redeem for coins.'],
                     ['label' => 'Withdrawals', 'route' => 'admin.withdrawals.index', 'icon' => 'withdrawal', 'permission' => 'withdrawals.manage', 'active' => ['admin.withdrawals.*'], 'description' => 'Approve, process and settle payout requests.'],
                     ['label' => 'Leaderboard Management', 'route' => 'admin.leaderboards.index', 'icon' => 'leaderboard', 'permission' => 'leaderboards.manage', 'active' => ['admin.leaderboards.*'], 'description' => 'Rankings, prize rules, payout settlement and banners.'],
                     ['label' => 'Payment Settings', 'route' => 'admin.payment-settings', 'icon' => 'wallet', 'permission' => 'payments.manage', 'active' => ['admin.payment-settings'], 'description' => 'Payment gateway configuration.'],

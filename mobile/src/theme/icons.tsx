@@ -33,7 +33,8 @@ export type IconName =
   | 'download'
   | 'home'
   | 'image'
-  | 'alert';
+  | 'alert'
+  | 'redeem';
 
 type IconProps = {
   name: IconName;
@@ -45,20 +46,27 @@ type IconProps = {
    * when the icon sits on a different surface.
    */
   color?: string;
+  /** Second tone for icons that have one (the reward star on `redeem`). Defaults to the brand color. */
+  accent?: string;
 };
 
-export function Icon({ name, size = 24, color }: IconProps) {
+/**
+ * Icons are decorative: they sit beside a text label (or inside a control that
+ * already has an accessibility label), so they are hidden from screen readers
+ * rather than announced as unnamed images.
+ */
+export function Icon({ name, size = 24, color, accent }: IconProps) {
   const { colors } = useTheme();
   const common = { fill: 'none', stroke: color ?? colors.fg, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      {renderIcon(name, common)}
+    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      {renderIcon(name, common, accent ?? colors.brand)}
     </Svg>
   );
 }
 
-function renderIcon(name: IconName, common: Record<string, unknown>) {
+function renderIcon(name: IconName, common: Record<string, unknown>, accent: string) {
   switch (name) {
     case 'tournaments':
       return (
@@ -206,6 +214,20 @@ function renderIcon(name: IconName, common: Record<string, unknown>) {
           <Rect x={3} y={4} width={18} height={16} rx={2} {...common} />
           <Circle cx={9} cy={10} r={1.5} {...common} />
           <Path d="M21 16l-5-5L7 20" {...common} />
+        </>
+      );
+    case 'redeem':
+      // A voucher with side notches, a code window holding five code marks, a
+      // perforation, and a small reward star in the accent tone.
+      return (
+        <>
+          <Path d="M3 8a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2.3a1.7 1.7 0 0 0 0 3.4V16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2.3a1.7 1.7 0 0 0 0-3.4V8Z" {...common} />
+          <Rect x={5.5} y={10} width={8} height={4} rx={1.2} {...common} strokeWidth={1.5} />
+          {[7.1, 8.5, 9.9, 11.3, 12.7].map((cx) => (
+            <Circle key={cx} cx={cx} cy={12} r={0.55} fill={String(common.stroke)} stroke="none" />
+          ))}
+          <Line x1={15.6} y1={8.8} x2={15.6} y2={15.2} {...common} strokeWidth={1.4} strokeDasharray="1 2" />
+          <Path d="M18.4 9.9l.65 1.5 1.5.65-1.5.65-.65 1.5-.65-1.5-1.5-.65 1.5-.65.65-1.5Z" fill={accent} stroke={accent} strokeWidth={0.6} strokeLinejoin="round" />
         </>
       );
     case 'alert':

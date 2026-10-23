@@ -109,6 +109,32 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    // "Copy" button for short strings such as a redeem code. Uses the async
+    // clipboard where the browser allows it and a selection fallback elsewhere
+    // (for example a plain-HTTP admin URL); flips to "Copied" for two seconds.
+    Alpine.data('copyText', (text) => ({
+        copied: false,
+
+        async copy() {
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch (e) {
+                const field = document.createElement('textarea');
+                field.value = text;
+                field.setAttribute('readonly', '');
+                field.style.position = 'fixed';
+                field.style.opacity = '0';
+                document.body.appendChild(field);
+                field.select();
+                document.execCommand('copy');
+                field.remove();
+            }
+
+            this.copied = true;
+            setTimeout(() => (this.copied = false), 2000);
+        },
+    }));
+
     // Unsaved-changes guard for forms: mark the form dirty on the first edit and
     // let the browser ask before the page is closed, reloaded or navigated away
     // from. A successful save (or Cancel/Discard) clears it first.
