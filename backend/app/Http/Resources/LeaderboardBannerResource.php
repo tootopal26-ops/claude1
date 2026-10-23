@@ -17,6 +17,8 @@ class LeaderboardBannerResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
+            // An in-app path (e.g. /tournaments?status=upcoming) or an https address; null when the banner is not a link.
+            'link_url' => $this->link_url,
             'image_url' => $this->imageAsset?->publicUrl(),
             'thumbnail_url' => $this->thumbnailAsset?->publicUrl(),
             'display_order' => $this->display_order,

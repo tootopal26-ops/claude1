@@ -21,14 +21,15 @@ class LeaderboardBannerService
     public function __construct(private readonly ManagedImageService $images) {}
 
     /**
-     * @param  array{title: ?string, is_active: bool, display_order: int, focal_x: int, focal_y: int}  $data
+     * @param  array{placement?: string, title: ?string, link_url?: ?string, is_active: bool, display_order: int, focal_x: int, focal_y: int}  $data
      *
      * @throws ValidationException
      */
     public function save(?LeaderboardBanner $banner, array $data, ?UploadedFile $image, StaffUser $actor): LeaderboardBanner
     {
         $isNew = $banner === null;
-        $banner ??= new LeaderboardBanner;
+        // A banner keeps the placement it was created for.
+        $banner ??= new LeaderboardBanner(['placement' => $data['placement'] ?? 'leaderboard']);
         $stored = null;
         $replaced = [];
 
@@ -36,6 +37,7 @@ class LeaderboardBannerService
             DB::transaction(function () use ($banner, $data, $image, $actor, &$stored, &$replaced) {
                 $banner->fill([
                     'title' => $data['title'] ?: null,
+                    'link_url' => ($data['link_url'] ?? null) ?: null,
                     'is_active' => $data['is_active'],
                     'display_order' => $data['display_order'],
                     'focal_x' => $data['focal_x'],
@@ -62,6 +64,8 @@ class LeaderboardBannerService
         $this->images->discard($actor, ...array_filter($replaced));
 
         AuditLog::record($isNew ? 'leaderboard_banner.created' : 'leaderboard_banner.updated', $actor, $banner, [
+            'placement' => $banner->placement,
+            'link_url' => $banner->link_url,
             'is_active' => $banner->is_active,
             'display_order' => $banner->display_order,
             'image_replaced' => $image !== null,
@@ -79,7 +83,7 @@ class LeaderboardBannerService
 
         $this->images->discard($actor, ...$assets);
 
-        AuditLog::record('leaderboard_banner.deleted', $actor, null, ['id' => $id]);
+        AuditLog::record('leaderboard_banner.deleted', $actor, null, ['id' => $id, 'placement' => $banner->placement]);
     }
 
     public function setActive(LeaderboardBanner $banner, bool $active, StaffUser $actor): void
@@ -92,7 +96,7 @@ class LeaderboardBannerService
     public function move(LeaderboardBanner $banner, int $direction, StaffUser $actor): void
     {
         DB::transaction(function () use ($banner, $direction, $actor) {
-            $ordered = LeaderboardBanner::query()->orderBy('display_order')->orderBy('id')->lockForUpdate()->get()->values();
+            $ordered = LeaderboardBanner::query()->placement($banner->placement)->orderBy('display_order')->orderBy('id')->lockForUpdate()->get()->values();
             $index = $ordered->search(fn (LeaderboardBanner $candidate) => $candidate->id === $banner->id);
             $target = $index === false ? false : $index + $direction;
 

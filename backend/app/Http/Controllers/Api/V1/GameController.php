@@ -17,6 +17,7 @@ class GameController extends Controller
         $games = Game::query()
             ->visibleInApp()
             ->with(['imageAsset', 'thumbnailAsset'])
+            ->withCount(['tournaments as upcoming_tournaments_count' => fn ($query) => $query->where('status', 'upcoming')])
             ->get();
 
         return response()->json([

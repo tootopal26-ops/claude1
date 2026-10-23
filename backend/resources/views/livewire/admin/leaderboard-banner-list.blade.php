@@ -1,15 +1,26 @@
 <div>
     <x-ui.flash />
 
-    <x-ui.page-header title="Leaderboard management" description="Rankings, prize rules, payout settlement and the banners shown at the top of the app's leaderboard.">
-        <x-slot:actions>
-            <x-ui.button :href="portal_route('leaderboards.banners.create')" icon="plus">New banner</x-ui.button>
-        </x-slot:actions>
-    </x-ui.page-header>
+    @php($base = $placement === 'home' ? 'home-banners' : 'leaderboards.banners')
+    @if ($placement === 'home')
+        <x-ui.page-header title="Home banners" description="The 16:9 hero carousel at the top of the app's home screen.">
+            <x-slot:actions>
+                <x-ui.button :href="portal_route($base.'.create')" icon="plus">New banner</x-ui.button>
+            </x-slot:actions>
+        </x-ui.page-header>
 
-    <x-leaderboard.subnav current="banners" />
+        <p class="mb-4 max-w-2xl text-sm text-fg-2">Banners slide across the top of the home screen every five seconds, in the order below. A banner with a link opens it when tapped. Hidden banners stay here but are not shown to players.</p>
+    @else
+        <x-ui.page-header title="Leaderboard management" description="Rankings, prize rules, payout settlement and the banners shown at the top of the app's leaderboard.">
+            <x-slot:actions>
+                <x-ui.button :href="portal_route($base.'.create')" icon="plus">New banner</x-ui.button>
+            </x-slot:actions>
+        </x-ui.page-header>
 
-    <p class="mb-4 max-w-2xl text-sm text-fg-2">Banners swipe across the top of the leaderboard screen in the order below. Hidden banners stay here but are not shown to players. A single banner is shown without carousel controls.</p>
+        <x-leaderboard.subnav current="banners" />
+
+        <p class="mb-4 max-w-2xl text-sm text-fg-2">Banners swipe across the top of the leaderboard screen in the order below. Hidden banners stay here but are not shown to players. A single banner is shown without carousel controls.</p>
+    @endif
 
     <x-ui.table>
         <x-slot:head>
@@ -48,14 +59,14 @@
                         <x-ui.button type="button" variant="ghost" size="sm" icon-only icon="chevron-up" wire:click="moveUp({{ $banner->id }})" aria-label="Move banner {{ $banner->display_order }} earlier" :disabled="$loop->first && $banners->onFirstPage()" />
                         <x-ui.button type="button" variant="ghost" size="sm" icon-only icon="chevron-down" wire:click="moveDown({{ $banner->id }})" aria-label="Move banner {{ $banner->display_order }} later" :disabled="$loop->last && ! $banners->hasMorePages()" />
                         <x-ui.button type="button" variant="ghost" size="sm" wire:click="toggle({{ $banner->id }})" loading="toggle">{{ $banner->is_active ? 'Hide' : 'Show' }}</x-ui.button>
-                        <x-ui.button :href="portal_route('leaderboards.banners.edit', $banner)" variant="ghost" size="sm" icon="edit">Edit</x-ui.button>
+                        <x-ui.button :href="portal_route($base.'.edit', $banner)" variant="ghost" size="sm" icon="edit">Edit</x-ui.button>
                         <x-ui.button type="button" variant="danger-ghost" size="sm" icon="trash" wire:click="delete({{ $banner->id }})" loading="delete" confirm="Delete this banner and its picture permanently?" confirm-title="Delete banner" confirm-label="Delete">Delete</x-ui.button>
                     </div>
                 </td>
             </tr>
         @empty
-            <x-ui.table-empty :colspan="4" icon="image" title="No banners yet" description="Add a 16:9 banner to show it at the top of the app's leaderboard.">
-                <x-ui.button :href="portal_route('leaderboards.banners.create')" icon="plus" size="sm">New banner</x-ui.button>
+            <x-ui.table-empty :colspan="4" icon="image" title="No banners yet" :description="$placement === 'home' ? 'Add a 16:9 banner to show it at the top of the app\'s home screen.' : 'Add a 16:9 banner to show it at the top of the app\'s leaderboard.'">
+                <x-ui.button :href="portal_route($base.'.create')" icon="plus" size="sm">New banner</x-ui.button>
             </x-ui.table-empty>
         @endforelse
 

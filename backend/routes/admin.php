@@ -228,6 +228,21 @@ foreach ($portals as $portal => $config) {
                 ->name('leaderboards.banners.edit')
                 ->middleware('permission:leaderboards.manage');
 
+            Route::get('/home-banners', LeaderboardBannerList::class)
+                ->name('home-banners.index')
+                ->defaults('placement', 'home')
+                ->middleware('permission:games.manage');
+
+            Route::get('/home-banners/create', LeaderboardBannerForm::class)
+                ->name('home-banners.create')
+                ->defaults('placement', 'home')
+                ->middleware('permission:games.manage');
+
+            Route::get('/home-banners/{banner}/edit', LeaderboardBannerForm::class)
+                ->name('home-banners.edit')
+                ->defaults('placement', 'home')
+                ->middleware('permission:games.manage');
+
             Route::get('/staff-salary/rules', StaffSalaryRuleList::class)
                 ->name('staff-salary.rules.index')
                 ->middleware('permission:salary.manage');

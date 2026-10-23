@@ -20,10 +20,17 @@ class TournamentResource extends JsonResource
             ? $this->entries()->where('user_id', $request->user()->id)->where('status', 'confirmed')->first()
             : null;
         $myResult = $myEntry?->currentResult();
+        $joinClosesAt = $this->scheduled_start_at->copy()->addMinutes((int) config('minimax.tournament_join_window_minutes'));
 
         return [
             'id' => $this->id,
             'game_id' => $this->game_id,
+            'game' => $this->whenLoaded('game', fn () => [
+                'id' => $this->game->id,
+                'title' => $this->game->name,
+                'image_url' => $this->game->imageAsset?->publicUrl(),
+                'thumbnail_url' => $this->game->thumbnailAsset?->publicUrl(),
+            ]),
             'title' => $this->title,
             'description' => $this->description,
             'rules' => $this->rules,
@@ -36,6 +43,8 @@ class TournamentResource extends JsonResource
             'joined_slots' => $joinedSlots,
             'scheduled_start_at' => $this->scheduled_start_at->toIso8601String(),
             'status' => $this->status,
+            'join_closes_at' => $joinClosesAt->toIso8601String(),
+            'joining_open' => $this->status === 'upcoming' && $this->credentials_released_at === null && now()->lessThan($joinClosesAt) && $joinedSlots < $this->total_slots,
             'credentials_released' => $this->credentials_released_at !== null,
             'already_joined' => $myEntry !== null,
             'my_result' => $myResult ? [

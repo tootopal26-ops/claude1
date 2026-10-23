@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\GameController;
 use App\Http\Controllers\Api\V1\LeaderboardController;
 use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RedeemController;
 use App\Http\Controllers\Api\V1\SectionController;
 use App\Http\Controllers\Api\V1\SessionController;
@@ -37,6 +38,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/tournaments/{tournament}', [TournamentController::class, 'show']);
         Route::post('/tournaments/{tournament}/join', [TournamentController::class, 'join']);
         Route::get('/tournaments/{tournament}/credentials', [TournamentController::class, 'credentials']);
+        Route::get('/tournaments/{tournament}/results', [TournamentController::class, 'results']);
 
         Route::post('/devices/push-token', [DevicePushTokenController::class, 'store']);
         Route::delete('/devices/push-token', [DevicePushTokenController::class, 'destroy']);
@@ -46,6 +48,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/sessions', [SessionController::class, 'index']);
         Route::delete('/sessions/{tokenId}', [SessionController::class, 'destroy']);
+
+        Route::get('/profile/stats', [ProfileController::class, 'stats']);
 
         Route::get('/wallet', [WalletController::class, 'show']);
         Route::get('/wallet/ledger', [WalletController::class, 'ledger']);
@@ -62,6 +66,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/deposits', [DepositController::class, 'store']);
         Route::get('/deposits/{deposit}', [DepositController::class, 'show']);
 
+        Route::get('/banners/home', [LeaderboardController::class, 'homeBanners']);
         Route::get('/leaderboards/banners', [LeaderboardController::class, 'banners']);
         Route::get('/leaderboards/{type}', [LeaderboardController::class, 'show'])->middleware('section.unlocked:leaderboard');
     });

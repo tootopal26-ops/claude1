@@ -7,9 +7,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['title', 'is_active', 'display_order', 'focal_x', 'focal_y'])]
+#[Fillable(['placement', 'title', 'link_url', 'is_active', 'display_order', 'focal_x', 'focal_y'])]
 class LeaderboardBanner extends Model
 {
+    /** Where in the app a banner is shown. */
+    public const PLACEMENTS = ['leaderboard', 'home'];
+
     protected function casts(): array
     {
         return [
@@ -31,6 +34,14 @@ class LeaderboardBanner extends Model
     public function thumbnailAsset(): BelongsTo
     {
         return $this->belongsTo(StorageAsset::class, 'thumbnail_asset_id');
+    }
+
+    /**
+     * @param  Builder<LeaderboardBanner>  $query
+     */
+    public function scopePlacement(Builder $query, string $placement): void
+    {
+        $query->where('placement', $placement);
     }
 
     /**

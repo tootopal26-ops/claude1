@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Leaderboard\EnsureLeaderboardPeriodsExistAction;
+use App\Domain\Leaderboard\LeaderboardPrizeService;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\LeaderboardBannerResource;
 use App\Http\Resources\LeaderboardResource;
@@ -15,7 +16,7 @@ class LeaderboardController extends Controller
 {
     private const VALID_TYPES = ['daily', 'weekly', 'monthly'];
 
-    private const TOP_N = 50;
+    private const TOP_N = 100;
 
     /**
      * The carousel at the top of the leaderboard screen: enabled banners that
@@ -23,7 +24,19 @@ class LeaderboardController extends Controller
      */
     public function banners(): JsonResponse
     {
-        $banners = LeaderboardBanner::query()->visibleInApp()->with(['imageAsset', 'thumbnailAsset'])->get();
+        $banners = LeaderboardBanner::query()->placement('leaderboard')->visibleInApp()->with(['imageAsset', 'thumbnailAsset'])->get();
+
+        return response()->json([
+            'data' => LeaderboardBannerResource::collection($banners),
+        ]);
+    }
+
+    /**
+     * The Home hero carousel: enabled Home banners with a picture, in the admin's order.
+     */
+    public function homeBanners(): JsonResponse
+    {
+        $banners = LeaderboardBanner::query()->placement('home')->visibleInApp()->with(['imageAsset', 'thumbnailAsset'])->get();
 
         return response()->json([
             'data' => LeaderboardBannerResource::collection($banners),
@@ -35,7 +48,7 @@ class LeaderboardController extends Controller
      * (every 10 minutes) — it does not recompute on every request, which
      * would be wasteful for a read this frequent.
      */
-    public function show(Request $request, string $type, EnsureLeaderboardPeriodsExistAction $ensure): JsonResponse
+    public function show(Request $request, string $type, EnsureLeaderboardPeriodsExistAction $ensure, LeaderboardPrizeService $prizes): JsonResponse
     {
         abort_unless(in_array($type, self::VALID_TYPES, true), 404);
 
@@ -46,8 +59,14 @@ class LeaderboardController extends Controller
 
         $myEntry = $period->entries()->with('user')->where('user_id', $request->user()->id)->first();
 
+        // A finalized period shows the prizes it froze when it closed; a live one shows what its
+        // rule would pay if it closed now. Either way the figures come from the Admin's prize rules.
+        $prizeTable = $period->isFinalized() && is_array($period->prize_snapshot)
+            ? array_map('intval', $period->prize_snapshot)
+            : $prizes->snapshotFor($type);
+
         return response()->json([
-            'data' => new LeaderboardResource($period, $topEntries, $myEntry),
+            'data' => new LeaderboardResource($period, $topEntries, $myEntry, $prizeTable),
         ]);
     }
 }

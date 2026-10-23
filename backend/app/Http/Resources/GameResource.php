@@ -22,6 +22,8 @@ class GameResource extends JsonResource
             'image_url' => $this->imageAsset?->publicUrl(),
             'thumbnail_url' => $this->thumbnailAsset?->publicUrl(),
             'display_order' => $this->display_order,
+            // Tournaments of this game still open to join or about to start — not players, not all tournaments.
+            'upcoming_tournaments_count' => (int) ($this->upcoming_tournaments_count ?? 0),
         ];
     }
 }

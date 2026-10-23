@@ -13,8 +13,9 @@ class LeaderboardResource extends JsonResource
 {
     /**
      * @param  Collection<int, LeaderboardEntry>  $topEntries
+     * @param  array<int, int>  $prizeTable  rank => coins (ranks without a prize are absent)
      */
-    public function __construct(LeaderboardPeriod $period, private readonly Collection $topEntries, private readonly ?LeaderboardEntry $myEntry)
+    public function __construct(LeaderboardPeriod $period, private readonly Collection $topEntries, private readonly ?LeaderboardEntry $myEntry, private readonly array $prizeTable = [])
     {
         parent::__construct($period);
     }
@@ -31,6 +32,7 @@ class LeaderboardResource extends JsonResource
             'status' => $this->status,
             'entries' => $this->topEntries->map(fn (LeaderboardEntry $entry) => $this->formatEntry($entry))->all(),
             'my_entry' => $this->myEntry ? $this->formatEntry($this->myEntry) : null,
+            'prizes_final' => $this->isFinalized(),
         ];
     }
 
@@ -41,8 +43,11 @@ class LeaderboardResource extends JsonResource
     {
         return [
             'rank' => $entry->rank,
+            'user_id' => $entry->user_id,
             'username' => $entry->user->username,
+            // Total prize winnings in the period (the ranking key).
             'score' => (string) $entry->score,
+            'prize' => $this->prizeTable[$entry->rank] ?? null,
             'total_kills' => $entry->total_kills,
             'tournaments_played' => $entry->tournaments_played,
         ];
