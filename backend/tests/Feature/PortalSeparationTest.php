@@ -38,9 +38,8 @@ class PortalSeparationTest extends TestCase
     private function powerfulStaff(string $username = 'ops_member'): StaffUser
     {
         $preset = PermissionPreset::create(['name' => 'Everything '.$username]);
-        $preset->permissions()->attach(Permission::all()->isEmpty()
-            ? $this->allPermissions()
-            : Permission::all());
+        $this->allPermissions();
+        $preset->permissions()->attach(Permission::all());
 
         return StaffUser::factory()->create([
             'username' => $username,

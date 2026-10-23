@@ -17,6 +17,7 @@ class TournamentController extends Controller
     {
         $tournaments = Tournament::query()
             ->withCount(['entries as joined_slots_count' => fn ($query) => $query->where('status', 'confirmed')])
+            ->when($request->integer('game_id') > 0, fn ($query) => $query->where('game_id', $request->integer('game_id')))
             ->orderBy('scheduled_start_at')
             ->get();
 

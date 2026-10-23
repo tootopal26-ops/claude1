@@ -36,6 +36,20 @@ class StorageAsset extends Model
         return $this->belongsTo(StaffUser::class, 'uploaded_by_staff_id');
     }
 
+    /**
+     * The public URL of an asset stored on the public disk (null for private
+     * assets). Built from the current request's host, so it is correct for
+     * whichever origin the app or panel reached the API through.
+     */
+    public function publicUrl(): ?string
+    {
+        if ($this->disk !== 'public') {
+            return null;
+        }
+
+        return url('storage/'.ltrim($this->path, '/'));
+    }
+
     public function isRetained(): bool
     {
         return $this->retained_reason !== null;

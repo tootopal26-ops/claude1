@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\StorageAssetDownloadController;
 use App\Livewire\Admin\AuditLogViewer;
 use App\Livewire\Admin\DepositList;
+use App\Livewire\Admin\GameForm;
+use App\Livewire\Admin\GameList;
 use App\Livewire\Admin\Home;
 use App\Livewire\Admin\LeaderboardViewer;
 use App\Livewire\Admin\LegalDocumentForm;
@@ -91,6 +93,18 @@ foreach ($portals as $portal => $config) {
             Route::get('/tournaments/{tournament}/results', TournamentResults::class)
                 ->name('tournaments.results')
                 ->middleware('permission:results.submit');
+
+            Route::get('/tournament-games', GameList::class)
+                ->name('tournament-games.index')
+                ->middleware('permission:games.manage');
+
+            Route::get('/tournament-games/create', GameForm::class)
+                ->name('tournament-games.create')
+                ->middleware('permission:games.manage');
+
+            Route::get('/tournament-games/{game}/edit', GameForm::class)
+                ->name('tournament-games.edit')
+                ->middleware('permission:games.manage');
 
             Route::get('/storage-assets/{storageAsset}/download', StorageAssetDownloadController::class)
                 ->name('storage-assets.download');

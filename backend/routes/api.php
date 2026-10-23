@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AlphaUpiWebhookController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DepositController;
 use App\Http\Controllers\Api\V1\DevicePushTokenController;
+use App\Http\Controllers\Api\V1\GameController;
 use App\Http\Controllers\Api\V1\LeaderboardController;
 use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\NotificationController;
@@ -27,6 +28,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/legal/acceptance-status', [LegalController::class, 'acceptanceStatus']);
         Route::post('/legal/accept', [LegalController::class, 'accept']);
+
+        Route::get('/games', [GameController::class, 'index']);
 
         Route::get('/tournaments', [TournamentController::class, 'index']);
         Route::get('/tournaments/{tournament}', [TournamentController::class, 'show']);

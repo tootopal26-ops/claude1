@@ -47,6 +47,7 @@ class PermissionSeeder extends Seeder
         ['key' => 'salary.manage', 'label' => 'Configure staff salary rules', 'group' => 'Staff Salary'],
         ['key' => 'reports.view', 'label' => 'View reports', 'group' => 'Reports & Audit'],
         ['key' => 'audit_logs.view', 'label' => 'View audit logs and suspicious activity', 'group' => 'Reports & Audit'],
+        ['key' => 'games.manage', 'label' => 'Manage tournament game cards (home-screen images and order)', 'group' => 'Tournaments'],
         ['key' => 'staff.manage', 'label' => 'Manage staff accounts and permission presets', 'group' => 'Staff'],
     ];
 

@@ -4,8 +4,18 @@ export type User = {
   mobile: string;
 };
 
+export type Game = {
+  id: number;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  thumbnail_url: string | null;
+  display_order: number;
+};
+
 export type Tournament = {
   id: number;
+  game_id: number;
   title: string;
   description: string | null;
   rules: string | null;

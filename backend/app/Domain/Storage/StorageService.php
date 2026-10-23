@@ -65,18 +65,59 @@ class StorageService
 
         $storedName = Str::uuid()->toString().'.'.self::EXTENSIONS_BY_MIME[$mimeType];
 
-        $path = $file->storeAs("storage_assets/{$bucket}", $storedName, self::DISK);
+        $disk = $config['disk'] ?? self::DISK;
+        $path = $file->storeAs("storage_assets/{$bucket}", $storedName, $disk);
 
         return StorageAsset::create([
             'bucket' => $bucket,
             'subject_type' => $subject?->getMorphClass(),
             'subject_id' => $subject?->getKey(),
             'uploaded_by_staff_id' => $uploadedBy?->id,
-            'disk' => self::DISK,
+            'disk' => $disk,
             'path' => $path,
             'original_filename' => $this->sanitizeFilename($file->getClientOriginalName()),
             'mime_type' => $mimeType,
             'size_bytes' => $sizeBytes,
+        ]);
+    }
+
+    /**
+     * Stores bytes this application produced itself (for example a re-encoded
+     * image) under the same bucket rules and opaque naming as store().
+     *
+     * @throws ValidationException
+     */
+    public function storeContents(string $contents, string $mimeType, string $bucket, string $label, ?Model $subject = null, ?StaffUser $uploadedBy = null): StorageAsset
+    {
+        $config = $this->bucketConfig($bucket);
+
+        if (! in_array($mimeType, $config['allowed_mime_types'], true)) {
+            throw ValidationException::withMessages([
+                'file' => "This file type isn't allowed for {$config['label']}.",
+            ]);
+        }
+
+        if (strlen($contents) > $config['max_size_kb'] * 1024) {
+            throw ValidationException::withMessages([
+                'file' => "File is too large for {$config['label']} (max {$config['max_size_kb']} KB).",
+            ]);
+        }
+
+        $disk = $config['disk'] ?? self::DISK;
+        $path = "storage_assets/{$bucket}/".Str::uuid()->toString().'.'.self::EXTENSIONS_BY_MIME[$mimeType];
+
+        Storage::disk($disk)->put($path, $contents);
+
+        return StorageAsset::create([
+            'bucket' => $bucket,
+            'subject_type' => $subject?->getMorphClass(),
+            'subject_id' => $subject?->getKey(),
+            'uploaded_by_staff_id' => $uploadedBy?->id,
+            'disk' => $disk,
+            'path' => $path,
+            'original_filename' => $this->sanitizeFilename($label),
+            'mime_type' => $mimeType,
+            'size_bytes' => strlen($contents),
         ]);
     }
 

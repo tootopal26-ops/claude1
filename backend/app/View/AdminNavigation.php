@@ -34,6 +34,7 @@ class AdminNavigation
                 'label' => 'Tournament Operations',
                 'items' => [
                     ['label' => 'Tournaments', 'route' => 'admin.tournaments.index', 'icon' => 'tournaments', 'permission' => 'tournaments.view', 'active' => ['admin.tournaments.*'], 'description' => 'Schedule tournaments, manage entries and publish results.'],
+                    ['label' => 'Tournament Games', 'route' => 'admin.tournament-games.index', 'icon' => 'image', 'permission' => 'games.manage', 'active' => ['admin.tournament-games.*'], 'description' => 'The game cards on the app home screen.'],
                     ['label' => 'Recurring Templates', 'route' => 'admin.templates.index', 'icon' => 'calendar', 'permission' => 'recurring_tournaments.manage', 'active' => ['admin.templates.*'], 'description' => 'Generate tournaments automatically on a schedule.'],
                 ],
             ],

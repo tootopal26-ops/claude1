@@ -109,6 +109,40 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    // Unsaved-changes guard for forms: mark the form dirty on the first edit and
+    // let the browser ask before the page is closed, reloaded or navigated away
+    // from. A successful save (or Cancel/Discard) clears it first.
+    Alpine.data('unsavedGuard', () => ({
+        dirty: false,
+
+        init() {
+            window.addEventListener('beforeunload', (event) => {
+                if (this.dirty) {
+                    event.preventDefault();
+                    event.returnValue = '';
+                }
+            });
+
+            // Cancel and other in-page links are deliberate; the browser prompt above
+            // covers everything else, so only links that opt in stay guarded.
+            this.$el.addEventListener('click', (event) => {
+                const link = event.target instanceof Element ? event.target.closest('a[data-discard]') : null;
+
+                if (link) {
+                    this.dirty = false;
+                }
+            });
+        },
+
+        markDirty() {
+            this.dirty = true;
+        },
+
+        clean() {
+            this.dirty = false;
+        },
+    }));
+
     // Global confirmation dialog. Any button/link carrying data-confirm
     // (rendered by <x-ui.button confirm="...">) is intercepted in the capture
     // phase — before Livewire's own handlers — and replayed once the user

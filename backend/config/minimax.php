@@ -158,6 +158,25 @@ return [
             'retention_days' => 365,
             'view_permission' => 'withdrawals.manage',
         ],
+        // Player-facing artwork. Served from the public disk so the app can load it
+        // without a signed-in request; always re-encoded server-side (see
+        // App\Domain\Media\ImageVariantProcessor), never stored as uploaded.
+        'game_cards' => [
+            'label' => 'Tournament game cards',
+            'disk' => 'public',
+            'max_size_kb' => 5120,
+            'allowed_mime_types' => ['image/jpeg', 'image/png', 'image/webp'],
+            'retention_days' => null,
+            'view_permission' => 'games.manage',
+        ],
+        'leaderboard_banners' => [
+            'label' => 'Leaderboard banners',
+            'disk' => 'public',
+            'max_size_kb' => 5120,
+            'allowed_mime_types' => ['image/jpeg', 'image/png', 'image/webp'],
+            'retention_days' => null,
+            'view_permission' => 'leaderboards.manage',
+        ],
         'staff_documents' => [
             'label' => 'Internal staff documents',
             'max_size_kb' => 10240,

@@ -1,0 +1,28 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "title": "Free Fire",
+      "description": null,
+      "image_url": null,
+      "thumbnail_url": null,
+      "display_order": 1
+    },
+    {
+      "id": 8,
+      "title": "Free Fire Showdown",
+      "description": "Battle royale showdowns, solo to squad.",
+      "image_url": "https://your-domain.example/storage/storage_assets/game_cards/9e6adfa1-c869-48f9-8ba1-f9496dd02cd9.webp",
+      "thumbnail_url": "https://your-domain.example/storage/storage_assets/game_cards/246814c9-9b6f-4c1a-b6f5-1b246a5bb7ee.webp",
+      "display_order": 2
+    },
+    {
+      "id": 10,
+      "title": "Portrait Poker",
+      "description": null,
+      "image_url": "https://your-domain.example/storage/storage_assets/game_cards/1208ab5b-fcd3-4355-80b8-da004b9fe30c.webp",
+      "thumbnail_url": "https://your-domain.example/storage/storage_assets/game_cards/9bd69f72-d7d6-4783-9414-edab83da3534.webp",
+      "display_order": 3
+    }
+  ]
+}

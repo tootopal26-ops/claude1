@@ -31,7 +31,9 @@ export type IconName =
   | 'trash'
   | 'upload'
   | 'download'
-  | 'home';
+  | 'home'
+  | 'image'
+  | 'alert';
 
 type IconProps = {
   name: IconName;
@@ -196,6 +198,22 @@ function renderIcon(name: IconName, common: Record<string, unknown>) {
         <>
           <Path d="M4 11l8-7 8 7" {...common} />
           <Path d="M6 10v10h12V10" {...common} />
+        </>
+      );
+    case 'image':
+      return (
+        <>
+          <Rect x={3} y={4} width={18} height={16} rx={2} {...common} />
+          <Circle cx={9} cy={10} r={1.5} {...common} />
+          <Path d="M21 16l-5-5L7 20" {...common} />
+        </>
+      );
+    case 'alert':
+      return (
+        <>
+          <Path d="M12 3l10 18H2L12 3Z" {...common} />
+          <Line x1={12} y1={10} x2={12} y2={14} {...common} />
+          <Line x1={12} y1={17.5} x2={12} y2={17.6} {...common} />
         </>
       );
   }

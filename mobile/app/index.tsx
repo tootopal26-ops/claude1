@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
-import { Link, Redirect } from 'expo-router';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, useWindowDimensions, View } from 'react-native';
+import { Link, Redirect, router } from 'expo-router';
 
-import { apiRequest } from '../src/api/client';
+import { fetchGames, fetchTournaments } from '../src/api/games';
 import { fetchNotifications } from '../src/api/notifications';
 import { fetchWallet } from '../src/api/wallet';
 import { useAuth } from '../src/auth/AuthContext';
 import { CoinAmount } from '../src/components/CoinAmount';
-import { StatusChip } from '../src/components/StatusChip';
+import { GameCard, GameCardSkeleton } from '../src/components/GameCard';
+import { TournamentCard } from '../src/components/TournamentCard';
 import { Icon } from '../src/theme/icons';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
-import type { Tournament } from '../src/types';
+import type { Game, Tournament } from '../src/types';
 
 export default function TournamentListScreen() {
   const { user, isLoading: authLoading, logout } = useAuth();
@@ -22,14 +23,27 @@ export default function TournamentListScreen() {
   const [error, setError] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [totalBalance, setTotalBalance] = useState<string | null>(null);
+  const [games, setGames] = useState<Game[]>([]);
+  const [gamesState, setGamesState] = useState<'loading' | 'ready' | 'error'>('loading');
 
   const loadTournaments = useCallback(async () => {
     setError(null);
     try {
-      const response = await apiRequest<{ data: Tournament[] }>('/tournaments');
+      const response = await fetchTournaments();
       setTournaments(response.data);
     } catch {
       setError('Could not load tournaments. Pull to retry.');
+    }
+  }, []);
+
+  const loadGames = useCallback(async () => {
+    setGamesState('loading');
+    try {
+      const response = await fetchGames();
+      setGames(response.data);
+      setGamesState('ready');
+    } catch {
+      setGamesState('error');
     }
   }, []);
 
@@ -37,7 +51,7 @@ export default function TournamentListScreen() {
     if (!user) return;
     (async () => {
       setLoading(true);
-      await loadTournaments();
+      await Promise.all([loadTournaments(), loadGames()]);
       setLoading(false);
     })();
     fetchNotifications()
@@ -50,7 +64,7 @@ export default function TournamentListScreen() {
       .catch(() => {
         // Non-fatal: the header just omits the balance until the next load.
       });
-  }, [user, loadTournaments]);
+  }, [user, loadTournaments, loadGames]);
 
   if (authLoading) {
     return (
@@ -119,44 +133,72 @@ export default function TournamentListScreen() {
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true);
-                await loadTournaments();
+                await Promise.all([loadTournaments(), loadGames()]);
                 setRefreshing(false);
               }}
             />
           }
+          ListHeaderComponent={
+            <View>
+              <GamesSection games={games} state={gamesState} onRetry={loadGames} />
+              <Text style={styles.sectionTitle} accessibilityRole="header">
+                Tournaments
+              </Text>
+            </View>
+          }
           ListEmptyComponent={
             <Text style={styles.empty}>{error ?? 'No tournaments available right now.'}</Text>
           }
-          renderItem={({ item }) => (
-            <Link href={`/tournament/${item.id}`} asChild>
-              <Pressable style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardMeta}>
-                  {item.mode.toUpperCase()} · {item.joined_slots}/{item.total_slots} joined
-                </Text>
-                <View style={styles.slotTrack}>
-                  <View
-                    style={[
-                      styles.slotFill,
-                      { width: `${item.total_slots > 0 ? Math.min(100, (item.joined_slots / item.total_slots) * 100) : 0}%` },
-                    ]}
-                  />
-                </View>
-                <View style={styles.cardFooter}>
-                  {Number(item.entry_fee) === 0 ? (
-                    <StatusChip tone="success" label="Free entry" />
-                  ) : (
-                    <View style={styles.feeRow}>
-                      <Text style={styles.cardMeta}>Entry fee:</Text>
-                      <CoinAmount value={item.entry_fee} suffix="coins" />
-                    </View>
-                  )}
-                  {item.already_joined && <StatusChip tone="brand" label="You're in" />}
-                </View>
-              </Pressable>
-            </Link>
-          )}
+          renderItem={({ item }) => <TournamentCard item={item} />}
         />
+      )}
+    </View>
+  );
+}
+
+const GRID_GAP = 12;
+const GRID_PADDING = 16;
+
+/**
+ * The admin-managed game cards, two per row. Card width follows the screen so
+ * the 16:9 frames stay aligned on small and large phones alike.
+ */
+function GamesSection({ games, state, onRetry }: { games: Game[]; state: 'loading' | 'ready' | 'error'; onRetry: () => void }) {
+  const styles = useStyles();
+  const { width } = useWindowDimensions();
+  const cardWidth = Math.floor((width - GRID_PADDING * 2 - GRID_GAP) / 2);
+
+  return (
+    <View style={styles.gamesSection}>
+      <Text style={styles.sectionTitle} accessibilityRole="header">
+        Games
+      </Text>
+      {state === 'loading' && (
+        <View style={styles.grid}>
+          {[0, 1, 2, 3].map((index) => (
+            <GameCardSkeleton key={index} width={cardWidth} />
+          ))}
+        </View>
+      )}
+      {state === 'error' && (
+        <View style={styles.gamesMessage}>
+          <Text style={styles.gamesMessageText}>Couldn't load the games.</Text>
+          <Pressable onPress={onRetry} accessibilityRole="button" accessibilityLabel="Retry loading games" hitSlop={8}>
+            <Text style={styles.retry}>Try again</Text>
+          </Pressable>
+        </View>
+      )}
+      {state === 'ready' && games.length === 0 && (
+        <View style={styles.gamesMessage}>
+          <Text style={styles.gamesMessageText}>No games are available yet. Check back soon.</Text>
+        </View>
+      )}
+      {state === 'ready' && games.length > 0 && (
+        <View style={styles.grid}>
+          {games.map((game) => (
+            <GameCard key={game.id} game={game} width={cardWidth} onPress={() => router.push(`/game/${game.id}`)} />
+          ))}
+        </View>
       )}
     </View>
   );
@@ -203,19 +245,18 @@ const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
   logout: { color: s.danger, fontWeight: '600', paddingLeft: 4 },
   listContent: { padding: 16, gap: 12 },
   empty: { color: c.fg2, textAlign: 'center', marginTop: 32 },
-  card: {
+  gamesSection: { marginBottom: 20 },
+  sectionTitle: { color: c.fg, fontSize: 16, fontWeight: '700', marginBottom: 10 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP },
+  gamesMessage: {
     backgroundColor: c.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: c.border,
+    padding: 16,
+    alignItems: 'center',
+    gap: 8,
   },
-  cardPressed: { backgroundColor: c.surface2, borderColor: c.borderStrong },
-  cardTitle: { color: c.fg, fontSize: 18, fontWeight: '700', marginBottom: 4 },
-  cardMeta: { color: c.fg2, fontSize: 13 },
-  slotTrack: { height: 4, borderRadius: 2, backgroundColor: c.surface3, marginTop: 10, overflow: 'hidden' },
-  slotFill: { height: 4, borderRadius: 2, backgroundColor: c.brand },
-  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, gap: 8 },
-  feeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  gamesMessageText: { color: c.fg2, fontSize: 13, textAlign: 'center' },
+  retry: { color: c.brandText, fontSize: 14, fontWeight: '700' },
 }));

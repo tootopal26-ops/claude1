@@ -52,6 +52,9 @@ php artisan db:seed --force   # creates the permission catalog + the
                                # database/seeders/DatabaseSeeder.php
                                # first if you don't want its example
                                # game/tournament row.
+php artisan storage:link      # publishes storage/app/public (game card and
+                               # leaderboard banner images) at /storage —
+                               # without it those images 404 in the app.
 
 chmod -R ug+w storage bootstrap/cache
 ```
