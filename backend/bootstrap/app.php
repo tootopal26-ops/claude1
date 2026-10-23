@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsurePortalAccess;
+use App\Http\Middleware\EnsureSectionUnlocked;
 use App\Http\Middleware\EnsureStaffSecurityVersionIsCurrent;
 use App\Support\Portal;
 use Illuminate\Console\Scheduling\Schedule;
@@ -36,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => EnsurePermission::class,
             'portal' => EnsurePortalAccess::class,
+            'section.unlocked' => EnsureSectionUnlocked::class,
             'staff.security_version' => EnsureStaffSecurityVersionIsCurrent::class,
         ]);
 

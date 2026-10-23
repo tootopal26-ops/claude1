@@ -34,7 +34,9 @@ export type IconName =
   | 'home'
   | 'image'
   | 'alert'
-  | 'redeem';
+  | 'redeem'
+  | 'lock'
+  | 'unlock';
 
 type IconProps = {
   name: IconName;
@@ -228,6 +230,19 @@ function renderIcon(name: IconName, common: Record<string, unknown>, accent: str
           ))}
           <Line x1={15.6} y1={8.8} x2={15.6} y2={15.2} {...common} strokeWidth={1.4} strokeDasharray="1 2" />
           <Path d="M18.4 9.9l.65 1.5 1.5.65-1.5.65-.65 1.5-.65-1.5-1.5-.65 1.5-.65.65-1.5Z" fill={accent} stroke={accent} strokeWidth={0.6} strokeLinejoin="round" />
+        </>
+      );
+    case 'lock':
+    case 'unlock':
+      // A rounded body, a smooth shackle (closed when locked, lifted and open when unlocked)
+      // and a small keyhole in the accent tone — the same geometry in both states, so only
+      // the shackle tells them apart.
+      return (
+        <>
+          <Rect x={4.5} y={10.5} width={15} height={10.5} rx={3} {...common} />
+          <Path d={name === 'lock' ? 'M8 10.5V7.5a4 4 0 0 1 8 0v3' : 'M8 10.5V7.5a4 4 0 0 1 7.5-1.6'} {...common} />
+          <Circle cx={12} cy={14.8} r={1.35} fill={accent} stroke="none" />
+          <Line x1={12} y1={15.6} x2={12} y2={18} {...common} stroke={accent} strokeWidth={1.7} />
         </>
       );
     case 'alert':

@@ -16,6 +16,7 @@ const LEDGER_TYPE_LABELS: Record<string, string> = {
   entry_fee: 'Tournament entry fee',
   refund: 'Refund',
   admin_adjustment: 'Admin adjustment',
+  section_unlock: 'Section unlock',
 };
 
 export default function WalletScreen() {

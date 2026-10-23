@@ -9,12 +9,15 @@ export class ApiError extends Error {
   errors?: Record<string, string[]>;
   /** The API's machine-readable error slug (for example "expired"), when it sends one. */
   code?: string;
+  /** The rest of the error body (for example the `required` and `available` of an insufficient balance). */
+  details?: Record<string, unknown>;
 
-  constructor(message: string, status: number, errors?: Record<string, string[]>, code?: string) {
+  constructor(message: string, status: number, errors?: Record<string, string[]>, code?: string, details?: Record<string, unknown>) {
     super(message);
     this.status = status;
     this.errors = errors;
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -53,7 +56,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       payload?.message ?? `Request failed with status ${response.status}`,
       response.status,
       payload?.errors,
-      typeof payload?.error === 'string' ? payload.error : undefined
+      typeof payload?.error === 'string' ? payload.error : undefined,
+      payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : undefined
     );
   }
 

@@ -49,6 +49,7 @@ class PermissionSeeder extends Seeder
         ['key' => 'audit_logs.view', 'label' => 'View audit logs and suspicious activity', 'group' => 'Reports & Audit'],
         ['key' => 'games.manage', 'label' => 'Manage tournament game cards (home-screen images and order)', 'group' => 'Tournaments'],
         ['key' => 'redeem_codes.manage', 'label' => 'Create and manage redeem-code campaigns', 'group' => 'Wallet & Payments'],
+        ['key' => 'section_unlocks.manage', 'label' => 'Set coin prices for unlockable app sections', 'group' => 'Wallet & Payments'],
         ['key' => 'staff.manage', 'label' => 'Manage staff accounts and permission presets', 'group' => 'Staff'],
     ];
 

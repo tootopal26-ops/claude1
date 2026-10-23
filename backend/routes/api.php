@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\LeaderboardController;
 use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\RedeemController;
+use App\Http\Controllers\Api\V1\SectionController;
 use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\Api\V1\TournamentController;
 use App\Http\Controllers\Api\V1\WalletController;
@@ -51,6 +52,9 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/redeem', [RedeemController::class, 'store'])->middleware('throttle:redeem');
 
+        Route::get('/sections', [SectionController::class, 'index']);
+        Route::post('/sections/{key}/unlock', [SectionController::class, 'unlock'])->middleware('throttle:section-unlock');
+
         Route::get('/withdrawals', [WithdrawalController::class, 'index']);
         Route::post('/withdrawals', [WithdrawalController::class, 'store']);
 
@@ -59,6 +63,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/deposits/{deposit}', [DepositController::class, 'show']);
 
         Route::get('/leaderboards/banners', [LeaderboardController::class, 'banners']);
-        Route::get('/leaderboards/{type}', [LeaderboardController::class, 'show']);
+        Route::get('/leaderboards/{type}', [LeaderboardController::class, 'show'])->middleware('section.unlocked:leaderboard');
     });
 });

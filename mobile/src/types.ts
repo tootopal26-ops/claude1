@@ -136,3 +136,23 @@ export type RedeemResult = {
   message: string;
   data: { coins: number; balance: Wallet };
 };
+
+export type SectionStatus = {
+  key: string;
+  title: string;
+  description: string;
+  /** Icon name from the shared icon set; unknown names fall back to a default. */
+  icon: string;
+  /** Paid unlocking is on for this section. */
+  paid: boolean;
+  /** Coins to unlock, from the backend; null while the section is free. */
+  price: number | null;
+  /** True when the section is free or this player has already unlocked it. */
+  unlocked: boolean;
+  unlocked_at: string | null;
+};
+
+export type SectionUnlockResult = {
+  message: string;
+  data: { section: SectionStatus; charged: string; already_unlocked: boolean; balance: Wallet };
+};

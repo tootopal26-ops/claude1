@@ -63,6 +63,13 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(40)->by('redeem-ip:'.$request->ip()),
         ]);
 
+        // Unlocking spends coins: a handful of tries a minute per player is plenty for a
+        // confirm-then-buy flow, and the purchase itself is idempotent in any case.
+        RateLimiter::for('section-unlock', fn (Request $request) => [
+            Limit::perMinute(10)->by('section-unlock-user:'.($request->user()?->id ?? $request->ip())),
+            Limit::perMinute(40)->by('section-unlock-ip:'.$request->ip()),
+        ]);
+
         // Livewire updates are separate requests from the page load. Re-apply
         // the portal boundary and the security-version check to them, so a page
         // left open can't be driven across the boundary, or keep acting after

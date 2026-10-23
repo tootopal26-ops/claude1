@@ -246,4 +246,30 @@ return [
     'backup_path' => env('BACKUP_PATH', storage_path('app/backups')),
     'backup_retention_days' => (int) env('BACKUP_RETENTION_DAYS', 14),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Unlockable app sections
+    |--------------------------------------------------------------------------
+    |
+    | The explicit registry behind Admin > Section Unlock Pricing. Only a section
+    | listed here can be priced, and a listed section stays free until the Admin
+    | enables a price for it — registering one changes nothing for players.
+    |
+    | Pricing a section is only half of making it paid: the backend must also refuse
+    | its data to players who have not unlocked it, otherwise the lock would exist
+    | only in the app. Put `section.unlocked:<key>` on the section's API routes (see
+    | routes/api.php, where `leaderboard` is wired), and add the matching card and
+    | route to mobile/src/sections.ts.
+    |
+    | Keys are stored in the database and sent by the app: never rename one.
+    |
+    */
+    'unlockable_sections' => [
+        'leaderboard' => [
+            'title' => 'Leaderboard',
+            'description' => 'Daily, weekly and monthly rankings with prize rewards.',
+            'icon' => 'leaderboard',
+        ],
+    ],
+
 ];

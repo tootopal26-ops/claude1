@@ -23,6 +23,7 @@ use App\Livewire\Admin\PresetList;
 use App\Livewire\Admin\RedeemCodes;
 use App\Livewire\Admin\RedeemHistory;
 use App\Livewire\Admin\RiskAlertList;
+use App\Livewire\Admin\SectionUnlockPricing;
 use App\Livewire\Admin\StaffForm;
 use App\Livewire\Admin\StaffList;
 use App\Livewire\Admin\StaffSalaryRuleForm;
@@ -194,6 +195,10 @@ foreach ($portals as $portal => $config) {
             Route::get('/redeem-codes/history', RedeemHistory::class)
                 ->name('redeem-codes.history')
                 ->middleware('permission:redeem_codes.manage');
+
+            Route::get('/section-unlock-pricing', SectionUnlockPricing::class)
+                ->name('section-unlock-pricing.index')
+                ->middleware('permission:section_unlocks.manage');
 
             Route::get('/payment-settings', PaymentSettings::class)
                 ->name('payment-settings')

@@ -92,9 +92,45 @@ class WalletService
         string $idempotencyKey,
         ?Model $source = null,
     ): array {
+        return $this->debitWithPriority($user, $amount, 'entry_fee', $idempotencyKey, $source);
+    }
+
+    /**
+     * Charges a coin purchase (for example a section unlock) with the same
+     * priority and guarantees as an entry fee: deposit balance first, then
+     * eligible winnings, all-or-nothing, never negative, and a retry with the
+     * same idempotency key returns the first result instead of charging again.
+     * $type labels the ledger rows so the wallet history reads correctly.
+     *
+     * @return array{deposit_used: string, winnings_used: string, entries: list<WalletLedgerEntry>}
+     *
+     * @throws InsufficientWalletBalanceException
+     */
+    public function debitForPurchase(
+        User $user,
+        string $amount,
+        string $type,
+        string $idempotencyKey,
+        ?Model $source = null,
+        ?string $reason = null,
+    ): array {
+        return $this->debitWithPriority($user, $amount, $type, $idempotencyKey, $source, $reason);
+    }
+
+    /**
+     * @return array{deposit_used: string, winnings_used: string, entries: list<WalletLedgerEntry>}
+     */
+    private function debitWithPriority(
+        User $user,
+        string $amount,
+        string $type,
+        string $idempotencyKey,
+        ?Model $source = null,
+        ?string $reason = null,
+    ): array {
         $this->assertPositiveAmount($amount);
 
-        return DB::transaction(function () use ($user, $amount, $idempotencyKey, $source) {
+        return DB::transaction(function () use ($user, $amount, $type, $idempotencyKey, $source, $reason) {
             $wallet = $this->lockWallet($user);
 
             $existingEntries = WalletLedgerEntry::where('idempotency_key', $idempotencyKey)->get();
@@ -124,13 +160,13 @@ class WalletService
 
             if (bccomp($depositUsed, '0.00', 2) > 0) {
                 $entries[] = $this->applyEntry(
-                    $wallet, 'entry_fee', 'deposit', bcmul($depositUsed, '-1', 2), $idempotencyKey, $source,
+                    $wallet, $type, 'deposit', bcmul($depositUsed, '-1', 2), $idempotencyKey, $source, $reason,
                 );
             }
 
             if (bccomp($winningsUsed, '0.00', 2) > 0) {
                 $entries[] = $this->applyEntry(
-                    $wallet, 'entry_fee', 'winnings', bcmul($winningsUsed, '-1', 2), $idempotencyKey, $source,
+                    $wallet, $type, 'winnings', bcmul($winningsUsed, '-1', 2), $idempotencyKey, $source, $reason,
                 );
             }
 

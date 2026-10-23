@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '../src/auth/AuthContext';
 import { LegalAcceptanceGate } from '../src/components/LegalAcceptanceGate';
+import { SectionsProvider } from '../src/sections/SectionsContext';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 import { WalletProvider } from '../src/wallet/WalletContext';
 
@@ -96,9 +97,11 @@ export default function RootLayout() {
         <ThemedRoot>
           <AuthProvider>
             <WalletProvider>
-              <LegalGate>
-                <ThemedStack />
-              </LegalGate>
+              <SectionsProvider>
+                <LegalGate>
+                  <ThemedStack />
+                </LegalGate>
+              </SectionsProvider>
             </WalletProvider>
           </AuthProvider>
         </ThemedRoot>

@@ -8,11 +8,14 @@ import { useAuth } from '../src/auth/AuthContext';
 import { AmbientGlow } from '../src/components/AmbientGlow';
 import { GameCard, GameCardSkeleton } from '../src/components/GameCard';
 import { TournamentCard } from '../src/components/TournamentCard';
+import { SectionCard } from '../src/components/SectionCard';
+import { UnlockSectionDialog } from '../src/components/UnlockSectionDialog';
 import { WalletCard } from '../src/components/WalletCard';
+import { useRefreshSectionsOnFocus, useSections } from '../src/sections/SectionsContext';
 import { Icon } from '../src/theme/icons';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import { useRefreshWalletOnFocus, useWallet } from '../src/wallet/WalletContext';
-import type { Game, Tournament } from '../src/types';
+import type { Game, SectionStatus, Tournament } from '../src/types';
 
 export default function TournamentListScreen() {
   const { user, isLoading: authLoading } = useAuth();
@@ -20,6 +23,9 @@ export default function TournamentListScreen() {
   const styles = useStyles();
   const { refresh: refreshWallet } = useWallet();
   useRefreshWalletOnFocus();
+  useRefreshSectionsOnFocus();
+  const { sections, refresh: refreshSections } = useSections();
+  const [unlocking, setUnlocking] = useState<SectionStatus | null>(null);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -123,7 +129,7 @@ export default function TournamentListScreen() {
               refreshing={refreshing}
               onRefresh={async () => {
                 setRefreshing(true);
-                await Promise.all([loadTournaments(), loadGames(), refreshWallet({ force: true })]);
+                await Promise.all([loadTournaments(), loadGames(), refreshWallet({ force: true }), refreshSections()]);
                 setRefreshing(false);
               }}
             />
@@ -131,6 +137,11 @@ export default function TournamentListScreen() {
           ListHeaderComponent={
             <View>
               <WalletCard />
+              {(sections ?? [])
+                .filter((section) => section.paid)
+                .map((section) => (
+                  <SectionCard key={section.key} section={section} onUnlock={setUnlocking} />
+                ))}
               <GamesSection games={games} state={gamesState} onRetry={loadGames} />
               <Text style={styles.sectionTitle} accessibilityRole="header">
                 Tournaments
@@ -143,6 +154,7 @@ export default function TournamentListScreen() {
           renderItem={({ item }) => <TournamentCard item={item} />}
         />
       )}
+      <UnlockSectionDialog section={unlocking} visible={unlocking !== null} onClose={() => setUnlocking(null)} />
     </View>
   );
 }

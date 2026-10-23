@@ -2,11 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { Redirect } from 'expo-router';
 
+import { ApiError } from '../src/api/client';
 import { fetchLeaderboard } from '../src/api/leaderboards';
 import { useAuth } from '../src/auth/AuthContext';
 import { AmbientGlow } from '../src/components/AmbientGlow';
 import { BannerCarousel } from '../src/components/BannerCarousel';
+import { SectionCard } from '../src/components/SectionCard';
 import { StatusChip } from '../src/components/StatusChip';
+import { UnlockSectionDialog } from '../src/components/UnlockSectionDialog';
+import { useRefreshSectionsOnFocus, useSections } from '../src/sections/SectionsContext';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import type { Leaderboard } from '../src/types';
 
@@ -27,25 +31,38 @@ export default function LeaderboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bannerRefresh, setBannerRefresh] = useState(0);
+  const { sections, refresh: refreshSections } = useSections();
+  const [lockedByServer, setLockedByServer] = useState(false);
+  const [unlockOpen, setUnlockOpen] = useState(false);
+  useRefreshSectionsOnFocus();
+
+  // The server decides: the section list says whether it is locked, and a refused request does too.
+  const section = sections?.find((item) => item.key === 'leaderboard') ?? null;
+  const locked = section ? !section.unlocked : lockedByServer;
 
   const load = useCallback(async (nextType: Leaderboard['type']) => {
     setError(null);
     try {
       const response = await fetchLeaderboard(nextType);
       setLeaderboard(response.data);
-    } catch {
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.code === 'section_locked') {
+        setLockedByServer(true);
+        void refreshSections();
+        return;
+      }
       setError('Could not load the leaderboard. Pull to retry.');
     }
-  }, []);
+  }, [refreshSections]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || locked) return;
     (async () => {
       setLoading(true);
       await load(type);
       setLoading(false);
     })();
-  }, [user, type, load]);
+  }, [user, type, load, locked]);
 
   if (authLoading) {
     return (
@@ -57,6 +74,31 @@ export default function LeaderboardScreen() {
 
   if (!user) {
     return <Redirect href="/login" />;
+  }
+
+  if (locked) {
+    return (
+      <View style={styles.container}>
+        <AmbientGlow />
+        <View style={styles.lockedWrap}>
+          <View style={styles.carouselWrap}>
+            <BannerCarousel refreshKey={bannerRefresh} />
+          </View>
+          <View style={styles.lockedGap} />
+          {section ? (
+            <SectionCard section={section} onUnlock={() => setUnlockOpen(true)} />
+          ) : (
+            <Pressable style={styles.emptyBox} onPress={() => refreshSections()} accessibilityRole="button">
+              <Text style={styles.empty}>This section is locked. Tap to load its price.</Text>
+            </Pressable>
+          )}
+          <Text style={styles.lockedNote} accessibilityRole="text">
+            The leaderboard is a locked section. Unlock it once with coins and the rankings are yours to keep.
+          </Text>
+        </View>
+        <UnlockSectionDialog section={section} visible={unlockOpen} onClose={() => setUnlockOpen(false)} />
+      </View>
+    );
   }
 
   const myEntryInTop = leaderboard?.entries.some((entry) => entry.username === user.username) ?? false;
@@ -157,6 +199,9 @@ const useStyles = makeStyles(({ colors: c }) => ({
   container: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   carouselWrap: { alignItems: 'center', paddingTop: 16 },
+  lockedWrap: { paddingHorizontal: 16, paddingBottom: 16 },
+  lockedGap: { height: 16 },
+  lockedNote: { color: c.fg3, fontSize: 13, lineHeight: 19, textAlign: 'center', paddingHorizontal: 8 },
   emptyBox: { marginTop: 32, alignItems: 'center' },
   tabRow: { flexDirection: 'row', paddingVertical: 16, gap: 8 },
   tab: {
