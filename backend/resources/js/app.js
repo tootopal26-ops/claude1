@@ -6,12 +6,19 @@
  * Preferences persist in localStorage under the same keys the inline boot
  * script (components/theme-boot.blade.php) reads before first paint, so a
  * saved theme / font / sidebar state never flashes the wrong look on load.
+ * Day/Night mode is saved per account and per portal on the server (the
+ * layouts render it onto <html>), with a per-portal copy on the device for the
+ * sign-in screen.
  */
+
+const root = document.documentElement;
+const portal = root.getAttribute('data-portal') === 'staff' ? 'staff' : 'admin';
 
 const KEYS = {
     theme: 'mm_theme_color',
     font: 'mm_theme_font',
     sidebar: 'mm_sidebar_collapsed',
+    mode: `mm_theme_mode:${portal}`,
 };
 
 const storage = {
@@ -22,18 +29,151 @@ const storage = {
     },
 };
 
-document.addEventListener('alpine:init', () => {
-    const root = document.documentElement;
+/*
+ * Day / Night mode. data-mode-pref holds the choice (light, dark or system)
+ * and data-mode what is painted; CSS keys everything off data-mode.
+ */
+const MODES = ['light', 'dark', 'system'];
+const prefersLight = window.matchMedia('(prefers-color-scheme: light)');
+let switchTimer = null;
+let saveTimer = null;
 
-    // Color theme + font theme picker (header "Appearance" menu).
+const modePreference = () => {
+    const pref = root.getAttribute('data-mode-pref');
+
+    return MODES.includes(pref) ? pref : 'dark';
+};
+
+const resolveMode = (pref) => (pref === 'system' ? (prefersLight.matches ? 'light' : 'dark') : pref);
+
+// Mobile browsers tint their toolbar with theme-color; keep it on the page's canvas.
+const syncThemeColor = () => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const canvas = document.querySelector('.mm-portal') ?? root;
+
+    if (meta) {
+        meta.setAttribute('content', getComputedStyle(canvas).getPropertyValue('--mm-bg').trim());
+    }
+};
+
+const applyMode = (pref) => {
+    const mode = resolveMode(pref);
+
+    if (root.getAttribute('data-mode') !== mode) {
+        // Colors ease across for the length of the switch only (see .mm-mode-switching in app.css).
+        root.classList.add('mm-mode-switching');
+        clearTimeout(switchTimer);
+        switchTimer = setTimeout(() => root.classList.remove('mm-mode-switching'), 400);
+    }
+
+    root.setAttribute('data-mode-pref', pref);
+    root.setAttribute('data-mode', mode);
+    syncThemeColor();
+    window.dispatchEvent(new CustomEvent('mm-mode-changed', { detail: { pref, mode } }));
+};
+
+// Signed-in pages carry the save URL; sign-in pages only remember the choice on this device.
+const saveMode = (pref) => {
+    const url = root.getAttribute('data-mode-url');
+
+    if (!url) {
+        return;
+    }
+
+    // Only the last choice of a quick run of toggles is sent, so saves cannot land out of order.
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+        try {
+            const response = await fetch(url, {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                },
+                body: JSON.stringify({ mode: pref }),
+            });
+
+            if (response.status === 419) {
+                window.dispatchEvent(new CustomEvent('mm-session-expired'));
+            } else if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+        } catch (e) {
+            window.dispatchEvent(
+                new CustomEvent('mm-toast', {
+                    detail: { message: 'Your display mode could not be saved. It applies on this page until you reload.', variant: 'warning' },
+                }),
+            );
+        }
+    }, 350);
+};
+
+const setMode = (pref) => {
+    if (!MODES.includes(pref)) {
+        return;
+    }
+
+    applyMode(pref);
+    storage.set(KEYS.mode, pref);
+    saveMode(pref);
+};
+
+// "System default" follows the device as it changes.
+prefersLight.addEventListener('change', () => {
+    if (modePreference() === 'system') {
+        applyMode('system');
+    }
+});
+
+// Another tab of the same portal switched mode.
+window.addEventListener('storage', (event) => {
+    if (event.key === KEYS.mode && MODES.includes(event.newValue) && event.newValue !== modePreference()) {
+        applyMode(event.newValue);
+    }
+});
+
+document.addEventListener('DOMContentLoaded', syncThemeColor);
+
+document.addEventListener('alpine:init', () => {
+    // Header / sign-in Day-Night switch (components/ui/mode-toggle.blade.php).
+    Alpine.data('modeToggle', () => ({
+        mode: root.getAttribute('data-mode') === 'light' ? 'light' : 'dark',
+
+        init() {
+            window.addEventListener('mm-mode-changed', (event) => (this.mode = event.detail.mode));
+        },
+
+        get label() {
+            return this.mode === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode';
+        },
+
+        toggle() {
+            setMode(this.mode === 'light' ? 'dark' : 'light');
+        },
+    }));
+
+    // Mode, color theme and font picker (header "Appearance" menu).
     Alpine.data('appearance', () => ({
+        mode: modePreference(),
         theme: root.getAttribute('data-theme') || 'purple-glass',
         font: root.getAttribute('data-font') || 'default-sans',
+
+        init() {
+            window.addEventListener('mm-mode-changed', (event) => (this.mode = event.detail.pref));
+        },
+
+        setMode(pref) {
+            setMode(pref);
+        },
 
         setTheme(theme) {
             this.theme = theme;
             root.setAttribute('data-theme', theme);
             storage.set(KEYS.theme, theme);
+            syncThemeColor();
         },
 
         setFont(font) {

@@ -220,6 +220,19 @@ return [
         'monochrome-steel' => 'Monochrome Steel',
     ],
 
+    /*
+    | Day / Night mode for the Admin and Staff panels, saved per account and
+    | per portal on staff_users.theme_modes (see App\Support\ThemeMode).
+    | "system" follows the device's light/dark setting.
+    */
+    'theme_modes' => [
+        'light' => 'Light',
+        'dark' => 'Dark',
+        'system' => 'System default',
+    ],
+
+    'theme_mode_default' => 'dark',
+
     'theme_fonts' => [
         'default-sans' => 'Default Sans',
         'modern-grotesk' => 'Modern Grotesk',

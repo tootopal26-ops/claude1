@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\StorageAssetDownloadController;
+use App\Http\Controllers\Admin\UpdateThemeModeController;
 use App\Livewire\Admin\Ads\AdsAuditLog;
 use App\Livewire\Admin\Ads\AdUnits;
 use App\Livewire\Admin\Ads\DailyRewards;
@@ -97,6 +98,11 @@ foreach ($portals as $portal => $config) {
             // landing page guaranteed not to 403 a staff account whose
             // preset excludes tournaments.view.
             Route::get('/home', Home::class)->name('home');
+
+            // A personal UI preference, so — like /home — no permission is
+            // needed; the portal middleware above keeps it to the account's
+            // own portal.
+            Route::put('/appearance/mode', UpdateThemeModeController::class)->name('appearance.mode');
 
             Route::get('/tournaments', TournamentList::class)
                 ->name('tournaments.index')

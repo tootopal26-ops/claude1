@@ -23,6 +23,7 @@ class StaffUser extends Authenticatable
             'is_super_admin' => 'boolean',
             'is_active' => 'boolean',
             'password' => 'hashed',
+            'theme_modes' => 'array',
         ];
     }
 

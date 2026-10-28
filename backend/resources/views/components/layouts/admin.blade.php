@@ -4,13 +4,16 @@
     $groups = \App\View\AdminNavigation::forUser($staff);
     $context = \App\View\AdminNavigation::current($groups);
     $portal = \App\View\AdminNavigation::portalLabel($staff);
+    $portalKey = \App\Support\Portal::for($staff);
+    $modePreference = \App\Support\ThemeMode::preference($staff, $portalKey);
     $initials = collect(preg_split('/\s+/', trim($staff->display_name)))->filter()->take(2)->map(fn ($part) => mb_strtoupper(mb_substr($part, 0, 1)))->implode('');
 @endphp
 <!DOCTYPE html>
-<html lang="en" class="group/html" data-sidebar="expanded">
+<html lang="en" class="group/html" data-sidebar="expanded" data-theme="purple-glass" data-portal="{{ $portalKey }}" data-mode="{{ \App\Support\ThemeMode::initial($modePreference) }}" data-mode-pref="{{ $modePreference }}" data-mode-url="{{ portal_route('appearance.mode') }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ ($title ?? $context['item'] ?? 'Dashboard') }} · Mini Max {{ $portal }}</title>
     <x-theme-boot />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -119,12 +122,29 @@
                     @endif
                 </div>
 
-                {{-- Appearance: theme + font --}}
+                {{-- Day / Night --}}
+                <x-ui.mode-toggle />
+
+                {{-- Appearance: mode + theme + font --}}
                 <div x-data="appearance">
                     <x-ui.dropdown label="Appearance settings" width="w-72">
                         <x-slot:trigger><x-icon name="appearance" :size="18" /></x-slot:trigger>
 
-                        <div class="px-2.5 pb-1 pt-2">
+                        <div class="px-2.5 pb-3 pt-2">
+                            <p class="text-xs font-semibold text-fg">Mode</p>
+                            <div class="mt-2 grid grid-cols-3 gap-1 rounded-lg border border-line bg-surface-2 p-1" role="radiogroup" aria-label="Mode">
+                                @foreach (config('minimax.theme_modes') as $key => $modeLabel)
+                                    <button type="button" role="radio" :aria-checked="mode === '{{ $key }}'" @click="setMode('{{ $key }}')" aria-label="{{ $modeLabel }}"
+                                        class="flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-md px-1.5 text-xs font-medium text-fg-2 transition-colors hover:text-fg"
+                                        :class="mode === '{{ $key }}' && 'bg-surface text-fg shadow-card'">
+                                        <x-icon :name="['light' => 'sun', 'dark' => 'moon', 'system' => 'monitor'][$key]" :size="14" class="shrink-0" />
+                                        <span class="truncate">{{ \Illuminate\Support\Str::before($modeLabel, ' ') }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="border-t border-line px-2.5 pb-1 pt-3">
                             <p class="text-xs font-semibold text-fg">Color theme</p>
                             <div class="mt-2 grid grid-cols-1 gap-1" role="radiogroup" aria-label="Color theme">
                                 @foreach (config('minimax.theme_colors') as $key => $themeLabel)

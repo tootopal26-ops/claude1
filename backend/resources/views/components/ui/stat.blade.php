@@ -12,7 +12,7 @@
     $tag = $href ? 'a' : 'div';
 @endphp
 
-<{{ $tag }} @if ($href) href="{{ $href }}" @endif {{ $attributes->class(['flex min-w-0 flex-col gap-2 rounded-xl border border-line bg-surface p-4', 'transition-colors hover:border-line-strong hover:bg-surface-2' => $href]) }}>
+<{{ $tag }} @if ($href) href="{{ $href }}" @endif {{ $attributes->class(['flex min-w-0 flex-col gap-2 rounded-xl border border-line bg-surface p-4 shadow-card', 'transition-colors hover:border-line-strong hover:bg-surface-2' => $href]) }}>
     <div class="flex items-center justify-between gap-3">
         <p class="truncate text-xs font-medium text-fg-3">{{ $label }}</p>
         @if ($icon)

@@ -4,9 +4,11 @@
     $signedIn = auth('staff')->check();
     $primaryHref = $signedIn ? portal_route('home') : portal_route('login');
     $primaryLabel = $signedIn ? 'Back to dashboard' : 'Go to sign in';
+    $portalKey = \App\Support\Portal::current();
+    $modePreference = \App\Support\ThemeMode::preference(auth('staff')->user(), $portalKey);
 @endphp
 <!DOCTYPE html>
-<html lang="en" data-sidebar="expanded">
+<html lang="en" data-sidebar="expanded" data-theme="purple-glass" data-portal="{{ $portalKey }}" data-mode="{{ \App\Support\ThemeMode::initial($modePreference) }}" @if ($modePreference) data-mode-pref="{{ $modePreference }}" @endif>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

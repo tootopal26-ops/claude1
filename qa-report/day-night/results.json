@@ -1,0 +1,1210 @@
+{
+  "checks": [
+    {
+      "name": "admin: starts dark",
+      "ok": true,
+      "detail": "{\"mode\":\"dark\",\"pref\":\"dark\"}"
+    },
+    {
+      "name": "admin: dark shows moon, label says switch to light",
+      "ok": true,
+      "detail": "{\"sun\":0,\"moon\":1}"
+    },
+    {
+      "name": "admin: toggle switches to light instantly",
+      "ok": true,
+      "detail": "250ms {\"mode\":\"light\",\"pref\":\"light\"}"
+    },
+    {
+      "name": "admin: no page reload on toggle",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin: light shows sun, label says switch to dark",
+      "ok": true,
+      "detail": "{\"sun\":1,\"moon\":0}"
+    },
+    {
+      "name": "admin: light canvas is #F8FAFC",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin: toggle back to dark",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin: dark canvas is #17111F",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin: and to light again",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin: save requests returned 204",
+      "ok": true,
+      "detail": "[{\"url\":\"/admin/appearance/mode\",\"status\":204,\"method\":\"PUT\"},{\"url\":\"/admin/appearance/mode\",\"status\":204,\"method\":\"PUT\"},{\"url\":\"/admin/appearance/mode\",\"status\":204,\"method\":\"PUT\"},{\"url\":\"/admin/appearance/mode\",\"status\":204,\"method\":\"PUT\"}]"
+    },
+    {
+      "name": "admin: Enter on the focused toggle switches mode",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin: Space switches back",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin: toggle has a visible focus outline",
+      "ok": true,
+      "detail": "solid"
+    },
+    {
+      "name": "admin: server renders saved light mode",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin: light survives reload",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin: Appearance menu shows Light checked",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin light: confirm dialog opens and Cancel closes it (nothing confirmed)",
+      "ok": true,
+      "detail": "{\"page\":\"/admin/risk-alerts\",\"open\":true,\"closed\":true}"
+    },
+    {
+      "name": "admin: native controls use the light color scheme",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin dark: confirm dialog opens and Cancel closes it (nothing confirmed)",
+      "ok": true,
+      "detail": "{\"page\":\"/admin/risk-alerts\",\"open\":true,\"closed\":true}"
+    },
+    {
+      "name": "admin: System default with a light device paints light",
+      "ok": true,
+      "detail": "{\"mode\":\"light\",\"pref\":\"system\"}"
+    },
+    {
+      "name": "admin: System default follows the device to dark live",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin: System default survives reload (dark device)",
+      "ok": true,
+      "detail": "{\"mode\":\"dark\",\"pref\":\"system\"}"
+    },
+    {
+      "name": "admin: System default on a light device after reload",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin: a second tab follows the switch",
+      "ok": true,
+      "detail": "dark vs dark"
+    },
+    {
+      "name": "admin mobile light: /admin/home toggle visible, no horizontal scroll",
+      "ok": true,
+      "detail": "toggle={\"x\":236,\"y\":9.5,\"width\":36,\"height\":36} overflow=0"
+    },
+    {
+      "name": "admin mobile light: /admin/tournaments toggle visible, no horizontal scroll",
+      "ok": true,
+      "detail": "toggle={\"x\":236,\"y\":9.5,\"width\":36,\"height\":36} overflow=0"
+    },
+    {
+      "name": "admin mobile light: /admin/users toggle visible, no horizontal scroll",
+      "ok": true,
+      "detail": "toggle={\"x\":236,\"y\":9.5,\"width\":36,\"height\":36} overflow=0"
+    },
+    {
+      "name": "admin mobile light: /admin/ads toggle visible, no horizontal scroll",
+      "ok": true,
+      "detail": "toggle={\"x\":236,\"y\":9.5,\"width\":36,\"height\":36} overflow=0"
+    },
+    {
+      "name": "admin mobile dark: /admin/home toggle visible, no horizontal scroll",
+      "ok": true,
+      "detail": "toggle={\"x\":236,\"y\":9.5,\"width\":36,\"height\":36} overflow=0"
+    },
+    {
+      "name": "admin mobile dark: /admin/tournaments toggle visible, no horizontal scroll",
+      "ok": true,
+      "detail": "toggle={\"x\":236,\"y\":9.5,\"width\":36,\"height\":36} overflow=0"
+    },
+    {
+      "name": "admin mobile dark: /admin/users toggle visible, no horizontal scroll",
+      "ok": true,
+      "detail": "toggle={\"x\":236,\"y\":9.5,\"width\":36,\"height\":36} overflow=0"
+    },
+    {
+      "name": "admin mobile dark: /admin/ads toggle visible, no horizontal scroll",
+      "ok": true,
+      "detail": "toggle={\"x\":236,\"y\":9.5,\"width\":36,\"height\":36} overflow=0"
+    },
+    {
+      "name": "admin sign-in page follows the last admin mode on this device (light)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin sign-in page toggle switches to dark",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "admin sign-in (dark) axe clean",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "name": "admin sign-in (light) axe clean",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "name": "staff sign-in page is independent of the admin device setting (fresh device: dark)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "staff: starts dark",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "staff: toggles to light",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "staff: toggles back to dark",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "staff: and to light again",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "staff: light survives reload",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "staff: navigation unchanged (only permitted sections)",
+      "ok": true,
+      "detail": "/staff/home /staff/notifications /staff/legal"
+    },
+    {
+      "name": "staff: page outside the preset still 403",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "staff: 403 page uses the account's light mode",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "staff: admin portal still refused",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "staff mobile dark: no horizontal scroll",
+      "ok": true,
+      "detail": "overflow=0"
+    },
+    {
+      "name": "staff mobile light: no horizontal scroll",
+      "ok": true,
+      "detail": "overflow=0"
+    }
+  ],
+  "pages": [
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/home",
+      "mode": "light",
+      "title": "Dashboard · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/tournaments",
+      "mode": "light",
+      "title": "Tournaments · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/tournament-games",
+      "mode": "light",
+      "title": "Tournament Games · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/home-banners",
+      "mode": "light",
+      "title": "Home Banners · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/templates",
+      "mode": "light",
+      "title": "Recurring Templates · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/users",
+      "mode": "light",
+      "title": "Players · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/deposits",
+      "mode": "light",
+      "title": "Deposits · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/redeem-codes",
+      "mode": "light",
+      "title": "Redeem Codes · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/section-unlock-pricing",
+      "mode": "light",
+      "title": "Section Unlock Pricing · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/withdrawals",
+      "mode": "light",
+      "title": "Withdrawals · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/leaderboards",
+      "mode": "light",
+      "title": "Leaderboard Management · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/payment-settings",
+      "mode": "light",
+      "title": "Payment Settings · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/ads",
+      "mode": "light",
+      "title": "Ads Overview · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/ads/earning",
+      "mode": "light",
+      "title": "Ads Earning · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/ads/units",
+      "mode": "light",
+      "title": "Ad Units · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/ads/placements",
+      "mode": "light",
+      "title": "Ad Placements · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/ads/revenue",
+      "mode": "light",
+      "title": "Revenue Reports · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/ads/settlements",
+      "mode": "light",
+      "title": "Weekly Settlements · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/ads/daily-rewards",
+      "mode": "light",
+      "title": "Daily Login Rewards · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/ads/campaigns",
+      "mode": "light",
+      "title": "Reward Campaigns · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/ads/tickets",
+      "mode": "light",
+      "title": "Tournament Tickets · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/ads/users",
+      "mode": "light",
+      "title": "User Ad Activity · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/ads/verification",
+      "mode": "light",
+      "title": "Verification Logs · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/ads/audit",
+      "mode": "light",
+      "title": "Ads Audit Log · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/staff",
+      "mode": "light",
+      "title": "Staff · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/presets",
+      "mode": "light",
+      "title": "Permission Presets · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/staff-salary/settlements",
+      "mode": "light",
+      "title": "Salary Settlements · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/staff-salary/rules",
+      "mode": "light",
+      "title": "Salary Rules · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/notifications",
+      "mode": "light",
+      "title": "Notifications · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/customer-support",
+      "mode": "light",
+      "title": "Customer Support · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/storage",
+      "mode": "light",
+      "title": "Storage · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/audit-logs",
+      "mode": "light",
+      "title": "Audit Log · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/risk-alerts",
+      "mode": "light",
+      "title": "Risk Alerts · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/legal",
+      "mode": "light",
+      "title": "Legal · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/settings",
+      "mode": "light",
+      "title": "Settings · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/tournaments/create",
+      "mode": "light",
+      "title": "Tournaments · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/staff/create",
+      "mode": "light",
+      "title": "Staff · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/presets/create",
+      "mode": "light",
+      "title": "Permission Presets · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/templates/create",
+      "mode": "light",
+      "title": "Recurring Templates · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/notifications/create",
+      "mode": "light",
+      "title": "Notifications · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/tournament-games/create",
+      "mode": "light",
+      "title": "Tournament Games · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/users/9",
+      "mode": "light",
+      "title": "Players · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/tournaments/12/entries",
+      "mode": "light",
+      "title": "Tournaments · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/withdrawals/6",
+      "mode": "light",
+      "title": "Withdrawals · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "light",
+      "url": "/admin/staff-salary/settlements/1",
+      "mode": "light",
+      "title": "Salary Settlements · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/home",
+      "mode": "dark",
+      "title": "Dashboard · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/tournaments",
+      "mode": "dark",
+      "title": "Tournaments · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/tournament-games",
+      "mode": "dark",
+      "title": "Tournament Games · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/home-banners",
+      "mode": "dark",
+      "title": "Home Banners · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/templates",
+      "mode": "dark",
+      "title": "Recurring Templates · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/users",
+      "mode": "dark",
+      "title": "Players · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/deposits",
+      "mode": "dark",
+      "title": "Deposits · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/redeem-codes",
+      "mode": "dark",
+      "title": "Redeem Codes · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/section-unlock-pricing",
+      "mode": "dark",
+      "title": "Section Unlock Pricing · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/withdrawals",
+      "mode": "dark",
+      "title": "Withdrawals · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/leaderboards",
+      "mode": "dark",
+      "title": "Leaderboard Management · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/payment-settings",
+      "mode": "dark",
+      "title": "Payment Settings · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/ads",
+      "mode": "dark",
+      "title": "Ads Overview · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/ads/earning",
+      "mode": "dark",
+      "title": "Ads Earning · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/ads/units",
+      "mode": "dark",
+      "title": "Ad Units · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/ads/placements",
+      "mode": "dark",
+      "title": "Ad Placements · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/ads/revenue",
+      "mode": "dark",
+      "title": "Revenue Reports · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/ads/settlements",
+      "mode": "dark",
+      "title": "Weekly Settlements · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/ads/daily-rewards",
+      "mode": "dark",
+      "title": "Daily Login Rewards · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/ads/campaigns",
+      "mode": "dark",
+      "title": "Reward Campaigns · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/ads/tickets",
+      "mode": "dark",
+      "title": "Tournament Tickets · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/ads/users",
+      "mode": "dark",
+      "title": "User Ad Activity · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/ads/verification",
+      "mode": "dark",
+      "title": "Verification Logs · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/ads/audit",
+      "mode": "dark",
+      "title": "Ads Audit Log · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/staff",
+      "mode": "dark",
+      "title": "Staff · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/presets",
+      "mode": "dark",
+      "title": "Permission Presets · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/staff-salary/settlements",
+      "mode": "dark",
+      "title": "Salary Settlements · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/staff-salary/rules",
+      "mode": "dark",
+      "title": "Salary Rules · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/notifications",
+      "mode": "dark",
+      "title": "Notifications · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/customer-support",
+      "mode": "dark",
+      "title": "Customer Support · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/storage",
+      "mode": "dark",
+      "title": "Storage · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/audit-logs",
+      "mode": "dark",
+      "title": "Audit Log · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/risk-alerts",
+      "mode": "dark",
+      "title": "Risk Alerts · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/legal",
+      "mode": "dark",
+      "title": "Legal · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/settings",
+      "mode": "dark",
+      "title": "Settings · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/tournaments/create",
+      "mode": "dark",
+      "title": "Tournaments · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/staff/create",
+      "mode": "dark",
+      "title": "Staff · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/presets/create",
+      "mode": "dark",
+      "title": "Permission Presets · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/templates/create",
+      "mode": "dark",
+      "title": "Recurring Templates · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/notifications/create",
+      "mode": "dark",
+      "title": "Notifications · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/tournament-games/create",
+      "mode": "dark",
+      "title": "Tournament Games · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/users/9",
+      "mode": "dark",
+      "title": "Players · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/tournaments/12/entries",
+      "mode": "dark",
+      "title": "Tournaments · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/withdrawals/6",
+      "mode": "dark",
+      "title": "Withdrawals · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "admin",
+      "label": "dark",
+      "url": "/admin/staff-salary/settlements/1",
+      "mode": "dark",
+      "title": "Salary Settlements · Mini Max Admin Console",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "staff",
+      "label": "light",
+      "url": "/staff/home",
+      "mode": "light",
+      "title": "Dashboard · Mini Max Staff Portal",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "staff",
+      "label": "light",
+      "url": "/staff/notifications",
+      "mode": "light",
+      "title": "Notifications · Mini Max Staff Portal",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "staff",
+      "label": "light",
+      "url": "/staff/legal",
+      "mode": "light",
+      "title": "Legal · Mini Max Staff Portal",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(248, 250, 252)"
+    },
+    {
+      "portal": "staff",
+      "label": "dark",
+      "url": "/staff/home",
+      "mode": "dark",
+      "title": "Dashboard · Mini Max Staff Portal",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "staff",
+      "label": "dark",
+      "url": "/staff/notifications",
+      "mode": "dark",
+      "title": "Notifications · Mini Max Staff Portal",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    },
+    {
+      "portal": "staff",
+      "label": "dark",
+      "url": "/staff/legal",
+      "mode": "dark",
+      "title": "Legal · Mini Max Staff Portal",
+      "axe": [],
+      "islands": [],
+      "bodyBg": "rgb(23, 17, 31)"
+    }
+  ],
+  "consoleErrors": [
+    "staff: Failed to load resource: the server responded with a status of 403 (Forbidden)",
+    "staff: Failed to load resource: the server responded with a status of 403 (Forbidden)"
+  ]
+}

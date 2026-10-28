@@ -153,13 +153,15 @@ class AdminUiDesignSystemTest extends TestCase
     {
         $failures = [];
 
-        foreach ($this->parseThemes() as $key => $tokens) {
+        foreach ($this->resolvedThemes() as $key => $tokens) {
             $pairs = [
                 ['--mm-fg', '--mm-bg'], ['--mm-fg', '--mm-surface'],
                 ['--mm-fg-2', '--mm-surface'], ['--mm-fg-2', '--mm-surface-2'],
                 ['--mm-fg-3', '--mm-surface'], ['--mm-fg-3', '--mm-surface-2'], ['--mm-fg-3', '--mm-surface-3'], ['--mm-fg-3', '--mm-bg'],
                 ['--mm-fg-2', '--mm-surface-3'], ['--mm-brand-text', '--mm-surface-3'], ['--mm-fg-3', '--mm-sidebar'],
                 ['--mm-brand-text', '--mm-surface'], ['--mm-brand-text', '--mm-surface-2'], ['--mm-brand-text', '--mm-brand-soft'],
+                // Selected rows, nav items and option cards keep their hint text readable.
+                ['--mm-fg', '--mm-brand-soft'], ['--mm-fg-2', '--mm-brand-soft'], ['--mm-fg-3', '--mm-brand-soft'],
                 ['--mm-on-brand', '--mm-brand'], ['--mm-on-brand', '--mm-brand-pressed'],
             ];
 
@@ -177,22 +179,14 @@ class AdminUiDesignSystemTest extends TestCase
 
     public function test_glass_surfaces_keep_aa_contrast_in_the_worst_case_behind_them_for_every_theme(): void
     {
-        $css = preg_replace('#/\*.*?\*/#s', '', File::get(resource_path('css/themes.css')));
-        preg_match('/:root\s*\{([^{}]*)\}/', $css, $root);
-
-        $percent = function (string $token) use ($root): float {
-            $this->assertSame(1, preg_match('/'.preg_quote($token, '/').'\s*:\s*(\d+(?:\.\d+)?)%/', $root[1], $match), "themes.css must define {$token}");
-
-            return (float) $match[1] / 100;
-        };
-
-        $panel = $percent('--mm-glass-opacity');
-        $float = $percent('--mm-glass-float-opacity');
-        $glow = $percent('--mm-glow-strength') + $percent('--mm-glow-strength-2');
-
         $failures = [];
 
-        foreach ($this->parseThemes() as $key => $t) {
+        foreach ($this->resolvedThemes() as $key => $t) {
+            $percent = fn (string $token): float => (float) rtrim($t[$token], '%') / 100;
+            $panel = $percent('--mm-glass-opacity');
+            $float = $percent('--mm-glass-float-opacity');
+            $glow = $percent('--mm-glow-strength') + $percent('--mm-glow-strength-2');
+
             // Static panels sit on the page background plus, at worst, both glows stacked.
             $behindPanel = $this->blend($t['--mm-brand'], $t['--mm-bg'], $glow);
             $panelBackground = $this->blend($t['--mm-surface'], $behindPanel, $panel);
@@ -200,8 +194,8 @@ class AdminUiDesignSystemTest extends TestCase
             // Layers that overlap content can have anything behind them. The blur averages it out, so the
             // brightest large area the UI ever paints — the solid brand colour of a primary button — is
             // the worst case; glyphs and badges are small and disappear into the average.
-            $menuBackground = $this->blend($t['--mm-surface-3'], $t['--mm-brand'], $float);
-            $barBackground = $this->blend($t['--mm-bg'], $t['--mm-brand'], $float);
+            $menuBackground = $this->blend($t['--mm-float'], $t['--mm-brand'], $float);
+            $barBackground = $this->blend($t['--mm-header'], $t['--mm-brand'], $float);
             $sidebarBackground = $this->blend($t['--mm-sidebar'], $t['--mm-brand'], $float);
 
             $checks = [
@@ -301,6 +295,59 @@ class AdminUiDesignSystemTest extends TestCase
         $this->assertSame([], $offenders, 'Use hover:bg-brand-pressed on solid brand backgrounds: '.implode(', ', $offenders));
     }
 
+    public function test_semantic_text_meets_wcag_aa_on_surfaces_and_its_own_tint_in_both_modes(): void
+    {
+        $failures = [];
+
+        foreach ($this->resolvedThemes() as $key => $t) {
+            foreach (['success', 'warning', 'danger', 'info'] as $tone) {
+                [$tintHex, $tintAlpha] = $this->rgbaToken($t["--mm-{$tone}-soft"]);
+
+                foreach (['--mm-surface', '--mm-surface-2', '--mm-surface-3'] as $surface) {
+                    // Badges and alerts: the tint over the surface they sit on.
+                    $backgrounds = [$surface => $t[$surface], "{$tone}-soft on {$surface}" => $this->blend($tintHex, $t[$surface], $tintAlpha)];
+
+                    foreach ($backgrounds as $label => $background) {
+                        $ratio = $this->contrast($t["--mm-{$tone}"], $background);
+
+                        if ($ratio < 4.5) {
+                            $failures[] = sprintf('%s: --mm-%s on %s is %.2f:1 (needs 4.5:1)', $key, $tone, $label, $ratio);
+                        }
+                    }
+                }
+            }
+        }
+
+        $this->assertSame([], $failures, implode("\n", $failures));
+    }
+
+    public function test_every_theme_has_a_day_and_a_night_palette_and_the_modes_differ(): void
+    {
+        $resolved = $this->resolvedThemes();
+
+        foreach (array_keys(config('minimax.theme_colors')) as $key) {
+            foreach (['dark', 'light'] as $mode) {
+                $this->assertArrayHasKey("{$mode}/{$key}", $resolved);
+
+                foreach ([...self::REQUIRED_TOKENS, '--mm-float', '--mm-header'] as $token) {
+                    $this->assertMatchesRegularExpression('/^#[0-9a-f]{6}$/i', $resolved["{$mode}/{$key}"][$token] ?? '', "{$mode}/{$key} {$token} must resolve to a colour");
+                }
+            }
+
+            // Day mode must really be light: dark text on a light canvas.
+            $this->assertGreaterThan(0.8, $this->luminance($resolved["light/{$key}"]['--mm-bg']), "light/{$key} canvas");
+            $this->assertLessThan(0.1, $this->luminance($resolved["light/{$key}"]['--mm-fg']), "light/{$key} text");
+            $this->assertLessThan(0.05, $this->luminance($resolved["dark/{$key}"]['--mm-bg']), "dark/{$key} canvas");
+        }
+
+        // The default theme's night palette is Mini Max's (#17111F canvas, #6D28D9 accent).
+        $this->assertSame('#17111f', strtolower($resolved['dark/purple-glass']['--mm-bg']));
+        $this->assertSame('#251d32', strtolower($resolved['dark/purple-glass']['--mm-surface']));
+        $this->assertSame('#6d28d9', strtolower($resolved['dark/purple-glass']['--mm-brand']));
+        $this->assertSame('#f8fafc', strtolower($resolved['light/purple-glass']['--mm-bg']));
+        $this->assertSame('#6d28d9', strtolower($resolved['light/purple-glass']['--mm-brand']));
+    }
+
     public function test_android_theme_tokens_match_the_web_tokens_exactly(): void
     {
         $android = File::get(base_path('../mobile/src/theme/tokens.ts'));
@@ -344,7 +391,8 @@ class AdminUiDesignSystemTest extends TestCase
         $themes = [];
 
         foreach ($blocks as [, $selector, $body]) {
-            if (! preg_match_all("/\\[data-theme='([a-z-]+)'\\]/", $selector, $keys)) {
+            // The Day/Night layer is resolved separately (resolvedThemes); these are the shared, Android-mirrored blocks.
+            if (str_contains($selector, 'data-mode') || ! preg_match_all("/\\[data-theme='([a-z-]+)'\\]/", $selector, $keys)) {
                 continue;
             }
 
@@ -358,6 +406,81 @@ class AdminUiDesignSystemTest extends TestCase
         }
 
         return $themes;
+    }
+
+    /**
+     * Every color theme as the panels paint it in each mode ("dark/purple-glass", "light/cyber-blue" ...): the
+     * :root tokens, then the theme block, then the mode's general overrides, then its theme-specific ones —
+     * the same order the cascade applies them to <html>. var() references are resolved.
+     *
+     * @return array<string, array<string, string>>
+     */
+    private function resolvedThemes(): array
+    {
+        $css = preg_replace('#/\*.*?\*/#s', '', File::get(resource_path('css/themes.css')));
+        preg_match_all('/([^{}]+)\{([^{}]*)\}/', $css, $blocks, PREG_SET_ORDER);
+
+        $declarations = function (string $body): array {
+            preg_match_all('/(--mm-[\w-]+)\s*:\s*([^;]+);/', $body, $matches, PREG_SET_ORDER);
+
+            return array_column(array_map(fn (array $m): array => [$m[1], trim($m[2])], $matches), 1, 0);
+        };
+
+        $root = [];
+        $general = ['dark' => [], 'light' => []];
+        $specific = ['dark' => [], 'light' => []];
+
+        foreach ($blocks as [, $selector, $body]) {
+            $selector = trim($selector);
+
+            if ($selector === ':root') {
+                $root = [...$root, ...$declarations($body)];
+
+                continue;
+            }
+
+            foreach (explode(',', $selector) as $part) {
+                if (! preg_match("/\\[data-mode='(dark|light)'\\]/", $part, $mode)) {
+                    continue;
+                }
+
+                if (preg_match("/\\[data-theme='([a-z-]+)'\\]/", $part, $theme)) {
+                    $specific[$mode[1]][$theme[1]] = [...($specific[$mode[1]][$theme[1]] ?? []), ...$declarations($body)];
+                } elseif (! str_contains($part, ':not([data-theme])')) {
+                    $general[$mode[1]] = [...$general[$mode[1]], ...$declarations($body)];
+                }
+            }
+        }
+
+        $resolved = [];
+
+        foreach ($this->parseThemes() as $key => $theme) {
+            foreach (['dark', 'light'] as $mode) {
+                $tokens = [...$root, ...$theme, ...$general[$mode], ...($specific[$mode][$key] ?? [])];
+
+                foreach ($tokens as $name => $value) {
+                    if (preg_match('/^var\((--mm-[\w-]+)\)$/', $value, $reference)) {
+                        $tokens[$name] = $tokens[$reference[1]];
+                    }
+                }
+
+                $resolved["{$mode}/{$key}"] = $tokens;
+            }
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * "rgb(32 213 138 / 0.16)" => ['#20d58a', 0.16]
+     *
+     * @return array{0: string, 1: float}
+     */
+    private function rgbaToken(string $value): array
+    {
+        $this->assertSame(1, preg_match('/rgb\(\s*(\d+)\s+(\d+)\s+(\d+)\s*\/\s*([\d.]+)\s*\)/', $value, $m), "Expected an rgb(r g b / a) tint, got {$value}");
+
+        return [sprintf('#%02x%02x%02x', $m[1], $m[2], $m[3]), (float) $m[4]];
     }
 
     private function contrast(string $foregroundHex, string $backgroundHex): float

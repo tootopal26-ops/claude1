@@ -104,9 +104,55 @@ brand button) · focus ring `--mm-ring`.
 
 ### Semantic colors (identical in every theme)
 
-`success #34D399` · `warning #FBBF24` · `danger #F87171` · `info #60A5FA`, each
-with a `-soft` tint for badges/alerts (`bg-success-soft text-success`), plus
-`bg-danger-solid text-on-danger` for destructive buttons.
+By night `success #20D58A` · `warning #F5C451` · `danger #F87C86` · `info #74B1FB`,
+each with a `-soft` tint for badges/alerts (`bg-success-soft text-success`), plus
+`bg-danger-solid text-on-danger` (`#D92D3F`) for destructive buttons. The tints
+are made from the brand error/success/warning hues (`#F04452`, `#20D58A`,
+`#F5C451`); the error text is a lighter tint of `#F04452` because the base red
+is only 4.35:1 on a night card. By day the text colours deepen to
+`#05704C` / `#835500` / `#BE1A2E` / `#1A58C4` so they stay AA on white and on
+their own tints.
+
+### Day / Night mode (Admin and Staff panels)
+
+A second layer, independent of the color theme, switched by `data-mode="light|dark"`
+on `<html>` (the last section of `themes.css`):
+
+| | Night (`dark`) | Day (`light`) |
+|---|---|---|
+| canvas `--mm-bg` | `#17111F` | `#F8FAFC` |
+| sidebar | `#1E1729` | `#FFFFFF` |
+| cards `--mm-surface` | `#251D32` | `#FFFFFF` |
+| inputs, table headers `--mm-surface-2` | `#2B2239` | `#F1F5F9` |
+| elevated `--mm-surface-3` | `#302440` | `#EAEFF5` (badges, tracks) |
+| menus/dialogs `--mm-float` | `#302440` | `#FFFFFF` |
+| text `fg` / `fg-2` / `fg-3` | `#F8FAFC` / `#B6AFC4` / `#9A90AC` | `#17111F` / `#475569` / `#5A6779` |
+| borders | `#3B304B` / `#4E4063` | `#E2E8F0` / `#CBD5E1` |
+| brand / pressed / soft / text | `#6D28D9` / `#5B21B6` / `#33204D` / `#C4B0FA` | `#6D28D9` / `#5B21B6` / `#EDE9FE` / `#6D28D9` |
+
+The night column is the default Purple Glassmorphism theme; the other six color
+themes keep their own tinted night surfaces. By day every theme shares the
+neutral column and keeps its own accent, with `--mm-brand-text` and
+`--mm-brand-soft` deepened/lightened per theme for AA on white. Cards get a
+restrained drop shadow by day (`--mm-shadow-card`, `shadow-card`) and a faint
+top highlight by night; native controls follow `color-scheme`. The Android app
+does not use this layer.
+
+**Choosing and saving.** The header has a sun/moon switch (`x-ui.mode-toggle`:
+sun by day, moon by night, labelled "Switch to Light Mode" / "Switch to Dark
+Mode", works with Enter/Space) and the **Appearance** menu offers Light / Dark /
+System default. The choice is saved per account **and per portal** on
+`staff_users.theme_modes` (`PUT {portal}/appearance/mode`, no permission needed,
+behind the same portal boundary) and rendered by the server onto `<html>`
+(`data-mode`, `data-mode-pref`), so a page never flashes the wrong mode; "System
+default" is resolved by the inline boot script before paint and follows the
+device live. New accounts start in Night. Sign-in and error pages for guests use
+the last mode used in that portal on the device (`localStorage`
+`mm_theme_mode:admin` / `mm_theme_mode:staff`, a non-sensitive UI setting) and
+have their own switch. Other tabs of the same portal follow a switch; colours
+ease across for 0.3s unless the visitor asks for reduced motion. Tests:
+`ThemeModeTest`, and `AdminUiDesignSystemTest` checks AA for every theme in
+both modes.
 
 ### Themes and fonts
 

@@ -44,7 +44,10 @@
     --color-info: var(--mm-info);
     --color-info-soft: var(--mm-info-soft);
 
+    --color-float: var(--mm-float);
+
     --shadow-float: var(--mm-shadow-float);
+    --shadow-card: var(--mm-shadow-card);
 }
 
 @layer base {
@@ -94,12 +97,12 @@
     .mm-panel {
         background-color: color-mix(in oklab, var(--mm-surface) var(--mm-glass-opacity), transparent);
         border: 1px solid var(--mm-border);
-        box-shadow: 0 1px 0 color-mix(in oklab, var(--mm-fg) 5%, transparent) inset;
+        box-shadow: var(--mm-shadow-card);
     }
 
     /* Floating layers: menus, dialogs, toasts, tooltips. */
     .mm-float {
-        background-color: color-mix(in oklab, var(--mm-surface-3) var(--mm-glass-float-opacity), transparent);
+        background-color: color-mix(in oklab, var(--mm-float) var(--mm-glass-float-opacity), transparent);
         -webkit-backdrop-filter: var(--mm-glass-filter);
         backdrop-filter: var(--mm-glass-filter);
         box-shadow: var(--mm-shadow-float);
@@ -122,7 +125,7 @@
         inset: 0;
         z-index: -1;
         pointer-events: none;
-        background-color: color-mix(in oklab, var(--mm-bar-color, var(--mm-bg)) var(--mm-glass-float-opacity), transparent);
+        background-color: color-mix(in oklab, var(--mm-bar-color, var(--mm-header)) var(--mm-glass-float-opacity), transparent);
         -webkit-backdrop-filter: var(--mm-glass-filter);
         backdrop-filter: var(--mm-glass-filter);
     }
@@ -223,7 +226,7 @@
         background-color: color-mix(in oklab, var(--mm-surface) var(--mm-glass-hero-opacity), transparent);
         border: 1px solid var(--mm-border);
         border-top-color: color-mix(in oklab, var(--mm-brand) 24%, var(--mm-border));
-        box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 30px 70px -32px rgb(0 0 0 / 0.75);
+        box-shadow: var(--mm-glass-shadow);
         -webkit-backdrop-filter: var(--mm-glass-filter);
         backdrop-filter: var(--mm-glass-filter);
     }
@@ -232,9 +235,10 @@
      * Portal sign-in pages. The Admin and Staff portals share one brand and one
      * set of tokens; each only nudges the neutral surfaces — Admin deeper and
      * more austere, Staff a step lighter — and never the brand colour, so
-     * contrast and the purple-as-accent rule hold in both.
+     * contrast and the purple-as-accent rule hold in both. By day Staff uses
+     * the plain day surfaces and Admin a cooler canvas.
      */
-    .mm-portal--admin {
+    :root:not([data-mode='light']) .mm-portal--admin {
         --mm-bg: #0a0810;
         --mm-sidebar: #0e0b14;
         --mm-surface: #130f1a;
@@ -244,7 +248,7 @@
         --mm-border-strong: #40324f;
     }
 
-    .mm-portal--staff {
+    :root:not([data-mode='light']) .mm-portal--staff {
         --mm-bg: #17131f;
         --mm-sidebar: #1b1624;
         --mm-surface: #211b2b;
@@ -252,6 +256,38 @@
         --mm-surface-3: #2d2538;
         --mm-border: #3c3149;
         --mm-border-strong: #50425f;
+    }
+
+    [data-mode='light'] .mm-portal--admin {
+        --mm-bg: #f1f4f9;
+        --mm-surface-2: #eef2f7;
+        --mm-border: #dde3ec;
+        --mm-border-strong: #c5cedb;
+    }
+
+    /*
+     * Day/Night toggle (header and sign-in pages). Both glyphs are stacked and
+     * the inactive one turns and fades away, so switching never moves layout;
+     * which glyph shows comes from data-mode on <html>, so it is right from the
+     * first paint.
+     */
+    .mm-mode-toggle {
+        position: relative;
+        display: inline-grid;
+        place-items: center;
+    }
+
+    .mm-mode-toggle > svg {
+        grid-area: 1 / 1;
+        transition:
+            opacity 0.25s ease,
+            transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+
+    :root:not([data-mode='light']) .mm-mode-toggle__sun,
+    [data-mode='light'] .mm-mode-toggle__moon {
+        opacity: 0;
+        transform: rotate(-90deg) scale(0.6);
     }
 
     .mm-eyebrow {
@@ -266,6 +302,27 @@
 
     .mm-drift {
         animation: mm-drift 28s ease-in-out infinite alternate;
+    }
+}
+
+/*
+ * Switching day/night: colors ease across instead of snapping. Applied to
+ * <html> for the length of the switch only, so ordinary hovers keep their own
+ * timing, and never when the visitor asks for reduced motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+    .mm-mode-switching,
+    .mm-mode-switching *,
+    .mm-mode-switching *::before,
+    .mm-mode-switching *::after {
+        transition-property: background-color, border-color, color, fill, stroke, box-shadow, outline-color !important;
+        transition-duration: 0.3s !important;
+        transition-timing-function: ease !important;
+    }
+
+    .mm-mode-switching .mm-mode-toggle > svg {
+        transition-property: opacity, transform !important;
+        transition-duration: 0.35s !important;
     }
 }
 

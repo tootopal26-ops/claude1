@@ -18,28 +18,48 @@
  * never used as a page or card background (--mm-brand-soft is the tinted
  * "selected" surface).
  *
- * Android mirrors these names and values in mobile/src/theme/tokens.ts.
+ * Android mirrors the color-theme names and values in mobile/src/theme/tokens.ts.
+ *
+ * Day / Night mode (Admin & Staff panels only) is a second, independent layer
+ * at the end of this file, switched by data-mode="light|dark" on <html>: light
+ * mode replaces the neutral surfaces, text and semantic colors for every color
+ * theme and darkens each theme's brand text; dark mode gives the default
+ * Purple Glassmorphism theme Mini Max's night palette. The color-theme blocks
+ * below stay the shared (Android-mirrored) source for each brand family.
  */
 
 :root {
     color-scheme: dark;
 
-    /* Semantic colors carry meaning independent of the chosen theme. */
-    --mm-success: #34d399;
-    --mm-success-soft: rgb(52 211 153 / 0.12);
-    --mm-warning: #fbbf24;
-    --mm-warning-soft: rgb(251 191 36 / 0.12);
-    --mm-danger: #f87171;
-    --mm-danger-soft: rgb(248 113 113 / 0.12);
-    --mm-danger-solid: #dc2626;
-    --mm-danger-solid-hover: #b91c1c;
+    /*
+     * Semantic colors carry meaning independent of the chosen theme. The plain
+     * token is the text/icon color; the -soft token is the tint behind it. Error
+     * text is a lighter tint of the #f04452 error red, which is used for the
+     * tints themselves: the base red is 4.35:1 on a night card, under AA.
+     */
+    --mm-success: #20d58a;
+    --mm-success-soft: rgb(32 213 138 / 0.12);
+    --mm-warning: #f5c451;
+    --mm-warning-soft: rgb(245 196 81 / 0.12);
+    --mm-danger: #f87c86;
+    --mm-danger-soft: rgb(240 68 82 / 0.12);
+    --mm-danger-solid: #d92d3f;
+    --mm-danger-solid-hover: #b8202f;
     --mm-on-danger: #ffffff;
-    --mm-info: #60a5fa;
+    --mm-info: #74b1fb;
     --mm-info-soft: rgb(96 165 250 / 0.12);
 
     --mm-overlay: rgb(5 3 8 / 0.7);
     --mm-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.35);
     --mm-shadow-float: 0 16px 40px -12px rgb(0 0 0 / 0.65), 0 0 0 1px var(--mm-border);
+
+    /* Cards: a faint top highlight at night, a restrained drop shadow by day. */
+    --mm-shadow-card: 0 1px 0 color-mix(in oklab, var(--mm-fg) 5%, transparent) inset;
+    --mm-glass-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 30px 70px -32px rgb(0 0 0 / 0.75);
+
+    /* Menus and dialogs, and the sticky header. Light mode lifts both to white. */
+    --mm-float: var(--mm-surface-3);
+    --mm-header: var(--mm-bg);
 
     /*
      * Glass. One set of tunables shared by every theme (the surfaces themselves
@@ -247,4 +267,138 @@
 
 [data-font='elegant-display'] {
     --mm-font-active: Didot, 'Bodoni MT', Georgia, ui-serif, serif;
+}
+
+/* ---------- Day / Night mode (Admin & Staff panels) ---------- */
+
+/*
+ * Night. The default theme takes Mini Max's own night palette; the other color
+ * themes keep their tinted surfaces above. The [data-mode] [data-theme] form
+ * also covers the theme swatches in the Appearance menu, which carry their own
+ * data-theme.
+ */
+[data-mode='dark']:not([data-theme]),
+[data-mode='dark'][data-theme='purple-glass'],
+[data-mode='dark'] [data-theme='purple-glass'] {
+    --mm-bg: #17111f;
+    --mm-sidebar: #1e1729;
+    --mm-surface: #251d32;
+    --mm-surface-2: #2b2239;
+    --mm-surface-3: #302440;
+    --mm-border: #3b304b;
+    --mm-border-strong: #4e4063;
+
+    --mm-fg: #f8fafc;
+    --mm-fg-2: #b6afc4;
+    --mm-fg-3: #9a90ac;
+
+    --mm-brand: #6d28d9;
+    --mm-brand-hover: #7c3aed;
+    --mm-brand-pressed: #5b21b6;
+    --mm-brand-soft: #33204d;
+    --mm-brand-text: #c4b0fa;
+    --mm-on-brand: #ffffff;
+    --mm-ring: #a78bfa;
+}
+
+/*
+ * Day. One neutral set for every color theme: a slightly tinted canvas (no
+ * pure-white glare), white sidebar, cards, menus and dialogs, slate text, and
+ * semantic text colors deep enough for AA on their own tints.
+ */
+[data-mode='light'],
+[data-mode='light'] [data-theme] {
+    color-scheme: light;
+
+    --mm-bg: #f8fafc;
+    --mm-sidebar: #ffffff;
+    --mm-surface: #ffffff;
+    --mm-surface-2: #f1f5f9;
+    --mm-surface-3: #eaeff5;
+    --mm-border: #e2e8f0;
+    --mm-border-strong: #cbd5e1;
+
+    --mm-fg: #17111f;
+    --mm-fg-2: #475569;
+    --mm-fg-3: #5a6779;
+
+    --mm-success: #05704c;
+    --mm-success-soft: rgb(32 213 138 / 0.16);
+    --mm-warning: #835500;
+    --mm-warning-soft: rgb(245 196 81 / 0.26);
+    --mm-danger: #be1a2e;
+    --mm-danger-soft: rgb(240 68 82 / 0.12);
+    --mm-info: #1a58c4;
+    --mm-info-soft: rgb(59 130 246 / 0.12);
+
+    --mm-overlay: rgb(15 23 42 / 0.42);
+    --mm-shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+    --mm-shadow-float: 0 18px 44px -18px rgb(15 23 42 / 0.28), 0 0 0 1px var(--mm-border);
+    --mm-shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 2px 8px -2px rgb(15 23 42 / 0.06);
+    --mm-glass-shadow: 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 24px 60px -30px rgb(15 23 42 / 0.28);
+
+    --mm-float: #ffffff;
+    --mm-header: #ffffff;
+
+    --mm-glow-strength: 6%;
+    --mm-glow-strength-2: 4%;
+}
+
+/* Day brand text and tints: each theme's accent, deepened to AA on white. */
+[data-mode='light']:not([data-theme]),
+[data-mode='light'][data-theme='purple-glass'],
+[data-mode='light'] [data-theme='purple-glass'] {
+    --mm-brand: #6d28d9;
+    --mm-brand-hover: #7c3aed;
+    --mm-brand-pressed: #5b21b6;
+    --mm-brand-soft: #ede9fe;
+    --mm-brand-text: #6d28d9;
+    --mm-on-brand: #ffffff;
+    --mm-ring: #7c3aed;
+}
+
+[data-mode='light'][data-theme='midnight-emerald'],
+[data-mode='light'] [data-theme='midnight-emerald'] {
+    --mm-brand-soft: #d1fae5;
+    --mm-brand-text: #047857;
+    --mm-ring: #059669;
+}
+
+[data-mode='light'][data-theme='crimson-arena'],
+[data-mode='light'] [data-theme='crimson-arena'] {
+    --mm-brand-soft: #fee2e2;
+    --mm-brand-text: #b91c1c;
+    --mm-ring: #dc2626;
+}
+
+[data-mode='light'][data-theme='cyber-blue'],
+[data-mode='light'] [data-theme='cyber-blue'] {
+    --mm-brand-soft: #e0f2fe;
+    --mm-brand-text: #0369a1;
+    --mm-ring: #0284c7;
+}
+
+[data-mode='light'][data-theme='sunset-gold'],
+[data-mode='light'] [data-theme='sunset-gold'] {
+    --mm-brand-soft: #fef3c7;
+    --mm-brand-text: #92400e;
+    --mm-ring: #d97706;
+}
+
+[data-mode='light'][data-theme='royal-indigo'],
+[data-mode='light'] [data-theme='royal-indigo'] {
+    --mm-brand-soft: #e0e7ff;
+    --mm-brand-text: #4338ca;
+    --mm-ring: #5558e8;
+}
+
+[data-mode='light'][data-theme='monochrome-steel'],
+[data-mode='light'] [data-theme='monochrome-steel'] {
+    --mm-brand: #475569;
+    --mm-brand-hover: #64748b;
+    --mm-brand-pressed: #334155;
+    --mm-brand-soft: #e2e8f0;
+    --mm-brand-text: #334155;
+    --mm-on-brand: #ffffff;
+    --mm-ring: #475569;
 }

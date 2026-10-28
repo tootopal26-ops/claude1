@@ -17,6 +17,10 @@
         </div>
     </div>
 
+    <div class="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
+        <x-ui.mode-toggle />
+    </div>
+
     <main id="main" class="mx-auto flex min-h-dvh w-full max-w-2xl flex-col items-center px-5 py-8 sm:py-12">
         <x-portal.brand :size="42" tag="Operations" class="mm-rise" />
 

@@ -7,6 +7,10 @@
         <x-portal.arena-rings />
     </div>
 
+    <div class="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
+        <x-ui.mode-toggle />
+    </div>
+
     <main id="main" class="mx-auto flex min-h-dvh w-full max-w-[1400px] flex-col justify-center gap-10 px-5 py-8 sm:px-10 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:grid-rows-[1fr_auto] lg:gap-x-16 lg:gap-y-0 lg:px-14 lg:py-12">
         {{-- Heading --}}
         <section class="flex flex-col lg:col-start-1 lg:row-start-1 lg:justify-center" aria-labelledby="portal-title">
