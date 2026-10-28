@@ -30,6 +30,9 @@ class RedeemCodes extends Component
 
     public bool $isActive = true;
 
+    /** The player must watch one rewarded ad (verified by the ad network) before the code credits. */
+    public bool $requiresAd = false;
+
     public ?int $generatedId = null;
 
     #[Url(as: 'q')]
@@ -59,6 +62,7 @@ class RedeemCodes extends Component
             'duration' => ['required', 'in:'.implode(',', array_keys(self::DURATIONS))],
             'customHours' => [$this->duration === 'custom' ? 'required' : 'nullable', 'integer', 'min:1', 'max:8760'],
             'isActive' => ['boolean'],
+            'requiresAd' => ['boolean'],
         ], [], [
             'name' => 'campaign name',
             'capacity' => 'player limit',
@@ -72,12 +76,14 @@ class RedeemCodes extends Component
             'reward_coins' => (int) $this->reward,
             'expires_at' => now()->addHours($this->hours()),
             'is_active' => $this->isActive,
+            'requires_rewarded_ad' => $this->requiresAd,
         ], $staff);
 
         $this->generatedId = $campaign->id;
         $this->reset(['name', 'capacity', 'reward', 'customHours']);
         $this->duration = '24';
         $this->isActive = true;
+        $this->requiresAd = false;
         $this->resetPage();
     }
 

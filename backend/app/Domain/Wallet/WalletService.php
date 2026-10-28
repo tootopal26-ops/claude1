@@ -57,6 +57,43 @@ class WalletService
         });
     }
 
+    /**
+     * Ledger types a reward credit may carry. Rewards always land in the Deposit balance
+     * (spendable on entry fees, not withdrawable) — never in winnings — and each source has
+     * its own type so wallet history and reports can tell a reward from a real deposit.
+     */
+    public const array REWARD_TYPES = ['ad_reward', 'daily_login_reward', 'ads_earning_reward', 'ad_campaign_reward'];
+
+    /**
+     * Credits a reward (ads, daily login, Ads Earning settlement) to the Deposit balance with
+     * the same guarantees as every other credit: locked wallet, ledger row first, and a retry
+     * with the same idempotency key returns the original entry instead of crediting again.
+     */
+    public function creditReward(
+        User $user,
+        string $amount,
+        string $type,
+        string $idempotencyKey,
+        ?Model $source = null,
+        ?string $reason = null,
+    ): WalletLedgerEntry {
+        $this->assertPositiveAmount($amount);
+
+        if (! in_array($type, self::REWARD_TYPES, true)) {
+            throw new \InvalidArgumentException("Unknown reward type \"{$type}\".");
+        }
+
+        return DB::transaction(function () use ($user, $amount, $type, $idempotencyKey, $source, $reason) {
+            $wallet = $this->lockWallet($user);
+
+            if ($existing = $this->findExisting($idempotencyKey, 'deposit')) {
+                return $existing;
+            }
+
+            return $this->applyEntry($wallet, $type, 'deposit', $amount, $idempotencyKey, $source, $reason);
+        });
+    }
+
     public function creditWinnings(
         User $user,
         string $amount,

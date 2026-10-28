@@ -17,12 +17,17 @@ final class RedeemOutcome
         'limit_reached' => 'This code has been fully redeemed.',
         'already_redeemed' => "You've already redeemed this code.",
         'ineligible' => "This account can't redeem codes.",
+        'ad_required' => 'Watch a short ad to receive this reward.',
+        'ads_unavailable' => "This code needs a short ad, and ads aren't available right now. Try again later.",
     ];
 
     public function __construct(
         public readonly string $result,
         public readonly int $coins = 0,
         public readonly ?int $campaignId = null,
+        /** For `ad_required`: the rewarded claim to complete, and the ID to give the ad SDK. */
+        public readonly ?string $claimToken = null,
+        public readonly ?string $dynamicUserId = null,
     ) {}
 
     public function succeeded(): bool

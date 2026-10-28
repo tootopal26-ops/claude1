@@ -201,7 +201,8 @@ export function JoinSheet({ tournament: requested, onClose, onJoined, onDetailsS
           {short || (step.name === 'review' && step.insufficient) ? (
             <Button
               label="Add coins"
-              icon="deposit"
+              artwork="deposit"
+              variant="success"
               onPress={() => {
                 onClose();
                 pushOnce('/deposit');

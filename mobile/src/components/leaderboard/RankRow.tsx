@@ -10,7 +10,7 @@ import { CoinAmount } from '../CoinAmount';
 import { CoinAsset } from '../CoinAsset';
 
 /**
- * A rank from 4 to 100: rank number, the player's avatar in the green ring, name and
+ * A rank from 4 to 100: the rank as "#4" … "#100", the player's avatar in the green ring, name and
  * activity, and their earnings for the period (coin artwork + the server's figure) on the
  * right. The signed-in player's row is tinted.
  */
@@ -22,7 +22,7 @@ export function RankRow({ entry, isMe }: { entry: LeaderboardEntry; isMe: boolea
       style={[styles.row, isMe && styles.mine]}
       accessibilityLabel={`Rank ${entry.rank}, ${entry.username}${isMe ? ' (you)' : ''}, earned ${formatCoins(entry.score)} coins, ${entry.total_kills} kills in ${entry.tournaments_played} tournaments`}
     >
-      <Text style={styles.rank}>{entry.rank}</Text>
+      <Text style={styles.rank} numberOfLines={1}>{`#${entry.rank}`}</Text>
       <Avatar username={entry.username} size={SIZE.avatarRow - 8} ring="ranked" />
       <View style={styles.text}>
         <Text style={styles.name} numberOfLines={1}>
@@ -60,7 +60,7 @@ const useStyles = makeStyles(({ colors: c }) => ({
     borderRadius: RADIUS.md,
   },
   mine: { backgroundColor: c.brandSoft, borderColor: c.ring },
-  rank: { ...TYPE.bodyStrong, color: c.fg2, width: 28, textAlign: 'center' },
+  rank: { ...TYPE.bodyStrong, fontSize: 14, color: c.fg2, width: 38, textAlign: 'center', fontVariant: ['tabular-nums'] },
   text: { flex: 1, minWidth: 0 },
   name: { ...TYPE.bodyStrong, color: c.fg },
   you: { color: c.brandText },

@@ -18,6 +18,8 @@ class TournamentController extends Controller
      * The app's tournament tabs: Upcoming, Ongoing and Completed (which also holds
      * cancelled tournaments, labelled as such). `meta.counts` gives every tab's size for
      * the same game filter, so the Home shortcuts and the tab badges come from the server.
+     * `joined=1` narrows everything (list and counts) to tournaments the signed-in player
+     * holds a confirmed entry in — the app's "Total Matches" list.
      */
     public const STATUS_GROUPS = [
         'upcoming' => ['upcoming'],
@@ -30,10 +32,17 @@ class TournamentController extends Controller
         $validated = $request->validate([
             'status' => ['nullable', 'in:'.implode(',', array_keys(self::STATUS_GROUPS))],
             'game_id' => ['nullable', 'integer', 'min:1'],
+            'joined' => ['nullable', 'boolean'],
         ]);
 
+        $userId = $request->user()->id;
+
         $base = Tournament::query()
-            ->when(isset($validated['game_id']), fn ($query) => $query->where('game_id', (int) $validated['game_id']));
+            ->when(isset($validated['game_id']), fn ($query) => $query->where('game_id', (int) $validated['game_id']))
+            ->when($request->boolean('joined'), fn ($query) => $query->whereHas(
+                'entries',
+                fn ($entries) => $entries->where('user_id', $userId)->where('status', 'confirmed'),
+            ));
 
         $byStatus = (clone $base)->selectRaw('status, count(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
         $counts = collect(self::STATUS_GROUPS)->map(fn (array $statuses) => (int) collect($statuses)->sum(fn (string $status) => $byStatus[$status] ?? 0))->all();

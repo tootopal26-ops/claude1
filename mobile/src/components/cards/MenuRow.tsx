@@ -1,52 +1,82 @@
 import { Text, View } from 'react-native';
 
+import { Artwork, ARTWORK_SIZE, type ArtworkName } from '../../theme/artwork';
+import { withOpacity } from '../../theme/glass';
 import { PRESS_SCALE } from '../../theme/motion';
-import { Icon, type IconName } from '../../theme/icons';
+import { Icon } from '../../theme/icons';
 import { makeStyles, useTheme } from '../../theme/ThemeContext';
-import { ICON_SIZE, RADIUS, SIZE, SPACE, TYPE } from '../../theme/tokens';
+import { RADIUS, SPACE, TYPE } from '../../theme/tokens';
 import { PressableScale } from '../interaction/PressableScale';
+import { UnreadDot } from '../visual/UnreadDot';
 
 type Props = {
-  icon: IconName;
+  /** The supplied colourful artwork for this row (mobile/assets/icons). */
+  artwork: ArtworkName;
   label: string;
   onPress: () => void;
-  /** Short grey text before the chevron (for example the current theme). */
+  /** Short grey text before the chevron. */
   detail?: string;
+  /** Shows the red unread dot on the artwork (used by Notifications). */
+  badge?: boolean;
   tone?: 'default' | 'danger';
-  last?: boolean;
+  /** Accessibility hint for what the row opens. */
+  hint?: string;
 };
 
-/** One row of a settings-style menu: icon tile, label, optional detail, chevron. */
-export function MenuRow({ icon, label, onPress, detail, tone = 'default', last }: Props) {
+/**
+ * One Profile menu row: its own rounded glass card, the supplied artwork on the left
+ * (fitted, never cropped), the title, an optional detail and a chevron. The whole row is
+ * the touch target and gives a brief press response; it fires once per tap.
+ */
+export function MenuRow({ artwork, label, onPress, detail, badge, tone = 'default', hint }: Props) {
   const styles = useStyles();
   const { colors, semanticColors } = useTheme();
-  const color = tone === 'danger' ? semanticColors.danger : colors.fg;
+  const danger = tone === 'danger';
 
   return (
-    <PressableScale onPress={onPress} accessibilityRole="button" accessibilityLabel={detail ? `${label}, ${detail}` : label} scaleTo={PRESS_SCALE.card} pressedStyle={styles.pressed}>
-      <View style={[styles.row, !last && styles.divider]}>
-        <View style={[styles.tile, tone === 'danger' && { backgroundColor: semanticColors.dangerSoft }]}>
-          <Icon name={icon} size={ICON_SIZE.row} />
-        </View>
-        <Text style={[styles.label, { color }]} numberOfLines={1}>
-          {label}
-        </Text>
-        {detail ? (
-          <Text style={styles.detail} numberOfLines={1}>
-            {detail}
-          </Text>
-        ) : null}
-        {tone === 'danger' ? null : <Icon name="chevron-right" size={16} color={colors.fg3} />}
+    <PressableScale
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={[label, badge ? 'unread notifications' : null, detail].filter(Boolean).join(', ')}
+      accessibilityHint={hint}
+      scaleTo={PRESS_SCALE.card}
+      style={[styles.row, danger && styles.rowDanger]}
+      pressedStyle={danger ? styles.pressedDanger : styles.pressed}
+    >
+      <View style={styles.art}>
+        <Artwork name={artwork} size={ARTWORK_SIZE.menu} />
+        {badge ? <UnreadDot style={styles.dot} /> : null}
       </View>
+      <Text style={[styles.label, { color: danger ? semanticColors.danger : colors.fg }]} numberOfLines={1}>
+        {label}
+      </Text>
+      {detail ? (
+        <Text style={styles.detail} numberOfLines={1}>
+          {detail}
+        </Text>
+      ) : null}
+      {danger ? null : <Icon name="chevron-right" size={16} color={colors.fg3} />}
     </PressableScale>
   );
 }
 
-const useStyles = makeStyles(({ colors: c }) => ({
-  row: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, minHeight: 56, paddingHorizontal: SPACE.sm },
-  divider: { borderBottomWidth: 1, borderBottomColor: c.border },
+const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE.sm,
+    minHeight: 58,
+    paddingHorizontal: SPACE.sm,
+    borderRadius: RADIUS.lg,
+    backgroundColor: withOpacity(c.surface, 0.72),
+    borderWidth: 1,
+    borderColor: c.border,
+  },
+  rowDanger: { borderColor: withOpacity(s.danger, 0.4), backgroundColor: withOpacity(s.dangerSolid, 0.1) },
   pressed: { backgroundColor: c.surface2 },
-  tile: { width: SIZE.touch - 10, height: SIZE.touch - 10, borderRadius: RADIUS.sm, backgroundColor: c.surface2, alignItems: 'center', justifyContent: 'center' },
+  pressedDanger: { backgroundColor: withOpacity(s.dangerSolid, 0.18) },
+  art: { width: ARTWORK_SIZE.menu, height: ARTWORK_SIZE.menu },
+  dot: { top: 0, right: 1 },
   label: { ...TYPE.bodyStrong, fontSize: 15, flex: 1 },
   detail: { ...TYPE.meta, color: c.fg3, maxWidth: 140 },
 }));

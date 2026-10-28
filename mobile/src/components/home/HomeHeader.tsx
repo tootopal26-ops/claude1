@@ -1,42 +1,25 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
 
-import { fetchNotifications } from '../../api/notifications';
+import { useUnreadCount } from '../../notifications/useUnreadCount';
+import { Artwork, ARTWORK_SIZE } from '../../theme/artwork';
 import { PRESS_SCALE } from '../../theme/motion';
-import { Icon } from '../../theme/icons';
-import { makeStyles, useTheme } from '../../theme/ThemeContext';
-import { ICON_SIZE, RADIUS, SIZE, SPACE, TYPE } from '../../theme/tokens';
+import { makeStyles } from '../../theme/ThemeContext';
+import { RADIUS, SIZE, SPACE, TYPE } from '../../theme/tokens';
 import { pushOnce } from '../../utils/navigation';
 import { Avatar } from '../avatar/Avatar';
 import { PressableScale } from '../interaction/PressableScale';
+import { UnreadDot } from '../visual/UnreadDot';
 import { WalletPill } from '../wallet/WalletPill';
 
 /**
  * Top of Home, left to right: the player's avatar in its green ring, "Welcome Back" over
- * the username, then the wallet pill and the notifications bell. The bell's dot is the
- * server's unread count, fetched each time Home is shown; a failed fetch keeps the last
- * known state rather than inventing one.
+ * the username, then the wallet tile and the notifications button with the supplied yellow
+ * bell. The red dot is the server's unread count, fetched each time Home is shown; a failed
+ * fetch keeps the last known state rather than inventing one.
  */
 export function HomeHeader({ username }: { username: string }) {
   const styles = useStyles();
-  const { colors, semanticColors } = useTheme();
-  const [unread, setUnread] = useState(0);
-
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      fetchNotifications()
-        .then((response) => {
-          if (active) setUnread(response.meta.unread_count);
-        })
-        .catch(() => {});
-
-      return () => {
-        active = false;
-      };
-    }, []),
-  );
+  const unread = useUnreadCount();
 
   return (
     <View style={styles.row}>
@@ -58,8 +41,8 @@ export function HomeHeader({ username }: { username: string }) {
         hitSlop={4}
       >
         <View style={styles.bell}>
-          <Icon name="notifications" size={ICON_SIZE.control} />
-          {unread > 0 ? <View style={[styles.dot, { backgroundColor: semanticColors.dangerSolid, borderColor: colors.surface2 }]} /> : null}
+          <Artwork name="bell" size={ARTWORK_SIZE.headerBell} />
+          {unread > 0 ? <UnreadDot style={styles.dot} /> : null}
         </View>
       </PressableScale>
     </View>
@@ -83,5 +66,5 @@ const useStyles = makeStyles(({ colors: c }) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dot: { position: 'absolute', top: 7, right: 7, width: 10, height: 10, borderRadius: 5, borderWidth: 2 },
+  dot: { top: 6, right: 6 },
 }));

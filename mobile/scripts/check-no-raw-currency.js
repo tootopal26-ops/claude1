@@ -24,6 +24,10 @@ const ALLOWED_SVG_FILES = [
   path.join(ROOT, 'src', 'components', 'carousel', 'HeroCarousel.tsx'),
   // The caption fade laid over game and tournament artwork — no coin or currency imagery.
   path.join(ROOT, 'src', 'components', 'visual', 'BottomFade.tsx'),
+  // The glass strip behind each Home status card's title and count — a gradient only.
+  path.join(ROOT, 'src', 'components', 'home', 'ShortcutCards.tsx'),
+  // The bottom navigation's selection light (line, halo, haze) — gradients only.
+  path.join(ROOT, 'src', 'components', 'navigation', 'BottomNav.tsx'),
 ];
 const RUPEE_PATTERN = /₹/;
 const SVG_TAG_PATTERN = /<Svg\b/;

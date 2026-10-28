@@ -10,6 +10,8 @@ import { AmbientGlow } from '../../src/components/AmbientGlow';
 import { HeroCarousel, type HeroBanner } from '../../src/components/carousel/HeroCarousel';
 import { SegmentedControl } from '../../src/components/controls/SegmentedControl';
 import { Podium } from '../../src/components/leaderboard/Podium';
+import { useAds } from '../../src/ads/AdsContext';
+import { AdSlot, feedAdPositions } from '../../src/ads/AdSlot';
 import { RankRow } from '../../src/components/leaderboard/RankRow';
 import { useBottomNavSpace } from '../../src/components/navigation/BottomNav';
 import { SectionCard } from '../../src/components/SectionCard';
@@ -48,6 +50,7 @@ export default function LeaderboardScreen() {
   const bottomSpace = useBottomNavSpace();
   const contentWidth = Math.min(width, MAX_CONTENT_WIDTH) - SPACE.md * 2;
   const listRef = useRef<FlatList>(null);
+  const { placement } = useAds();
   useScrollToTop(listRef);
   useRefreshSectionsOnFocus();
 
@@ -184,6 +187,7 @@ export default function LeaderboardScreen() {
 
   const ranked = board?.entries.filter((entry) => entry.rank > 3) ?? [];
   const myEntryListed = board?.entries.some((entry) => entry.user_id === user.id) ?? false;
+  const adAfter = feedAdPositions(ranked.length, placement('leaderboard_feed')?.insert_every);
 
   const header = (
     <View style={[styles.column, { width: contentWidth }]}>
@@ -220,6 +224,7 @@ export default function LeaderboardScreen() {
       <AmbientGlow />
       <FlatList
         ref={listRef}
+        extraData={adAfter}
         data={state === 'ready' ? ranked : []}
         keyExtractor={(item) => `${item.rank}-${item.user_id}`}
         contentContainerStyle={[styles.content, { paddingTop: insets.top + SPACE.xs, paddingBottom: bottomSpace }]}
@@ -227,9 +232,11 @@ export default function LeaderboardScreen() {
         ListHeaderComponent={header}
         ListHeaderComponentStyle={styles.listHeader}
         ItemSeparatorComponent={Separator}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <Animated.View style={{ width: contentWidth, opacity: contentOpacity }}>
             <RankRow entry={item} isMe={item.user_id === user.id} />
+            {/* A labelled feed ad after every N players (Admin: 5, 8 or off); ranks never shift. */}
+            {adAfter.has(index) ? <AdSlot placement="leaderboard_feed" style={styles.feedAd} /> : null}
           </Animated.View>
         )}
         ListFooterComponent={
@@ -253,6 +260,7 @@ function Separator() {
 }
 
 const useStyles = makeStyles(({ colors: c }) => ({
+  feedAd: { marginTop: SPACE.xs },
   screen: { flex: 1 },
   content: { alignItems: 'center' },
   column: { gap: SPACE.lg },

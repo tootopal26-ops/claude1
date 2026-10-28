@@ -1,7 +1,20 @@
 <?php
 
 use App\Http\Controllers\Admin\StorageAssetDownloadController;
+use App\Livewire\Admin\Ads\AdsAuditLog;
+use App\Livewire\Admin\Ads\AdUnits;
+use App\Livewire\Admin\Ads\DailyRewards;
+use App\Livewire\Admin\Ads\EarningSettings;
+use App\Livewire\Admin\Ads\Overview as AdsOverview;
+use App\Livewire\Admin\Ads\Placements;
+use App\Livewire\Admin\Ads\RevenueReports;
+use App\Livewire\Admin\Ads\RewardCampaigns;
+use App\Livewire\Admin\Ads\Settlements;
+use App\Livewire\Admin\Ads\TicketSettings;
+use App\Livewire\Admin\Ads\UserAdActivity;
+use App\Livewire\Admin\Ads\VerificationLogs;
 use App\Livewire\Admin\AuditLogViewer;
+use App\Livewire\Admin\CustomerSupportSettings;
 use App\Livewire\Admin\DepositList;
 use App\Livewire\Admin\GameForm;
 use App\Livewire\Admin\GameList;
@@ -278,6 +291,27 @@ foreach ($portals as $portal => $config) {
             Route::get('/settings', PlatformSettingsEditor::class)
                 ->name('settings.index')
                 ->middleware('permission:settings.manage');
+
+            Route::get('/customer-support', CustomerSupportSettings::class)
+                ->name('customer-support')
+                ->middleware('permission:settings.manage');
+
+            // Ads & Monetization. Read-only pages need ads.view; configuration pages need
+            // ads.manage, and every change re-checks ads.manage inside the component.
+            Route::prefix('ads')->name('ads.')->group(function () {
+                Route::get('/', AdsOverview::class)->name('overview')->middleware('permission:ads.view');
+                Route::get('/earning', EarningSettings::class)->name('earning')->middleware('permission:ads.manage');
+                Route::get('/units', AdUnits::class)->name('units')->middleware('permission:ads.manage');
+                Route::get('/placements', Placements::class)->name('placements')->middleware('permission:ads.manage');
+                Route::get('/revenue', RevenueReports::class)->name('revenue')->middleware('permission:ads.view');
+                Route::get('/settlements', Settlements::class)->name('settlements')->middleware('permission:ads.view');
+                Route::get('/daily-rewards', DailyRewards::class)->name('daily-rewards')->middleware('permission:ads.manage');
+                Route::get('/campaigns', RewardCampaigns::class)->name('campaigns')->middleware('permission:ads.manage');
+                Route::get('/tickets', TicketSettings::class)->name('tickets')->middleware('permission:ads.manage');
+                Route::get('/users', UserAdActivity::class)->name('users')->middleware('permission:ads.view');
+                Route::get('/verification', VerificationLogs::class)->name('verification')->middleware('permission:ads.view');
+                Route::get('/audit', AdsAuditLog::class)->name('audit')->middleware('permission:ads.view');
+            });
         });
     });
 }

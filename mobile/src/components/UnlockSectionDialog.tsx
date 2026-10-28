@@ -174,7 +174,7 @@ export function UnlockSectionDialog({ section, visible, onClose }: Props) {
               <CoinAmount value={shortBy} size={16} />
             </View>
           </View>
-          <Button label="Add coins" icon="deposit" onPress={() => go('/deposit')} />
+          <Button label="Add coins" artwork="deposit" variant="success" onPress={() => go('/deposit')} />
           <Button label="Redeem a code" variant="secondary" onPress={() => go('/profile')} />
           <Button label="Close" variant="secondary" onPress={close} />
         </>

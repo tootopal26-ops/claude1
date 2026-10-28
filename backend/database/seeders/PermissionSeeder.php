@@ -51,6 +51,8 @@ class PermissionSeeder extends Seeder
         ['key' => 'redeem_codes.manage', 'label' => 'Create and manage redeem-code campaigns', 'group' => 'Wallet & Payments'],
         ['key' => 'section_unlocks.manage', 'label' => 'Set coin prices for unlockable app sections', 'group' => 'Wallet & Payments'],
         ['key' => 'staff.manage', 'label' => 'Manage staff accounts and permission presets', 'group' => 'Staff'],
+        ['key' => 'ads.view', 'label' => 'View ad analytics, settlements and logs (read-only)', 'group' => 'Ads & Monetization'],
+        ['key' => 'ads.manage', 'label' => 'Configure ads, rewards, revenue share and settle Ads Earning', 'group' => 'Ads & Monetization'],
     ];
 
     public function run(): void

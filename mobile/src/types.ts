@@ -41,6 +41,10 @@ export type Tournament = {
   joining_open?: boolean;
   credentials_released: boolean;
   already_joined: boolean;
+  /** Free tournaments only: rewarded-ad tickets needed before joining (0 = none). */
+  ad_tickets_required?: number;
+  /** This player's verified tickets for it (null when signed out or none are required). */
+  ad_tickets_earned?: number | null;
   game?: { id: number; title: string; image_url: string | null; thumbnail_url: string | null };
   my_result: { rank: number; kills: number; prize_awarded: string } | null;
 };
@@ -103,6 +107,8 @@ export type WithdrawalRequest = {
   rejection_reason: string | null;
   failure_reason: string | null;
   settlement_reference: string | null;
+  /** When the payout was marked paid (null until then). */
+  settled_at?: string | null;
   created_at: string;
 };
 
@@ -151,10 +157,10 @@ export type LeaderboardBanner = {
   display_order: number;
 };
 
-export type RedeemResult = {
-  message: string;
-  data: { coins: number; balance: Wallet };
-};
+export type RedeemResult =
+  | { message: string; error?: undefined; data: { coins: number; balance: Wallet } }
+  /** HTTP 202: a valid code whose campaign needs one rewarded ad first; nothing is credited yet. */
+  | { message: string; error: 'ad_required'; data: { coins: number; claim: { token: string; dynamic_user_id: string; placement: string } } };
 
 export type SectionStatus = {
   key: string;

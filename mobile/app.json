@@ -41,7 +41,8 @@
           "imageWidth": 220,
           "backgroundColor": "#0D0A12"
         }
-      ]
+      ],
+      "./plugins/withLevelPlay"
     ],
     "extra": {
       "apiBaseUrl": "http://localhost:8000/api/v1"

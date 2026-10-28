@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Tournament;
+use App\Models\TournamentAdTicket;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -44,9 +45,14 @@ class TournamentResource extends JsonResource
             'scheduled_start_at' => $this->scheduled_start_at->toIso8601String(),
             'status' => $this->status,
             'join_closes_at' => $joinClosesAt->toIso8601String(),
-            'joining_open' => $this->status === 'upcoming' && $this->credentials_released_at === null && now()->lessThan($joinClosesAt) && $joinedSlots < $this->total_slots,
+            'joining_open' => $this->isJoiningOpen($joinedSlots),
             'credentials_released' => $this->credentials_released_at !== null,
             'already_joined' => $myEntry !== null,
+            // Rewarded-ad tickets this free tournament needs, and how many the player holds.
+            'ad_tickets_required' => $this->isFree() ? (int) $this->required_ad_tickets : 0,
+            'ad_tickets_earned' => $request->user() && $this->isFree() && $this->required_ad_tickets > 0
+                ? TournamentAdTicket::where('tournament_id', $this->id)->where('user_id', $request->user()->id)->count()
+                : 0,
             'my_result' => $myResult ? [
                 'rank' => $myResult->rank,
                 'kills' => $myResult->kills,

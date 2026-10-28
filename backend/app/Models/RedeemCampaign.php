@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'code', 'total_capacity', 'reward_coins', 'expires_at', 'is_active', 'created_by_staff_id'])]
+#[Fillable(['name', 'code', 'total_capacity', 'reward_coins', 'expires_at', 'is_active', 'requires_rewarded_ad', 'created_by_staff_id'])]
 class RedeemCampaign extends Model
 {
     protected function casts(): array
@@ -16,6 +16,7 @@ class RedeemCampaign extends Model
             'expires_at' => 'datetime',
             'archived_at' => 'datetime',
             'is_active' => 'boolean',
+            'requires_rewarded_ad' => 'boolean',
             'total_capacity' => 'integer',
             'reward_coins' => 'integer',
             'redeemed_count' => 'integer',

@@ -13,7 +13,10 @@ import { EmptyState, ErrorState, Skeleton } from '../../../src/components/states
 import { StatusChip } from '../../../src/components/StatusChip';
 import { JoinSheet } from '../../../src/components/tournament/JoinSheet';
 import { RoomCredentials } from '../../../src/components/tournament/RoomCredentials';
-import { canJoin, isFree, isFull, MODE_LABELS, statusChip } from '../../../src/components/tournament/tournamentState';
+import { TicketProgress } from '../../../src/components/tournament/TicketProgress';
+import { canJoin, isFree, isFull, MODE_LABELS, needsTickets, statusChip, ticketsEarned, ticketsRequired } from '../../../src/components/tournament/tournamentState';
+import { useTicketedJoin } from '../../../src/components/tournament/useTicketedJoin';
+import { Artwork, ARTWORK_SIZE } from '../../../src/theme/artwork';
 import { glassPanel } from '../../../src/theme/glass';
 import { Icon } from '../../../src/theme/icons';
 import { makeStyles, useTheme } from '../../../src/theme/ThemeContext';
@@ -45,6 +48,7 @@ export default function TournamentDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const loaded = useRef(false);
+  const tickets = useTicketedJoin(setJoining, setTournament);
 
   const loadCredentials = useCallback(async (current: Tournament) => {
     if (!current.already_joined || current.status === 'cancelled' || current.status === 'completed') {
@@ -156,7 +160,7 @@ export default function TournamentDetailScreen() {
               {tournament.game ? <StatusChip tone="brand" label={tournament.game.title} /> : null}
             </View>
             <View style={styles.when}>
-              <Icon name="calendar" size={16} />
+              <Artwork name="calendar" size={ARTWORK_SIZE.inline + 2} />
               <Text style={styles.whenText}>{formatDateTime(tournament.scheduled_start_at)}</Text>
             </View>
           </View>
@@ -218,13 +222,22 @@ export default function TournamentDetailScreen() {
             </View>
           ) : null}
 
+          {tournament.status === 'upcoming' && !tournament.already_joined && ticketsRequired(tournament) > 0 ? (
+            <TicketProgress earned={ticketsEarned(tournament)} required={ticketsRequired(tournament)} />
+          ) : null}
+          {tickets.notice ? <Notice tone={tickets.notice.tone}>{tickets.notice.text}</Notice> : null}
+
           {tournament.status === 'upcoming' && !tournament.already_joined ? (
             joinable ? (
-              <Button
-                label={isFree(tournament) ? 'Join for free' : `Join · ${formatCoins(tournament.entry_fee)} coins`}
-                onPress={() => setJoining(tournament)}
-                accessibilityLabel={isFree(tournament) ? 'Join for free' : `Join for ${formatCoins(tournament.entry_fee)} coins`}
-              />
+              needsTickets(tournament) ? (
+                <Button label="Join Now" icon="lock" loading={tickets.earningFor === tournament.id} onPress={() => void tickets.join(tournament)} accessibilityHint="Plays one rewarded ad for your next ticket" />
+              ) : (
+                <Button
+                  label={isFree(tournament) ? 'Join for free' : `Join · ${formatCoins(tournament.entry_fee)} coins`}
+                  onPress={() => void tickets.join(tournament)}
+                  accessibilityLabel={isFree(tournament) ? 'Join for free' : `Join for ${formatCoins(tournament.entry_fee)} coins`}
+                />
+              )
             ) : (
               <Notice tone="warning">{isFull(tournament) ? 'This tournament is full.' : 'Joining is closed for this tournament.'}</Notice>
             )

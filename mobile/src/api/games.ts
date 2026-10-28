@@ -11,10 +11,11 @@ export type TournamentListResponse = {
   meta: { counts: Record<TournamentTab, number> };
 };
 
-export function fetchTournaments(options: { gameId?: number; status?: TournamentTab } = {}) {
+export function fetchTournaments(options: { gameId?: number; status?: TournamentTab; joined?: boolean } = {}) {
   const params = new URLSearchParams();
   if (options.gameId) params.set('game_id', String(options.gameId));
   if (options.status) params.set('status', options.status);
+  if (options.joined) params.set('joined', '1');
   const query = params.toString();
 
   return apiRequest<TournamentListResponse>(query ? `/tournaments?${query}` : '/tournaments');

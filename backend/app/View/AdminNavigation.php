@@ -52,6 +52,23 @@ class AdminNavigation
                 ],
             ],
             [
+                'label' => 'Ads & Monetization',
+                'items' => [
+                    ['label' => 'Ads Overview', 'route' => 'admin.ads.overview', 'icon' => 'dashboard', 'permission' => 'ads.view', 'active' => ['admin.ads.overview'], 'description' => 'Ad requests, impressions, verified rewards and revenue.'],
+                    ['label' => 'Ads Earning', 'route' => 'admin.ads.earning', 'icon' => 'wallet', 'permission' => 'ads.manage', 'active' => ['admin.ads.earning'], 'description' => 'Rewarded Ads switch, revenue share and Ads Earning rules.'],
+                    ['label' => 'Ad Units', 'route' => 'admin.ads.units', 'icon' => 'presets', 'permission' => 'ads.manage', 'active' => ['admin.ads.units'], 'description' => 'LevelPlay ad unit IDs for each format.'],
+                    ['label' => 'Ad Placements', 'route' => 'admin.ads.placements', 'icon' => 'image', 'permission' => 'ads.manage', 'active' => ['admin.ads.placements'], 'description' => 'Where ads may appear, caps and feed intervals.'],
+                    ['label' => 'Revenue Reports', 'route' => 'admin.ads.revenue', 'icon' => 'leaderboard', 'permission' => 'ads.view', 'active' => ['admin.ads.revenue'], 'description' => 'Provider-reported revenue and app estimates.'],
+                    ['label' => 'Weekly Settlements', 'route' => 'admin.ads.settlements', 'icon' => 'salary', 'permission' => 'ads.view', 'active' => ['admin.ads.settlements'], 'description' => 'Ads Earning revenue-share payouts.'],
+                    ['label' => 'Daily Login Rewards', 'route' => 'admin.ads.daily-rewards', 'icon' => 'calendar', 'permission' => 'ads.manage', 'active' => ['admin.ads.daily-rewards'], 'description' => 'The daily reward popup and its range.'],
+                    ['label' => 'Reward Campaigns', 'route' => 'admin.ads.campaigns', 'icon' => 'ticket', 'permission' => 'ads.manage', 'active' => ['admin.ads.campaigns'], 'description' => 'Fixed-reward rewarded-ad campaigns.'],
+                    ['label' => 'Tournament Tickets', 'route' => 'admin.ads.tickets', 'icon' => 'tournaments', 'permission' => 'ads.manage', 'active' => ['admin.ads.tickets'], 'description' => 'Rewarded-ad tickets for free tournaments.'],
+                    ['label' => 'User Ad Activity', 'route' => 'admin.ads.users', 'icon' => 'users', 'permission' => 'ads.view', 'active' => ['admin.ads.users'], 'description' => 'One player\'s ads, rewards and eligibility.'],
+                    ['label' => 'Verification Logs', 'route' => 'admin.ads.verification', 'icon' => 'shield', 'permission' => 'ads.view', 'active' => ['admin.ads.verification'], 'description' => 'Every ad-network reward callback and its outcome.'],
+                    ['label' => 'Ads Audit Log', 'route' => 'admin.ads.audit', 'icon' => 'audit', 'permission' => 'ads.view', 'active' => ['admin.ads.audit'], 'description' => 'Changes to ad settings, units, revenue and settlements.'],
+                ],
+            ],
+            [
                 'label' => 'Team Management',
                 'items' => [
                     ['label' => 'Staff', 'route' => 'admin.staff.index', 'icon' => 'user', 'permission' => 'staff.manage', 'active' => ['admin.staff.*'], 'description' => 'Staff accounts and their access.'],
@@ -64,6 +81,7 @@ class AdminNavigation
                 'label' => 'Communication',
                 'items' => [
                     ['label' => 'Notifications', 'route' => 'admin.notifications.index', 'icon' => 'notifications', 'permission' => 'notifications.send', 'active' => ['admin.notifications.*'], 'description' => 'Send and review player notifications.'],
+                    ['label' => 'Customer Support', 'route' => 'admin.customer-support', 'icon' => 'info', 'permission' => 'settings.manage', 'active' => ['admin.customer-support'], 'description' => 'The support link the app opens from Profile.'],
                 ],
             ],
             [

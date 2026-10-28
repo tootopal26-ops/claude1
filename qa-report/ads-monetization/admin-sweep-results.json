@@ -1,0 +1,267 @@
+[
+  {
+    "name": "Rewarded Ads shows Disabled before",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "switch saves and shows Enabled",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Enabled survives a reload",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "shares that do not total 100% are refused",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "overview renders 1440",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "overview no page overflow 1440",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "earning renders 1440",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "earning no page overflow 1440",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "units renders 1440",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "units no page overflow 1440",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "placements renders 1440",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "placements no page overflow 1440",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "revenue renders 1440",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "revenue no page overflow 1440",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "settlements renders 1440",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "settlements no page overflow 1440",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "daily-rewards renders 1440",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "daily-rewards no page overflow 1440",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "campaigns renders 1440",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "campaigns no page overflow 1440",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "tickets renders 1440",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tickets no page overflow 1440",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "users renders 1440",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "users no page overflow 1440",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "verification renders 1440",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "verification no page overflow 1440",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "audit renders 1440",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "audit no page overflow 1440",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "overview renders 390",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "overview no page overflow 390",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "earning renders 390",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "earning no page overflow 390",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "units renders 390",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "units no page overflow 390",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "placements renders 390",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "placements no page overflow 390",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "revenue renders 390",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "revenue no page overflow 390",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "settlements renders 390",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "settlements no page overflow 390",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "daily-rewards renders 390",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "daily-rewards no page overflow 390",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "campaigns renders 390",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "campaigns no page overflow 390",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "tickets renders 390",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tickets no page overflow 390",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "users renders 390",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "users no page overflow 390",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "verification renders 390",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "verification no page overflow 390",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "audit renders 390",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "audit no page overflow 390",
+    "ok": true,
+    "detail": "0"
+  },
+  {
+    "name": "no uncaught page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

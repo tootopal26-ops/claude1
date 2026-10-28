@@ -3,6 +3,8 @@ import { FlatList, RefreshControl, Text, useWindowDimensions, View } from 'react
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ApiError } from '../src/api/client';
+import { useAds } from '../src/ads/AdsContext';
+import { attemptWithdrawalPlacement } from '../src/ads/api';
 import { fetchWithdrawals, requestWithdrawal } from '../src/api/withdrawals';
 import { AmbientGlow } from '../src/components/AmbientGlow';
 import { Button } from '../src/components/Button';
@@ -57,15 +59,25 @@ export default function WithdrawScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const { placement, sdkReady, showInterstitial } = useAds();
+  const placementLive = sdkReady && placement('withdrawal_success') !== null;
+
   const load = useCallback(async () => {
     try {
       const response = await fetchWithdrawals();
       setWithdrawals(response.data);
       setLoadFailed(false);
+      // The optional post-payout ad: only for a withdrawal the server has marked paid, once
+      // per withdrawal (the server records the attempt), and never instead of the status.
+      const latestPaid = response.data.find((item) => item.status === 'paid');
+      if (latestPaid && placementLive) {
+        const attempt = await attemptWithdrawalPlacement(latestPaid.id).catch(() => null);
+        if (attempt?.data.show) void showInterstitial('withdrawal_success');
+      }
     } catch {
       setLoadFailed(true);
     }
-  }, []);
+  }, [placementLive, showInterstitial]);
 
   useEffect(() => {
     void load();
@@ -144,7 +156,7 @@ export default function WithdrawScreen() {
                 }}
               />
               {error ? <Notice tone="danger">{error}</Notice> : null}
-              <Button label="Request withdrawal" icon="withdrawal" onPress={handleSubmit} loading={submitting} disabled={!canSubmit} />
+              <Button label="Request withdrawal" artwork="withdraw" variant="danger" onPress={handleSubmit} loading={submitting} disabled={!canSubmit} />
             </View>
             <Text style={styles.sectionTitle} accessibilityRole="header">
               Request history

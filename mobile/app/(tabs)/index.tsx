@@ -3,6 +3,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, Text, useWindowDimensions, View, type ScrollViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAds } from '../../src/ads/AdsContext';
+import { AdSlot } from '../../src/ads/AdSlot';
+import { DailyRewardPopup } from '../../src/ads/DailyRewardPopup';
 import { fetchHomeBanners } from '../../src/api/banners';
 import { fetchGames, fetchTournaments } from '../../src/api/games';
 import { useAuth } from '../../src/auth/AuthContext';
@@ -24,7 +27,7 @@ import { useRefreshWalletOnFocus, useWallet } from '../../src/wallet/WalletConte
 /**
  * Home, top to bottom: the header (avatar, welcome, wallet pill, bell), the Admin-managed
  * 16:9 hero carousel, the Ongoing / Upcoming / Completed shortcuts with the server's counts,
- * and the eSports games grid. Every part loads on its own, so a slow or failed section never
+ * and the Esports games grid. Every part loads on its own, so a slow or failed section never
  * hides the others (the balance in particular is always visible).
  */
 export default function HomeScreen() {
@@ -42,6 +45,8 @@ export default function HomeScreen() {
   useRefreshSectionsOnFocus();
   const { refresh: refreshWallet } = useWallet();
   const { refresh: refreshSections } = useSections();
+  const { showInterstitial } = useAds();
+  const openingGame = useRef(false);
 
   const [banners, setBanners] = useState<HeroBanner[] | null>(null);
   const [bannersFailed, setBannersFailed] = useState(false);
@@ -93,6 +98,19 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
+  // The optional game-card interstitial (only if Admin enabled it and its caps allow). Without
+  // an ad ready the game opens straight away; with one, it opens as soon as the ad closes.
+  const openGame = async (game: Game) => {
+    if (openingGame.current) return;
+    openingGame.current = true;
+    try {
+      await showInterstitial('home_game_card');
+    } finally {
+      openingGame.current = false;
+      pushOnce(`/game/${game.id}`);
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -109,11 +127,13 @@ export default function HomeScreen() {
         <View style={[styles.column, { width: contentWidth }]}>
           <HomeHeader username={user.username} />
 
+          <AdSlot placement="home_hero" />
+
           <HeroCarousel
             banners={banners}
             width={contentWidth}
             label="Featured"
-            emptyText={bannersFailed ? "Couldn't load banners" : 'Mini Max eSports'}
+            emptyText={bannersFailed ? "Couldn't load banners" : 'Mini Max Esports'}
             onOpenLink={(banner) => openAppLink(banner.link_url)}
           />
 
@@ -121,7 +141,7 @@ export default function HomeScreen() {
 
           <View style={styles.sectionHead}>
             <Text style={styles.sectionTitle} accessibilityRole="header">
-              eSports Games
+              Esports Games
             </Text>
             {games && games.length > 0 ? <Text style={styles.sectionMeta}>{games.length === 1 ? '1 game' : `${games.length} games`}</Text> : null}
           </View>
@@ -139,12 +159,13 @@ export default function HomeScreen() {
           ) : (
             <View style={styles.grid}>
               {games.map((game) => (
-                <GameCard key={game.id} game={game} width={cardWidth} onPress={() => pushOnce(`/game/${game.id}`)} />
+                <GameCard key={game.id} game={game} width={cardWidth} onPress={() => void openGame(game)} />
               ))}
             </View>
           )}
         </View>
       </ScrollView>
+      <DailyRewardPopup />
     </View>
   );
 }

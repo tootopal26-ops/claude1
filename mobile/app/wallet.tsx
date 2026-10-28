@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AdSlot } from '../src/ads/AdSlot';
 import { fetchWalletLedger } from '../src/api/wallet';
 import { AmbientGlow } from '../src/components/AmbientGlow';
 import { Button } from '../src/components/Button';
@@ -27,6 +28,10 @@ const LEDGER_TYPE_LABELS: Record<string, string> = {
   result_correction: 'Tournament prize',
   withdrawal_reserve: 'Withdrawal requested',
   withdrawal_release: 'Withdrawal returned',
+  ad_reward: 'Ad reward',
+  daily_login_reward: 'Daily login reward',
+  ads_earning_reward: 'Ads Earning reward',
+  ad_campaign_reward: 'Ad reward',
 };
 
 /**
@@ -109,8 +114,8 @@ export default function WalletScreen() {
             </View>
           </View>
           <View style={styles.actions}>
-            <Button label="Add coins" icon="deposit" onPress={() => pushOnce('/deposit')} style={styles.action} />
-            <Button label="Withdraw" icon="withdrawal" variant="secondary" onPress={() => pushOnce('/withdraw')} style={styles.action} />
+            <Button label="Add coins" artwork="deposit" variant="success" onPress={() => pushOnce('/deposit')} style={styles.action} />
+            <Button label="Withdraw" artwork="withdraw" variant="danger" onPress={() => pushOnce('/withdraw')} style={styles.action} />
           </View>
         </View>
       )}
@@ -130,6 +135,7 @@ export default function WalletScreen() {
         refreshControl={<RefreshControl tintColor={colors.brandText} colors={[colors.brand]} progressBackgroundColor={colors.surface3} refreshing={refreshing} onRefresh={onRefresh} />}
         ListHeaderComponent={summary}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ListFooterComponent={<AdSlot placement="wallet_profile" style={[styles.footerAd, { width: contentWidth }]} />}
         renderItem={({ item }) => <LedgerRow entry={item} width={contentWidth} />}
         ListEmptyComponent={
           <View style={{ width: contentWidth }}>
@@ -203,6 +209,7 @@ const useStyles = makeStyles(({ colors: c }) => ({
   sectionTitle: { ...TYPE.section, color: c.fg },
   skeletons: { gap: SPACE.xs },
   separator: { height: SPACE.xs },
+  footerAd: { marginTop: SPACE.lg },
   row: { ...glassPanel(c), flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, borderRadius: RADIUS.md, paddingHorizontal: SPACE.sm, paddingVertical: SPACE.sm },
   rowText: { flex: 1, minWidth: 0, gap: 2 },
   rowType: { ...TYPE.bodyStrong, color: c.fg },

@@ -1,5 +1,6 @@
 import { ActivityIndicator, Text, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 
+import { Artwork, ARTWORK_SIZE, type ArtworkName } from '../theme/artwork';
 import { PRESS_SCALE } from '../theme/motion';
 import { Icon, type IconName } from '../theme/icons';
 import { makeStyles, useTheme } from '../theme/ThemeContext';
@@ -10,11 +11,14 @@ type ButtonProps = Omit<PressableProps, 'style' | 'children'> & {
   label: string;
   /**
    * primary: the main action (purple). secondary: a quiet dark surface. text: an inline
-   * link-like action. danger: destructive actions — and the red Redeem action.
+   * link-like action. danger: destructive actions, the red Redeem action and Withdraw.
+   * success: the green Deposit / Add coins action.
    */
-  variant?: 'primary' | 'secondary' | 'text' | 'danger';
+  variant?: 'primary' | 'secondary' | 'text' | 'danger' | 'success';
   size?: 'md' | 'sm';
   icon?: IconName;
+  /** Supplied colourful artwork shown instead of `icon` (for example the wallet actions). */
+  artwork?: ArtworkName;
   loading?: boolean;
   /** Layout only (flex, width, margins): it sizes the touch area and the button fills it. */
   style?: StyleProp<ViewStyle>;
@@ -25,12 +29,21 @@ type ButtonProps = Omit<PressableProps, 'style' | 'children'> & {
  * pressed response, a spinner (and no second tap) while `loading`, and a dimmed, inert
  * look when disabled.
  */
-export function Button({ label, variant = 'primary', size = 'md', icon, loading = false, disabled, style, accessibilityLabel, ...rest }: ButtonProps) {
+export function Button({ label, variant = 'primary', size = 'md', icon, artwork, loading = false, disabled, style, accessibilityLabel, ...rest }: ButtonProps) {
   const styles = useStyles();
   const { colors, semanticColors } = useTheme();
   const isDisabled = Boolean(disabled) || loading;
   const foreground =
-    variant === 'primary' ? colors.onBrand : variant === 'danger' ? semanticColors.onDanger : variant === 'text' ? colors.brandText : colors.fg;
+    variant === 'primary'
+      ? colors.onBrand
+      : variant === 'danger'
+        ? semanticColors.onDanger
+        : variant === 'success'
+          ? semanticColors.onSuccess
+          : variant === 'text'
+            ? colors.brandText
+            : colors.fg;
+  const solid = variant === 'primary' || variant === 'danger' || variant === 'success';
 
   return (
     <PressableScale
@@ -49,8 +62,12 @@ export function Button({ label, variant = 'primary', size = 'md', icon, loading 
         <ActivityIndicator color={foreground} />
       ) : (
         <View style={styles.content}>
-          {/* White glyphs on purple / red; the filled, coloured icon on dark buttons. */}
-          {icon ? <Icon name={icon} size={size === 'sm' ? 16 : 18} color={variant === 'primary' || variant === 'danger' ? foreground : undefined} accent={foreground} /> : null}
+          {/* Supplied artwork when given; otherwise white glyphs on solid buttons and the filled, coloured icon on dark ones. */}
+          {artwork ? (
+            <Artwork name={artwork} size={size === 'sm' ? 20 : ARTWORK_SIZE.walletAction} />
+          ) : icon ? (
+            <Icon name={icon} size={size === 'sm' ? 16 : 18} color={solid ? foreground : undefined} accent={foreground} />
+          ) : null}
           <Text style={[styles.label, size === 'sm' && styles.labelSmall, { color: foreground }]} numberOfLines={1}>
             {label}
           </Text>
@@ -80,5 +97,7 @@ const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
   textPressed: { backgroundColor: c.surface2 },
   danger: { backgroundColor: s.dangerSolid, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
   dangerPressed: { opacity: 0.9 },
+  success: { backgroundColor: s.successSolid, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
+  successPressed: { opacity: 0.9 },
   disabled: { opacity: 0.45 },
 }));

@@ -79,7 +79,10 @@ application code.
 Every periodic job in this app (closing tournaments' join windows,
 auto-cancelling underfilled tournaments, generating recurring
 tournaments, maintaining leaderboards, staff salary settlements, storage
-cleanup, wallet reconciliation, nightly backups) runs through Laravel's
+cleanup, wallet reconciliation, nightly backups, and `ads:maintain` every
+five minutes — expiring unanswered rewarded-ad claims and lapsed redeem
+reservations, opening each finished Ads Earning week for review, pruning
+old ad telemetry) runs through Laravel's
 scheduler, defined
 in `backend/bootstrap/app.php`'s `withSchedule()` — not as separate cron
 entries. The server needs exactly one cron line, from CyberPanel's Cron
@@ -92,6 +95,11 @@ Jobs UI, running as the website's user:
 Run `php artisan schedule:list` on the server after deploying to confirm
 every job registered (see `backend/bootstrap/app.php` for the current
 list — new scheduled commands are added there, not as new cron lines).
+
+The queue worker below is also what credits an Ads Earning settlement
+(`CreditAdSettlementJob`) after an Admin presses *Credit settlement*; without
+a running worker the settlement stays in "crediting". Ads setup (LevelPlay
+keys, the reward callback URL, test mode) is in `docs/ads-monetization.md`.
 
 ## 4. Supervisor — the queue worker
 

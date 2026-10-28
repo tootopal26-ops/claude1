@@ -44,8 +44,21 @@ class RedeemController extends Controller
             ]);
         }
 
+        // A valid code that needs a rewarded ad first: nothing is credited until the ad
+        // network's verified callback completes this claim.
+        if ($outcome->result === 'ad_required') {
+            return response()->json([
+                'message' => $outcome->message(),
+                'error' => 'ad_required',
+                'data' => [
+                    'coins' => $outcome->coins,
+                    'claim' => ['token' => $outcome->claimToken, 'dynamic_user_id' => $outcome->dynamicUserId, 'placement' => 'redeem_verification'],
+                ],
+            ], 202);
+        }
+
         // Asking for a code you already hold is not guessing; every other miss counts.
-        if ($outcome->result !== 'already_redeemed') {
+        if (! in_array($outcome->result, ['already_redeemed', 'ads_unavailable'], true)) {
             RateLimiter::hit($strikeKey, self::STRIKE_WINDOW_SECONDS);
         }
 

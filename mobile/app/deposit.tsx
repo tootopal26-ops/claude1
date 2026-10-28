@@ -138,7 +138,7 @@ export default function DepositScreen() {
                 hint="You pay with any UPI app. Coins are added once the payment is confirmed."
               />
               {error ? <Notice tone="danger">{error}</Notice> : null}
-              <Button label="Deposit via UPI" icon="deposit" onPress={handleDeposit} loading={submitting} disabled={!canSubmit} />
+              <Button label="Deposit via UPI" artwork="deposit" variant="success" onPress={handleDeposit} loading={submitting} disabled={!canSubmit} />
             </View>
             <Text style={styles.sectionTitle} accessibilityRole="header">
               Deposit history

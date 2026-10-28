@@ -67,6 +67,9 @@ export const SEMANTIC_COLORS = {
   dangerSoft: 'rgba(248,113,113,0.12)',
   dangerSolid: '#dc2626',
   onDanger: '#ffffff',
+  // Filled green actions (Deposit / Add coins). White text on it is 5.0:1.
+  successSolid: '#15803d',
+  onSuccess: '#ffffff',
   info: '#60a5fa',
   infoSoft: 'rgba(96,165,250,0.12)',
   overlay: 'rgba(5,3,8,0.7)',

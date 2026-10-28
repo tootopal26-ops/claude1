@@ -9,6 +9,7 @@ import { AmbientGlow } from '../../../src/components/AmbientGlow';
 import { Avatar, type AvatarRing } from '../../../src/components/avatar/Avatar';
 import { CoinAmount } from '../../../src/components/CoinAmount';
 import { EmptyState, ErrorState, Skeleton } from '../../../src/components/states/States';
+import { Artwork } from '../../../src/theme/artwork';
 import { glassPanel } from '../../../src/theme/glass';
 import { makeStyles, useTheme } from '../../../src/theme/ThemeContext';
 import { MAX_CONTENT_WIDTH, RADIUS, SIZE, SPACE, TYPE } from '../../../src/theme/tokens';
@@ -124,7 +125,12 @@ function ResultRow({ row, isMe }: { row: TournamentResultRow; isMe: boolean }) {
       style={[styles.row, isMe && styles.mine]}
       accessibilityLabel={`Rank ${row.rank}, ${row.username}${isMe ? ' (you)' : ''}, ${row.kills} kills, prize ${row.prize_awarded} coins`}
     >
-      <Text style={styles.rank}>{row.rank}</Text>
+      {/* Ranks 1-3 carry the supplied gold / silver / bronze medal; the rest read "#4", "#5", … */}
+      {row.rank <= 3 ? (
+        <Artwork name={row.rank === 1 ? 'medal1' : row.rank === 2 ? 'medal2' : 'medal3'} size={34} style={styles.rankMedal} />
+      ) : (
+        <Text style={styles.rank} numberOfLines={1}>{`#${row.rank}`}</Text>
+      )}
       <Avatar username={row.username} size={SIZE.avatarRow - 8} ring={RINGS[row.rank] ?? 'ranked'} />
       <View style={styles.text}>
         <Text style={styles.name} numberOfLines={1}>
@@ -149,7 +155,8 @@ const useStyles = makeStyles(({ colors: c }) => ({
   skeletons: { gap: SPACE.xs },
   row: { ...glassPanel(c), flexDirection: 'row', alignItems: 'center', gap: SPACE.xs, minHeight: 60, paddingVertical: SPACE.xxs, paddingLeft: SPACE.xs, paddingRight: SPACE.sm, borderRadius: RADIUS.md },
   mine: { backgroundColor: c.brandSoft, borderColor: c.ring },
-  rank: { ...TYPE.bodyStrong, color: c.fg2, width: 28, textAlign: 'center' },
+  rank: { ...TYPE.bodyStrong, fontSize: 14, color: c.fg2, width: 38, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  rankMedal: { width: 38 },
   text: { flex: 1, minWidth: 0 },
   name: { ...TYPE.bodyStrong, color: c.fg },
   you: { color: c.brandText },

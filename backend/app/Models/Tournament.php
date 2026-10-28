@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'game_id', 'title', 'description', 'rules', 'image_path', 'mode',
-    'entry_fee', 'per_kill_reward', 'prize_pool', 'total_slots', 'min_players',
+    'entry_fee', 'required_ad_tickets', 'per_kill_reward', 'prize_pool', 'total_slots', 'min_players',
     'scheduled_start_at', 'status', 'template_id',
 ])]
 class Tournament extends Model
@@ -24,6 +24,7 @@ class Tournament extends Model
     {
         return [
             'entry_fee' => 'decimal:2',
+            'required_ad_tickets' => 'integer',
             'per_kill_reward' => 'decimal:2',
             'prize_pool' => 'decimal:2',
             'scheduled_start_at' => 'datetime',
@@ -55,6 +56,21 @@ class Tournament extends Model
     public function isFree(): bool
     {
         return (float) $this->entry_fee === 0.0;
+    }
+
+    /**
+     * Joining is open while the tournament is upcoming, its room details are not released,
+     * the join window (scheduled start + the configured minutes) has not closed and a slot
+     * is free. Pass the confirmed-entry count when it is already loaded.
+     */
+    public function isJoiningOpen(?int $confirmedEntries = null): bool
+    {
+        $joinWindowCloses = $this->scheduled_start_at->copy()->addMinutes((int) config('minimax.tournament_join_window_minutes'));
+
+        return $this->status === 'upcoming'
+            && $this->credentials_released_at === null
+            && now()->lessThan($joinWindowCloses)
+            && ($confirmedEntries ?? $this->confirmedEntriesCount()) < $this->total_slots;
     }
 
     /**

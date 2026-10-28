@@ -22,6 +22,7 @@ class WithdrawalRequestResource extends JsonResource
             'rejection_reason' => $this->rejection_reason,
             'failure_reason' => $this->failure_reason,
             'settlement_reference' => $this->settlement_reference,
+            'settled_at' => $this->settled_at?->toIso8601String(),
             'created_at' => $this->created_at->toIso8601String(),
         ];
     }

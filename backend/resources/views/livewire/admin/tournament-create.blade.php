@@ -35,7 +35,24 @@
         </x-ui.form-section>
 
         <x-ui.form-section title="Entry and rewards" description="What it costs to join and what can be paid out.">
-            <x-ui.input label="Entry fee (coins)" type="number" step="0.01" min="0" wire:model="entry_fee" required hint="Enter 0 for a free tournament." />
+            <x-ui.select label="Entry" wire:model.live="entry_mode" required hint="Free tournaments can ask for rewarded-ad tickets; paid ones use the wallet entry fee only.">
+                <option value="free">Free</option>
+                <option value="paid">Paid</option>
+            </x-ui.select>
+
+            @if ($entry_mode === 'paid')
+                <x-ui.input label="Entry fee (coins)" type="number" step="0.01" min="0.01" wire:model="entry_fee" required hint="Taken from the player's wallet when they join." />
+            @else
+                <x-ui.input
+                    label="Choose ticket — rewarded ads per player"
+                    type="number"
+                    min="0"
+                    max="{{ config('minimax.tickets_max_per_tournament') }}"
+                    wire:model="required_ad_tickets"
+                    required
+                    hint="Each ticket is one complete rewarded ad, verified by the ad network. 0 = no tickets. The app shows progress such as 0/{{ max(1, $required_ad_tickets) }}; reaching it never joins a player automatically."
+                />
+            @endif
 
             <x-ui.input label="Prize pool (coins)" type="number" step="0.01" min="0" wire:model="prize_pool" required hint="The most that can be paid out when results are published." />
 

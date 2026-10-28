@@ -51,6 +51,10 @@
                 <x-ui.switch wire:model="isActive" label="Active as soon as it is generated" hint="Turn off to create it now and activate it later." />
             </div>
 
+            <div class="sm:col-span-2 xl:col-span-4">
+                <x-ui.switch wire:model="requiresAd" label="Requires a rewarded ad" hint="The player watches one complete rewarded ad after entering the code; coins are credited only when the ad network confirms it. Needs the Redeem verification placement switched on under Ads & Monetization." />
+            </div>
+
             <div class="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-line bg-surface-2 px-4 py-3 text-sm sm:col-span-2 xl:col-span-4">
                 <dl class="flex flex-wrap gap-x-8 gap-y-2">
                     <div>
@@ -112,7 +116,10 @@
         @forelse ($campaigns as $campaign)
             @php($fill = $campaign->total_capacity > 0 ? min(100, round($campaign->redeemed_count / $campaign->total_capacity * 100)) : 0)
             <tr wire:key="campaign-{{ $campaign->id }}">
-                <td class="mm-cell-primary"><span class="block max-w-[14rem] truncate" title="{{ $campaign->name }}">{{ $campaign->name }}</span></td>
+                <td class="mm-cell-primary">
+                    <span class="block max-w-[14rem] truncate" title="{{ $campaign->name }}">{{ $campaign->name }}</span>
+                    @if ($campaign->requires_rewarded_ad)<x-ui.badge variant="info" :dot="false" class="mt-1">Rewarded ad required</x-ui.badge>@endif
+                </td>
                 <td>
                     <div class="flex items-center gap-2" x-data="copyText('{{ $campaign->code }}')">
                         <code class="rounded-md bg-surface-3 px-2 py-1 font-mono text-sm font-semibold tracking-widest text-fg">{{ $campaign->code }}</code>

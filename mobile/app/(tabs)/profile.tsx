@@ -13,17 +13,20 @@ import { StatCard } from '../../src/components/cards/StatCard';
 import { useBottomNavSpace } from '../../src/components/navigation/BottomNav';
 import { RedeemCodeDialog } from '../../src/components/RedeemCodeDialog';
 import { Sheet } from '../../src/components/sheet/Sheet';
-import { glassPanel, withOpacity } from '../../src/theme/glass';
+import { useUnreadCount } from '../../src/notifications/useUnreadCount';
 import { makeStyles } from '../../src/theme/ThemeContext';
-import { MAX_CONTENT_WIDTH, RADIUS, SIZE, SPACE, TYPE } from '../../src/theme/tokens';
+import { MAX_CONTENT_WIDTH, SIZE, SPACE, TYPE } from '../../src/theme/tokens';
 import type { ProfileStats } from '../../src/types';
 import { pushOnce } from '../../src/utils/navigation';
+import { openSupportLink, SUPPORT_LINK_MESSAGES } from '../../src/utils/supportLink';
 import { useWallet } from '../../src/wallet/WalletContext';
 
 /**
- * The Profile tab: the player's avatar in its green ring, their name, three figures from the
- * server (total earnings, matches played, coins deposited) and the account menu. Every row
- * opens something that exists; Logout asks first.
+ * The Profile tab, top to bottom: the player's avatar in its green ring, their name, when
+ * they joined, three figures from the server (total earnings, matches played, coins
+ * deposited), then the menu in this fixed order — My Profile, Wallet, Notifications,
+ * Redeem Code, Settings, Terms and privacy, Customer Support, Ads Earning, Total Matches —
+ * and Log out last. Every row opens something that exists; Log out asks first.
  */
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -40,6 +43,17 @@ export default function ProfileScreen() {
   const [redeemOpen, setRedeemOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [supportMessage, setSupportMessage] = useState<string | null>(null);
+  const [openingSupport, setOpeningSupport] = useState(false);
+  const unread = useUnreadCount();
+
+  const onSupport = async () => {
+    if (openingSupport) return;
+    setOpeningSupport(true);
+    const outcome = await openSupportLink();
+    setOpeningSupport(false);
+    if (outcome !== 'opened') setSupportMessage(SUPPORT_LINK_MESSAGES[outcome]);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -87,26 +101,28 @@ export default function ProfileScreen() {
             <StatCard label="Deposits" value={stats ? { coins: stats.deposits_total } : null} failed={statsFailed && !stats} />
           </View>
 
-          <Text style={styles.sectionLabel} accessibilityRole="header">
-            Account
-          </Text>
           <View style={styles.menu}>
-            <MenuRow icon="user" label="My Profile" onPress={() => pushOnce('/account')} />
-            <MenuRow icon="wallet" label="Wallet" onPress={() => pushOnce('/wallet')} />
-            <MenuRow icon="notifications" label="Notifications" onPress={() => pushOnce('/notifications')} />
-            <MenuRow icon="redeem" label="Redeem Code" onPress={() => setRedeemOpen(true)} />
-            <MenuRow icon="settings" label="Settings" onPress={() => pushOnce('/settings')} />
-            <MenuRow icon="file-text" label="Terms and privacy" onPress={() => pushOnce('/legal')} last />
+            <MenuRow artwork="profile" label="My Profile" onPress={() => pushOnce('/account')} />
+            <MenuRow artwork="wallet" label="Wallet" onPress={() => pushOnce('/wallet')} />
+            <MenuRow artwork="bell" label="Notifications" badge={unread > 0} detail={unread > 0 ? `${unread} new` : undefined} onPress={() => pushOnce('/notifications')} />
+            <MenuRow artwork="redeem" label="Redeem Code" onPress={() => setRedeemOpen(true)} />
+            <MenuRow artwork="settings" label="Settings" onPress={() => pushOnce('/settings')} />
+            <MenuRow artwork="terms" label="Terms and privacy" onPress={() => pushOnce('/legal')} />
+            <MenuRow artwork="support" label="Customer Support" hint="Opens the support page" onPress={onSupport} />
+            <MenuRow artwork="adsEarning" label="Ads Earning" onPress={() => pushOnce('/ads-earning')} />
+            <MenuRow artwork="matches" label="Total Matches" detail={stats ? String(stats.matches) : undefined} onPress={() => pushOnce('/matches')} />
           </View>
 
-          {/* Logout stays last: it sits at the bottom of the screen when there is room, and at the
-              end of the scroll on small phones — never between the account rows. */}
-          <View style={styles.spacer} />
-          <View style={[styles.menu, styles.logout]}>
-            <MenuRow icon="logout" label="Log out" tone="danger" onPress={() => setConfirmLogout(true)} last />
+          {/* Log out is always the last item, set a little apart from the menu above it. */}
+          <View style={styles.logout}>
+            <MenuRow artwork="logout" label="Log out" tone="danger" onPress={() => setConfirmLogout(true)} />
           </View>
         </View>
       </ScrollView>
+
+      <Sheet visible={supportMessage !== null} onClose={() => setSupportMessage(null)} title="Customer Support" subtitle={supportMessage ?? undefined}>
+        <Button label="OK" variant="secondary" onPress={() => setSupportMessage(null)} />
+      </Sheet>
 
       <RedeemCodeDialog visible={redeemOpen} onClose={() => setRedeemOpen(false)} onRedeemed={() => refreshWallet({ force: true })} />
 
@@ -127,17 +143,16 @@ export default function ProfileScreen() {
   );
 }
 
-const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
+const useStyles = makeStyles(({ colors: c }) => ({
   screen: { flex: 1 },
-  content: { alignItems: 'center', flexGrow: 1 },
-  column: { gap: SPACE.lg, flexGrow: 1 },
+  content: { alignItems: 'center' },
+  column: { gap: SPACE.lg },
   screenTitle: { ...TYPE.screenTitle, color: c.fg, minHeight: 44, paddingTop: SPACE.xs },
-  identity: { alignItems: 'center', gap: SPACE.xxs, marginTop: -SPACE.xs },
-  username: { ...TYPE.screenTitle, color: c.fg, marginTop: SPACE.xs, maxWidth: '100%' },
-  meta: { ...TYPE.meta, color: c.fg3 },
+  // The identity block sits centred in the upper-middle of the header area.
+  identity: { alignItems: 'center', gap: SPACE.xxs, paddingTop: SPACE.xs, paddingBottom: SPACE.xxs },
+  username: { ...TYPE.screenTitle, color: c.fg, marginTop: SPACE.xs, maxWidth: '100%', textAlign: 'center' },
+  meta: { ...TYPE.meta, color: c.fg3, textAlign: 'center' },
   stats: { flexDirection: 'row', gap: SPACE.xs },
-  sectionLabel: { ...TYPE.label, color: c.fg3, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: -SPACE.sm, marginLeft: SPACE.xxs },
-  menu: { ...glassPanel(c), borderRadius: RADIUS.lg, overflow: 'hidden' },
-  spacer: { flexGrow: 1, minHeight: 0 },
-  logout: { borderColor: withOpacity(s.danger, 0.35) },
+  menu: { gap: SPACE.xs },
+  logout: { marginTop: SPACE.xs },
 }));

@@ -56,3 +56,17 @@ export function cardAction(tournament: Tournament): CardAction {
 
   return { kind: 'disabled', label: isFull(tournament) ? 'Full' : 'Closed' };
 }
+
+/** Rewarded-ad tickets this tournament needs before the player can join (free tournaments only). */
+export function ticketsRequired(tournament: Tournament): number {
+  return isFree(tournament) ? Math.max(0, tournament.ad_tickets_required ?? 0) : 0;
+}
+
+export function ticketsEarned(tournament: Tournament): number {
+  return Math.min(ticketsRequired(tournament), Math.max(0, tournament.ad_tickets_earned ?? 0));
+}
+
+/** True while the player still has tickets to earn before Join opens the normal join flow. */
+export function needsTickets(tournament: Tournament): boolean {
+  return ticketsRequired(tournament) > 0 && ticketsEarned(tournament) < ticketsRequired(tournament);
+}

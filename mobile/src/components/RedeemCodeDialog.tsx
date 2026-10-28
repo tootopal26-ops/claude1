@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 
+import { useAds } from '../ads/AdsContext';
 import { redeemCode } from '../api/redeem';
+import { useWallet } from '../wallet/WalletContext';
 import { ApiError } from '../api/client';
 import { makeStyles, useTheme } from '../theme/ThemeContext';
 import { RADIUS, SPACE, TYPE } from '../theme/tokens';
@@ -23,7 +25,9 @@ type Props = {
 type State =
   | { phase: 'entering'; error: string | null }
   | { phase: 'submitting' }
-  | { phase: 'done'; coins: number; balance: Wallet };
+  /** The code needs one rewarded ad: the ad is playing, or the server is verifying it. */
+  | { phase: 'watching'; coins: number }
+  | { phase: 'done'; coins: number; balance: Wallet | null };
 
 const INITIAL: State = { phase: 'entering', error: null };
 
@@ -39,8 +43,10 @@ export function RedeemCodeDialog({ visible, onClose, onRedeemed }: Props) {
   const styles = useStyles();
   const [code, setCode] = useState('');
   const [state, setState] = useState<State>(INITIAL);
+  const { watchRewarded } = useAds();
+  const { wallet, refresh: refreshWallet } = useWallet();
 
-  const submitting = state.phase === 'submitting';
+  const submitting = state.phase === 'submitting' || state.phase === 'watching';
   const valid = code.length === CODE_LENGTH;
 
   function close() {
@@ -62,6 +68,10 @@ export function RedeemCodeDialog({ visible, onClose, onRedeemed }: Props) {
 
     try {
       const response = await redeemCode(code);
+      if (response.error === 'ad_required') {
+        await watchAdForCode(response.data.coins, response.data.claim);
+        return;
+      }
       setState({ phase: 'done', coins: response.data.coins, balance: response.data.balance });
       onRedeemed?.(response.data.balance);
     } catch (error) {
@@ -79,6 +89,23 @@ export function RedeemCodeDialog({ visible, onClose, onRedeemed }: Props) {
         });
       }
     }
+  }
+
+  // The code is held for this player while the ad plays; it is credited only once the ad
+  // network's callback is verified. Closing the ad early credits nothing and doesn't use up
+  // the code — entering it again offers the ad again.
+  async function watchAdForCode(coins: number, claim: { token: string; dynamic_user_id: string }) {
+    setState({ phase: 'watching', coins });
+    const outcome = await watchRewarded({ purpose: 'redeem_code', claim });
+
+    if (outcome.status === 'verified' && outcome.claim.reward_coins !== null) {
+      await refreshWallet({ force: true });
+      setState({ phase: 'done', coins: Number(outcome.claim.reward_coins), balance: null });
+      return;
+    }
+
+    const error = outcome.message;
+    setState({ phase: 'entering', error });
   }
 
   return (
@@ -99,7 +126,7 @@ export function RedeemCodeDialog({ visible, onClose, onRedeemed }: Props) {
           <Text style={styles.subtitle}>Added to your deposit balance.</Text>
           <View style={styles.balanceRow}>
             <Text style={styles.balanceLabel}>Deposit balance</Text>
-            <CoinAmount value={state.balance.deposit_balance} size={16} />
+            <CoinAmount value={(state.balance ?? wallet)?.deposit_balance ?? null} size={16} />
           </View>
           <Button label="Done" onPress={close} />
         </>
@@ -130,6 +157,7 @@ export function RedeemCodeDialog({ visible, onClose, onRedeemed }: Props) {
           </Text>
 
           {state.phase === 'entering' && state.error ? <Notice tone="danger">{state.error}</Notice> : null}
+          {state.phase === 'watching' ? <Notice tone="info">{`This code needs one rewarded ad. Watch it to the end to get ${state.coins} coins.`}</Notice> : null}
 
           <Button
             label="Redeem"
@@ -137,7 +165,7 @@ export function RedeemCodeDialog({ visible, onClose, onRedeemed }: Props) {
             onPress={submit}
             loading={submitting}
             disabled={!valid}
-            accessibilityLabel={submitting ? 'Redeeming' : 'Redeem'}
+            accessibilityLabel={state.phase === 'watching' ? 'Waiting for the ad' : submitting ? 'Redeeming' : 'Redeem'}
           />
           <Button label="Cancel" variant="secondary" onPress={close} disabled={submitting} />
         </>

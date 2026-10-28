@@ -33,6 +33,7 @@ class RedeemCampaignService
                     'reward_coins' => $data['reward_coins'],
                     'expires_at' => $data['expires_at'],
                     'is_active' => $data['is_active'],
+                    'requires_rewarded_ad' => (bool) ($data['requires_rewarded_ad'] ?? false),
                     'created_by_staff_id' => $actor->id,
                 ]);
 
@@ -43,6 +44,7 @@ class RedeemCampaignService
                     'reward_coins' => $campaign->reward_coins,
                     'potential_liability' => $campaign->potentialLiability(),
                     'expires_at' => $campaign->expires_at->toIso8601String(),
+                    'requires_rewarded_ad' => $campaign->requires_rewarded_ad,
                 ]);
 
                 return $campaign;

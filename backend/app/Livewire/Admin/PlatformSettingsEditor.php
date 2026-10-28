@@ -18,7 +18,7 @@ class PlatformSettingsEditor extends Component
 
     public function mount(PlatformSettingsService $settings): void
     {
-        foreach ($settings->all() as $key => $value) {
+        foreach ($settings->group('platform') as $key => $value) {
             $this->values[$key] = PlatformSettingsService::CATALOG[$key]['type'] === 'string_list'
                 ? implode("\n", (array) $value)
                 : (string) $value;
@@ -31,7 +31,7 @@ class PlatformSettingsEditor extends Component
 
         $this->formError = null;
 
-        foreach (PlatformSettingsService::CATALOG as $key => $spec) {
+        foreach (PlatformSettingsService::catalogFor('platform') as $key => $spec) {
             $raw = trim($this->values[$key] ?? '');
 
             $value = match ($spec['type']) {
@@ -66,7 +66,7 @@ class PlatformSettingsEditor extends Component
     public function render()
     {
         return view('livewire.admin.platform-settings-editor', [
-            'catalog' => PlatformSettingsService::CATALOG,
+            'catalog' => PlatformSettingsService::catalogFor('platform'),
         ]);
     }
 }

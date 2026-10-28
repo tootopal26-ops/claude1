@@ -1,0 +1,37 @@
+[
+  {
+    "name": "ticket count rises by one after a verified ad",
+    "ok": true,
+    "detail": "Tickets 1 of 3 -> Tickets 2 of 3"
+  },
+  {
+    "name": "closing the ad early adds no ticket",
+    "ok": true,
+    "detail": "Tickets 2 of 3"
+  },
+  {
+    "name": "ads earning switched on (server confirmed)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "earning ad verified and counted",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "campaign claim credited after verified ad",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "ad-gated redeem code credited only after the verified ad",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no uncaught page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

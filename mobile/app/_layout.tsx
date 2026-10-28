@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AdsProvider } from '../src/ads/AdsContext';
 import { AuthProvider, useAuth } from '../src/auth/AuthContext';
 import { LegalAcceptanceGate } from '../src/components/LegalAcceptanceGate';
 import { BootScreen } from '../src/components/layout/BootScreen';
@@ -107,6 +108,8 @@ function ThemedStack({ signedIn }: { signedIn: boolean }) {
         <Stack.Screen name="deposit" options={{ title: 'Add coins' }} />
         <Stack.Screen name="withdraw" options={{ title: 'Withdraw' }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+        <Stack.Screen name="matches" options={{ title: 'My matches' }} />
+        <Stack.Screen name="ads-earning" options={{ title: 'Ads Earning' }} />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn} redirectTo="/">
         <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
@@ -126,7 +129,9 @@ export default function RootLayout() {
           <AuthProvider>
             <WalletProvider>
               <SectionsProvider>
-                <AppGate />
+                <AdsProvider>
+                  <AppGate />
+                </AdsProvider>
               </SectionsProvider>
             </WalletProvider>
           </AuthProvider>

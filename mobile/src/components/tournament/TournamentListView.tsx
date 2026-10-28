@@ -12,7 +12,10 @@ import { pushOnce } from '../../utils/navigation';
 import { AmbientGlow } from '../AmbientGlow';
 import { SegmentedControl } from '../controls/SegmentedControl';
 import { EmptyState, ErrorState, Skeleton } from '../states/States';
+import { useAds } from '../../ads/AdsContext';
+import { AdSlot, feedAdPositions } from '../../ads/AdSlot';
 import { JoinSheet } from './JoinSheet';
+import { useTicketedJoin } from './useTicketedJoin';
 import { RulesSheet } from './RulesSheet';
 import { TournamentCard } from './TournamentCard';
 
@@ -32,9 +35,17 @@ export function parseTab(value: unknown): TournamentTab {
   return value === 'ongoing' || value === 'completed' ? value : 'upcoming';
 }
 
+const EMPTY_JOINED: Record<TournamentTab, { title: string; message: string }> = {
+  upcoming: { title: 'No upcoming matches', message: 'Tournaments you join appear here until they start.' },
+  ongoing: { title: 'No live matches', message: 'Your matches show here while they are being played.' },
+  completed: { title: 'No finished matches yet', message: 'Matches you played appear here with their results.' },
+};
+
 type Props = {
   /** Only this game's tournaments; all games when omitted. */
   gameId?: number;
+  /** Only tournaments the player has joined (the "Total Matches" list). */
+  joinedOnly?: boolean;
   initialTab: TournamentTab;
   /** Shown above the tabs (for example the game's description). */
   intro?: string | null;
@@ -47,7 +58,7 @@ type Props = {
  * and the list reloads whenever the screen is shown again (for example after joining from
  * the details screen).
  */
-export function TournamentListView({ gameId, initialTab, intro }: Props) {
+export function TournamentListView({ gameId, joinedOnly, initialTab, intro }: Props) {
   const styles = useStyles();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -62,11 +73,22 @@ export function TournamentListView({ gameId, initialTab, intro }: Props) {
   const [joining, setJoining] = useState<Tournament | null>(null);
   const opacity = useRef(new Animated.Value(1)).current;
   const firstFocus = useRef(true);
+  const { placement } = useAds();
+  const replaceTournament = useCallback((fresh: Tournament) => {
+    setLists((current) => {
+      const next: typeof current = {};
+      for (const key of Object.keys(current) as TournamentTab[]) {
+        next[key] = current[key]?.map((item) => (item.id === fresh.id ? fresh : item));
+      }
+      return next;
+    });
+  }, []);
+  const tickets = useTicketedJoin(setJoining, replaceTournament);
 
   const load = useCallback(
     async (target: TournamentTab) => {
       try {
-        const response = await fetchTournaments({ gameId, status: target });
+        const response = await fetchTournaments({ gameId, status: target, joined: joinedOnly });
         setLists((current) => ({ ...current, [target]: response.data }));
         setCounts(response.meta.counts);
         setFailed((current) => ({ ...current, [target]: false }));
@@ -74,7 +96,7 @@ export function TournamentListView({ gameId, initialTab, intro }: Props) {
         setFailed((current) => ({ ...current, [target]: true }));
       }
     },
-    [gameId],
+    [gameId, joinedOnly],
   );
 
   useEffect(() => {
@@ -100,6 +122,8 @@ export function TournamentListView({ gameId, initialTab, intro }: Props) {
 
   const list = lists[tab];
   const showError = failed[tab] && !list;
+  // Labelled native ads between cards, after every N tournaments (Admin sets N; off by default).
+  const adAfter = feedAdPositions(list?.length ?? 0, placement('tournament_feed')?.insert_every);
 
   return (
     <View style={styles.screen}>
@@ -133,15 +157,18 @@ export function TournamentListView({ gameId, initialTab, intro }: Props) {
           </View>
         }
         ItemSeparatorComponent={Separator}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <Animated.View style={{ width: contentWidth, opacity }}>
             <TournamentCard
               tournament={item}
               onOpen={(tournament) => pushOnce(`/tournament/${tournament.id}`)}
               onResults={(tournament) => pushOnce(`/tournament/${tournament.id}/results`)}
               onRules={setRulesFor}
-              onJoin={setJoining}
+              onJoin={(tournament) => void tickets.join(tournament)}
+              earningTicket={tickets.earningFor === item.id}
+              ticketNotice={tickets.notice?.tournamentId === item.id ? tickets.notice : null}
             />
+            {adAfter.has(index) ? <AdSlot placement="tournament_feed" size="medium" style={styles.feedAd} /> : null}
           </Animated.View>
         )}
         ListEmptyComponent={
@@ -155,7 +182,7 @@ export function TournamentListView({ gameId, initialTab, intro }: Props) {
                 ))}
               </View>
             ) : (
-              <EmptyState icon={tab === 'completed' ? 'trophy' : tab === 'ongoing' ? 'play' : 'calendar'} title={EMPTY[tab].title} message={EMPTY[tab].message} />
+              <EmptyState icon={tab === 'completed' ? 'trophy' : tab === 'ongoing' ? 'play' : 'calendar'} title={(joinedOnly ? EMPTY_JOINED : EMPTY)[tab].title} message={(joinedOnly ? EMPTY_JOINED : EMPTY)[tab].message} />
             )}
           </View>
         }
@@ -177,4 +204,5 @@ const useStyles = makeStyles(({ colors: c }) => ({
   header: { gap: SPACE.md, marginBottom: SPACE.md },
   intro: { ...TYPE.body, color: c.fg2 },
   skeletons: { gap: SPACE.sm },
+  feedAd: { marginTop: SPACE.sm },
 }));

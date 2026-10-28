@@ -90,11 +90,24 @@ class AdminUiDesignSystemTest extends TestCase
     public function test_pages_that_flash_a_status_or_are_redirected_to_after_one_render_the_flash(): void
     {
         $needsFlash = [];
+        $files = collect(File::allFiles(app_path('Livewire/Admin')));
+        $classOf = fn ($file) => 'App\\Livewire\\Admin\\'.str_replace(['/', '.php'], ['\\', ''], $file->getRelativePathname());
 
-        foreach (File::allFiles(app_path('Livewire/Admin')) as $file) {
+        foreach ($files as $file) {
             $php = File::get($file->getPathname());
 
             if (! str_contains($php, "->flash('status'")) {
+                continue;
+            }
+
+            // A shared trait that flashes: every component using it must render the flash.
+            if (preg_match('/^trait (\\w+)/m', $php, $trait)) {
+                foreach ($files as $user) {
+                    if (preg_match('/^    use '.$trait[1].';$/m', File::get($user->getPathname()))) {
+                        $needsFlash[$classOf($user)] = "uses {$trait[1]}";
+                    }
+                }
+
                 continue;
             }
 
@@ -103,14 +116,16 @@ class AdminUiDesignSystemTest extends TestCase
             if (preg_match("/redirectRoute\\(Portal::routeName\\('([^']+)'\\)/", $php, $match) && ($route = Route::getRoutes()->getByName('admin.'.$match[1]))) {
                 $needsFlash[ltrim($route->getActionName(), '\\')] = "redirect target of {$file->getBasename('.php')}";
             } else {
-                $needsFlash['App\\Livewire\\Admin\\'.$file->getBasename('.php')] = 'itself';
+                $needsFlash[$classOf($file)] = 'itself';
             }
         }
 
         $missing = [];
 
         foreach ($needsFlash as $class => $why) {
-            $view = resource_path('views/livewire/admin/'.Str::kebab(class_basename($class)).'.blade.php');
+            // App\Livewire\Admin\Ads\AdUnits -> views/livewire/admin/ads/ad-units.blade.php
+            $relative = collect(explode('\\', Str::after($class, 'App\\Livewire\\Admin\\')))->map(fn (string $part) => Str::kebab($part))->implode('/');
+            $view = resource_path('views/livewire/admin/'.$relative.'.blade.php');
 
             if (! File::exists($view) || ! str_contains(File::get($view), '<x-ui.flash')) {
                 $missing[] = class_basename($class)." ({$why}) must render <x-ui.flash />";

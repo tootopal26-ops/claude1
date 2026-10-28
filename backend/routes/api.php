@@ -1,7 +1,12 @@
 <?php
 
 use App\Http\Controllers\Api\AlphaUpiWebhookController;
+use App\Http\Controllers\Api\LevelPlayCallbackController;
+use App\Http\Controllers\Api\V1\AdsController;
+use App\Http\Controllers\Api\V1\AdsEarningController;
+use App\Http\Controllers\Api\V1\AppConfigController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\DailyRewardController;
 use App\Http\Controllers\Api\V1\DepositController;
 use App\Http\Controllers\Api\V1\DevicePushTokenController;
 use App\Http\Controllers\Api\V1\GameController;
@@ -19,6 +24,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/webhooks/alpha-upi', AlphaUpiWebhookController::class)->middleware('throttle:60,1');
 
+// LevelPlay rewarded server-to-server callback (configured in the LevelPlay dashboard).
+Route::get('/ads/levelplay/callback', LevelPlayCallbackController::class)->middleware('throttle:240,1');
+
 Route::prefix('v1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:10,1');
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login');
@@ -27,6 +35,25 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
+
+        Route::get('/app-config', [AppConfigController::class, 'show']);
+
+        Route::get('/ads/config', [AdsController::class, 'config']);
+        Route::get('/ads/campaigns', [AdsController::class, 'campaigns']);
+        Route::post('/ads/events', [AdsController::class, 'events'])->middleware('throttle:30,1');
+        Route::post('/ads/claims', [AdsController::class, 'openClaim'])->middleware('throttle:20,1');
+        Route::get('/ads/claims/{token}', [AdsController::class, 'showClaim'])->middleware('throttle:120,1');
+        Route::post('/ads/claims/{token}/cancel', [AdsController::class, 'cancelClaim'])->middleware('throttle:30,1');
+        Route::post('/ads/claims/{token}/simulate', [AdsController::class, 'simulateClaim'])->middleware('throttle:30,1');
+        Route::post('/ads/withdrawals/{withdrawal}/post-success', [AdsController::class, 'withdrawalAttempt'])->middleware('throttle:30,1');
+
+        Route::get('/daily-reward', [DailyRewardController::class, 'show']);
+        Route::post('/daily-reward/dismiss', [DailyRewardController::class, 'dismiss'])->middleware('throttle:30,1');
+        Route::post('/daily-reward/claim', [DailyRewardController::class, 'claim'])->middleware('throttle:10,1');
+
+        Route::get('/ads-earning', [AdsEarningController::class, 'show']);
+        Route::post('/ads-earning/preference', [AdsEarningController::class, 'preference'])->middleware('throttle:20,1');
+        Route::get('/ads-earning/history', [AdsEarningController::class, 'history']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
 
         Route::get('/legal/acceptance-status', [LegalController::class, 'acceptanceStatus']);

@@ -272,4 +272,77 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Customer support link (Admin-editable)
+    |--------------------------------------------------------------------------
+    |
+    | Where the app's Profile > Customer Support row takes the player. Set from
+    | Admin > Customer Support (https:// or mailto: only). Empty means the app
+    | says support is not available yet instead of opening anything.
+    |
+    */
+    'support_url' => env('MINIMAX_SUPPORT_URL') ?: null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ads & Monetization (Admin-editable)
+    |--------------------------------------------------------------------------
+    |
+    | Every ad feature ships OFF. Admin > Ads & Monetization turns them on once
+    | the LevelPlay app key, ad units and the server-to-server callback are set
+    | up. `ads_master_enabled` overrides everything: while it is off the app
+    | requests no ads at all and no ad-based reward can be started.
+    |
+    | Rewards for watching ads are only ever credited after the ad network's
+    | server-to-server callback for that exact claim has been verified (see
+    | App\Domain\Ads\RewardedClaimService) — never from the app saying so.
+    |
+    | The private key LevelPlay signs those callbacks with is a secret and
+    | lives only in the environment (LEVELPLAY_S2S_PRIVATE_KEY), never in the
+    | database or the app.
+    |
+    */
+    'ads_master_enabled' => (bool) env('MINIMAX_ADS_ENABLED', false),
+    'ads_rewarded_enabled' => (bool) env('MINIMAX_ADS_REWARDED_ENABLED', false),
+    'ads_test_mode' => (bool) env('MINIMAX_ADS_TEST_MODE', true),
+    // The LevelPlay app key is public (it ships inside the app) and is set from Admin.
+    'levelplay_app_key' => env('LEVELPLAY_APP_KEY') ?: null,
+    // Lets local QA complete a rewarded claim without a real ad network. Refused in
+    // production regardless of this flag (see RewardedClaimService::simulateCompletion).
+    'ads_allow_simulated_rewards' => (bool) env('MINIMAX_ADS_ALLOW_SIMULATED_REWARDS', false),
+    'ads_app_open_cooldown_minutes' => 30,
+    'ads_app_open_session_cap' => 1,
+    'levelplay_s2s_private_key' => env('LEVELPLAY_S2S_PRIVATE_KEY'),
+    'rewarded_claim_ttl_minutes' => 15,
+
+    'ads_earning_enabled' => false,
+    'ads_earning_paused' => false,
+    'ads_earning_user_toggle_allowed' => true,
+    'ads_earning_min_deposit' => '50.00',
+    'ads_earning_business_share' => '60.00',
+    'ads_earning_user_share' => '40.00',
+    'ads_earning_coins_per_inr' => '1.00',
+    'ads_earning_daily_view_limit' => 10,
+    'ads_earning_min_payout_coins' => '0.01',
+    'ads_earning_settlement_day' => 1,
+    'ads_earning_settlement_time' => '06:00',
+    'ads_earning_timezone' => 'Asia/Kolkata',
+    'ads_earning_explanation' => 'Watch eligible ads and earn coins when your activity qualifies for rewards. Your rewards are calculated from verified advertising revenue and credited to your Deposit Wallet according to Mini Max\'s reward rules.',
+    'ads_earning_admin_notes' => null,
+
+    'daily_reward_enabled' => false,
+    'daily_reward_requires_ad' => true,
+    'daily_reward_min_deposit' => '50.00',
+    'daily_reward_min_coins' => '0.25',
+    'daily_reward_max_coins' => '5.00',
+    'daily_reward_title' => 'Daily Login Reward',
+    'daily_reward_description' => 'Watch a short ad to claim today\'s coins. They go to your Deposit Wallet.',
+    'daily_reward_starts_on' => null,
+    'daily_reward_ends_on' => null,
+    'daily_reward_timezone' => 'Asia/Kolkata',
+
+    'tickets_default_free' => 1,
+    'tickets_max_per_tournament' => 5,
+
 ];

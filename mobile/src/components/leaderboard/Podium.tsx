@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Text, View } from 'react-native';
 
+import { Artwork, ARTWORK_SIZE } from '../../theme/artwork';
 import { withOpacity } from '../../theme/glass';
 import { DURATION, EASE, useReducedMotion } from '../../theme/motion';
 import { makeStyles, useTheme } from '../../theme/ThemeContext';
@@ -26,8 +27,10 @@ const PLACES: { rank: 1 | 2 | 3; ring: AvatarRing }[] = [
 
 /**
  * The top three: second on the left, first raised in the middle, third on the right, in
- * gold, silver and bronze rings (no shadows). Each shows the player's earnings for the
- * period from the server; an empty place stays empty rather than showing a stand-in.
+ * gold, silver and bronze rings (no shadows), each marked with the supplied 1 / 2 / 3 medal
+ * (gold, silver, bronze — the first-place medal a little larger). Each shows the player's
+ * earnings for the period from the server; an empty place stays empty rather than showing
+ * a stand-in.
  */
 export function Podium({ entries, myUserId, animationKey }: Props) {
   const styles = useStyles();
@@ -69,7 +72,7 @@ function Place({ rank, ring, entry, isMe }: { rank: 1 | 2 | 3; ring: AvatarRing;
         <View style={[styles.empty, { width: size, height: size, borderRadius: size / 2 }]}>
           <Text style={styles.emptyText}>—</Text>
         </View>
-        <Badge rank={rank} color={metal} />
+        <Medal rank={rank} />
         <Text style={styles.nameMuted}>No player yet</Text>
       </View>
     );
@@ -81,7 +84,7 @@ function Place({ rank, ring, entry, isMe }: { rank: 1 | 2 | 3; ring: AvatarRing;
       accessibilityLabel={`Rank ${rank}, ${entry.username}${isMe ? ' (you)' : ''}, earned ${entry.score} coins`}
     >
       <Avatar username={entry.username} size={size} ring={ring} />
-      <Badge rank={rank} color={metal} />
+      <Medal rank={rank} />
       <Text style={styles.name} numberOfLines={1}>
         {entry.username}
         {isMe ? <Text style={{ color: colors.brandText }}> · you</Text> : null}
@@ -98,15 +101,12 @@ function Place({ rank, ring, entry, isMe }: { rank: 1 | 2 | 3; ring: AvatarRing;
   );
 }
 
-function Badge({ rank, color }: { rank: number; color: string }) {
+/** The supplied rank medal, overlapping the bottom of the avatar ring. */
+function Medal({ rank }: { rank: 1 | 2 | 3 }) {
   const styles = useStyles();
-  const { colors } = useTheme();
+  const size = rank === 1 ? ARTWORK_SIZE.medalFirst : ARTWORK_SIZE.medal;
 
-  return (
-    <View style={[styles.badge, { backgroundColor: color, borderColor: colors.bg }]}>
-      <Text style={[styles.badgeText, { color: colors.bg }]}>{rank}</Text>
-    </View>
-  );
+  return <Artwork name={rank === 1 ? 'medal1' : rank === 2 ? 'medal2' : 'medal3'} size={size} style={styles.medal} />;
 }
 
 const useStyles = makeStyles(({ colors: c }) => ({
@@ -122,16 +122,7 @@ const useStyles = makeStyles(({ colors: c }) => ({
     borderWidth: 1,
     borderColor: 'transparent',
   },
-  badge: {
-    marginTop: -10,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: { fontSize: 12, fontWeight: '800' },
+  medal: { marginTop: -16 },
   name: { ...TYPE.bodyStrong, fontSize: 13, color: c.fg, marginTop: SPACE.xxs, maxWidth: '100%' },
   nameMuted: { ...TYPE.meta, color: c.fg3, marginTop: SPACE.xxs },
   scoreRow: { gap: 4, marginTop: 2 },

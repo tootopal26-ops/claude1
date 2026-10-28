@@ -2,6 +2,7 @@
 
 namespace App\Domain\Tournament;
 
+use App\Domain\Ads\TournamentTicketService;
 use App\Domain\Notifications\NotificationService;
 use App\Domain\Wallet\InsufficientWalletBalanceException;
 use App\Domain\Wallet\WalletService;
@@ -15,13 +16,16 @@ use Illuminate\Validation\ValidationException;
 /**
  * Atomically books one team slot (Solo/Duo/Squad) on a tournament,
  * deducting the entry fee (deposit balance first, then eligible winnings)
- * when the tournament isn't free.
+ * when the tournament isn't free. A free tournament that requires
+ * rewarded-ad tickets is only joinable once the player holds them all;
+ * the tickets themselves never register anyone.
  */
 class ConfirmSlotBookingAction
 {
     public function __construct(
         private readonly NotificationService $notifications,
         private readonly WalletService $wallet,
+        private readonly TournamentTicketService $tickets,
     ) {}
 
     /**
@@ -68,6 +72,8 @@ class ConfirmSlotBookingAction
                     'tournament' => 'You have already joined this tournament.',
                 ]);
             }
+
+            $this->tickets->assertSatisfied($locked, $user);
 
             $confirmedCount = $locked->entries()->where('status', 'confirmed')->count();
 
