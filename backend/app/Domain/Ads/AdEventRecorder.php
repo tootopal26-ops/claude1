@@ -3,6 +3,7 @@
 namespace App\Domain\Ads;
 
 use App\Models\AdEvent;
+use App\Models\AdUnit;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -53,8 +54,33 @@ class AdEventRecorder
         }
 
         DB::table('ad_events')->insert($rows);
+        $this->touchAdUnits($rows);
 
         return count($rows);
+    }
+
+    /**
+     * Keeps each ad unit's "last loaded" and "last error" current for the Ad units page
+     * (as the app reports them — status information, never used for money).
+     *
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private function touchAdUnits(array $rows): void
+    {
+        foreach (collect($rows)->whereNotNull('ad_unit_id')->groupBy('ad_unit_id') as $unitId => $events) {
+            $loaded = $events->where('event', 'loaded')->max('occurred_at');
+            $failure = $events->whereIn('event', ['no_fill', 'load_failed', 'display_failed'])->sortBy('occurred_at')->last();
+
+            $changes = array_filter([
+                'last_loaded_at' => $loaded,
+                'last_error_at' => $failure['occurred_at'] ?? null,
+                'last_error' => $failure ? mb_substr(str_replace('_', ' ', $failure['event']).($failure['error_code'] ? " (code {$failure['error_code']})" : ''), 0, 255) : null,
+            ]);
+
+            if ($changes !== []) {
+                AdUnit::where('levelplay_ad_unit_id', (string) $unitId)->update($changes);
+            }
+        }
     }
 
     public function prune(): int

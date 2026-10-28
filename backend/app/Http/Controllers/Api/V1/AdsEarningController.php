@@ -30,17 +30,30 @@ class AdsEarningController extends Controller
         $page = $earning->history($request->user());
 
         return response()->json([
-            'data' => collect($page->items())->map(fn (AdSettlementAllocation $allocation) => [
-                'id' => $allocation->id,
-                'period_start' => $allocation->batch->period_start->toIso8601String(),
-                'period_end' => $allocation->batch->period_end->toIso8601String(),
-                'units' => $allocation->units,
-                'coins' => (string) $allocation->coins,
+            'data' => collect($page->items())->map(function (AdSettlementAllocation $allocation) {
                 // Shown as credited only once the ledger entry exists.
-                'status' => $allocation->status === 'credited' && $allocation->wallet_ledger_entry_id ? 'credited' : ($allocation->status === 'below_minimum' ? 'below_minimum' : ($allocation->status === 'failed' ? 'processing' : 'pending')),
-                'credited_at' => $allocation->credited_at?->toIso8601String(),
-                'reference' => $allocation->wallet_ledger_entry_id ? 'L'.$allocation->wallet_ledger_entry_id : null,
-            ])->all(),
+                $credited = $allocation->status === 'credited' && $allocation->wallet_ledger_entry_id;
+                $adjustments = $allocation->adjustments->whereNotNull('wallet_ledger_entry_id');
+
+                return [
+                    'id' => $allocation->id,
+                    'period_start' => $allocation->batch->period_start->toIso8601String(),
+                    'period_end' => $allocation->batch->period_end->toIso8601String(),
+                    'units' => $allocation->units,
+                    'coins' => (string) $allocation->coins,
+                    'status' => $credited
+                        ? ($adjustments->isNotEmpty() ? 'adjusted' : 'credited')
+                        : ($allocation->status === 'below_minimum' ? 'below_minimum' : ($allocation->status === 'failed' ? 'processing' : 'pending')),
+                    'credited_at' => $allocation->credited_at?->toIso8601String(),
+                    'reference' => $allocation->wallet_ledger_entry_id ? 'L'.$allocation->wallet_ledger_entry_id : null,
+                    'adjustments' => $adjustments->map(fn ($adjustment) => [
+                        'coins' => (string) $adjustment->coins,
+                        'reason' => $adjustment->reason,
+                        'at' => $adjustment->created_at->toIso8601String(),
+                        'reference' => 'L'.$adjustment->wallet_ledger_entry_id,
+                    ])->values()->all(),
+                ];
+            })->all(),
             'meta' => ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'total' => $page->total()],
         ]);
     }

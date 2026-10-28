@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Admin\Ads;
 
+use App\Domain\Ads\AdsAnalytics;
 use App\Domain\Settings\PlatformSettingsService;
 use App\Livewire\Admin\Ads\Concerns\AdsPage;
 use App\Livewire\Admin\Ads\Concerns\EditsSettings;
+use App\Models\AdSettlementBatch;
 use App\Models\AuditLog;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -68,6 +70,8 @@ class EarningSettings extends Component
     {
         return view('livewire.admin.ads.earning-settings', [
             'history' => $this->settingsHistory(),
+            'latestBatch' => AdSettlementBatch::latest('period_start')->first(),
+            'unitsAwaiting' => app(AdsAnalytics::class)->unitsAwaitingCalculation(),
             'rewardedHistory' => AuditLog::query()->where('action', 'platform_settings.updated')->where('metadata->key', 'ads_rewarded_enabled')->latest('id')->first(),
         ]);
     }

@@ -3,6 +3,7 @@
 namespace App\Domain\Ads;
 
 use App\Models\AdsEarningPreference;
+use App\Models\AdSettlementAdjustment;
 use App\Models\AdSettlementAllocation;
 use App\Models\AdSettlementBatch;
 use App\Models\RewardedClaim;
@@ -209,7 +210,8 @@ class AdsEarningService
             'units_today' => $this->unitsToday($user),
             'daily_limit' => (int) config('minimax.ads_earning_daily_view_limit'),
             'pending_coins' => number_format((float) (clone $pending)->sum('coins'), 2, '.', ''),
-            'credited_coins' => number_format((float) (clone $credited)->sum('coins'), 2, '.', ''),
+            // Credited settlements plus any recorded adjustments (each has its own ledger entry).
+            'credited_coins' => number_format((float) bcadd((string) (clone $credited)->sum('coins'), (string) AdSettlementAdjustment::where('user_id', $user->id)->whereNotNull('wallet_ledger_entry_id')->sum('coins'), 2), 2, '.', ''),
             'last_settlement_at' => $lastSettled?->toIso8601String(),
             'explanation' => (string) config('minimax.ads_earning_explanation'),
         ];
@@ -221,7 +223,7 @@ class AdsEarningService
     public function history(User $user, int $perPage = 15): LengthAwarePaginator
     {
         return AdSettlementAllocation::query()
-            ->with('batch')
+            ->with(['batch', 'adjustments'])
             ->where('user_id', $user->id)
             ->latest('id')
             ->paginate($perPage);

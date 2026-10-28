@@ -2,14 +2,17 @@
 
 namespace App\Domain\Ads;
 
+use App\Domain\Wallet\InsufficientWalletBalanceException;
 use App\Domain\Wallet\WalletService;
 use App\Models\AdRevenueReport;
+use App\Models\AdSettlementAdjustment;
 use App\Models\AdSettlementAllocation;
 use App\Models\AdSettlementBatch;
 use App\Models\AuditLog;
 use App\Models\RewardedClaim;
 use App\Models\StaffUser;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -86,16 +89,25 @@ class AdSettlementService
      */
     public function eligibleRevenue(AdSettlementBatch $batch): string
     {
+        $sum = $this->eligibleReports($batch)->reduce(fn (string $total, AdRevenueReport $report) => bcadd($total, (string) $report->revenue_usd, 6), '0');
+
+        return number_format((float) $sum, 6, '.', '');
+    }
+
+    /**
+     * @return Collection<int, AdRevenueReport>
+     */
+    public function eligibleReports(AdSettlementBatch $batch): Collection
+    {
         [$firstDay, $lastDay] = $this->localDays($batch);
 
-        $sum = AdRevenueReport::query()
+        return AdRevenueReport::query()
             ->where('status', 'finalized')
             ->where('placement_key', 'ads_earning')
             ->whereDate('period_start', '>=', $firstDay)
             ->whereDate('period_end', '<=', $lastDay)
-            ->sum('revenue_usd');
-
-        return number_format((float) $sum, 6, '.', '');
+            ->orderBy('period_start')
+            ->get();
     }
 
     /**
@@ -169,6 +181,14 @@ class AdSettlementService
             $locked->update([
                 'status' => 'calculated',
                 'eligible_revenue_usd' => $revenue,
+                'revenue_sources' => $this->eligibleReports($locked)->map(fn (AdRevenueReport $report) => [
+                    'id' => $report->id,
+                    'period_start' => $report->period_start->toDateString(),
+                    'period_end' => $report->period_end->toDateString(),
+                    'provider' => $report->provider,
+                    'revenue_usd' => (string) $report->revenue_usd,
+                    'source' => $report->source,
+                ])->values()->all(),
                 'business_share_usd' => $businessUsd,
                 'user_pool_usd' => $poolUsd,
                 'usd_inr_rate' => $usdInrRate,
@@ -252,6 +272,70 @@ class AdSettlementService
         ]);
 
         return $batch->fresh();
+    }
+
+    /**
+     * Records an explicit correction to a credited allocation of a completed settlement: its
+     * own row (signed coins, required reason, who and when) and its own ledger entry through
+     * the wallet's audited manual adjustment. The settlement and the original credit are
+     * never edited. A deduction that would take the Deposit balance negative is refused.
+     *
+     * @throws ValidationException
+     */
+    public function adjust(AdSettlementAllocation $allocation, string $signedCoins, string $reason, StaffUser $actor): AdSettlementAdjustment
+    {
+        $reason = trim($reason);
+
+        if (! is_numeric($signedCoins) || ! preg_match('/^-?\d+(\.\d{1,2})?$/', trim($signedCoins)) || bccomp(trim($signedCoins), '0', 2) === 0) {
+            throw ValidationException::withMessages(['coins' => 'Enter a non-zero amount with up to 2 decimals (negative to take coins back).']);
+        }
+        if (bccomp(ltrim(trim($signedCoins), '-'), '100000', 2) > 0) {
+            throw ValidationException::withMessages(['coins' => 'An adjustment can be at most 100,000 coins.']);
+        }
+        if (mb_strlen($reason) < 5 || mb_strlen($reason) > 255) {
+            throw ValidationException::withMessages(['reason' => 'Say why (5–255 characters). Players see this reason in their history.']);
+        }
+        if ($allocation->batch->status !== 'completed' || $allocation->status !== 'credited') {
+            throw ValidationException::withMessages(['coins' => 'Only a credited allocation of a completed settlement can be adjusted.']);
+        }
+
+        $signedCoins = number_format((float) trim($signedCoins), 2, '.', '');
+        $period = $allocation->batch->period_start->toDateString().' – '.$allocation->batch->period_end->toDateString();
+
+        try {
+            return DB::transaction(function () use ($allocation, $signedCoins, $reason, $actor, $period) {
+                $adjustment = AdSettlementAdjustment::create([
+                    'ad_settlement_allocation_id' => $allocation->id,
+                    'user_id' => $allocation->user_id,
+                    'coins' => $signedCoins,
+                    'reason' => $reason,
+                    'created_by_staff_id' => $actor->id,
+                ]);
+
+                $entry = $this->wallet->manualAdjust(
+                    $allocation->user,
+                    $signedCoins,
+                    'deposit',
+                    "Ads Earning adjustment ({$period}): {$reason}",
+                    $actor,
+                    "ads_earning_adjustment:{$adjustment->id}",
+                );
+
+                $adjustment->update(['wallet_ledger_entry_id' => $entry->id]);
+
+                AuditLog::record('ads.settlement.adjusted', $actor, $allocation->batch, [
+                    'allocation_id' => $allocation->id,
+                    'user_id' => $allocation->user_id,
+                    'coins' => $signedCoins,
+                    'reason' => $reason,
+                    'ledger_entry_id' => $entry->id,
+                ]);
+
+                return $adjustment;
+            });
+        } catch (InsufficientWalletBalanceException) {
+            throw ValidationException::withMessages(['coins' => 'That would take the player\'s Deposit balance below zero.']);
+        }
     }
 
     /**

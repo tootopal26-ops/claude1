@@ -27,6 +27,7 @@ type Message = { tone: 'success' | 'danger' | 'info' | 'warning'; text: string }
 
 const HISTORY_STATUS: Record<AdsEarningHistoryItem['status'], { label: string; tone: ChipTone }> = {
   credited: { label: 'Credited', tone: 'success' },
+  adjusted: { label: 'Adjusted', tone: 'info' },
   pending: { label: 'Pending', tone: 'warning' },
   processing: { label: 'Processing', tone: 'info' },
   below_minimum: { label: 'Below minimum', tone: 'neutral' },
@@ -330,9 +331,15 @@ export default function AdsEarningScreen() {
                       {item.reference ? ` · Ref ${item.reference}` : ''}
                     </Text>
                     {item.status === 'below_minimum' ? <Text style={styles.meta}>Below the minimum payout, so not credited.</Text> : null}
+                    {(item.adjustments ?? []).map((adjustment) => (
+                      <Text key={adjustment.reference} style={styles.meta}>
+                        Adjusted {adjustment.coins.startsWith('-') ? '' : '+'}
+                        {formatCoins(adjustment.coins)} · {adjustment.reason} · Ref {adjustment.reference}
+                      </Text>
+                    ))}
                   </View>
                   <View style={styles.historyAmount}>
-                    <CoinAmount value={item.coins} size={14} textStyle={[styles.campaignReward, item.status === 'credited' ? styles.credited : styles.pending]} />
+                    <CoinAmount value={item.coins} size={14} textStyle={[styles.campaignReward, item.status === 'credited' || item.status === 'adjusted' ? styles.credited : styles.pending]} />
                     <StatusChip label={HISTORY_STATUS[item.status].label} tone={HISTORY_STATUS[item.status].tone} />
                   </View>
                 </View>

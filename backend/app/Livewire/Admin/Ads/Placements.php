@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin\Ads;
 
 use App\Domain\Ads\AdsAnalytics;
+use App\Domain\Ads\AdsConfig;
 use App\Livewire\Admin\Ads\Concerns\AdsPage;
 use App\Models\AdPlacement;
 use App\Models\AdUnit;
@@ -106,12 +107,15 @@ class Placements extends Component
         session()->flash('status', "\"{$placement->name}\" saved.");
     }
 
-    public function render(AdsAnalytics $analytics)
+    public function render(AdsAnalytics $analytics, AdsConfig $ads)
     {
         [$start, $end] = $analytics->range('last_7_days');
+        $placements = AdPlacement::with('adUnit')->orderBy('id')->get();
 
         return view('livewire.admin.ads.placements', [
-            'placements' => AdPlacement::with('adUnit')->orderBy('id')->get(),
+            'placements' => $placements,
+            // After every switch: All ads, Rewarded Ads, the placement and its unit.
+            'live' => $placements->mapWithKeys(fn (AdPlacement $placement) => [$placement->key => $ads->isPlacementActive($placement->key)]),
             'units' => AdUnit::orderBy('name')->get(),
             'metrics' => collect($analytics->byPlacement($start, $end))->keyBy('key'),
             'masterEnabled' => (bool) config('minimax.ads_master_enabled'),

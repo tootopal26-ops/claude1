@@ -104,7 +104,7 @@ class AdsAnalytics
 
         $minDeposit = (string) config('minimax.ads_earning_min_deposit');
         $eligibleUsers = DB::query()->fromSub(
-            DepositOrder::query()->where('status', 'success')->groupBy('user_id')->havingRaw('SUM(amount) >= ?', [$minDeposit])->select('user_id'),
+            DepositOrder::query()->where('status', 'success')->groupBy('user_id')->havingRaw('SUM(amount) >= CAST(? AS DECIMAL(12,2))', [$minDeposit])->select('user_id'),
             'eligible',
         )->count();
         $players = User::count();
@@ -139,7 +139,9 @@ class AdsAnalytics
             'completion_rate' => $opened > 0 ? round(100 * $verified / $opened, 1) : null,
             'test_events' => (clone $events())->where('is_test', true)->count(),
             'unique_viewers' => (clone $events())->where('is_test', false)->where('event', 'impression')->whereNotNull('user_id')->distinct()->count('user_id'),
-            'opted_in_users' => AdsEarningPreference::where('enabled', true)->count(),
+            'opted_in_users' => $optedIn = AdsEarningPreference::where('enabled', true)->count(),
+            'opt_in_rate' => $eligibleUsers > 0 ? round(100 * $optedIn / $eligibleUsers, 1) : null,
+            'sdk_errors' => (clone $events())->where('is_test', false)->whereIn('event', ['init_failed', 'load_failed', 'display_failed'])->count(),
             'eligible_users' => $eligibleUsers,
             'not_eligible_users' => max(0, $players - $eligibleUsers),
             'units_pending_calculation' => $this->unitsAwaitingCalculation(),

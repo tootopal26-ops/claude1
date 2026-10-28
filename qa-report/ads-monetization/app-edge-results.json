@@ -1,0 +1,52 @@
+[
+  {
+    "name": "no empty ad boxes without an ad SDK (Home)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no ad available → clear message",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no ad available → ticket count unchanged",
+    "ok": true,
+    "detail": "Tickets 2 of 3 -> Tickets 2 of 3"
+  },
+  {
+    "name": "network failure → retryable error, no reward",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Ads Earning with no ad available → message, nothing counted",
+    "ok": true,
+    "detail": "Today 2/10"
+  },
+  {
+    "name": "reduced motion renders /ads-earning",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "reduced motion renders /tournaments?status=upcoming",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "reduced motion renders /profile",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "reduced motion: tab switch works",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no uncaught page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

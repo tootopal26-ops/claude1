@@ -80,7 +80,7 @@ class AdsController extends Controller
         return response()->json(['data' => $this->presentClaim($claim, $claims)]);
     }
 
-    /** The player closed or skipped the ad: nothing is earned; the claim is closed. */
+    /** No ad could be shown (no fill, failure, no SDK): nothing is earned; the claim is closed. */
     public function cancelClaim(Request $request, string $token, RewardedClaimService $claims): JsonResponse
     {
         $claim = $this->ownClaim($request, $token);

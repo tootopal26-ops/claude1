@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Admin\Ads;
 
+use App\Domain\Ads\AdsConfig;
 use App\Livewire\Admin\Ads\Concerns\AdsPage;
+use App\Models\AdEvent;
 use App\Models\AdUnit;
 use App\Models\AuditLog;
 use Illuminate\Validation\Rule;
@@ -115,10 +117,28 @@ class AdUnits extends Component
         AuditLog::record($unit->is_active ? 'ads.ad_unit.activated' : 'ads.ad_unit.deactivated', $this->actor(), $unit, ['levelplay_ad_unit_id' => $unit->levelplay_ad_unit_id]);
     }
 
-    public function render()
+    public function render(AdsConfig $ads)
     {
+        $units = AdUnit::with('placements')->orderBy('format')->orderBy('name')->get();
+
+        // Last 7 days of app-reported delivery per unit (production events only).
+        $stats = AdEvent::query()
+            ->where('occurred_at', '>=', now()->subDays(7))
+            ->where('is_test', false)
+            ->whereIn('ad_unit_id', $units->pluck('levelplay_ad_unit_id'))
+            ->selectRaw('ad_unit_id, event, COUNT(*) as total')
+            ->groupBy('ad_unit_id', 'event')
+            ->get()
+            ->groupBy('ad_unit_id')
+            ->map(fn ($rows) => $rows->pluck('total', 'event'));
+
         return view('livewire.admin.ads.ad-units', [
-            'units' => AdUnit::withCount('placements')->orderBy('format')->orderBy('name')->get(),
+            'units' => $units,
+            'stats' => $stats,
+            'livePlacements' => $units->mapWithKeys(fn (AdUnit $unit) => [
+                $unit->id => $unit->placements->filter(fn ($placement) => $ads->isPlacementActive($placement->key))->pluck('name')->all(),
+            ]),
+            'lastInit' => AdEvent::query()->where('placement_key', 'sdk')->whereIn('event', ['init_success', 'init_failed'])->latest('occurred_at')->first(),
         ]);
     }
 }

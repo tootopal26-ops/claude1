@@ -73,6 +73,21 @@
             @include('livewire.admin.ads._setting', ['key' => 'ads_earning_admin_notes'])
         </x-ui.form-section>
 
+        <x-ui.form-section title="Reward calculation status" description="Where the weekly revenue share stands right now.">
+            <dl class="grid grid-cols-1 gap-3 text-sm sm:col-span-2 sm:grid-cols-2">
+                <x-ui.kv label="Latest settlement">
+                    @if ($latestBatch)
+                        <x-ui.badge :status="$latestBatch->status === 'calculated' ? 'approved' : $latestBatch->status">{{ ucfirst($latestBatch->status) }}</x-ui.badge>
+                        <span class="text-fg-3">#{{ $latestBatch->id }} · {{ $latestBatch->period_start->setTimezone(config('minimax.ads_earning_timezone'))->format('d M') }} – {{ $latestBatch->period_end->setTimezone(config('minimax.ads_earning_timezone'))->format('d M Y') }}</span>
+                        <a href="{{ portal_route('ads.settlements', ['batch' => $latestBatch->id]) }}" class="text-brand-text hover:underline">Open</a>
+                    @else
+                        <span class="text-fg-3">None yet — each finished week is opened automatically.</span>
+                    @endif
+                </x-ui.kv>
+                <x-ui.kv label="Verified units awaiting calculation">{{ number_format($unitsAwaiting) }}</x-ui.kv>
+            </dl>
+        </x-ui.form-section>
+
         <x-ui.form-section title="Eligible placements and reward types" description="Fixed by design so one ad can never earn twice.">
             <div class="text-sm text-fg-2 sm:col-span-2">
                 <p>Ads Earning counts only the <strong>Ads Earning</strong> rewarded placement (Model A — revenue share). Tickets, the daily login reward, redeem codes and reward campaigns use their own placements and accounting, and never add Ads Earning units. Banner, native and interstitial impressions never earn players anything: paying for ad views is allowed only through rewarded inventory.</p>

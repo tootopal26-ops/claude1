@@ -113,8 +113,8 @@ server's `/ads/config`, and only for placements Admin switched on.
    create LevelPlay placements named exactly like Mini Max's placement keys —
    `tournament_ticket`, `daily_login`, `ads_earning`, `redeem_verification`,
    `rewarded_general`, `home_game_card`, `withdrawal_success`, `home_hero`,
-   `tournament_feed`, `leaderboard_feed`, `wallet_profile`. The app passes these names
-   when showing an ad.
+   `home_between`, `tournament_feed`, `leaderboard_feed`, `wallet_profile`. The app
+   passes these names when showing an ad.
 6. **Test devices**: add your test phones in LevelPlay (and AdMob) so they receive test
    ads. Never click your own live ads.
 
@@ -202,8 +202,14 @@ Asia/Kolkata). `ads:maintain` (every 5 minutes) opens each finished week as a
      below the minimum payout are recorded on the batch, not paid.
 3. Review the allocations, then **Credit settlement**. A queued, unique job credits each
    allocation with the idempotency key `ads_earning:{batch}:{player}`; a failed credit
-   is kept for **Retry**, and running it again never pays twice. A completed batch is
-   read-only; corrections are separate, audited adjustments.
+   is kept for **Retry**, and running it again never pays twice. The finalized revenue
+   reports the batch used are recorded on it. A completed batch is read-only.
+4. **Corrections** (for example the provider revises a week's revenue): on a completed
+   batch, **Adjust** a player's credited allocation with signed coins and a reason
+   (5–255 characters). Each adjustment is its own row and its own ledger entry through
+   the wallet's audited manual adjustment (risk alert above the configured threshold; a
+   deduction that would take the Deposit balance negative is refused). The player's
+   history then shows the week as *Adjusted* with the reason and the ledger reference.
 
 A **unit** is one rewarded ad on the Ads Earning placement, verified by the S2S callback,
 by a player who had Ads Earning switched on, had successful deposits of at least the

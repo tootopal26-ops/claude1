@@ -1,6 +1,7 @@
 /** Placements are a fixed catalog on the server; Admin switches each on or off. */
 export type AdPlacementKey =
   | 'home_hero'
+  | 'home_between'
   | 'home_game_card'
   | 'app_open'
   | 'tournament_ticket'
@@ -118,9 +119,11 @@ export type AdsEarningHistoryItem = {
   period_end: string;
   units: number;
   coins: string;
-  status: 'pending' | 'processing' | 'credited' | 'below_minimum';
+  status: 'pending' | 'processing' | 'credited' | 'adjusted' | 'below_minimum';
   credited_at: string | null;
   reference: string | null;
+  /** Audited corrections Mini Max applied after crediting, each with its own ledger entry. */
+  adjustments?: { coins: string; reason: string; at: string; reference: string }[];
 };
 
 /** A fixed-reward campaign: the stated coins for one verified rewarded ad, up to a daily limit. */

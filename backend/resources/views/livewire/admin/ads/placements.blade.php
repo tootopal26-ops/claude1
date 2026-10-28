@@ -21,6 +21,7 @@
                         <x-ui.badge variant="danger" :dot="false">Not supported</x-ui.badge>
                     @else
                         <x-ui.badge :status="$placement->is_enabled ? 'active' : 'inactive'">{{ $placement->is_enabled ? 'On' : 'Off' }}</x-ui.badge>
+                        <x-ui.badge :variant="$live[$placement->key] ? 'success' : 'neutral'" :dot="false">{{ $live[$placement->key] ? 'Live in app' : 'Not live' }}</x-ui.badge>
                     @endif
                 </x-slot:actions>
 
@@ -58,6 +59,7 @@
                         <div><dt class="text-fg-3">Fill rate</dt><dd class="tabular-nums text-fg">{{ $metric['fill_rate'] === null ? '—' : $metric['fill_rate'].'%' }}</dd></div>
                         <div><dt class="text-fg-3">No-fill / errors</dt><dd class="tabular-nums text-fg">{{ number_format($metric['no_fill']) }} / {{ number_format($metric['errors']) }}</dd></div>
                         <div><dt class="text-fg-3">Impressions</dt><dd class="tabular-nums text-fg">{{ number_format($metric['impressions']) }}</dd></div>
+                        <div class="col-span-2 sm:col-span-4"><dt class="sr-only">Unit status</dt><dd class="text-fg-3">Unit last loaded: {{ $placement->adUnit?->last_loaded_at?->format('d M Y H:i') ?? '—' }} · updated {{ $placement->updated_at->format('d M Y H:i') }}</dd></div>
                     </dl>
                 @endif
             </x-ui.card>

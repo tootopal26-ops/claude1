@@ -139,6 +139,8 @@ export default function HomeScreen() {
 
           <ShortcutCards counts={counts} width={contentWidth} />
 
+          <AdSlot placement="home_between" />
+
           <View style={styles.sectionHead}>
             <Text style={styles.sectionTitle} accessibilityRole="header">
               Esports Games

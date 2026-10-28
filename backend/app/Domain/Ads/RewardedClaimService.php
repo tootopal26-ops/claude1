@@ -247,9 +247,13 @@ class RewardedClaimService
             ->update(['status' => 'expired', 'failure_reason' => 'no_callback']);
     }
 
+    /**
+     * The app closes a claim only when no ad was shown at all (no fill, load or display
+     * failure, no SDK). An ad closed early leaves its claim open for the next full view.
+     */
     public function cancel(RewardedClaim $claim): void
     {
-        RewardedClaim::where('id', $claim->id)->where('status', 'pending')->update(['status' => 'cancelled', 'failure_reason' => 'closed_by_player']);
+        RewardedClaim::where('id', $claim->id)->where('status', 'pending')->update(['status' => 'cancelled', 'failure_reason' => 'no_ad_shown']);
     }
 
     public function tokenFromDynamicUserId(string $dynamicUserId): ?string

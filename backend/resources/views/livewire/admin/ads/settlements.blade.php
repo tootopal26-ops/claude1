@@ -51,6 +51,17 @@
                 <x-ui.kv label="Calculated / completed">{{ $selected->calculated_at?->format('d M Y H:i') ?? '—' }} / {{ $selected->completed_at?->format('d M Y H:i') ?? '—' }}</x-ui.kv>
             </dl>
 
+            @if ($selected->revenue_sources)
+                <div class="mt-4 border-t border-line pt-3 text-sm">
+                    <p class="mb-1 text-xs font-medium text-fg-3">Finalized revenue reports used</p>
+                    <ul class="space-y-0.5 text-fg-2">
+                        @foreach ($selected->revenue_sources as $source)
+                            <li>#{{ $source['id'] }} · {{ $source['period_start'] }} – {{ $source['period_end'] }} · {{ ucfirst($source['provider']) }} · ${{ number_format((float) $source['revenue_usd'], 6) }} · {{ $source['source'] }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             @if ($canManage && in_array($selected->status, ['pending', 'calculated'], true))
                 <form wire:submit="calculate" class="mt-5 grid grid-cols-1 gap-3 border-t border-line pt-4 sm:grid-cols-3" novalidate>
                     <x-ui.input label="USD → INR rate" wire:model="rate" inputmode="decimal" required placeholder="e.g. 83.25" />
@@ -67,8 +78,21 @@
             @endif
         </x-ui.card>
 
+        @if ($adjustingId)
+            @php($adjusting = $allocations->firstWhere('id', $adjustingId))
+            <form wire:submit="adjust" class="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-line bg-surface-2 p-4 sm:grid-cols-4" novalidate>
+                <p class="text-sm text-fg sm:col-span-4">Adjust {{ $adjusting?->user?->username ?? 'allocation #'.$adjustingId }}'s credited share. This records a separate, audited correction with its own ledger entry — the settlement itself is not changed. The player sees the reason in their history.</p>
+                <x-ui.input label="Coins (negative to take back)" wire:model="adjustCoins" inputmode="decimal" required placeholder="e.g. 1.50 or -0.75" />
+                <x-ui.input label="Reason" wire:model="adjustReason" required maxlength="255" wrapperClass="sm:col-span-2" placeholder="e.g. Provider revised the week's revenue" />
+                <div class="flex items-end gap-2">
+                    <x-ui.button variant="ghost" wire:click="cancelAdjust">Cancel</x-ui.button>
+                    <x-ui.button type="submit" loading="adjust" confirm="Record this adjustment? It is applied to the player's Deposit balance at once and can't be edited." confirm-title="Record adjustment" confirm-label="Record">Record</x-ui.button>
+                </div>
+            </form>
+        @endif
+
         <x-ui.table label="Allocations">
-            <x-slot:head><tr><th>Player</th><th class="text-right">Units</th><th class="text-right">Coins</th><th>Status</th><th>Ledger ref</th><th>Credited</th><th>Note</th></tr></x-slot:head>
+            <x-slot:head><tr><th>Player</th><th class="text-right">Units</th><th class="text-right">Coins</th><th>Status</th><th>Ledger ref</th><th>Credited</th><th class="text-right">Adjustments</th><th>Note</th>@if ($canManage && $selected->status === 'completed')<th></th>@endif</tr></x-slot:head>
             @forelse ($allocations as $allocation)
                 <tr wire:key="alloc-{{ $allocation->id }}">
                     <td class="mm-cell-primary">{{ $allocation->user?->username ?? '#'.$allocation->user_id }}</td>
@@ -77,10 +101,20 @@
                     <td><x-ui.badge :status="$allocation->status === 'credited' ? 'paid' : ($allocation->status === 'below_minimum' ? 'inactive' : $allocation->status)">{{ ucfirst(str_replace('_', ' ', $allocation->status)) }}</x-ui.badge></td>
                     <td class="font-mono text-xs">{{ $allocation->wallet_ledger_entry_id ? 'L'.$allocation->wallet_ledger_entry_id : '—' }}</td>
                     <td class="whitespace-nowrap text-fg-3">{{ $allocation->credited_at?->format('d M Y H:i') ?? '—' }}</td>
+                    <td class="text-right tabular-nums">
+                        @if ($allocation->adjustments->isNotEmpty())
+                            <span title="{{ $allocation->adjustments->map(fn ($a) => $a->coins.': '.$a->reason)->implode(' | ') }}">{{ $fmtCoins($allocation->adjustments->sum('coins')) }}</span>
+                        @else
+                            <span class="text-fg-3">—</span>
+                        @endif
+                    </td>
                     <td><span class="block max-w-[16rem] truncate text-fg-3" title="{{ $allocation->failure_reason }}">{{ $allocation->failure_reason ?? ($allocation->attempts > 1 ? $allocation->attempts.' attempts' : '') }}</span></td>
+                    @if ($canManage && $selected->status === 'completed')
+                        <td class="text-right">@if ($allocation->status === 'credited')<x-ui.button size="sm" variant="ghost" wire:click="startAdjust({{ $allocation->id }})">Adjust</x-ui.button>@endif</td>
+                    @endif
                 </tr>
             @empty
-                <x-ui.table-empty :colspan="7" icon="users" title="No allocations" :description="$selected->status === 'pending' ? 'Calculate the settlement to see each player\'s share.' : 'No verified Ads Earning units in this week.'" />
+                <x-ui.table-empty :colspan="9" icon="users" title="No allocations" :description="$selected->status === 'pending' ? 'Calculate the settlement to see each player\'s share.' : 'No verified Ads Earning units in this week.'" />
             @endforelse
             <x-slot:footer>{{ $allocations->links() }}</x-slot:footer>
         </x-ui.table>

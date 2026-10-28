@@ -72,11 +72,12 @@
         <x-ui.stat label="Rewarded ads completed" :value="$num($stats['rewarded_completed'])" hint="Verified by the ad network's signed callback." tone="success" icon="check-circle" />
         <x-ui.stat label="Rewarded completion rate" :value="$pct($stats['completion_rate'])" :hint="$num($stats['claims_opened']).' rewarded ads started in this period.'" />
         <x-ui.stat label="Unique viewers" :value="$num($stats['unique_viewers'])" hint="Players with at least one impression." icon="users" />
+        <x-ui.stat label="SDK errors" :value="$num($stats['sdk_errors'])" hint="Initialization, load and display failures the app reported." tone="danger" />
     </div>
 
     <h2 class="mb-2 text-sm font-semibold text-fg">Players and rewards</h2>
     <div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <x-ui.stat label="Ads Earning switched on" :value="$num($stats['opted_in_users'])" hint="Players with Ads Earning on (now)." />
+        <x-ui.stat label="Ads Earning switched on" :value="$num($stats['opted_in_users'])" :hint="'Players with Ads Earning on (now) — '.$pct($stats['opt_in_rate']).' of eligible players.'" />
         <x-ui.stat label="Eligible players" :value="$num($stats['eligible_users'])" :hint="'Successful deposits totalling '.config('minimax.ads_earning_min_deposit').' or more.'" tone="success" />
         <x-ui.stat label="Not yet eligible" :value="$num($stats['not_eligible_users'])" hint="Below the deposit requirement." />
         <x-ui.stat label="Units awaiting calculation" :value="$num($stats['units_pending_calculation'])" hint="Verified Ads Earning ads not in a calculated settlement yet." tone="info" />

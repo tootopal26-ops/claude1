@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * One weekly Ads Earning settlement: the revenue it shares, the policy used (shares, exchange rate, coin conversion) and its totals. Never edited after completion; corrections are separate adjustments.
  */
-#[Fillable(['period_start', 'period_end', 'status', 'eligible_revenue_usd', 'business_share_pct', 'user_share_pct', 'business_share_usd', 'user_pool_usd', 'usd_inr_rate', 'rate_source', 'rate_at', 'user_pool_inr', 'coins_per_inr', 'policy_version', 'total_units', 'eligible_users', 'total_coins_allocated', 'total_coins_credited', 'remainder_coins', 'created_by_staff_id', 'calculated_at', 'completed_at'])]
+#[Fillable(['period_start', 'period_end', 'status', 'eligible_revenue_usd', 'revenue_sources', 'business_share_pct', 'user_share_pct', 'business_share_usd', 'user_pool_usd', 'usd_inr_rate', 'rate_source', 'rate_at', 'user_pool_inr', 'coins_per_inr', 'policy_version', 'total_units', 'eligible_users', 'total_coins_allocated', 'total_coins_credited', 'remainder_coins', 'created_by_staff_id', 'calculated_at', 'completed_at'])]
 class AdSettlementBatch extends Model
 {
     protected function casts(): array
@@ -19,6 +19,7 @@ class AdSettlementBatch extends Model
             'period_start' => 'datetime',
             'period_end' => 'datetime',
             'eligible_revenue_usd' => 'decimal:6',
+            'revenue_sources' => 'array',
             'business_share_pct' => 'decimal:2',
             'user_share_pct' => 'decimal:2',
             'business_share_usd' => 'decimal:6',

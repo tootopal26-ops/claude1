@@ -237,13 +237,14 @@ SDK; impression-revenue telemetry; real revenue entry and a real weekly settleme
 
 | Check | Result |
 |---|---|
-| Backend `php artisan test --compact` | **622 passed**, 5,291 assertions, 0 failed |
+| Backend `php artisan test --compact` | **629 passed**, 5,322 assertions, 0 failed (after the re-audit in section 6) |
 | Backend `vendor/bin/pint --dirty` | passed |
 | Mobile `npx tsc --noEmit` | passed |
 | Mobile `npm run check:currency` | passed (no raw ₹, no ad-hoc coin SVG) |
 | Admin real-browser sweep (Chromium, 1440 and 390 wide) | **53/53** checks — [`admin-sweep-results.json`](ads-monetization/admin-sweep-results.json) |
 | App web-render sweep, 360×640 / 390×844 / 412×915 | **17/17** viewport checks (popup shown at each size, X closes it, claim after verified test ad, no horizontal overflow on Home, Ads Earning, Tournaments) + **7/7** flow checks — [`app-flows-results.json`](ads-monetization/app-flows-results.json) |
 | UI probe of prompt-(a) screens at the three sizes | no page errors at any size |
+| App edge cases (section 6) | **10/10** — [`app-edge-results.json`](ads-monetization/app-edge-results.json) |
 
 Two project guards caught real problems during this work and were fixed, not bypassed: the
 "no raw ₹ in Blade" guard (Admin views now use coins / "INR"), and the "flash-status pages
@@ -268,3 +269,33 @@ Screenshots (genuine captures; **web render, not Android**):
   S2S private key, and the test-callback confirmation (`docs/ads-monetization.md` §4.3).
   Until then everything stays off and no reward can be verified.
 * Adapter versions must be checked against LevelPlay's compatibility table before release.
+
+---
+
+## 6. Re-audit against the full spec (follow-up)
+
+The same three prompts were re-sent, so the branch was re-audited requirement by requirement
+instead of being rebuilt. Everything above stands; these gaps were found and closed:
+
+| Gap | Fix | Verified by |
+|---|---|---|
+| Ad Unit Configuration didn't show last load, error/no-fill figures, last SDK init, timestamps or whether a unit is live in the app (its `last_loaded_at` / `last_error` were never written) | The telemetry recorder now keeps each unit's last load and last error; the page shows live placements per unit, last load, 7-day loads / no-fills / errors, last error, updated time, the last SDK initialization the app reported, and where the AdMob App ID is set. Placements show *Live in app* / *Not live* after every switch. | Test (telemetry → unit status); Admin browser sweep 53/53 |
+| No way to correct a completed settlement, so history could never show "adjusted" | **Adjust** on credited allocations of completed batches (`ads.manage` only): signed coins + required reason, its own row and its own ledger entry via the wallet's audited `manualAdjust` (risk alert above threshold; can't overdraw). History shows *Adjusted* with the reason and ledger reference; the credited total includes it. The batch itself is never edited. | 3 tests (ledger entry, history/total, validation incl. reason/overdraw/non-completed, read-only staff refused) |
+| A batch didn't record which revenue reports it used | `revenue_sources` stored on calculation and shown on the batch; other placements' finalized revenue is excluded (now tested) | Test |
+| No "between Home sections" placement | `home_between` banner (off by default), rendered between the status cards and Esports Games | Test; web render shows no empty box without an SDK |
+| Overview lacked the opt-in percentage and SDK-error count | Added both | Test |
+| Ads Earning page lacked the reward calculation status | Latest settlement status + units awaiting calculation, with a link | Admin sweep |
+| **Bug:** "eligible players" counted 0 on SQLite (numeric `SUM()` compared with a string binding); MySQL was unaffected | Cast the bound minimum in SQL | Test (SQLite) + live MySQL count unchanged |
+| Cancelled claims were labelled `closed_by_player` although the app cancels only when no ad was shown | Labelled `no_ad_shown` | Ads tests |
+
+New app checks in the web render (still **not Android**): no ad available → clear message,
+ticket count unchanged, claim closed on the server; network drop while starting an ad →
+retryable error, nothing granted; Ads Earning "Watch ad" with no ad → nothing counted;
+reduced-motion setting → screens and tab switching work; no empty ad boxes without an SDK.
+Captures in `ads-monetization/edge/`.
+
+The adjustment UI was verified by tests only: showing it in a screenshot would require
+entering made-up "finalized revenue" into the QA database, which this report avoids.
+
+Unchanged: no Android build or device run is possible here (Google and LevelPlay Maven
+blocked by the network policy, no emulator), and no live provider is configured.

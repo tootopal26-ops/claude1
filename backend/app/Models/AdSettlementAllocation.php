@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * One player's share of one settlement, credited to their Deposit balance exactly once.
@@ -34,5 +35,13 @@ class AdSettlementAllocation extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return HasMany<AdSettlementAdjustment, $this>
+     */
+    public function adjustments(): HasMany
+    {
+        return $this->hasMany(AdSettlementAdjustment::class);
     }
 }
