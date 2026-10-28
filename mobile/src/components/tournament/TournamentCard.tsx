@@ -9,11 +9,11 @@ import { ASPECT, RADIUS, SPACE, TYPE } from '../../theme/tokens';
 import type { Tournament } from '../../types';
 import { formatDateTime } from '../../utils/time';
 import { Button } from '../Button';
-import { CoinAmount } from '../CoinAmount';
 import { PressableScale } from '../interaction/PressableScale';
 import { StatusChip } from '../StatusChip';
 import { Notice } from '../Notice';
 import { TicketProgress } from './TicketProgress';
+import { TournamentMetric } from './TournamentMetric';
 import { cardAction, isFree, MODE_LABELS, needsTickets, statusChip, ticketsEarned, ticketsRequired } from './tournamentState';
 
 type Props = {
@@ -34,7 +34,9 @@ const MODE_ARTWORK: Record<Tournament['mode'], ArtworkName> = { solo: 'modeSolo'
  * One tournament, the same everywhere it is listed (Upcoming, Ongoing, Completed, a game's
  * list and My matches). Top to bottom: the game's artwork as a large 16:9 picture across the
  * full width of the card; then the title, start time (supplied calendar icon), mode
- * (supplied Solo / Duo / Squad icon) and status; prize pool, per-kill reward and entry fee;
+ * (supplied Solo / Duo / Squad icon) and status; the supplied Prize Pool / Kill / Entry Fee
+ * badges with the tournament's own amounts (the badges carry the words, so there are no
+ * separate text labels);
  * how full it is; and two actions — the rules (only when the tournament has any) and the one
  * next step its real state allows (Join, Joined, Room details, Results, or a disabled
  * Full / Closed). The card itself opens the details. Fields the backend does not have (map,
@@ -93,9 +95,9 @@ export function TournamentCard({ tournament, onOpen, onJoin, onRules, onResults,
         </View>
 
         <View style={styles.stats}>
-          <Stat label="Prize pool" value={tournament.prize_pool} />
-          <Stat label="Per kill" value={tournament.per_kill_reward} />
-          <Stat label="Entry" value={isFree(tournament) ? null : tournament.entry_fee} />
+          <TournamentMetric kind="prizePool" value={tournament.prize_pool} badgeSize={ARTWORK_SIZE.metric} style={styles.stat} />
+          <TournamentMetric kind="perKill" value={tournament.per_kill_reward} badgeSize={ARTWORK_SIZE.metric} style={styles.stat} />
+          <TournamentMetric kind="entryFee" value={isFree(tournament) ? null : tournament.entry_fee} badgeSize={ARTWORK_SIZE.metric} style={styles.stat} />
         </View>
 
         <View style={styles.slots}>
@@ -148,24 +150,7 @@ function actionIcon(kind: string, label: string): IconName | undefined {
   return undefined;
 }
 
-function Stat({ label, value }: { label: string; value: string | null }) {
-  const styles = useStyles();
-
-  return (
-    <View style={styles.stat}>
-      <Text style={styles.statLabel} numberOfLines={1}>
-        {label}
-      </Text>
-      {value === null ? (
-        <Text style={styles.free}>Free</Text>
-      ) : (
-        <CoinAmount value={value} size={14} textStyle={styles.statValue} style={styles.statAmount} />
-      )}
-    </View>
-  );
-}
-
-const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
+const useStyles = makeStyles(({ colors: c }) => ({
   // The picture runs edge to edge across the top; everything below it is padded.
   card: { ...glassPanel(c), borderRadius: RADIUS.lg, overflow: 'hidden', paddingBottom: SPACE.sm, gap: SPACE.sm },
   body: { gap: SPACE.sm },
@@ -191,11 +176,7 @@ const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
   },
   modeText: { ...TYPE.label, color: c.fg2 },
   stats: { flexDirection: 'row', gap: SPACE.xs, paddingHorizontal: SPACE.sm },
-  stat: { flex: 1, minWidth: 0, backgroundColor: c.surface2, borderRadius: RADIUS.sm, paddingVertical: SPACE.xs, paddingHorizontal: SPACE.xs, gap: 2 },
-  statLabel: { ...TYPE.label, color: c.fg3, textTransform: 'uppercase', letterSpacing: 0.4 },
-  statAmount: { gap: 4 },
-  statValue: { ...TYPE.bodyStrong, color: c.fg },
-  free: { ...TYPE.bodyStrong, color: s.success },
+  stat: { flex: 1, minWidth: 0, backgroundColor: c.surface2, borderRadius: RADIUS.sm, paddingVertical: SPACE.xs, paddingHorizontal: 4 },
   slots: { gap: 6, paddingHorizontal: SPACE.sm },
   slotsHead: { flexDirection: 'row', justifyContent: 'space-between' },
   slotsText: { ...TYPE.meta, color: c.fg2 },

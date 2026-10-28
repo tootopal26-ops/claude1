@@ -29,6 +29,9 @@ export const ARTWORK = {
   modeSolo: { source: require('../../assets/icons/mode-solo.png'), aspect: 148 / 133 },
   modeDuo: { source: require('../../assets/icons/mode-duo.png'), aspect: 171 / 141 },
   modeSquad: { source: require('../../assets/icons/mode-squad.png'), aspect: 182 / 147 },
+  prizePool: { source: require('../../assets/icons/prize-pool.png'), aspect: 238 / 256 },
+  perKill: { source: require('../../assets/icons/per-kill.png'), aspect: 237 / 256 },
+  entryFee: { source: require('../../assets/icons/entry-fee.png'), aspect: 229 / 256 },
   statusOngoing: { source: require('../../assets/status/ongoing.png'), aspect: 320 / 206 },
   statusUpcoming: { source: require('../../assets/status/upcoming.png'), aspect: 320 / 237 },
   statusCompleted: { source: require('../../assets/status/completed.png'), aspect: 320 / 238 },
@@ -55,6 +58,10 @@ export const ARTWORK_SIZE = {
   medalFirst: 40,
   /** A date or mode marker next to text on a card. */
   inline: 18,
+  /** Prize pool / Kill / Entry fee badges on a tournament card (their words are part of the art). */
+  metric: 60,
+  /** The same badges on the tournament details screen. */
+  metricDetail: 72,
   /** The Home header bell. */
   headerBell: 26,
   /** Bottom navigation. */

@@ -14,6 +14,7 @@ import { StatusChip } from '../../../src/components/StatusChip';
 import { JoinSheet } from '../../../src/components/tournament/JoinSheet';
 import { RoomCredentials } from '../../../src/components/tournament/RoomCredentials';
 import { TicketProgress } from '../../../src/components/tournament/TicketProgress';
+import { TournamentMetric } from '../../../src/components/tournament/TournamentMetric';
 import { canJoin, isFree, isFull, MODE_LABELS, needsTickets, statusChip, ticketsEarned, ticketsRequired } from '../../../src/components/tournament/tournamentState';
 import { useTicketedJoin } from '../../../src/components/tournament/useTicketedJoin';
 import { Artwork, ARTWORK_SIZE } from '../../../src/theme/artwork';
@@ -166,9 +167,16 @@ export default function TournamentDetailScreen() {
           </View>
 
           <View style={styles.grid}>
-            <Figure label="Prize pool" value={tournament.prize_pool} />
-            <Figure label="Per kill" value={tournament.per_kill_reward} />
-            <Figure label="Entry fee" value={isFree(tournament) ? null : tournament.entry_fee} />
+            <TournamentMetric kind="prizePool" value={tournament.prize_pool} badgeSize={ARTWORK_SIZE.metricDetail} coinSize={16} valueStyle={styles.figureValue} style={[styles.figure, styles.metricFigure]} />
+            <TournamentMetric kind="perKill" value={tournament.per_kill_reward} badgeSize={ARTWORK_SIZE.metricDetail} coinSize={16} valueStyle={styles.figureValue} style={[styles.figure, styles.metricFigure]} />
+            <TournamentMetric
+              kind="entryFee"
+              value={isFree(tournament) ? null : tournament.entry_fee}
+              badgeSize={ARTWORK_SIZE.metricDetail}
+              coinSize={16}
+              valueStyle={styles.figureValue}
+              style={[styles.figure, styles.metricFigure]}
+            />
           </View>
 
           <View style={styles.panel}>
@@ -251,18 +259,6 @@ export default function TournamentDetailScreen() {
   );
 }
 
-function Figure({ label, value }: { label: string; value: string | null }) {
-  const styles = useStyles();
-  const { semanticColors } = useTheme();
-
-  return (
-    <View style={styles.figure}>
-      <Text style={styles.figureLabel}>{label}</Text>
-      {value === null ? <Text style={[styles.figureValue, { color: semanticColors.success }]}>Free</Text> : <CoinAmount value={value} size={16} textStyle={styles.figureValue} />}
-    </View>
-  );
-}
-
 function ResultFigure({ label, value }: { label: string; value: string }) {
   const styles = useStyles();
 
@@ -289,6 +285,8 @@ const useStyles = makeStyles(({ colors: c }) => ({
   whenText: { ...TYPE.body, color: c.fg2 },
   grid: { flexDirection: 'row', gap: SPACE.xs },
   figure: { ...glassPanel(c), flex: 1, minWidth: 0, borderRadius: RADIUS.md, padding: SPACE.sm, gap: SPACE.xxs },
+  // The three badge tiles keep their vertical rhythm but give a long amount more width.
+  metricFigure: { paddingHorizontal: SPACE.xxs },
   figureLabel: { ...TYPE.label, color: c.fg3, textTransform: 'uppercase', letterSpacing: 0.4 },
   figureValue: { ...TYPE.cardTitle, color: c.fg },
   panel: { ...glassPanel(c), borderRadius: RADIUS.lg, padding: SPACE.md, gap: SPACE.xs },

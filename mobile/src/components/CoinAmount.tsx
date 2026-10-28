@@ -11,19 +11,23 @@ type CoinAmountProps = {
   suffix?: string;
   textStyle?: StyleProp<TextStyle>;
   style?: StyleProp<ViewStyle>;
+  /** Keep the number on one line, shrinking it rather than wrapping when space is tight. */
+  singleLine?: boolean;
 };
 
 /**
  * An amount of coins: the coin artwork (always via <CoinAsset>) followed by
  * the number. Every coin amount in the app goes through this component.
  */
-export function CoinAmount({ value, size = 16, suffix, textStyle, style }: CoinAmountProps) {
+export function CoinAmount({ value, size = 16, suffix, textStyle, style, singleLine }: CoinAmountProps) {
   const styles = useStyles();
 
   return (
     <View style={[styles.row, style]}>
       <CoinAsset size={size} />
-      <Text style={[styles.value, textStyle]}>{formatCoins(value)}</Text>
+      <Text style={[styles.value, textStyle]} numberOfLines={singleLine ? 1 : undefined} adjustsFontSizeToFit={singleLine} minimumFontScale={singleLine ? 0.6 : undefined}>
+        {formatCoins(value)}
+      </Text>
       {suffix ? <Text style={styles.suffix}>{suffix}</Text> : null}
     </View>
   );
