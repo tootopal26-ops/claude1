@@ -86,8 +86,13 @@ final class Fulfilment
             return self::fail($o, 'This AUTO service has no active SMM provider or SMM service ID. Fix it in Admin → Services, then retry — or move the order to the manual queue.', 'misconfigured', $admin);
         }
 
+        // provider_quantity is the exact quantity App\Services\OrderCalculator computed and stamped on the order at checkout — the
+        // customer-facing `quantity` is NEVER sent to the provider on its own when the two differ (a service billed in a different
+        // provider unit). Orders placed before this column existed have it NULL: for those, quantity IS the provider quantity
+        // (the only pricing model that existed then), so the fallback is exact, not a guess.
+        $providerQty = $o['provider_quantity'] !== null ? (int) $o['provider_quantity'] : (int) $o['quantity'];
         try {
-            $res = SmmProviders::client($provider)->add((string) $o['smm_service_id'], (string) $o['target_url'], (int) $o['quantity']);
+            $res = SmmProviders::client($provider)->add((string) $o['smm_service_id'], (string) $o['target_url'], $providerQty);
         } catch (\Throwable $e) {
             // The order is already claimed: whatever went wrong (a PHP error, a DNS hiccup…), never leave it half-way in PROCESSING.
             Log::exception($e, 'Provider call crashed', ['order' => $o['public_id']]);
@@ -95,7 +100,7 @@ final class Fulfilment
         }
         $providerOrderId = $res->ok() && isset($res->data['order']) && is_scalar($res->data['order']) ? (string) $res->data['order'] : null;
         self::logTransaction($o, $provider, 'add', [
-            'service' => $o['smm_service_id'], 'link' => $o['target_url'], 'quantity' => (int) $o['quantity'],
+            'service' => $o['smm_service_id'], 'link' => $o['target_url'], 'quantity' => (int) $o['quantity'], 'provider_quantity' => $providerQty,
         ], $res, $providerOrderId);
 
         if ($providerOrderId !== null) {

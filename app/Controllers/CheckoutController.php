@@ -12,9 +12,10 @@ use App\Services\Orders;
 use App\Services\Tracking;
 
 /**
- * POST /api/checkout  { service_id, target }  +  Idempotency-Key header.
- * Only the service id and what the customer typed are accepted. Everything
- * else (price, quantity, mode, provider, cost) is read from the database.
+ * POST /api/checkout  { service_id, target, quantity? }  +  Idempotency-Key header.
+ * `quantity` is only meaningful for a per_unit service (App\Services\OrderCalculator) and is
+ * itself fully re-validated server-side — everything else (price, mode, provider, cost, and the
+ * quantity for a fixed_package service) is read from the database, never from the request.
  */
 final class CheckoutController
 {
@@ -23,7 +24,7 @@ final class CheckoutController
         $in = $req->json();
         $key = (string) ($req->header('idempotency-key') ?? '');
         $visitor = Tracking::context($req);
-        $hash = hash('sha256', json_encode([$in['service_id'] ?? null, $in['target'] ?? null]));
+        $hash = hash('sha256', json_encode([$in['service_id'] ?? null, $in['target'] ?? null, $in['quantity'] ?? null]));
 
         [$status, $body] = Idempotency::run('checkout', $key, $hash, static function () use ($req, $in, $visitor): array {
             $r = Orders::checkout($req, $in, $visitor);

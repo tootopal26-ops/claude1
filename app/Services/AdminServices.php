@@ -84,6 +84,9 @@ final class AdminServices
             'type' => $r['type'], 'type_label' => Status::serviceTypeLabel((string) $r['type']), 'target_kind' => $r['target_kind'],
             'title' => $r['title'], 'subtitle' => (string) ($r['subtitle'] ?? ''), 'description' => (string) ($r['description'] ?? ''),
             'price_paise' => $price, 'price' => Money::plain($price), 'quantity' => (int) $r['quantity'], 'min_quantity' => (int) $r['min_quantity'], 'max_quantity' => (int) $r['max_quantity'],
+            'pricing_model' => (string) ($r['pricing_model'] ?? OrderCalculator::MODEL_FIXED),
+            'pricing_unit_qty' => ($r['pricing_unit_qty'] ?? null) !== null ? (int) $r['pricing_unit_qty'] : null,
+            'provider_qty_divisor' => (int) ($r['provider_qty_divisor'] ?? 1), 'config_version' => (int) ($r['config_version'] ?? 1),
             'mode' => $r['mode'], 'smm_provider_id' => $r['smm_provider_id'] !== null ? (int) $r['smm_provider_id'] : null, 'provider_name' => $r['provider_name'],
             'smm_service_id' => (string) ($r['smm_service_id'] ?? ''), 'smm_cost_paise' => $cost, 'smm_cost' => Money::plain($cost),
             'fulfil_cost_paise' => $fulfil, 'fulfil_cost' => $fulfil !== null ? Money::plain($fulfil) : null,
@@ -194,6 +197,24 @@ final class AdminServices
             }
         }
 
+        // ── pricing-unit model: fixed pack (today's behaviour) or per-unit (customer buys any multiple of a priced unit) ──
+        // See App\Services\OrderCalculator — this is the ONLY place that decides what a purchase's quantity and provider quantity are.
+        $pricingModel = (string) $val('pricing_model', OrderCalculator::MODEL_FIXED);
+        if (!in_array($pricingModel, OrderCalculator::MODELS, true)) {
+            $errors['pricing_model'] = 'Choose a pricing model.';
+        }
+        $pricingUnitQty = null;
+        if ($pricingModel === OrderCalculator::MODEL_PER_UNIT) {
+            $pricingUnitQty = self::intField($in, 'pricing_unit_qty', $existing['pricing_unit_qty'] ?? null, 1, 2_000_000_000, $errors, 'Enter how many units the price buys (at least 1).');
+        }
+        $providerDivisor = self::intField($in, 'provider_qty_divisor', $existing['provider_qty_divisor'] ?? 1, 1, 1_000_000, $errors, 'Enter a whole number of at least 1 (how many customer units make one provider unit).');
+        if ($quantity !== null && $providerDivisor !== null && $quantity % $providerDivisor !== 0) {
+            $errors['provider_qty_divisor'] = 'The pack quantity (' . $quantity . ') must divide evenly by the provider quantity divisor.';
+        }
+        if ($pricingModel === OrderCalculator::MODEL_PER_UNIT && $pricingUnitQty !== null && $providerDivisor !== null && $pricingUnitQty % $providerDivisor !== 0) {
+            $errors['provider_qty_divisor'] = 'The per-unit quantity (' . $pricingUnitQty . ') must divide evenly by the provider quantity divisor.';
+        }
+
         // ── delivery ──
         $mode = (string) $val('mode', 'MANUAL');
         if (!in_array($mode, [Status::AUTO, Status::MANUAL], true)) {
@@ -260,9 +281,10 @@ final class AdminServices
         $data = [
             'code' => $code, 'platform_id' => (int) $platform['id'], 'type' => $type, 'target_kind' => $kind, 'title' => $title,
             'subtitle' => $subtitle !== '' ? $subtitle : null, 'description' => $description !== '' ? $description : null,
-            'price_paise' => $price, 'quantity' => $quantity, 'min_quantity' => $min, 'max_quantity' => $max,
+            'price_paise' => $price, 'quantity' => $quantity, 'pricing_model' => $pricingModel, 'pricing_unit_qty' => $pricingUnitQty,
+            'min_quantity' => $min, 'max_quantity' => $max,
             'mode' => $mode, 'smm_provider_id' => $providerId, 'smm_service_id' => $smmId !== '' ? $smmId : null, 'smm_cost_paise' => $cost,
-            'fulfil_cost_paise' => $fulfil, 'tag_id' => $tagId, 'icon_path' => $iconPath,
+            'provider_qty_divisor' => $providerDivisor, 'fulfil_cost_paise' => $fulfil, 'tag_id' => $tagId, 'icon_path' => $iconPath,
             'is_premium' => (int) (bool) $val('is_premium', false), 'status' => $status, 'sort_order' => (int) $sort, 'updated_at' => $now,
         ];
         if (!Tags::available()) {
@@ -280,6 +302,10 @@ final class AdminServices
                 return self::get((int) $id);              // nothing changed: no history noise, no audit row
             }
         }
+        // Bumped whenever a field OrderCalculator reads changes, so an already-placed order's snapshot (its own config_version)
+        // never gets silently reinterpreted under a newer pricing rule.
+        $pricingRelevant = ['price_paise', 'quantity', 'pricing_model', 'pricing_unit_qty', 'provider_qty_divisor', 'min_quantity', 'max_quantity'];
+        $data['config_version'] = $existing === null ? 1 : ((int) ($existing['config_version'] ?? 1) + (array_intersect($changed, $pricingRelevant) ? 1 : 0));
 
         $savedId = Db::tx(static function () use ($id, $existing, $data, $changed, $admin, $now): int {
             if ($existing === null) {

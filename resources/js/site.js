@@ -99,6 +99,28 @@ function setMsg(card, state, content) {
 }
 
 /** Validate the typed value, update the inline message and the proceed button. */
+// per_unit services only (data-unit present on the quantity input): the customer may buy any whole multiple of the priced
+// unit. This is a convenience preview only — the server (App\Services\OrderCalculator) is the one that actually prices
+// and validates the order; nothing computed here is ever sent as the amount.
+function qtyState(card) {
+  const qtyInput = $('input[name=quantity]', card);
+  if (!qtyInput) return { ok: true, value: null };
+  const unit = Number(qtyInput.dataset.unit);
+  const unitPrice = Number(qtyInput.dataset.unitPrice);
+  const min = Number(qtyInput.min) || unit;
+  const max = Number(qtyInput.max) || Infinity;
+  const preview = $('[data-qty-preview]', card);
+  const n = Number(qtyInput.value);
+  const valid = Number.isInteger(n) && n >= min && n <= max && n % unit === 0;
+  qtyInput.setAttribute('aria-invalid', valid ? 'false' : 'true');
+  if (preview) {
+    preview.textContent = valid
+      ? `${n} units · ₹${((n / unit) * (unitPrice / 100)).toFixed(2).replace(/\.00$/, '')}`
+      : `Enter a multiple of ${unit} (between ${min} and ${max}).`;
+  }
+  return { ok: valid, value: valid ? n : null };
+}
+
 function validate(card, { showErrors = true } = {}) {
   const input = $('input[name=target]', card);
   const proceed = $('[data-action=proceed]', card);
@@ -106,6 +128,7 @@ function validate(card, { showErrors = true } = {}) {
   const kind = card.dataset.kind;
   const platform = card.dataset.platform;
   const linkOnly = card.dataset.linkOnly === 'true';   // Instagram Followers / YouTube Subscribers: the account LINK, not a username
+  const qty = qtyState(card);
 
   if (value.trim() === '') {
     input.removeAttribute('aria-invalid');
@@ -115,7 +138,7 @@ function validate(card, { showErrors = true } = {}) {
     return { ok: false, empty: true };
   }
   const r = validateTarget(platform, kind, value, linkOnly);
-  if (r.ok) {
+  if (r.ok && qty.ok) {
     input.removeAttribute('aria-invalid');
     input.dataset.valid = 'true';
     proceed.disabled = card._busy === true;
@@ -123,12 +146,12 @@ function validate(card, { showErrors = true } = {}) {
   } else {
     delete input.dataset.valid;
     proceed.disabled = true;
-    if (showErrors) {
+    if (showErrors && !r.ok) {
       input.setAttribute('aria-invalid', 'true');
       setMsg(card, 'invalid', html`${icon('triangle-alert')}<span><strong>${linkOnly ? 'Invalid link.' : 'Invalid username/link.'}</strong> ${r.error}</span>`);
     }
   }
-  return r;
+  return { ...r, ok: r.ok && qty.ok, quantity: qty.value };
 }
 
 function shake(el) {
@@ -153,6 +176,7 @@ function initCards() {
     validateSoon.get(card)();
   });
   on(document, 'paste', '[data-service] input[name=target]', (e, input) => setTimeout(() => validate(input.closest('[data-service]')), 0));
+  on(document, 'input', '[data-service] input[name=quantity]', (e, input) => validate(input.closest('[data-service]'), { showErrors: false }));
   on(document, 'blur', '[data-service] input[name=target]', (e, input) => { if (input.value.trim() !== '') validate(input.closest('[data-service]')); }, true);
   on(document, 'keydown', '[data-service] input[name=target]', (e, input) => { if (e.key === 'Escape') closeCard(input.closest('[data-service]')); });
   on(document, 'submit', '[data-service] form', (e, form) => { e.preventDefault(); proceed(form.closest('[data-service]')); });
@@ -176,10 +200,13 @@ async function proceed(card) {
     // One key per attempt: a double click / retry reuses it and can never create a second order. It is KEPT when the outcome is
     // unknown (connection lost, timeout: the server may well have created the order) so the retry is answered with that very order;
     // it changes only when the typed value changes or the server gave a definite answer.
-    if (!card._idem || card._idem.value !== input.value) card._idem = { key: uuid(), value: input.value };
+    const qtyInput = $('input[name=quantity]', card);
+    const quantity = qtyInput ? Number(qtyInput.value) : null;
+    const idemValue = input.value + (quantity !== null ? ':' + quantity : '');
+    if (!card._idem || card._idem.value !== idemValue) card._idem = { key: uuid(), value: idemValue };
     const res = await api('/api/checkout', {
       method: 'POST', timeout: 30000,
-      body: { service_id: Number(card.dataset.id), target: input.value },
+      body: quantity !== null ? { service_id: Number(card.dataset.id), target: input.value, quantity } : { service_id: Number(card.dataset.id), target: input.value },
       headers: { 'Idempotency-Key': card._idem.key },
     });
     remember(res, card);
@@ -194,11 +221,17 @@ async function proceed(card) {
     btn.removeAttribute('aria-busy');
     input.readOnly = false;
     const field = err.fields?.target;
+    const qtyField = err.fields?.quantity;
     if (field) {
       input.setAttribute('aria-invalid', 'true');
       setMsg(card, 'invalid', html`${icon('triangle-alert')}<span><strong>${card.dataset.linkOnly === 'true' ? 'Invalid link.' : 'Invalid username/link.'}</strong> ${field}</span>`);
       btn.disabled = true;
       shake(input);
+    } else if (qtyField) {
+      setMsg(card, 'invalid', html`${icon('triangle-alert')}<span><strong>Invalid quantity.</strong> ${qtyField}</span>`);
+      toast('error', 'Could not create the order', qtyField);
+      btn.disabled = false;
+      shake($('input[name=quantity]', card) || card);
     } else {
       btn.disabled = false;
       setMsg(card, 'invalid', html`${icon('triangle-alert')}<span>${err.message}</span>`);

@@ -37,6 +37,15 @@ $classes = 'svc glass' . ($s['is_premium'] ? ' svc-premium svc-wide' : '');
                  maxlength="300" placeholder="<?= e($s['placeholder']) ?>" aria-describedby="msg-<?= $id ?>" aria-required="true">
         </div>
         <p class="field-msg" id="msg-<?= $id ?>" data-state="idle" role="status" aria-live="polite"><?= e($s['hint']) ?></p>
+        <?php if ($s['pricing_model'] === 'per_unit' && $s['pricing_unit_qty']): ?>
+        <div class="field mt-2">
+          <label class="label" for="qty-<?= $id ?>">How many <?= e($s['pricing_unit_qty']) ?>s? (multiples of <?= e($s['pricing_unit_qty']) ?>)</label>
+          <input id="qty-<?= $id ?>" class="input" type="number" name="quantity" inputmode="numeric"
+                 min="<?= e(max($s['min_quantity'], $s['pricing_unit_qty'])) ?>" max="<?= e($s['max_quantity']) ?>" step="<?= e($s['pricing_unit_qty']) ?>"
+                 value="<?= e($s['pricing_unit_qty']) ?>" data-unit="<?= e($s['pricing_unit_qty']) ?>" data-unit-price="<?= e($s['price_paise']) ?>">
+          <p class="field-hint" data-qty-preview></p>
+        </div>
+        <?php endif; ?>
         <div class="mt-2 grid gap-2">
           <button type="submit" class="btn btn-success btn-lg btn-block btn-shine" data-action="proceed" disabled>PROCEED TO PAYMENT</button>
           <button type="button" class="btn btn-ghost btn-sm justify-self-center<?= $s['is_premium'] ? ' text-white' : '' ?>" data-action="cancel">Cancel</button>

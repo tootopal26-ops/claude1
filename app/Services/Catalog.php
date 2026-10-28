@@ -113,6 +113,12 @@ final class Catalog
             'price_paise' => $price,
             'price'       => Money::inr($price),
             'quantity'    => (int) $r['quantity'],
+            // per_unit services let the customer buy any multiple of pricing_unit_qty (see App\Services\OrderCalculator); fixed_package
+            // services keep today's behaviour — one pack, no quantity input shown.
+            'pricing_model'    => (string) ($r['pricing_model'] ?? OrderCalculator::MODEL_FIXED),
+            'pricing_unit_qty' => ($r['pricing_unit_qty'] ?? null) !== null ? (int) $r['pricing_unit_qty'] : null,
+            'min_quantity'     => (int) $r['min_quantity'],
+            'max_quantity'     => (int) $r['max_quantity'],
             // the ONE badge this card shows (the automatic TRIAL PACK at exactly ₹5, else the assigned tag if it is enabled): see Tags::effective()
             'tag'         => Tags::effective($price, ($r['tag_id'] ?? null) !== null ? (int) $r['tag_id'] : null),
             'is_premium'  => (bool) $r['is_premium'],

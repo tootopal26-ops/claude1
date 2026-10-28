@@ -69,6 +69,8 @@ final class Orders
         if ($service === null) {
             throw new HttpException(422, 'This service is not available right now. Please pick another one.', 'service_unavailable');
         }
+        // The ONE place quantity, amount and the provider's quantity are derived — never from the browser's price or a guess.
+        $calc = OrderCalculator::calculate($service, $input['quantity'] ?? null);
 
         // Followers / Subscribers take the account LINK; the browser asks for it too, but only this check counts.
         $linkOnly = Targets::requiresLink((string) $service['platform_slug'], (string) $service['target_kind'], (string) $service['type']);
@@ -93,7 +95,7 @@ final class Orders
             }
         }
         try {
-            return self::openSession($service, $rawTarget, $check, $gwRow, $visitor, $linkOnly);
+            return self::openSession($service, $calc, $rawTarget, $check, $gwRow, $visitor, $linkOnly);
         } finally {
             if ($lock !== null) {
                 Db::unlock($lock);
@@ -105,21 +107,22 @@ final class Orders
      * Reuse the visitor's live payment session for this exact order, or create the order + payment and ask the gateway for a QR.
      *
      * @param array<string,mixed> $service
+     * @param array{quantity:int,amount_paise:int,provider_quantity:int,pricing_model:string,config_version:int,multiplier:int} $calc from OrderCalculator::calculate()
      * @param array{ok:bool,url?:string,display?:string} $check
      * @param array<string,mixed> $gwRow
      * @param array{visitor_id:?int,session_id:?int} $visitor
      * @param bool $linkOnly the customer gave an account link (followers / subscribers): the validated link is what the order keeps as its target
      * @return array{ref:string,order_id:string,reused:bool}
      */
-    private static function openSession(array $service, string $rawTarget, array $check, array $gwRow, array $visitor, bool $linkOnly): array
+    private static function openSession(array $service, array $calc, string $rawTarget, array $check, array $gwRow, array $visitor, bool $linkOnly): array
     {
-        // Same visitor, same service, same target, a still-valid unpaid session → reuse it (no duplicate orders).
+        // Same visitor, same service, same target, same requested quantity, a still-valid unpaid session → reuse it (no duplicate orders).
         if ($visitor['visitor_id']) {
             $existing = Db::one(
                 "SELECT o.public_id, p.ref FROM orders o JOIN payments p ON p.order_id = o.id "
-                . "WHERE o.visitor_id = ? AND o.service_id = ? AND o.target_url = ? AND o.status = 'PENDING_PAYMENT' "
+                . "WHERE o.visitor_id = ? AND o.service_id = ? AND o.target_url = ? AND o.quantity = ? AND o.status = 'PENDING_PAYMENT' "
                 . "AND p.status = 'pending' AND p.expires_at > ? ORDER BY o.id DESC LIMIT 1",
-                [$visitor['visitor_id'], $service['id'], $check['url'], Clock::sql(Clock::now() + 30)]
+                [$visitor['visitor_id'], $service['id'], $check['url'], $calc['quantity'], Clock::sql(Clock::now() + 30)]
             );
             if ($existing) {
                 return ['ref' => (string) $existing['ref'], 'order_id' => (string) $existing['public_id'], 'reused' => true];
@@ -136,7 +139,7 @@ final class Orders
         // otherwise what the customer typed. `target_url` is always the normalised URL — the one the SMM provider receives.
         $shownTarget = $linkOnly ? (string) $check['url'] : mb_substr(Targets::clean($rawTarget), 0, 500);
 
-        $created = Db::tx(static function () use ($service, $shownTarget, $check, $visitor, $auto, $day, $now, $ref, $gatewayOrderId, $gwRow): array {
+        $created = Db::tx(static function () use ($service, $calc, $shownTarget, $check, $visitor, $auto, $day, $now, $ref, $gatewayOrderId, $gwRow): array {
             $userId = null;
             if ($visitor['visitor_id']) {
                 Db::exec(
@@ -153,11 +156,12 @@ final class Orders
                 $publicId = self::newPublicId();
                 $n = Db::exec(
                     'INSERT IGNORE INTO orders (public_id, access_token, user_id, visitor_id, visitor_session_id, service_id, platform_id, platform_slug, service_code, '
-                    . 'service_title, service_type, mode, quantity, amount_paise, price_version_id, experiment_id, price_cohort, target, target_url, status, payment_status, smm_provider_id, smm_service_id, '
-                    . "estimated_cost_paise, provider_cost_paise, created_day, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_PAYMENT', 'pending', ?, ?, ?, 0, ?, ?, ?)",
+                    . 'service_title, service_type, mode, quantity, provider_quantity, pricing_model, config_version, amount_paise, price_version_id, experiment_id, price_cohort, target, target_url, status, payment_status, smm_provider_id, smm_service_id, '
+                    . "estimated_cost_paise, provider_cost_paise, created_day, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING_PAYMENT', 'pending', ?, ?, ?, 0, ?, ?, ?)",
                     [
                         $publicId, Crypto::token(16), $userId, $visitor['visitor_id'], $visitor['session_id'], $service['id'], $service['platform_id'],
-                        $service['platform_slug'], $service['code'], $service['title'], $service['type'], $service['mode'], $service['quantity'], $service['price_paise'],
+                        $service['platform_slug'], $service['code'], $service['title'], $service['type'], $service['mode'],
+                        $calc['quantity'], $calc['provider_quantity'], $calc['pricing_model'], $calc['config_version'], $calc['amount_paise'],
                         $service['price_version_id'] ?? null, $service['experiment_id'] ?? null, $service['price_cohort'] ?? null,
                         $shownTarget, $check['url'],
                         $auto ? $service['smm_provider_id'] : null, $auto ? $service['smm_service_id'] : null,
@@ -177,7 +181,7 @@ final class Orders
             // Capture the id IMMEDIATELY: any later INSERT (e.g. the history row) would change lastInsertId().
             $paymentId = Db::insert('payments', [
                 'ref' => $ref, 'order_id' => $orderId, 'gateway_id' => $gwRow['id'], 'provider' => $gwRow['provider'],
-                'gateway_order_id' => $gatewayOrderId, 'amount_paise' => $service['price_paise'], 'currency' => 'INR',
+                'gateway_order_id' => $gatewayOrderId, 'amount_paise' => $calc['amount_paise'], 'currency' => 'INR',
                 'status' => Status::PAY_CREATING, 'expires_at' => Clock::sql($now + self::PAYMENT_TTL),
                 'created_day' => $day, 'created_at' => Clock::sql($now), 'updated_at' => Clock::sql($now),
             ]);
@@ -192,7 +196,7 @@ final class Orders
         $gateway = Gateways::adapter($gwRow);
         $result = $gateway->createPayment(new CreatePaymentRequest(
             gatewayOrderId: $gatewayOrderId,
-            amountPaise: (int) $service['price_paise'],
+            amountPaise: (int) $calc['amount_paise'],
             redirectUrl: absolute_url('/pay/' . $ref . '?returned=1'),
             remark1: $created['public_id'],
             remark2: mb_substr((string) $service['title'], 0, 60),
@@ -202,7 +206,7 @@ final class Orders
         // payment_url and is where the customer is sent; it is never turned into a QR.
         $upi = null;
         if ($result->ok && $result->upiIntent !== null) {
-            $upi = Upi::validateFor($result->upiIntent, (int) $service['price_paise']);
+            $upi = Upi::validateFor($result->upiIntent, (int) $calc['amount_paise']);
             if ($upi === null) {
                 Log::warning('The gateway returned a UPI intent that does not match the order (format, currency or amount); it is not used', ['order' => $created['public_id']]);
             }
@@ -223,7 +227,7 @@ final class Orders
 
         Log::info('Payment session created', [
             'order' => $created['public_id'], 'qr' => $upi !== null ? 'upi_request' : 'none (hosted checkout)', 'payee' => $upi['payee'] ?? null,
-            'amount_paise' => (int) $service['price_paise'],
+            'amount_paise' => (int) $calc['amount_paise'], 'quantity' => $calc['quantity'], 'provider_quantity' => $calc['provider_quantity'],
         ]);
         Db::update('payments', [
             'status' => Status::PAY_PENDING, 'payment_url' => $hosted, 'qr_payload' => $upi['uri'] ?? null,

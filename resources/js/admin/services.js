@@ -132,6 +132,18 @@ function editorHtml(s) {
         <input class="input" id="f-quantity" name="quantity" inputmode="numeric" value="${s?.quantity ?? ''}" placeholder="100000"></div></div>
       <div class="field-row"><div class="field"><label class="label" for="f-min_quantity">Minimum quantity</label><input class="input" id="f-min_quantity" name="min_quantity" inputmode="numeric" value="${s?.min_quantity ?? 1}"></div>
         <div class="field"><label class="label" for="f-max_quantity">Maximum quantity</label><input class="input" id="f-max_quantity" name="max_quantity" inputmode="numeric" value="${s?.max_quantity ?? 100000000}"></div></div>
+      <div class="field-row"><div class="field"><label class="label req" for="f-pricing_model">Pricing model</label>
+        <select class="select" id="f-pricing_model" name="pricing_model">
+          <option value="fixed_package" ${(s?.pricing_model || 'fixed_package') === 'fixed_package' ? 'selected' : ''}>Fixed pack — one price, one quantity</option>
+          <option value="per_unit" ${s?.pricing_model === 'per_unit' ? 'selected' : ''}>Per unit — customer buys any multiple</option>
+        </select></div>
+        <div class="field" id="f-pricing_unit_qty-wrap" ${(s?.pricing_model || 'fixed_package') === 'per_unit' ? '' : 'hidden'}>
+        <label class="label req" for="f-pricing_unit_qty">Units the price buys</label>
+        <input class="input" id="f-pricing_unit_qty" name="pricing_unit_qty" inputmode="numeric" value="${s?.pricing_unit_qty ?? ''}" placeholder="100">
+        <p class="field-hint">E.g. price ₹5 for every 100 — the customer can buy 100, 200, 300…</p></div></div>
+      <div class="field"><label class="label" for="f-provider_qty_divisor">Provider quantity divisor <span class="text-muted font-normal">(advanced, default 1)</span></label>
+        <input class="input max-w-[10rem]" id="f-provider_qty_divisor" name="provider_qty_divisor" inputmode="numeric" value="${s?.provider_qty_divisor ?? 1}">
+        <p class="field-hint">Only if your provider bills in a different unit than customers see (e.g. provider sells in packs of 1000). The pack quantity must divide evenly by this. Leave at 1 when the provider uses the same unit.</p></div>
     </div>
 
     <div class="form-section"><h3>Delivery</h3>
@@ -321,6 +333,7 @@ function collect() {
   const body = {
     platform_id: Number(val('platform_id')), type: val('type'), target_kind: val('target_kind'), title: val('title'), subtitle: val('subtitle'), description: val('description'),
     code: val('code'), price: val('price'), quantity: val('quantity'), min_quantity: val('min_quantity'), max_quantity: val('max_quantity'), mode: val('mode'),
+    pricing_model: val('pricing_model'), pricing_unit_qty: val('pricing_model') === 'per_unit' ? val('pricing_unit_qty') : null, provider_qty_divisor: val('provider_qty_divisor') || '1',
     smm_provider_id: val('smm_provider_id') || null, smm_service_id: val('smm_service_id'), smm_cost: val('smm_cost') || '0', fulfil_cost: val('fulfil_cost').trim(), tag_id: val('tag_id') ? Number(val('tag_id')) : null,
     sort_order: val('sort_order') || '0', is_premium: checked('is_premium'), status: checked('active') ? 'active' : 'inactive',
   };
@@ -402,6 +415,7 @@ export default async function init() {
     const n = e.target.name;
     if (n === 'platform_id') { syncTargetKinds(); suggestCode(); }
     if (n === 'type') suggestCode();
+    if (n === 'pricing_model') $('#f-pricing_unit_qty-wrap').hidden = e.target.value !== 'per_unit';
     updatePreview();
   });
   // provider service lookup (debounced)
