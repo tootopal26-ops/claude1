@@ -82,5 +82,5 @@ T::test('defaultAccent() returns each theme\'s own brand colours, used to pre-fi
         T::true(preg_match('/^#[0-9a-f]{6}$/i', $from) === 1);
         T::true(preg_match('/^#[0-9a-f]{6}$/i', $to) === 1);
     }
-    T::same(['#E83E91', '#B91F70'], Themes::defaultAccent('rose'));
+    T::same(['#ff2d87', '#ff3b3b'], Themes::defaultAccent('rose'));
 });

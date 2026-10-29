@@ -17,7 +17,7 @@ use App\Support\Tz;
  */
 final class AdminSettings
 {
-    public const DEFAULT_ACCENT = ['#E83E91', '#B91F70']; // Rose Glass's own default (App\Support\Themes)
+    public const DEFAULT_ACCENT = ['#ff2d87', '#ff3b3b']; // Rose Glass's own default (App\Support\Themes)
 
     /** Short list shown in the time-zone picker. */
     public const ZONES = [

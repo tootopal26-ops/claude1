@@ -28,7 +28,7 @@ final class Themes
     private const THEMES = [
         'rose' => [
             'label' => 'Rose Glass', 'blurb' => 'White & pale rose, pink/red accents, green buy buttons — the recommended default.',
-            'scheme' => 'light', 'accent_from' => '#E83E91', 'accent_to' => '#B91F70',
+            'scheme' => 'light', 'accent_from' => '#ff2d87', 'accent_to' => '#ff3b3b',
             'tokens' => [
                 'canvas' => '#F8F6FA', 'surface' => '#FFFFFF', 'ink' => '#171725', 'ink-soft' => '#2B2D44',
                 'muted' => '#656579', 'faint' => '#8A8EA6', 'line' => '#E8E3ED', 'line-strong' => '#D9D3E0',

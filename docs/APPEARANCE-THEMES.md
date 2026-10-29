@@ -28,7 +28,7 @@ actions, red for errors … across all four themes").
 
 | Name | Label | Scheme | Default accent | Character |
 |---|---|---|---|---|
-| `rose` (default) | Rose Glass | light | `#E83E91` → `#B91F70` | white & pale rose, pink/red accents — the original look |
+| `rose` (default) | Rose Glass | light | `#ff2d87` → `#ff3b3b` | white & pale rose, pink/red accents — the original look |
 | `aurora` | Aurora Prism | light | `#7C3AED` → `#5B21B6` | white backgrounds, restrained purple/blue/cyan highlights |
 | `obsidian` | Obsidian Neon | dark | `#A855F7` → `#7E22CE` | deep charcoal, dark translucent glass, purple/magenta accents |
 | `emerald` | Emerald Luxe | light | `#0F766E` → `#115E59` | warm white/grey, emerald primary actions, a financial-dashboard feel |
@@ -66,7 +66,7 @@ Routes (`app/routes_admin.php`):
 |---|---|---|
 | `GET` | `/admin/api/appearance` | current theme/density/accent + every theme's metadata + `can_revert`/`can_reset` flags |
 | `PUT` | `/admin/api/appearance` | save a new theme/density/accent (validated, audited, idempotent) |
-| `POST` | `/admin/api/appearance/reset` | restore the documented defaults (Rose Glass, standard, `#E83E91`/`#B91F70`) |
+| `POST` | `/admin/api/appearance/reset` | restore the documented defaults (Rose Glass, standard, `#ff2d87`/`#ff3b3b`) |
 | `POST` | `/admin/api/appearance/revert` | swap back to whatever was live immediately before the last save |
 
 The page (`resources/js/admin/appearance.js`) renders a card grid — one per theme, each with a live colour-swatch preview
@@ -91,9 +91,9 @@ itself be undone. Calling revert with nothing to revert to returns `409 no_previ
 
 `theme.name`, `theme.density`, `theme.accent_from`, `theme.accent_to`, `theme.previous_json` are plain rows in the existing
 generic `admin_settings` key/value store (`App\Services\Settings`) — adding them needed no migration, only new default keys,
-written the first time Appearance is read or saved. `theme.accent_from`/`theme.accent_to`'s defaults changed from the
-pre-Priority-2 placeholder (`#ff2d87`/`#ff3b3b`) to Rose Glass's own documented default (`#E83E91`/`#B91F70`); nothing in an
-existing installation is rewritten by this change — a site that already saved its own accent keeps it.
+written the first time Appearance is read or saved. `theme.accent_from`/`theme.accent_to` keep their pre-Priority-2 default
+(`#ff2d87`/`#ff3b3b`) — this is also Rose Glass's own documented default accent, so a fresh install's look is unchanged; a
+site that already saved its own accent keeps it regardless.
 
 ## 8. Fonts
 
