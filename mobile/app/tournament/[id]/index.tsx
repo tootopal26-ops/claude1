@@ -238,10 +238,11 @@ export default function TournamentDetailScreen() {
           {tournament.status === 'upcoming' && !tournament.already_joined ? (
             joinable ? (
               needsTickets(tournament) ? (
-                <Button label="Join Now" icon="lock" loading={tickets.earningFor === tournament.id} onPress={() => void tickets.join(tournament)} accessibilityHint="Plays one rewarded ad for your next ticket" />
+                <Button label="Join Now" icon="lock" variant="success" loading={tickets.earningFor === tournament.id} onPress={() => void tickets.join(tournament)} accessibilityHint="Plays one rewarded ad for your next ticket" />
               ) : (
                 <Button
                   label={isFree(tournament) ? 'Join for free' : `Join · ${formatCoins(tournament.entry_fee)} coins`}
+                  variant="success"
                   onPress={() => void tickets.join(tournament)}
                   accessibilityLabel={isFree(tournament) ? 'Join for free' : `Join for ${formatCoins(tournament.entry_fee)} coins`}
                 />

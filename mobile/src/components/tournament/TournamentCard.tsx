@@ -132,7 +132,7 @@ export function TournamentCard({ tournament, onOpen, onJoin, onRules, onResults,
           icon={locked ? 'lock' : actionIcon(action.kind, action.label)}
           loading={locked && earningTicket}
           accessibilityHint={locked ? 'Plays one rewarded ad for your next ticket' : undefined}
-          variant={action.kind === 'join' || (action.kind === 'open' && action.primary) ? 'primary' : 'secondary'}
+          variant={action.kind === 'join' ? 'success' : action.kind === 'open' && action.primary ? 'primary' : 'secondary'}
           disabled={action.kind === 'disabled'}
           onPress={onAction}
           style={styles.actionButton}

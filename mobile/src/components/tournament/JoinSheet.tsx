@@ -211,6 +211,7 @@ export function JoinSheet({ tournament: requested, onClose, onJoined, onDetailsS
           ) : (
             <Button
               label={free ? 'Confirm and join' : `Pay ${formatCoins(fee)} coins and join`}
+              variant="success"
               onPress={submit}
               loading={submitting}
               accessibilityLabel={free ? 'Confirm and join' : `Pay ${formatCoins(fee)} coins and join`}
