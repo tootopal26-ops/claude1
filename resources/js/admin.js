@@ -18,6 +18,7 @@ const pages = {
   services: () => import('./admin/services.js'),
   tags: () => import('./admin/tags.js'),
   website: () => import('./admin/website.js'),
+  appearance: () => import('./admin/appearance.js'),
   gateway: () => import('./admin/gateway.js'),
   smm: () => import('./admin/smm.js'),
   advertising: () => import('./admin/advertising.js'),

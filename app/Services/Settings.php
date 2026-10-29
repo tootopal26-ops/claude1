@@ -31,8 +31,11 @@ final class Settings
             'site.maintenance_message'  => 'We are upgrading our systems and will be back shortly.',
             'seo.title'                 => 'SOCIAL MEDIA BOOSTER — Instagram & YouTube Growth Services',
             'seo.description'           => 'Buy Instagram followers, likes, views and YouTube subscribers, likes, views and watch time. Secure UPI payment, fast start, transparent prices.',
-            'theme.accent_from'         => '#ff2d87',
-            'theme.accent_to'           => '#ff3b3b',
+            'theme.accent_from'         => '#E83E91',
+            'theme.accent_to'           => '#B91F70',
+            'theme.name'                => \App\Support\Themes::DEFAULT,
+            'theme.density'             => \App\Support\Themes::DEFAULT_DENSITY,
+            'theme.previous_json'       => null,
             'business.timezone'         => 'Asia/Kolkata',
             'cron.last_run'             => 0,
             'pricing.global_pause'               => false,
@@ -120,6 +123,9 @@ final class Settings
             'seo_description'      => (string) $a['seo.description'],
             'accent_from'          => (string) $a['theme.accent_from'],
             'accent_to'            => (string) $a['theme.accent_to'],
+            'theme'                => (string) $a['theme.name'],
+            'theme_density'        => (string) $a['theme.density'],
+            'color_scheme'         => \App\Support\Themes::colorScheme((string) $a['theme.name']),
         ];
     }
 }

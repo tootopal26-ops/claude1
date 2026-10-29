@@ -26,6 +26,34 @@ final class SettingsController extends BaseController
         return $this->once($req, 'settings-website', static fn(): array => ['website' => AdminSettings::saveWebsite($in, $req, $admin)]);
     }
 
+    public function appearance(Request $req, array $p): Response
+    {
+        $this->authorize($req, 'catalog.manage');
+        return $this->ok(['appearance' => AdminSettings::appearance()]);
+    }
+
+    public function saveAppearance(Request $req, array $p): Response
+    {
+        $this->authorize($req, 'catalog.manage');
+        $in = $req->json();
+        $admin = $this->admin($req);
+        return $this->once($req, 'settings-appearance', static fn(): array => ['appearance' => AdminSettings::saveAppearance($in, $req, $admin)]);
+    }
+
+    public function resetAppearance(Request $req, array $p): Response
+    {
+        $this->authorize($req, 'catalog.manage');
+        $admin = $this->admin($req);
+        return $this->once($req, 'settings-appearance', static fn(): array => ['appearance' => AdminSettings::resetAppearance($req, $admin)]);
+    }
+
+    public function revertAppearance(Request $req, array $p): Response
+    {
+        $this->authorize($req, 'catalog.manage');
+        $admin = $this->admin($req);
+        return $this->once($req, 'settings-appearance', static fn(): array => ['appearance' => AdminSettings::revertAppearance($req, $admin)]);
+    }
+
     /** POST /admin/api/branding/{kind:site_logo|favicon} (multipart) */
     public function uploadBranding(Request $req, array $p): Response
     {

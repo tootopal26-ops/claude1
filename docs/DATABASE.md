@@ -102,6 +102,14 @@ Additive only: nothing above was changed or removed (the new columns are nullabl
 | `pricing.default_treatment_share_bps`, `pricing.default_min_sample`, `pricing.default_max_duration_days`, `pricing.min_price_paise` | Defaults a new experiment is proposed with (50 %, 200, 21 days, ₹20) unless the admin states otherwise. |
 | `pricing.rollback_conversion_tolerance_bps`, `pricing.rollback_failure_gap_bps`, `pricing.cost_increase_tolerance_bps`, `pricing.decision_margin_bps`, `pricing.max_price_change_bps` | The automatic rollback and winner/loser thresholds (§5–6 of ADAPTIVE-PRICING.md). |
 
+### Settings keys written by Appearance & Themes (`admin_settings`, Priority 2 — no migration)
+| Key | Value |
+|---|---|
+| `theme.name` | Default `rose`. One of `rose`\|`aurora`\|`obsidian`\|`emerald` — see [APPEARANCE-THEMES.md](APPEARANCE-THEMES.md). Read by every page via `Settings::site()['theme']` and rendered as `<html data-theme="…">`; the actual colour/glass/radius values live in code (`App\Support\Themes`), never in the database. |
+| `theme.density` | Default `standard`. One of `compact`\|`standard`\|`premium` — scales `--radius-lg/xl/2xl` and the glass blur amount together, within the bounds `App\Support\Themes` defines. |
+| `theme.accent_from`, `theme.accent_to` | Defaults `#E83E91`/`#B91F70` (Rose Glass's own brand gradient). The existing Website-tab accent picker and the Appearance page edit the SAME two keys — picking a new theme resets them to that theme's own default unless the admin's request also sends custom values explicitly. Validated for `#RRGGBB` and ≥4.5:1 white-button-text contrast (`App\Support\Color`). |
+| `theme.previous_json` | Null until the first Appearance save. A JSON snapshot of `{theme, density, accent_from, accent_to}` taken just before the most recent change, so **Revert last change** can restore it (and is itself reversible — reverting snapshots the just-reverted state back). |
+
 ## Relationships (simplified)
 
 ```

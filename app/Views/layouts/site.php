@@ -5,15 +5,15 @@ $canonical = $canonical ?? absolute_url('/');
 $ogImage = $ogImage ?? asset('img/og-default.png');
 $ogImage = str_starts_with($ogImage, 'http') ? $ogImage : absolute_url(strtok($ogImage, '?'));
 ?><!doctype html>
-<html lang="en">
+<html lang="en" data-theme="<?= e($site['theme']) ?>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title><?= e($title) ?></title>
 <meta name="description" content="<?= e($description) ?>">
 <?php if (!empty($noindex)): ?><meta name="robots" content="noindex, nofollow"><?php else: ?><meta name="robots" content="index, follow, max-image-preview:large"><link rel="canonical" href="<?= e($canonical) ?>"><?php endif; ?>
-<meta name="theme-color" content="#ffffff">
-<meta name="color-scheme" content="light">
+<meta name="theme-color" content="<?= e($site['color_scheme'] === 'dark' ? '#15131c' : '#ffffff') ?>">
+<meta name="color-scheme" content="<?= e($site['color_scheme']) ?>">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="<?= e($site['name']) ?>">
 <meta property="og:title" content="<?= e($title) ?>">
@@ -30,7 +30,8 @@ $ogImage = str_starts_with($ogImage, 'http') ? $ogImage : absolute_url(strtok($o
 <link rel="preload" href="<?= e(url('assets/fonts/inter-latin.woff2')) ?>" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="<?= e(url('assets/fonts/inter-rupee.woff2')) ?>" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
-<link rel="stylesheet" href="<?= e(url('theme.css')) ?>?v=<?= e(substr(md5($site['accent_from'] . $site['accent_to']), 0, 8)) ?>">
+<link rel="preload" href="<?= e(url('assets/fonts/manrope-latin.woff2')) ?>" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="<?= e(url('theme.css')) ?>?v=<?= e(substr(md5($site['theme'] . $site['theme_density'] . $site['accent_from'] . $site['accent_to']), 0, 8)) ?>">
 <?php if (!empty($withTags)): ?><link rel="stylesheet" href="<?= e(url('tags.css')) ?>?v=<?= e(\App\Services\Tags::cssVersion()) ?>">
 <?php endif; ?>
 <?php if (!empty($jsonLd)): ?><script type="application/ld+json"><?= json_encode($jsonLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script><?php endif; ?>

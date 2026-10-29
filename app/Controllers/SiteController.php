@@ -12,6 +12,7 @@ use App\Services\Catalog;
 use App\Services\Settings;
 use App\Services\Tags;
 use App\Services\Tracking;
+use App\Support\Themes;
 
 final class SiteController
 {
@@ -67,7 +68,7 @@ final class SiteController
     public function themeCss(Request $req, array $p): Response
     {
         $s = Settings::site();
-        $css = ":root{--accent-from:{$s['accent_from']};--accent-to:{$s['accent_to']}}\n";
+        $css = Themes::css($s['theme'], $s['theme_density'], $s['accent_from'], $s['accent_to']);
         return Response::text($css, 200, 'text/css')->header('Cache-Control', 'public, max-age=86400')->header('X-Content-Type-Options', 'nosniff');
     }
 

@@ -79,7 +79,9 @@ await t.step('price validation: letters / 3 decimals / zero are rejected with fi
   await page.click('#svc-save');
   await toast('success').waitFor();
   await idle();
-  t.has(await t.text(rowFor('100 Likes').first()), '₹5 ');
+  // the price cell's own text, not the whole row's collapsed innerText — "₹5" sits right next to "100 units" with
+  // no separator in the markup, so a whole-row substring check is at the mercy of incidental text-wrapping.
+  t.eq(await t.text(rowFor('100 Likes').first().locator('[data-label="Price"] b')), '₹5');
 });
 
 await t.step('profit preview updates live: AUTO shows provider cost; MANUAL ignores it', async () => {
@@ -303,7 +305,7 @@ await t.step('accent colours: bad hex and too-light colours are refused; a valid
   t.has(css, '#c4005f');
   await page.click('[data-default-colors]');
   await save();
-  t.has(await (await page.request.get(BASE + '/theme.css')).text(), '#ff2d87');
+  t.has(await (await page.request.get(BASE + '/theme.css')).text(), '#e83e91');
 });
 
 await t.step('hostile CSS-injection attempts in the accent colour are refused (theme.css stays safe)', async () => {
@@ -312,8 +314,10 @@ await t.step('hostile CSS-injection attempts in the accent colour are refused (t
     const r = await page.request.put(BASE + '/admin/api/website', { headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'smb', 'X-CSRF-Token': csrf, Origin: BASE }, data: { accent_from: bad } });
     t.eq(r.status(), 422, bad);
   }
+  // theme.css is the full theme token block now (App\Support\Themes) — assert it is STILL exactly that shape
+  // (a single :root rule of known custom properties, each a hex colour / rgb() / px value) and nothing hostile leaked in.
   const css = await (await page.request.get(BASE + '/theme.css')).text();
-  t.ok(/^:root\{--accent-from:#[0-9a-f]{6};--accent-to:#[0-9a-f]{6}\}\s*$/.test(css), css);
+  t.ok(/^:root\{color-scheme:(light|dark);(?:--[a-z0-9-]+:(?:#[0-9a-f]{6}|rgb\([0-9. ]+\/ ?[0-9.]+\)|[0-9]+px)(?:;|(?=\})))+\}\s*$/i.test(css), css);
 });
 
 await t.step('support link: javascript:/data: URLs refused; https link accepted and rendered in the store footer', async () => {

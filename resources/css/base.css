@@ -20,9 +20,9 @@
     z-index: -1;
     pointer-events: none;
     background:
-      radial-gradient(60rem 38rem at 6% -10%, rgb(255 45 135 / 0.13), transparent 60%),
-      radial-gradient(48rem 34rem at 100% -4%, rgb(255 59 59 / 0.10), transparent 55%),
-      radial-gradient(46rem 30rem at 55% 112%, rgb(168 85 247 / 0.08), transparent 60%);
+      radial-gradient(60rem 38rem at 6% -10%, var(--ambient-1, rgb(255 45 135 / 0.13)), transparent 60%),
+      radial-gradient(48rem 34rem at 100% -4%, var(--ambient-2, rgb(255 59 59 / 0.10)), transparent 55%),
+      radial-gradient(46rem 30rem at 55% 112%, var(--ambient-3, rgb(168 85 247 / 0.08)), transparent 60%);
   }
   h1, h2, h3, h4 { letter-spacing: -0.02em; font-weight: 700; line-height: 1.2; }
   button, [role="button"], summary, label[for] { cursor: pointer; }

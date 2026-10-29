@@ -99,7 +99,7 @@ function renderList(d) {
 function bubble(m) {
   const isAi = m.role === 'assistant';
   return html`<li class="flex flex-col gap-1 ${isAi ? 'items-start' : 'items-end'}">
-    <div class="max-w-[85%] rounded-2xl px-4 py-2 ${isAi ? 'bg-slate-100' : 'bg-pink-50'}"><p class="text-sm whitespace-pre-wrap">${m.body}</p></div>
+    <div class="max-w-[85%] rounded-2xl px-4 py-2 ${isAi ? 'bg-canvas' : 'bg-brand-50'}"><p class="text-sm whitespace-pre-wrap">${m.body}</p></div>
     <small class="text-xs text-muted px-1">${isAi ? 'Assistant' : 'Customer'}${isAi ? html` · <span class="chip ${m.mode === 'ai' ? 'chip-info' : 'chip-gray'}">${m.mode === 'ai' ? 'AI-polished' : 'rules'}</span>` : ''}${m.intent ? ' · ' + (INTENT_LABEL[m.intent] || m.intent) : ''}${m.order_id ? ' · about a verified order' : ''} · ${fmtDateTime(m.created_at)}</small></li>`;
 }
 

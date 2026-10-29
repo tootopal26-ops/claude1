@@ -32,6 +32,7 @@ final class PageController extends BaseController
         'services'       => ['Services', 'admin/services', 'catalog.manage'],
         'tags'           => ['Tags & Badges', 'admin/tags', 'catalog.manage'],
         'website'        => ['Website', 'admin/website', 'catalog.manage'],
+        'appearance'     => ['Appearance & Themes', 'admin/appearance', 'catalog.manage'],
         'gateway'        => ['Payment gateway', 'admin/gateway', 'integrations.manage'],
         'smm'            => ['SMM API', 'admin/smm', 'integrations.manage'],
         'advertising'    => ['Advertising', 'admin/advertising', 'ads.view'],

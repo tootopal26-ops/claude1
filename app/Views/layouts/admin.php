@@ -3,19 +3,20 @@
 $nav = \App\Core\View::partial('admin-nav', ['page' => $page, 'admin' => $admin, 'site' => $site, 'idp' => 'd']);
 $navMobile = \App\Core\View::partial('admin-nav', ['page' => $page, 'admin' => $admin, 'site' => $site, 'idp' => 'm']);
 ?><!doctype html>
-<html lang="en">
+<html lang="en" data-theme="<?= e($site['theme']) ?>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title><?= e($title) ?></title>
 <meta name="robots" content="noindex, nofollow">
 <meta name="csrf-token" content="<?= e($csrf) ?>">
-<meta name="theme-color" content="#ffffff">
-<meta name="color-scheme" content="light">
+<meta name="theme-color" content="<?= e($site['color_scheme'] === 'dark' ? '#15131c' : '#ffffff') ?>">
+<meta name="color-scheme" content="<?= e($site['color_scheme']) ?>">
 <link rel="icon" href="<?= e($site['favicon_url']) ?>">
 <link rel="preload" href="<?= e(url('assets/fonts/inter-latin.woff2')) ?>" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="<?= e(url('assets/fonts/manrope-latin.woff2')) ?>" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
-<link rel="stylesheet" href="<?= e(url('theme.css')) ?>?v=<?= e(substr(md5($site['accent_from'] . $site['accent_to']), 0, 8)) ?>">
+<link rel="stylesheet" href="<?= e(url('theme.css')) ?>?v=<?= e(substr(md5($site['theme'] . $site['theme_density'] . $site['accent_from'] . $site['accent_to']), 0, 8)) ?>">
 </head>
 <body class="ambient adm-body" data-page="<?= e($page) ?>" data-base="<?= e(base_path()) ?>" data-tz="<?= e($tz) ?>" data-admin="<?= e($admin['username']) ?>">
 <a class="skip-link" href="#main">Skip to content</a>

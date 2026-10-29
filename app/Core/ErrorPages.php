@@ -52,7 +52,11 @@ final class ErrorPages
         try {
             $site = \App\Services\Settings::site();
         } catch (\Throwable) {
-            $site = ['name' => 'SOCIAL MEDIA BOOSTER', 'logo_url' => asset('img/logo-mark.webp'), 'favicon_url' => asset('img/favicon-48.png'), 'accent_from' => '#ff2d87', 'accent_to' => '#ff3b3b'];
+            $site = [
+                'name' => 'SOCIAL MEDIA BOOSTER', 'logo_url' => asset('img/logo-mark.webp'), 'favicon_url' => asset('img/favicon-48.png'),
+                'theme' => \App\Support\Themes::DEFAULT, 'theme_density' => \App\Support\Themes::DEFAULT_DENSITY, 'color_scheme' => 'light',
+                'accent_from' => '#ff2d87', 'accent_to' => '#ff3b3b',
+            ];
         }
         $html = View::render('errors/error', [
             'status'  => $status,

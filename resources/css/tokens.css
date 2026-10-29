@@ -16,6 +16,25 @@
   unicode-range: U+20B9;
 }
 
+/* Manrope (headings, prices, KPI numbers) — self-hosted variable WOFF2, OFL-licensed, see docs/FONT-LICENSE-Manrope.txt.
+   The ₹ glyph reuses the same dedicated, already-vetted rupee subset Inter uses — one small file, two family names. */
+@font-face {
+  font-family: "Manrope";
+  src: url("../fonts/manrope-latin.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Manrope";
+  src: url("../fonts/inter-rupee.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+20B9;
+}
+
 /* ═══════════════════════════ DESIGN TOKENS ═══════════════════════════════
    Scales (spacing uses Tailwind's 4px grid):
    type    12 · 13 · 14 · 15 · 16 · 18 · 20 · 24 · 30 · 36 · 44
@@ -24,6 +43,8 @@
    Accent: pink → red.  Everything else is neutral so the accent stays premium.  */
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  /* Headings, prices and KPI numbers — see .page-title / .kpi-value / .svc-price b / .sec-head h2 / .brand-name */
+  --font-heading: "Manrope", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 
   --color-canvas: #f6f6fa;
   --color-surface: #ffffff;

@@ -17,7 +17,7 @@ use App\Support\Tz;
  */
 final class AdminSettings
 {
-    public const DEFAULT_ACCENT = ['#ff2d87', '#ff3b3b'];
+    public const DEFAULT_ACCENT = ['#E83E91', '#B91F70']; // Rose Glass's own default (App\Support\Themes)
 
     /** Short list shown in the time-zone picker. */
     public const ZONES = [
@@ -156,6 +156,102 @@ final class AdminSettings
             Audit::log('settings.website', 'settings', null, $meta, $req, $admin);
         }
         return self::website();
+    }
+
+    // ── Appearance & Themes ─────────────────────────────────────────────────────
+
+    /** @return array<string,mixed> */
+    public static function appearance(): array
+    {
+        $a = Settings::all();
+        $prevRaw = $a['theme.previous_json'] ?? null;
+        $prev = is_string($prevRaw) ? json_decode($prevRaw, true) : null;
+        return [
+            'theme' => (string) $a['theme.name'], 'density' => (string) $a['theme.density'],
+            'accent_from' => (string) $a['theme.accent_from'], 'accent_to' => (string) $a['theme.accent_to'],
+            'themes' => \App\Support\Themes::all(), 'densities' => \App\Support\Themes::DENSITIES,
+            'can_revert' => is_array($prev),
+            'can_reset' => (string) $a['theme.name'] !== \App\Support\Themes::DEFAULT || (string) $a['theme.density'] !== \App\Support\Themes::DEFAULT_DENSITY
+                || strtolower((string) $a['theme.accent_from']) !== strtolower(\App\Support\Themes::defaultAccent(\App\Support\Themes::DEFAULT)[0])
+                || strtolower((string) $a['theme.accent_to']) !== strtolower(\App\Support\Themes::defaultAccent(\App\Support\Themes::DEFAULT)[1]),
+        ];
+    }
+
+    /**
+     * @param array<string,mixed> $in theme, density, and optionally accent_from/accent_to (defaults to the
+     *                                 theme's own colours when a NEW theme is picked without them, exactly
+     *                                 like the admin UI pre-fills — but the server never assumes that: it
+     *                                 trusts only what is actually sent).
+     * @param array{id:int,username:string,email:string} $admin
+     * @return array<string,mixed>
+     */
+    public static function saveAppearance(array $in, Request $req, array $admin): array
+    {
+        $cur = Settings::all();
+        $errors = [];
+
+        $theme = (string) ($in['theme'] ?? $cur['theme.name']);
+        if (!\App\Support\Themes::isValidName($theme)) {
+            $errors['theme'] = 'Choose one of the four themes.';
+        }
+        $density = (string) ($in['density'] ?? $cur['theme.density']);
+        if (!\App\Support\Themes::isValidDensity($density)) {
+            $errors['density'] = 'Choose a density.';
+        }
+        // Switching theme without sending an accent falls back to THAT theme's own default (the admin UI pre-fills
+        // the same way before sending) — never left stuck on the previous theme's colours. Not switching theme, or
+        // sending an accent explicitly, keeps exactly what was asked.
+        $themeChanged = \App\Support\Themes::isValidName($theme) && $theme !== (string) $cur['theme.name'];
+        [$themeDefaultFrom, $themeDefaultTo] = \App\Support\Themes::defaultAccent($theme);
+        $accentFrom = array_key_exists('accent_from', $in) ? strtolower(trim((string) $in['accent_from'])) : strtolower($themeChanged ? $themeDefaultFrom : (string) $cur['theme.accent_from']);
+        $accentTo = array_key_exists('accent_to', $in) ? strtolower(trim((string) $in['accent_to'])) : strtolower($themeChanged ? $themeDefaultTo : (string) $cur['theme.accent_to']);
+        foreach (['accent_from' => $accentFrom, 'accent_to' => $accentTo] as $field => $hex) {
+            if (!Color::isHex($hex)) {
+                $errors[$field] = 'Choose a colour as #RRGGBB.';
+            } elseif (($ratio = Color::buttonContrast($hex)) < 4.5) {
+                $errors[$field] = sprintf('This colour is too light for white button text (contrast %.1f:1, needs 4.5:1). Pick a deeper shade.', $ratio);
+            }
+        }
+        if ($errors) {
+            throw new HttpException(422, 'Please fix the highlighted fields.', 'invalid', ['fields' => $errors]);
+        }
+
+        $unchanged = $theme === (string) $cur['theme.name'] && $density === (string) $cur['theme.density']
+            && $accentFrom === strtolower((string) $cur['theme.accent_from']) && $accentTo === strtolower((string) $cur['theme.accent_to']);
+        if ($unchanged) {
+            return self::appearance();
+        }
+
+        Settings::setMany([
+            // one level of undo: whatever was live before this save becomes "previous" — reverting it back is itself reversible
+            'theme.previous_json' => json_encode([
+                'theme' => $cur['theme.name'], 'density' => $cur['theme.density'],
+                'accent_from' => $cur['theme.accent_from'], 'accent_to' => $cur['theme.accent_to'],
+            ], JSON_UNESCAPED_SLASHES),
+            'theme.name' => $theme, 'theme.density' => $density, 'theme.accent_from' => $accentFrom, 'theme.accent_to' => $accentTo,
+        ], $admin['id']);
+        Audit::log('settings.appearance', 'settings', null, ['theme' => $theme, 'density' => $density, 'accent_from' => $accentFrom, 'accent_to' => $accentTo], $req, $admin);
+        return self::appearance();
+    }
+
+    /** Restore the four built-in defaults (Rose Glass, standard density, the default accent). */
+    public static function resetAppearance(Request $req, array $admin): array
+    {
+        [$from, $to] = \App\Support\Themes::defaultAccent(\App\Support\Themes::DEFAULT);
+        return self::saveAppearance([
+            'theme' => \App\Support\Themes::DEFAULT, 'density' => \App\Support\Themes::DEFAULT_DENSITY, 'accent_from' => $from, 'accent_to' => $to,
+        ], $req, $admin);
+    }
+
+    /** Restore exactly what was active before the last appearance change. */
+    public static function revertAppearance(Request $req, array $admin): array
+    {
+        $raw = Settings::get('theme.previous_json');
+        $prev = is_string($raw) ? json_decode($raw, true) : null;
+        if (!is_array($prev) || !isset($prev['theme'], $prev['density'], $prev['accent_from'], $prev['accent_to'])) {
+            throw new HttpException(409, 'There is no previous appearance to revert to.', 'no_previous');
+        }
+        return self::saveAppearance($prev, $req, $admin);
     }
 
     /** Only links a visitor could safely follow (no javascript:, data:, file: …). */

@@ -3,7 +3,7 @@
 $groups = [
     ['Overview', [['dashboard', 'Dashboard', 'layout-dashboard'], ['finance', 'Finance', 'badge-indian-rupee'], ['ads', 'Ads Intelligence', 'target'], ['alerts', 'Business alerts', 'bell-ring'], ['reports', 'Daily reports', 'file-text'], ['pricing', 'Adaptive pricing', 'percent']]],
     ['Sales', [['orders', 'Orders', 'package'], ['recovery', 'Order recovery', 'life-buoy', true], ['payments', 'Payments', 'credit-card'], ['payment-checks', 'Payment checks', 'shield-alert', true], ['support', 'Support', 'message-circle', true], ['services', 'Services', 'layers'], ['tags', 'Tags & Badges', 'tags', true]]],
-    ['Configuration', [['website', 'Website', 'globe'], ['gateway', 'Payment gateway', 'wallet'], ['smm', 'SMM API', 'server'], ['advertising', 'Advertising', 'megaphone']]],
+    ['Configuration', [['website', 'Website', 'globe'], ['appearance', 'Appearance & Themes', 'palette'], ['gateway', 'Payment gateway', 'wallet'], ['smm', 'SMM API', 'server'], ['advertising', 'Advertising', 'megaphone']]],
     ['Account', [['security', 'Security', 'shield-check'], ['audit', 'Audit log', 'history'], ['system', 'System', 'activity']]],
 ];
 // A role only sees the pages it may open (the server enforces the same rule on every page and API call).

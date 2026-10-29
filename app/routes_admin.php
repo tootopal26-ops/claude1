@@ -157,6 +157,12 @@ return static function (Router $r): void {
     $r->get('/admin/api/advertising', [SettingsController::class, 'advertising'], $api);
     $r->put('/admin/api/advertising', [SettingsController::class, 'saveAdvertising'], $api);
 
+    // ── appearance & themes ──
+    $r->get('/admin/api/appearance', [SettingsController::class, 'appearance'], $api);
+    $r->put('/admin/api/appearance', [SettingsController::class, 'saveAppearance'], $api);
+    $r->post('/admin/api/appearance/reset', [SettingsController::class, 'resetAppearance'], $api);
+    $r->post('/admin/api/appearance/revert', [SettingsController::class, 'revertAppearance'], $api);
+
     // ── integrations ──
     $r->get('/admin/api/gateway', [IntegrationsController::class, 'gateway'], $api);
     $r->put("/admin/api/gateway/{$id}", [IntegrationsController::class, 'saveGateway'], $api);
