@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-Cuts the three tournament-metric badges (Prize Pool, Kill, Entry Fee) out of the supplied
-"Esports Prize, Kill, and Entry Fee Badges.png" and writes them to mobile/assets/icons.
+Cuts the three tournament-metric icons (trophy, skull, wallet) out of the supplied
+"Trophy, Skull, and Wallet Icons.png" and writes them to mobile/assets/icons.
 
-The source is a 1983 x 793 RGB picture with the three badges side by side on a white
-background and no alpha. Each badge is kept whole — artwork and its lettered banner — as
-supplied; only the white background around it is removed, so nothing is redrawn:
-  1. Near-white pixels connected to the edge of the badge's box are background (a flood fill
-     from the border, so white inside the artwork — the skull, the "POOL" and "KILL" letters —
-     is never touched because the badge's dark outline encloses it).
+This replaces the earlier lettered badges (extract-metric-badges.py): this artwork carries no
+text, so the app draws "Prize Pool" / "Per Kill" / "Entry Fee" itself (TournamentMetric.tsx) —
+nothing is cropped or redrawn here, only the white background is removed:
+  1. Near-white pixels connected to the edge of the icon's box are background (a flood fill
+     from the border, so the white diamonds/eyes/coins inside the artwork are never touched
+     because the artwork's own dark outline encloses them).
   2. Along the edge of the artwork (a few pixels wide) the white the anti-aliasing was blended
      with is taken back out ("colour to alpha" against white), so there is no white halo on a
      dark card.
-  3. Loose specks that are not part of the badge are dropped, the result is trimmed to the
-     badge, padded slightly, and scaled with premultiplied alpha so its longest side is 256 px.
+  3. Loose specks that are not part of the icon are dropped, the result is trimmed to the
+     artwork, padded slightly, and scaled with premultiplied alpha so its longest side is 256 px.
 
-Usage: python3 -I extract-metric-badges.py <the supplied .png> <mobile/assets dir>
+Usage: python3 -I extract-metric-icons.py <the supplied .png> <mobile/assets dir>
 """
 import os
 import sys
@@ -24,11 +24,11 @@ from collections import deque
 import numpy as np
 from PIL import Image
 
-# name: (box x0, y0, x1, y1 in the source — each badge with a little white around it, output path)
-BADGES = {
-    'prize-pool': ((20, 40, 676, 760), 'icons/prize-pool.png'),
-    'per-kill': ((690, 40, 1342, 760), 'icons/per-kill.png'),
-    'entry-fee': ((1352, 40, 1966, 760), 'icons/entry-fee.png'),
+# name: (box x0, y0, x1, y1 in the source — each icon with a little white around it, output path)
+ICONS = {
+    'prize-pool': ((20, 40, 758, 705), 'icons/prize-pool.png'),
+    'per-kill': ((736, 40, 1435, 705), 'icons/per-kill.png'),
+    'entry-fee': ((1427, 40, 2152, 705), 'icons/entry-fee.png'),
 }
 LONGEST_SIDE = 256
 NEAR_WHITE = 232        # every channel at least this bright ...
@@ -124,7 +124,7 @@ def extract(source: Image.Image, box: tuple[int, int, int, int]) -> Image.Image:
     colour = rgb.copy()
 
     # Unmix the white from the anti-aliased edge: the least opacity that explains each pixel
-    # as the badge's colour blended over white, and the colour that blend started from.
+    # as the artwork's colour blended over white, and the colour that blend started from.
     band = grow(background, EDGE_BAND_PX) & ~background
     edge_alpha = np.clip((255.0 - rgb).max(axis=2) / 255.0, 0.0, 1.0)
     alpha = np.where(band, edge_alpha, alpha)
@@ -151,14 +151,14 @@ def main() -> None:
     source = Image.open(sys.argv[1])
     assets = sys.argv[2]
 
-    for name, (box, relative) in BADGES.items():
-        badge = extract(source, box)
-        w, h = badge.size
+    for name, (box, relative) in ICONS.items():
+        icon = extract(source, box)
+        w, h = icon.size
         scale = LONGEST_SIDE / max(w, h)
-        badge = premultiplied_resize(badge, (max(1, round(w * scale)), max(1, round(h * scale))))
+        icon = premultiplied_resize(icon, (max(1, round(w * scale)), max(1, round(h * scale))))
         path = os.path.join(assets, relative)
-        badge.save(path, optimize=True)
-        print(f'{name}: {badge.size[0]}x{badge.size[1]} -> {relative}')
+        icon.save(path, optimize=True)
+        print(f'{name}: {icon.size[0]}x{icon.size[1]} -> {relative}')
 
 
 if __name__ == '__main__':

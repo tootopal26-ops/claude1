@@ -12,10 +12,10 @@ Sources:
 * **Sheets** — `11.png`, `12.png`, `13.png` from the first ZIP (transparent PNGs, 3464 px).
 * **Photo** — `photo_2026-10-23_21-20-56.jpg` from the second ZIP (black background):
   used only for the five icons that appear nowhere else.
-* **Badges** — `Esports Prize, Kill, and Entry Fee Badges.png` from the third ZIP (white
-  background): the three tournament-metric badges, cut out whole by
-  `mobile/scripts/extract-metric-badges.py` (only the white background is removed; the words on
-  each badge are part of the artwork and stay, so the app draws no separate label for them).
+* **Icons** — `Trophy, Skull, and Wallet Icons.png` from the third ZIP (white background): the
+  three tournament-metric icons, cut out by `mobile/scripts/extract-metric-icons.py` (only the
+  white background is removed). This artwork carries no text, so the app draws "Prize Pool" /
+  "Per Kill" / "Entry Fee" itself (`TournamentMetric.tsx`) rather than showing baked-in words.
 
 | File | `Artwork` name | Size (px) | Source | Used for |
 |---|---|---|---|---|
@@ -38,9 +38,9 @@ Sources:
 | `icons/mode-solo.png` | `modeSolo` | 148×133 | Photo — Solo | Tournament mode chip |
 | `icons/mode-duo.png` | `modeDuo` | 171×141 | Photo — Duo | Tournament mode chip |
 | `icons/mode-squad.png` | `modeSquad` | 182×147 | Photo — Squad | Tournament mode chip |
-| `icons/prize-pool.png` | `prizePool` | 238×256 | Badges — trophy with "PRIZE POOL" banner | Tournament card and details: prize pool (amount under it) |
-| `icons/per-kill.png` | `perKill` | 237×256 | Badges — crowned skull with "KILL" banner | Tournament card and details: per-kill reward |
-| `icons/entry-fee.png` | `entryFee` | 229×256 | Badges — wallet with "ENTRY FEE" banner | Tournament card and details: entry fee (or Free) |
+| `icons/prize-pool.png` | `prizePool` | 256×226 | Icons — trophy with crown, gems and coins | Tournament card and details: prize pool, with "Prize Pool" and the amount drawn below it |
+| `icons/per-kill.png` | `perKill` | 256×235 | Icons — crowned skull with crossed rifles | Tournament card and details: per-kill reward, with "Per Kill" and the amount |
+| `icons/entry-fee.png` | `entryFee` | 256×228 | Icons — wallet with coins and cash | Tournament card and details: entry fee, with "Entry Fee" and the amount (or Free) |
 | `status/ongoing.png` | `statusOngoing` | 320×206 | Sheets — ONGOING artwork, baked label removed | Home status card (label and count are real text) |
 | `status/upcoming.png` | `statusUpcoming` | 320×237 | Sheets — UPCOMING artwork, baked label removed | Home status card |
 | `status/completed.png` | `statusCompleted` | 320×238 | Sheets — COMPLETED artwork, baked label removed; the circle's hidden lower rim completed from its own pixels | Home status card |
@@ -52,7 +52,7 @@ All files are RGBA PNGs with real transparency. To regenerate them from the orig
 
 ```
 python3 -I mobile/scripts/extract-alpha-icons.py <folder with 11.png 12.png 13.png> <photo .jpg> mobile/assets
-python3 -I mobile/scripts/extract-metric-badges.py "<Esports Prize, Kill, and Entry Fee Badges.png>" mobile/assets
+python3 -I mobile/scripts/extract-metric-icons.py "<Trophy, Skull, and Wallet Icons.png>" mobile/assets
 ```
 
 The contact sheets themselves are never shipped or shown in the app.
