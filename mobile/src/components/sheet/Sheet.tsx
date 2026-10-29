@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useSoundOptional } from '../../sound/SoundContext';
 import { glassFloat } from '../../theme/glass';
 import { DURATION, EASE, useReducedMotion } from '../../theme/motion';
 import { Icon } from '../../theme/icons';
@@ -37,14 +38,17 @@ export function Sheet({ visible, onClose, title, subtitle, children, dismissible
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
+  const sound = useSoundOptional();
   const [mounted, setMounted] = useState(visible);
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
       setMounted(true);
+      sound.playTransition();
       Animated.timing(progress, { toValue: 1, duration: variant === 'bottom' ? DURATION.sheet : DURATION.modal, easing: EASE.out, useNativeDriver: true }).start();
     } else if (mounted) {
+      sound.playClose();
       Animated.timing(progress, { toValue: 0, duration: DURATION.small, easing: EASE.in, useNativeDriver: true }).start(({ finished }) => {
         if (finished) setMounted(false);
       });

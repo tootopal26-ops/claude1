@@ -6,6 +6,7 @@ import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AdsProvider } from '../src/ads/AdsContext';
+import { SoundProvider } from '../src/sound/SoundContext';
 import { AuthProvider, useAuth } from '../src/auth/AuthContext';
 import { LegalAcceptanceGate } from '../src/components/LegalAcceptanceGate';
 import { BootScreen } from '../src/components/layout/BootScreen';
@@ -125,17 +126,19 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <ThemedRoot>
-          <AuthProvider>
-            <WalletProvider>
-              <SectionsProvider>
-                <AdsProvider>
-                  <AppGate />
-                </AdsProvider>
-              </SectionsProvider>
-            </WalletProvider>
-          </AuthProvider>
-        </ThemedRoot>
+        <SoundProvider>
+          <ThemedRoot>
+            <AuthProvider>
+              <WalletProvider>
+                <SectionsProvider>
+                  <AdsProvider>
+                    <AppGate />
+                  </AdsProvider>
+                </SectionsProvider>
+              </WalletProvider>
+            </AuthProvider>
+          </ThemedRoot>
+        </SoundProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

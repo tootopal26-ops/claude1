@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 
 import { useAds } from '../ads/AdsContext';
+import { useSound } from '../sound/SoundContext';
 import { redeemCode } from '../api/redeem';
 import { useWallet } from '../wallet/WalletContext';
 import { ApiError } from '../api/client';
@@ -44,6 +45,7 @@ export function RedeemCodeDialog({ visible, onClose, onRedeemed }: Props) {
   const [code, setCode] = useState('');
   const [state, setState] = useState<State>(INITIAL);
   const { watchRewarded } = useAds();
+  const sound = useSound();
   const { wallet, refresh: refreshWallet } = useWallet();
 
   const submitting = state.phase === 'submitting' || state.phase === 'watching';
@@ -73,15 +75,20 @@ export function RedeemCodeDialog({ visible, onClose, onRedeemed }: Props) {
         return;
       }
       setState({ phase: 'done', coins: response.data.coins, balance: response.data.balance });
+      sound.playSuccess();
+      sound.playCoin();
       onRedeemed?.(response.data.balance);
     } catch (error) {
       if (error instanceof ApiError) {
-        const message =
-          error.code === 'already_redeemed'
-            ? "You've already redeemed this code. Your coins are in your wallet."
-            : error.message;
+        const alreadyRedeemed = error.code === 'already_redeemed';
+        if (alreadyRedeemed) sound.playWarning();
+        else sound.playError();
+        const message = alreadyRedeemed
+          ? "You've already redeemed this code. Your coins are in your wallet."
+          : error.message;
         setState({ phase: 'entering', error: message });
       } else {
+        sound.playWarning();
         setState({
           phase: 'entering',
           error:
@@ -100,10 +107,13 @@ export function RedeemCodeDialog({ visible, onClose, onRedeemed }: Props) {
 
     if (outcome.status === 'verified' && outcome.claim.reward_coins !== null) {
       await refreshWallet({ force: true });
+      sound.playReward();
+      sound.playCoin();
       setState({ phase: 'done', coins: Number(outcome.claim.reward_coins), balance: null });
       return;
     }
 
+    sound.playWarning();
     const error = outcome.message;
     setState({ phase: 'entering', error });
   }

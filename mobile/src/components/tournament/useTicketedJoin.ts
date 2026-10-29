@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { useAds } from '../../ads/AdsContext';
+import { useSound } from '../../sound/SoundContext';
 import { fetchTournament } from '../../api/games';
 import type { Tournament } from '../../types';
 import { canJoin, needsTickets, ticketsEarned, ticketsRequired } from './tournamentState';
@@ -18,6 +19,7 @@ export type TicketNotice = { tournamentId: number; tone: 'success' | 'info' | 'w
  */
 export function useTicketedJoin(openJoin: (tournament: Tournament) => void, onUpdated: (tournament: Tournament) => void) {
   const { watchRewarded } = useAds();
+  const sound = useSound();
   const [earningFor, setEarningFor] = useState<number | null>(null);
   const [notice, setNotice] = useState<TicketNotice | null>(null);
   const running = useRef(false);
@@ -63,6 +65,7 @@ export function useTicketedJoin(openJoin: (tournament: Tournament) => void, onUp
           if (outcome.status === 'verified' && outcome.claim.outcome === null) {
             const earned = ticketsEarned(after);
             const required = ticketsRequired(after);
+            sound.playUnlock();
             say('success', earned >= required ? 'All tickets earned. Tap Join to enter.' : `Ticket ${earned}/${required} earned.`);
             return;
           }
@@ -70,13 +73,14 @@ export function useTicketedJoin(openJoin: (tournament: Tournament) => void, onUp
           // The count stays as last seen; the next tap re-reads it before offering another ad.
         }
 
+        if (outcome.status !== 'verified' && outcome.status !== 'pending') sound.playWarning();
         say(outcome.status === 'verified' || outcome.status === 'pending' ? 'info' : 'warning', outcome.message);
       } finally {
         running.current = false;
         setEarningFor(null);
       }
     },
-    [openJoin, onUpdated, watchRewarded]
+    [openJoin, onUpdated, watchRewarded, sound]
   );
 
   return { join, earningFor, notice, clearNotice: () => setNotice(null) };

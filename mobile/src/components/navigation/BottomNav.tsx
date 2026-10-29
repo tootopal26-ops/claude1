@@ -9,6 +9,7 @@ import { withOpacity } from '../../theme/glass';
 import { DURATION, EASE, PRESS_SCALE, SPRING, useReducedMotion } from '../../theme/motion';
 import { makeStyles, useTheme } from '../../theme/ThemeContext';
 import { MAX_CONTENT_WIDTH, RADIUS, SIZE, SPACE } from '../../theme/tokens';
+import { useSoundOptional } from '../../sound/SoundContext';
 import { PressableScale } from '../interaction/PressableScale';
 
 /**
@@ -50,6 +51,7 @@ export function BottomNav({ state, descriptors, emitter, navigateToTab }: Bottom
   const styles = useStyles();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
+  const sound = useSoundOptional();
   const entrance = useRef(new Animated.Value(0)).current;
   const routes = state.routes.filter((route) => ITEMS[route.name]);
   const selected = Math.max(0, routes.findIndex((route) => route.key === state.routes[state.index]?.key));
@@ -75,6 +77,7 @@ export function BottomNav({ state, descriptors, emitter, navigateToTab }: Bottom
           const onPress = () => {
             const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!focused && !event.defaultPrevented) {
+              sound.playSelection();
               navigateToTab(route.key);
             }
           };

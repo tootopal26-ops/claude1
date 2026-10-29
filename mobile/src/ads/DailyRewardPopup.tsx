@@ -16,6 +16,7 @@ import { RADIUS, SPACE, TYPE } from '../theme/tokens';
 import { formatCoins } from '../utils/coins';
 import { useWallet } from '../wallet/WalletContext';
 import { useAds } from './AdsContext';
+import { useSound } from '../sound/SoundContext';
 import { claimDailyRewardWithoutAd, dismissDailyReward, fetchDailyReward } from './api';
 import type { DailyRewardStatus } from './types';
 
@@ -39,6 +40,7 @@ export function DailyRewardPopup() {
   const reduced = useReducedMotion();
   const { user } = useAuth();
   const { consentSettled, watchRewarded, watching } = useAds();
+  const sound = useSound();
   const { wallet, refresh: refreshWallet } = useWallet();
   const [status, setStatus] = useState<DailyRewardStatus | null>(null);
   const [visible, setVisible] = useState(false);
@@ -105,8 +107,11 @@ export function DailyRewardPopup() {
       try {
         const response = await claimDailyRewardWithoutAd();
         void refreshWallet({ force: true });
+        sound.playReward();
+        sound.playCoin();
         setPhase({ kind: 'done', amount: response.data.amount });
       } catch (error) {
+        sound.playError();
         setPhase({ kind: 'offer', message: { tone: 'danger', text: error instanceof ApiError ? error.message : "Couldn't reach Mini Max. Check your connection and try again." } });
       }
       return;
@@ -114,13 +119,17 @@ export function DailyRewardPopup() {
 
     const outcome = await watchRewarded({ purpose: 'daily_reward' });
     if (outcome.status === 'verified' && outcome.claim.reward_coins !== null) {
+      sound.playReward();
+      sound.playCoin();
       setPhase({ kind: 'done', amount: outcome.claim.reward_coins });
       return;
     }
     if (outcome.status === 'verified') {
+      sound.playWarning();
       setPhase({ kind: 'offer', message: { tone: 'info', text: outcome.message } });
       return;
     }
+    if (outcome.status !== 'pending') sound.playWarning();
     setPhase({
       kind: 'offer',
       message: { tone: outcome.status === 'pending' ? 'info' : outcome.status === 'not_completed' ? 'warning' : 'danger', text: outcome.message },

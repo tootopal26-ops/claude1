@@ -7,6 +7,7 @@ import { ApiError } from '../src/api/client';
 import { fetchDeposit, fetchDeposits, requestDeposit } from '../src/api/deposits';
 import { AmbientGlow } from '../src/components/AmbientGlow';
 import { Button } from '../src/components/Button';
+import { useSound } from '../src/sound/SoundContext';
 import { CoinAmount } from '../src/components/CoinAmount';
 import { Notice } from '../src/components/Notice';
 import { EmptyState, ErrorState, Skeleton } from '../src/components/states/States';
@@ -51,6 +52,7 @@ export default function DepositScreen() {
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const sound = useSound();
   const pendingDepositId = useRef<number | null>(null);
 
   const load = useCallback(async () => {
@@ -86,14 +88,21 @@ export default function DepositScreen() {
     try {
       const response = await requestDeposit(amount);
       setAmount('');
+      sound.playNotification(); // neutral: the deposit request was created (not yet paid)
       if (response.data.payment_url) {
         pendingDepositId.current = response.data.id;
         await WebBrowser.openBrowserAsync(response.data.payment_url);
-        await fetchDeposit(response.data.id).catch(() => null);
+        const confirmed = await fetchDeposit(response.data.id).catch(() => null);
+        if (confirmed?.data.status === 'success') {
+          // Only once the gateway actually confirms the payment do we celebrate it.
+          sound.playReward();
+          sound.playCoin();
+        }
         void refreshWallet({ force: true }); // a confirmed payment credits the wallet
       }
       await load();
     } catch (err) {
+      sound.playError();
       setError(err instanceof ApiError ? err.message : "We couldn't start the deposit. Check your connection and try again.");
     } finally {
       setSubmitting(false);

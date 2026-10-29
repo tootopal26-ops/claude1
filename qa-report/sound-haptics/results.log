@@ -1,0 +1,12 @@
+PASS  bottom-nav tab plays selection  — ["selection"]
+PASS  scrolling / re-render plays no sound  — []
+PASS  opening a sheet plays transition  — ["selection","transition"]
+PASS  closing a sheet plays close  — ["close"]
+PASS  preview plays a sample (selection + success)  — ["selection","success"]
+PASS  sound OFF silences everything  — []
+PASS  OFF persists across reload (still silent)  — []
+PASS  ON again produces sound  — ["selection","success"]
+PASS  ON persists across reload (sounds again)  — ["selection","success"]
+PASS  volume control present
+
+10 passed, 0 failed

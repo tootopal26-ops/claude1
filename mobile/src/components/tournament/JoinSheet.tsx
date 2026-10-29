@@ -12,6 +12,7 @@ import { pushOnce } from '../../utils/navigation';
 import { formatDateTime } from '../../utils/time';
 import { useRetained } from '../../utils/useRetained';
 import { useWallet } from '../../wallet/WalletContext';
+import { useSound } from '../../sound/SoundContext';
 import { Button } from '../Button';
 import { CoinAmount } from '../CoinAmount';
 import { Notice } from '../Notice';
@@ -50,6 +51,7 @@ const UNKNOWN_OUTCOME =
 export function JoinSheet({ tournament: requested, onClose, onJoined, onDetailsScreen }: Props) {
   const styles = useStyles();
   const { semanticColors } = useTheme();
+  const sound = useSound();
   const { wallet, refresh: refreshWallet } = useWallet();
   const tournament = useRetained(requested);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -102,9 +104,11 @@ export function JoinSheet({ tournament: requested, onClose, onJoined, onDetailsS
     try {
       const response = await joinTournament(tournament.id, players.map((player) => ({ in_game_name: player.inGameName.trim(), uid: player.uid || null })));
       setStep({ name: 'done', entry: response.data });
+      sound.playSuccess();
       void refreshWallet({ force: true });
       onJoined(response.data);
     } catch (error) {
+      sound.playError();
       if (error instanceof ApiError) {
         const perField: FieldErrors = {};
         Object.entries(error.errors ?? {}).forEach(([key, messages]) => {

@@ -20,6 +20,7 @@ import { glassPanel } from '../src/theme/glass';
 import { Icon } from '../src/theme/icons';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import { MAX_CONTENT_WIDTH, RADIUS, SIZE, SPACE, TYPE } from '../src/theme/tokens';
+import { useSound } from '../src/sound/SoundContext';
 import { formatCoins } from '../src/utils/coins';
 import { formatDate, formatDateTime } from '../src/utils/time';
 
@@ -55,6 +56,7 @@ export default function AdsEarningScreen() {
   const { width } = useWindowDimensions();
   const contentWidth = Math.min(width, MAX_CONTENT_WIDTH) - SPACE.md * 2;
   const { watchRewarded, watching, consentSettled } = useAds();
+  const sound = useSound();
 
   const [status, setStatus] = useState<AdsEarningStatus | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -125,12 +127,18 @@ export default function AdsEarningScreen() {
     const outcome = await watchRewarded({ purpose: 'ads_earning' });
     if (outcome.status === 'verified') {
       const counted = outcome.claim.counts_for_earning;
+      if (counted) {
+        sound.playReward();
+      } else {
+        sound.playWarning();
+      }
       setMessage(
         counted
           ? { tone: 'success', text: "Verified — this ad counts toward this week's Ads Earning." }
           : { tone: 'info', text: "The ad was verified but didn't count (today's limit or eligibility changed)." }
       );
     } else {
+      if (outcome.status !== 'pending') sound.playWarning();
       setMessage({ tone: outcome.status === 'pending' ? 'info' : 'warning', text: outcome.message });
     }
     await loadStatus();
@@ -142,8 +150,11 @@ export default function AdsEarningScreen() {
     const outcome = await watchRewarded({ purpose: 'campaign', campaignId: campaign.id });
     setClaimingId(null);
     if (outcome.status === 'verified' && outcome.claim.reward_coins !== null) {
+      sound.playReward();
+      sound.playCoin();
       setMessage({ tone: 'success', text: `${formatCoins(outcome.claim.reward_coins)} coins added to your Deposit balance.` });
     } else {
+      if (outcome.status !== 'verified' && outcome.status !== 'pending') sound.playWarning();
       setMessage({ tone: outcome.status === 'verified' || outcome.status === 'pending' ? 'info' : 'warning', text: outcome.message });
     }
     await loadStatus();

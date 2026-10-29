@@ -1,5 +1,7 @@
 import { ActivityIndicator, Text, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 
+import type { HapticKind } from '../sound/engine';
+import type { SoundName } from '../sound/sounds';
 import { Artwork, ARTWORK_SIZE, type ArtworkName } from '../theme/artwork';
 import { PRESS_SCALE } from '../theme/motion';
 import { Icon, type IconName } from '../theme/icons';
@@ -22,6 +24,10 @@ type ButtonProps = Omit<PressableProps, 'style' | 'children'> & {
   loading?: boolean;
   /** Layout only (flex, width, margins): it sizes the touch area and the button fills it. */
   style?: StyleProp<ViewStyle>;
+  /** Press sound; the default soft click suits every button. 'none' silences this button. */
+  pressSound?: SoundName | 'none';
+  /** Press haptic; 'none' disables it for this button. */
+  pressHaptic?: HapticKind | 'none';
 };
 
 /**
@@ -29,7 +35,7 @@ type ButtonProps = Omit<PressableProps, 'style' | 'children'> & {
  * pressed response, a spinner (and no second tap) while `loading`, and a dimmed, inert
  * look when disabled.
  */
-export function Button({ label, variant = 'primary', size = 'md', icon, artwork, loading = false, disabled, style, accessibilityLabel, ...rest }: ButtonProps) {
+export function Button({ label, variant = 'primary', size = 'md', icon, artwork, loading = false, disabled, style, accessibilityLabel, pressSound = 'click', pressHaptic = 'light', ...rest }: ButtonProps) {
   const styles = useStyles();
   const { colors, semanticColors } = useTheme();
   const isDisabled = Boolean(disabled) || loading;
@@ -53,6 +59,8 @@ export function Button({ label, variant = 'primary', size = 'md', icon, artwork,
       aria-busy={loading}
       {...rest}
       disabled={isDisabled}
+      sound={pressSound === 'none' ? null : pressSound}
+      haptic={pressHaptic === 'none' ? null : pressHaptic}
       scaleTo={PRESS_SCALE.button}
       layoutStyle={style}
       style={[styles.base, size === 'sm' && styles.small, styles[variant], isDisabled && styles.disabled]}

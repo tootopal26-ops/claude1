@@ -4,6 +4,7 @@ import { RefreshControl, ScrollView, Text, useWindowDimensions, View, type Scrol
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAds } from '../../src/ads/AdsContext';
+import { useSound } from '../../src/sound/SoundContext';
 import { AdSlot } from '../../src/ads/AdSlot';
 import { DailyRewardPopup } from '../../src/ads/DailyRewardPopup';
 import { fetchHomeBanners } from '../../src/api/banners';
@@ -34,6 +35,7 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const styles = useStyles();
   const { colors } = useTheme();
+  const sound = useSound();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const bottomSpace = useBottomNavSpace();
@@ -96,6 +98,7 @@ export default function HomeScreen() {
     setRefreshing(true);
     await Promise.all([loadBanners(), loadCounts(), loadGames(), refreshWallet({ force: true }), refreshSections()]);
     setRefreshing(false);
+    sound.playSelection(); // a subtle tick when a pull-to-refresh finishes (not during the gesture)
   };
 
   // The optional game-card interstitial (only if Admin enabled it and its caps allow). Without

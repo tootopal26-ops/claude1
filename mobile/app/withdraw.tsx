@@ -8,6 +8,7 @@ import { attemptWithdrawalPlacement } from '../src/ads/api';
 import { fetchWithdrawals, requestWithdrawal } from '../src/api/withdrawals';
 import { AmbientGlow } from '../src/components/AmbientGlow';
 import { Button } from '../src/components/Button';
+import { useSound } from '../src/sound/SoundContext';
 import { CoinAmount } from '../src/components/CoinAmount';
 import { Notice } from '../src/components/Notice';
 import { EmptyState, ErrorState, Skeleton } from '../src/components/states/States';
@@ -58,6 +59,7 @@ export default function WithdrawScreen() {
   const [upiId, setUpiId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const sound = useSound();
 
   const { placement, sdkReady, showInterstitial } = useAds();
   const placementLive = sdkReady && placement('withdrawal_success') !== null;
@@ -91,9 +93,13 @@ export default function WithdrawScreen() {
       await requestWithdrawal(amount, upiId);
       setAmount('');
       setUpiId('');
+      // Restrained confirmation that the request was submitted — it is still only pending review,
+      // so this is not a "paid" success sound.
+      sound.playNotification();
       void refreshWallet({ force: true }); // the amount is now reserved from winnings
       await load();
     } catch (err) {
+      sound.playError();
       setError(err instanceof ApiError ? err.message : "We couldn't submit your request. Check your connection and try again.");
     } finally {
       setSubmitting(false);

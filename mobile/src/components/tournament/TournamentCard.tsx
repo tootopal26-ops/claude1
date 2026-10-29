@@ -64,7 +64,7 @@ export function TournamentCard({ tournament, onOpen, onJoin, onRules, onResults,
   // The details area and the two action buttons are siblings, never nested controls.
   return (
     <View style={styles.card}>
-      <PressableScale onPress={() => onOpen(tournament)} accessibilityRole="button" accessibilityHint="Opens the tournament details" style={styles.body}>
+      <PressableScale onPress={() => onOpen(tournament)} sound="selection" accessibilityRole="button" accessibilityHint="Opens the tournament details" style={styles.body}>
         <View style={styles.hero}>
           {picture && !imageFailed ? (
             <Image source={{ uri: picture }} style={styles.heroImage} resizeMode="cover" onError={() => setImageFailed(true)} accessibilityIgnoresInvertColors />

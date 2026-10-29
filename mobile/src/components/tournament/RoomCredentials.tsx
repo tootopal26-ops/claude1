@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Text, View } from 'react-native';
 
 import { glassPanel } from '../../theme/glass';
+import { useSoundOptional } from '../../sound/SoundContext';
 import { DURATION, EASE, PRESS_SCALE } from '../../theme/motion';
 import { Icon } from '../../theme/icons';
 import { makeStyles, useTheme } from '../../theme/ThemeContext';
@@ -69,6 +70,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
+  const sound = useSoundOptional();
   const copy = async () => {
     try {
       await Clipboard.setStringAsync(value);
@@ -76,6 +78,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
       return;
     }
     setCopied(true);
+    sound.playSuccess();
     confirm.setValue(0);
     Animated.timing(confirm, { toValue: 1, duration: DURATION.small, easing: EASE.out, useNativeDriver: true }).start();
     if (timer.current) clearTimeout(timer.current);

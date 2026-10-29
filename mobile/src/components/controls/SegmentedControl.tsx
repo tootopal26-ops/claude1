@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
 
+import { useSoundOptional } from '../../sound/SoundContext';
 import { DURATION, EASE } from '../../theme/motion';
 import { makeStyles } from '../../theme/ThemeContext';
 import { RADIUS, SPACE, TYPE } from '../../theme/tokens';
@@ -21,6 +22,7 @@ type Props<T extends string> = {
  */
 export function SegmentedControl<T extends string>({ options, value, onChange, accessibilityLabel }: Props<T>) {
   const styles = useStyles();
+  const sound = useSoundOptional();
   const [width, setWidth] = useState(0);
   const index = Math.max(0, options.findIndex((option) => option.value === value));
   const position = useRef(new Animated.Value(index)).current;
@@ -45,7 +47,11 @@ export function SegmentedControl<T extends string>({ options, value, onChange, a
         return (
           <Pressable
             key={option.value}
-            onPress={() => !selected && onChange(option.value)}
+            onPress={() => {
+              if (selected) return;
+              sound.playSelection();
+              onChange(option.value);
+            }}
             accessibilityRole="tab"
             aria-selected={selected}
             accessibilityLabel={option.count != null ? `${option.label}, ${option.count}` : option.label}
