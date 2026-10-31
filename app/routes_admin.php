@@ -157,6 +157,16 @@ return static function (Router $r): void {
     $r->get('/admin/api/advertising', [SettingsController::class, 'advertising'], $api);
     $r->put('/admin/api/advertising', [SettingsController::class, 'saveAdvertising'], $api);
 
+    // ── sales target & ad budget intelligence ──
+    $r->put('/admin/api/sales-target', [SettingsController::class, 'saveSalesTarget'], $api);
+    $r->post('/admin/api/sales-target/revoke', [SettingsController::class, 'revokeSalesTarget'], $api);
+    $r->get('/admin/api/sales-target/history', [SettingsController::class, 'salesTargetHistory'], $api);
+    $r->put('/admin/api/ad-budget', [SettingsController::class, 'saveAdBudget'], $api);
+    $r->post('/admin/api/ad-budget/reset', [SettingsController::class, 'resetAdBudget'], $api);
+    $r->post('/admin/api/ad-budget/revoke-override', [SettingsController::class, 'revokeAdBudgetOverride'], $api);
+    $r->get('/admin/api/ad-budget/history', [SettingsController::class, 'adBudgetHistory'], $api);
+    $r->post('/admin/api/ad-budget/forecast', [SettingsController::class, 'forecastAdBudget'], $api);
+
     // ── appearance & themes ──
     $r->get('/admin/api/appearance', [SettingsController::class, 'appearance'], $api);
     $r->put('/admin/api/appearance', [SettingsController::class, 'saveAppearance'], $api);

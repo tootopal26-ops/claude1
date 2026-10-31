@@ -7,8 +7,10 @@ namespace App\Controllers\Admin;
 use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
+use App\Services\AdBudget;
 use App\Services\AdminSettings;
 use App\Services\Ads;
+use App\Services\SalesTarget;
 
 final class SettingsController extends BaseController
 {
@@ -76,7 +78,7 @@ final class SettingsController extends BaseController
     public function advertising(Request $req, array $p): Response
     {
         $this->authorize($req, 'ads.view');
-        return $this->ok(['ads' => $this->adsView()]);
+        return $this->ok(['ads' => $this->adsView(), 'sales_target' => SalesTarget::progress(), 'ad_budget' => $this->adBudgetView()]);
     }
 
     public function saveAdvertising(Request $req, array $p): Response
@@ -88,6 +90,90 @@ final class SettingsController extends BaseController
             Ads::update($in['cpc'] ?? null, $in['qualify_seconds'] ?? null, $in['assumed_conversion'] ?? null, $req, $admin);
             return ['ads' => $this->adsView()];
         });
+    }
+
+    public function saveSalesTarget(Request $req, array $p): Response
+    {
+        $this->authorize($req, 'ads.manage');
+        $in = $req->json();
+        $admin = $this->admin($req);
+        return $this->once($req, 'settings-sales-target', fn(): array => ['sales_target' => SalesTarget::set($in, $req, $admin)]);
+    }
+
+    public function revokeSalesTarget(Request $req, array $p): Response
+    {
+        $this->authorize($req, 'ads.manage');
+        $admin = $this->admin($req);
+        return $this->once($req, 'settings-sales-target-revoke', fn(): array => ['sales_target' => SalesTarget::revoke($req, $admin)]);
+    }
+
+    public function salesTargetHistory(Request $req, array $p): Response
+    {
+        $this->authorize($req, 'ads.view');
+        return $this->ok(['history' => SalesTarget::history()]);
+    }
+
+    public function saveAdBudget(Request $req, array $p): Response
+    {
+        $this->authorize($req, 'ads.manage');
+        $in = $req->json();
+        $admin = $this->admin($req);
+        return $this->once($req, 'settings-ad-budget', function () use ($in, $req, $admin): array {
+            AdBudget::save($in, $req, $admin);
+            return ['ad_budget' => $this->adBudgetView()];
+        });
+    }
+
+    public function resetAdBudget(Request $req, array $p): Response
+    {
+        $this->authorize($req, 'ads.manage');
+        $admin = $this->admin($req);
+        return $this->once($req, 'settings-ad-budget-reset', function () use ($req, $admin): array {
+            AdBudget::reset($req, $admin);
+            return ['ad_budget' => $this->adBudgetView()];
+        });
+    }
+
+    public function revokeAdBudgetOverride(Request $req, array $p): Response
+    {
+        $this->authorize($req, 'ads.manage');
+        $admin = $this->admin($req);
+        return $this->once($req, 'settings-ad-budget-revoke', function () use ($req, $admin): array {
+            AdBudget::revokeOverride($req, $admin);
+            return ['ad_budget' => $this->adBudgetView()];
+        });
+    }
+
+    public function adBudgetHistory(Request $req, array $p): Response
+    {
+        $this->authorize($req, 'ads.view');
+        return $this->ok(['history' => AdBudget::history()]);
+    }
+
+    /** POST /admin/api/ad-budget/forecast  { budget, campaign? } — no write */
+    public function forecastAdBudget(Request $req, array $p): Response
+    {
+        $this->authorize($req, 'ads.view');
+        $in = $req->json();
+        $raw = $in['budget'] ?? null;
+        try {
+            $budget = \App\Support\Money::parseRupees(is_string($raw) || is_int($raw) || is_float($raw) ? $raw : null);
+        } catch (\InvalidArgumentException) {
+            throw new HttpException(422, 'Enter the budget in rupees with at most two decimals.', 'invalid', ['fields' => ['budget' => 'Enter the budget in rupees with at most two decimals.']]);
+        }
+        $campaign = is_string($in['campaign'] ?? null) ? trim($in['campaign']) : '';
+        return $this->ok(['forecast' => AdBudget::forecast($budget, $campaign)]);
+    }
+
+    /** @return array<string,mixed> */
+    private function adBudgetView(): array
+    {
+        $c = AdBudget::current();
+        return $c + [
+            'daily_budget' => $c['daily_budget_paise'] !== null ? \App\Support\Money::plain($c['daily_budget_paise']) : null,
+            'monthly_budget' => $c['monthly_budget_paise'] !== null ? \App\Support\Money::plain($c['monthly_budget_paise']) : null,
+            'history' => AdBudget::history(),
+        ];
     }
 
     /** @return array<string,mixed> */
