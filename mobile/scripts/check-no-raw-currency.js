@@ -29,6 +29,8 @@ const ALLOWED_SVG_FILES = [
   // The bottom nav's own icon set (trophy, spin wheel, home, user silhouette) — shapes only,
   // no coin or currency imagery.
   path.join(ROOT, 'src', 'components', 'navigation', 'NavIcons.tsx'),
+  // The bottom nav's purple active-indicator light (a gradient only) — no coin or currency imagery.
+  path.join(ROOT, 'src', 'components', 'navigation', 'BottomNav.tsx'),
 ];
 const RUPEE_PATTERN = /₹/;
 const SVG_TAG_PATTERN = /<Svg\b/;

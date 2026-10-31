@@ -1,0 +1,15 @@
+PASS  found the bottom nav (the tablist containing "Spin")
+PASS  exactly 4 nav tabs
+PASS  tabs are Leaderboard, Spin, Home, Profile in that order
+PASS  Home starts selected, the other three unselected
+PASS  unselected (Leaderboard) icon has a transparent/none-filled outline layer
+PASS  tapping Leaderboard selects it and deselects Home
+PASS  the selected icon's filled layer is fully opaque after settling
+PASS  Spin opens a real screen titled "Spin & Win"
+PASS  Spin screen links to the real, backend-confirmed Ads Earning flow
+PASS  Profile tab still opens the real Profile screen
+PASS  re-tapping the current tab does not break the screen
+PASS  scrolling the Home screen never changes the selected tab
+PASS  no console/page errors across the whole run
+
+13 passed, 0 failed

@@ -1,14 +1,15 @@
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { G, Path } from 'react-native-svg';
 
 /**
- * The bottom nav's own icon set — WhatsApp-style outline/filled pairs, pure white (or the
- * one `color` passed in), no category colours, no gradients. Each name has two completely
- * separate shapes (not one shape with a fill toggle) so the outline can stay truly hollow
- * and the filled version can be a real solid silhouette, per the nav redesign spec.
+ * The bottom nav's own icon set — traced directly from the reference artwork supplied for
+ * the nav redesign (outline row + filled row), not hand-redrawn: each path below is the
+ * exact silhouette potrace extracted from that image, so the on-screen glyphs match the
+ * reference pixel-for-pixel rather than an approximation of it. Pure white (or the one
+ * `color` prop passed in) — no category colours, same as the nav redesign spec.
  *
- * The Spin wheel is custom-drawn here (it isn't part of the shared theme/icons.tsx set):
- * a ring with three slots, rotated 20°/140°/260° around the centre so the trio reads as a
- * slight upper-right-tilted pinwheel rather than three slots sitting dead level.
+ * Every icon shares the same source transform (the 500x333pt cell each was traced from);
+ * only the crop window (`viewBox`) differs per icon, tightened to its own content with a
+ * little shared padding so the four read at a consistent size.
  */
 export type NavIconName = 'leaderboard' | 'spin' | 'home' | 'profile';
 
@@ -20,106 +21,53 @@ type Props = {
   color?: string;
 };
 
-const STROKE = 1.9;
-/** The three spin-wheel slot angles — 120° apart, biased so the set tilts to the upper right. */
-const SLOT_ANGLES = [20, 140, 260] as const;
-/** Same slot geometry feeds both the stroked outline rects and the filled cut-out path, so the two states line up exactly. */
-const SLOT = { halfWidth: 1.15, innerRadius: 3.6, outerRadius: 8.6 };
-// The filled wheel's three holes: the same SLOT rectangle as the outline, rotated by each of
-// SLOT_ANGLES around the centre (12,12) and written out as absolute corner coordinates — a
-// single <Path> can't rotate one of its own subpaths, so the rotation is baked in here instead.
-const SPIN_HOLES =
-  'M13.86,3.53 L16.02,4.31 L14.31,9.01 L12.15,8.22 Z' +
-  'M18.41,17.85 L16.65,19.33 L13.43,15.50 L15.19,14.02 Z' +
-  'M3.73,14.63 L3.33,12.36 L8.25,11.49 L8.65,13.76 Z';
+// The coordinate space every traced path was emitted in (potrace's own convention): path
+// data is in tenths of a point with Y pointing up, so this flips and descales it back to
+// plain top-left-origin pixels — the same space each icon's `viewBox` below is cropped in.
+const TRACE_TRANSFORM = 'translate(0,333) scale(0.1,-0.1)';
+
+type IconDef = { viewBox: string; outlineD: string; filledD: string };
+
+const ICONS: Record<NavIconName, IconDef> = {
+  leaderboard: {
+    viewBox: '123.8 29.3 283.4 283.4',
+    outlineD:
+      'M1929 2703 c-15 -9 -35 -30 -45 -47 l-18 -31 -4 -97 -4 -98 -170 0 -170 0 -34 -16 -34 -16 -20 -33 -20 -32 0 -141 0 -141 15 -71 c8 -39 28 -104 43 -144 l29 -73 53 -77 53 -77 67 -62 c87 -80 158 -122 275 -162 l95 -33 38 -49 c22 -27 70 -77 108 -111 l69 -62 93 -45 92 -45 0 -84 0 -83 -83 -5 -83 -4 -48 -24 c-27 -13 -63 -36 -81 -52 l-32 -28 -22 -51 -22 -51 -6 -87 -6 -87 12 -37 13 -37 28 -15 29 -15 530 0 531 0 32 29 33 29 0 109 -1 108 -23 53 -24 52 -34 30 c-18 16 -53 40 -76 52 l-42 22 -87 4 -88 4 0 83 0 83 86 44 86 43 74 63 c41 34 92 86 115 115 l41 51 93 31 93 30 70 48 c144 99 232 199 298 343 l36 78 19 90 19 91 0 133 0 133 -14 28 c-8 15 -28 37 -43 47 l-28 19 -185 5 -185 5 -5 107 -5 108 -33 32 -32 33 -718 2 -717 3 -26 -17z m1381 -433 l0 -301 -10 -97 c-6 -53 -20 -133 -31 -177 l-19 -80 -45 -91 -44 -91 -66 -71 -66 -71 -66 -41 c-36 -24 -96 -54 -132 -69 l-66 -26 -18 -35 -18 -35 3 -157 3 -156 23 -25 24 -25 130 -4 130 -3 34 -37 34 -38 0 -55 0 -55 -445 0 -445 0 0 55 0 55 34 38 34 37 130 5 130 5 21 19 21 19 0 176 0 176 -23 26 -22 26 -50 18 c-27 9 -79 33 -114 52 l-63 35 -57 57 c-108 109 -174 234 -212 407 l-22 99 -4 368 -5 367 646 0 646 0 0 -300z m-1447 -87 c4 -54 7 -142 7 -195 0 -116 13 -219 45 -342 12 -50 21 -93 20 -94 -2 -2 -28 9 -57 25 l-53 28 -73 75 -73 75 -40 80 -39 80 -20 79 -20 79 0 104 0 103 148 0 149 0 6 -97z m1904 -27 l-6 -124 -30 -92 c-40 -118 -70 -169 -152 -255 l-67 -70 -56 -34 c-31 -19 -58 -32 -60 -30 -2 2 7 45 19 95 13 50 28 135 34 187 l11 96 0 176 0 175 157 0 156 0 -6 -124z',
+    filledD:
+      'M1910 2842 l-35 -19 -17 -34 -18 -34 0 -92 0 -92 -195 -3 -195 -3 -27 -28 -28 -28 1 -127 1 -127 16 -78 c9 -43 30 -112 47 -153 l29 -74 50 -74 50 -73 63 -55 c35 -30 87 -69 116 -86 51 -31 185 -82 215 -82 l15 0 37 -50 c79 -107 191 -189 343 -250 l97 -39 3 -109 3 -109 -108 -5 -108 -5 -46 -20 c-25 -11 -61 -35 -82 -52 l-36 -32 -26 -54 -25 -54 0 -79 0 -79 21 -19 21 -19 565 0 565 0 19 24 19 23 0 73 0 72 -31 62 -31 62 -47 35 -46 34 -49 15 -50 15 -88 0 -88 0 0 114 0 114 52 17 c28 9 89 35 134 57 l82 39 69 62 c38 34 85 83 105 108 l36 45 54 12 c29 7 89 30 133 52 l80 39 68 58 68 58 58 86 58 86 26 69 c15 38 33 102 42 142 l15 73 0 130 0 131 -29 29 -29 29 -195 0 -195 0 -4 110 -3 110 -33 32 -32 33 -723 3 -722 2 -35 -18z m-70 -534 c0 -105 20 -338 36 -411 8 -38 14 -73 14 -78 l0 -9 -38 19 -38 20 -60 64 c-33 35 -75 89 -92 120 l-32 56 -20 73 c-11 39 -23 100 -26 134 l-7 62 19 5 c11 3 70 5 132 6 l112 1 0 -62z m1878 11 l3 -46 -15 -74 -16 -74 -26 -52 c-14 -29 -45 -80 -70 -113 l-44 -60 -62 -46 -63 -46 -3 15 c-2 8 4 55 13 103 l15 89 6 165 c3 91 7 171 10 178 l4 13 122 -3 123 -3 3 -46z',
+  },
+  spin: {
+    viewBox: '99.4 7.4 328.2 328.2',
+    outlineD:
+      'M2509 2869 l-97 -9 -117 -30 c-274 -71 -495 -198 -685 -396 l-86 -89 -61 -92 c-106 -159 -186 -357 -214 -528 l-13 -80 1 -140 0 -140 17 -89 c46 -239 139 -432 300 -624 l74 -87 78 -66 c183 -153 352 -238 591 -298 l123 -31 113 -9 113 -10 99 9 c117 11 176 21 305 55 l95 26 130 64 130 65 86 64 85 64 92 96 c176 184 278 374 342 637 l21 84 6 132 6 132 -12 93 c-41 312 -179 591 -395 801 -190 184 -393 296 -654 362 l-99 25 -119 10 c-65 5 -128 9 -139 8 -11 0 -63 -5 -116 -9z m348 -163 c111 -20 208 -50 316 -97 l90 -40 91 -62 91 -62 85 -85 85 -85 61 -90 c128 -188 191 -372 209 -610 l7 -90 -12 -103 -11 -104 -25 -86 -25 -87 -53 -110 -53 -110 -62 -82 -62 -82 -82 -76 c-188 -175 -400 -278 -662 -321 l-100 -16 -145 5 -145 5 -90 21 c-121 27 -182 49 -295 106 -125 63 -197 112 -299 204 l-85 76 -58 78 c-32 43 -78 115 -103 161 l-45 82 -34 105 -34 105 -11 78 c-6 43 -11 125 -11 184 l0 107 15 88 c22 122 50 207 106 318 l48 96 60 79 c74 97 182 205 281 279 l75 56 100 48 c112 55 233 95 345 115 l75 14 140 1 140 1 82 -14z M2700 2548 l-45 -23 -22 -45 -23 -44 0 -272 0 -271 23 -34 23 -34 44 -13 c25 -7 63 -20 85 -28 l40 -14 52 -46 53 -45 30 -9 31 -9 30 11 c32 11 351 239 430 307 l46 40 11 41 10 40 -10 38 -9 38 -37 47 c-20 25 -79 80 -130 120 l-92 74 -93 46 -92 46 -87 25 c-49 14 -118 28 -155 31 l-68 6 -45 -23z m200 -134 l64 -15 92 -43 c114 -54 171 -92 252 -170 l62 -59 0 -22 0 -22 -47 -37 c-64 -49 -194 -142 -270 -194 l-62 -42 -65 45 -65 46 -48 16 c-26 9 -54 21 -61 26 l-13 11 7 230 c3 127 8 234 11 239 7 12 73 8 143 -9z M1630 1788 l-45 -23 -25 -50 -25 -50 0 -180 1 -180 27 -90 c16 -49 46 -127 68 -172 l41 -83 34 -29 34 -30 35 -7 34 -6 30 10 c17 6 81 44 143 85 62 41 159 104 215 140 l102 66 15 30 c20 39 20 77 0 132 l-17 44 -6 108 -7 107 -31 31 -31 32 -239 68 -238 68 -35 1 -36 0 -44 -22z m187 -139 c146 -40 315 -89 324 -95 l9 -5 0 -62 0 -62 14 -50 c7 -27 16 -60 20 -72 l7 -22 -123 -83 c-68 -46 -154 -102 -191 -126 l-69 -43 -15 12 c-22 19 -68 116 -95 199 l-23 75 0 160 c0 88 3 168 7 178 l7 17 26 0 c13 0 60 -10 102 -21z M2565 1675 c-51 -20 -93 -59 -116 -110 l-19 -40 0 -51 0 -52 33 -48 32 -48 39 -19 38 -20 48 -5 48 -4 37 12 38 12 40 37 40 36 14 32 c7 18 13 51 13 73 l0 41 -15 37 c-20 47 -50 79 -98 104 l-38 19 -47 4 -47 5 -40 -15z M2981 1329 c-12 -5 -52 -36 -88 -69 l-65 -59 -46 -17 c-54 -20 -88 -47 -109 -87 l-14 -29 26 -146 c61 -348 69 -376 108 -420 l21 -22 47 -14 47 -14 34 7 c108 25 273 108 390 198 83 64 198 184 224 234 l16 32 -4 48 -5 48 -17 25 c-21 32 -61 58 -256 165 -257 140 -259 140 -309 120z m213 -221 c83 -44 169 -91 191 -102 l40 -21 3 -24 4 -24 -84 -84 -83 -84 -70 -48 c-67 -46 -167 -95 -249 -121 l-38 -12 -14 14 -15 14 -34 204 c-19 112 -35 210 -35 217 l0 12 68 36 69 36 33 34 c19 19 40 35 48 35 8 0 83 -37 166 -82z',
+    filledD:
+      'M2404 3065 c-158 -28 -346 -99 -474 -178 -239 -150 -416 -347 -535 -598 l-45 -97 -30 -113 -29 -114 -12 -105 -12 -105 6 -90 c17 -247 97 -480 235 -679 l56 -81 105 -106 106 -105 100 -66 c176 -117 339 -180 552 -214 l108 -17 150 6 150 6 75 16 c115 25 214 61 337 122 l112 56 106 79 106 80 76 86 c176 200 285 423 328 670 l16 87 0 136 0 135 -11 66 c-51 324 -231 634 -487 838 -155 124 -326 209 -533 263 l-115 30 -180 3 -180 3 -81 -14z m466 -274 c101 -23 191 -56 300 -111 118 -59 270 -186 296 -247 l14 -33 -14 -34 -14 -33 -43 -36 c-24 -20 -82 -68 -129 -107 -47 -39 -129 -107 -182 -150 l-97 -80 -31 0 -30 0 -61 45 -61 45 -57 16 c-82 22 -98 30 -116 58 l-16 25 3 298 3 298 15 22 c31 47 87 53 220 24z m-915 -851 l280 -70 18 -22 18 -22 -6 -71 -7 -72 17 -64 c10 -35 20 -76 22 -90 l5 -26 -24 -26 -23 -27 -234 -140 -233 -140 -37 0 -38 0 -20 23 c-12 12 -39 63 -62 113 l-40 90 -21 85 -20 84 -6 100 -6 100 11 94 c7 51 16 102 22 113 12 23 64 47 88 42 9 -3 142 -36 296 -74z m795 -40 c20 -10 51 -35 68 -54 l31 -36 7 -35 c3 -20 4 -60 2 -90 l-5 -54 -27 -36 c-15 -20 -46 -48 -68 -63 l-41 -27 -66 -3 -66 -3 -52 30 -52 31 -26 44 c-14 25 -29 61 -32 80 l-6 36 14 47 13 48 46 46 46 46 40 11 39 11 49 -5 49 -5 37 -19z m343 -416 c62 -32 205 -114 339 -196 l96 -59 11 -30 10 -30 -10 -26 c-12 -31 -78 -111 -146 -176 -123 -118 -263 -203 -421 -257 l-93 -31 -28 6 c-16 3 -38 16 -49 28 l-21 23 -36 214 c-19 118 -38 247 -42 286 l-6 70 12 21 11 21 37 12 c53 17 99 47 161 102 l52 48 35 0 36 0 52 -26z',
+  },
+  home: {
+    viewBox: '92.7 15.7 304.6 304.6',
+    outlineD:
+      'M2375 2755 l-40 -15 -340 -271 c-187 -148 -398 -316 -470 -373 -421 -333 -400 -314 -415 -381 l-8 -35 9 -41 c5 -22 19 -54 31 -70 l22 -30 51 -24 c27 -13 71 -27 98 -31 l47 -6 0 -450 0 -451 12 -38 11 -39 36 -41 35 -42 40 -18 41 -19 299 0 299 0 32 20 33 20 16 40 16 40 0 338 0 337 18 34 c9 19 30 44 45 55 l28 21 132 3 132 3 33 -21 33 -20 19 -43 20 -42 0 -343 0 -343 15 -29 c8 -15 27 -38 41 -49 l27 -21 295 0 295 0 38 11 c21 7 54 25 74 41 l36 30 21 41 22 42 1 464 2 464 74 19 74 18 35 28 c19 16 43 44 53 63 l18 34 -4 58 -3 57 -21 28 c-11 15 -56 54 -99 88 l-79 61 -5 255 -5 254 -18 27 c-9 15 -29 35 -44 44 l-27 18 -161 0 -161 0 -27 -18 c-16 -10 -37 -32 -47 -50 l-20 -32 0 -32 0 -33 -9 0 c-12 0 -107 73 -316 242 -86 69 -173 134 -193 144 l-37 18 -60 3 -60 2 -40 -14z m162 -168 c31 -22 81 -61 303 -242 129 -105 358 -287 560 -445 171 -134 252 -202 257 -215 2 -6 -2 -19 -10 -28 l-12 -18 -68 -9 c-81 -12 -117 -29 -143 -67 l-19 -28 -5 -483 -5 -484 -24 -19 -23 -19 -254 0 -253 0 -3 343 -3 342 -26 55 c-15 30 -41 70 -58 88 l-31 33 -57 27 -58 27 -145 0 -145 -1 -60 -27 c-33 -16 -74 -42 -92 -59 l-31 -30 -28 -61 -27 -61 -1 -335 -1 -336 -253 -3 -253 -2 -24 24 -25 25 0 462 0 463 -21 43 -21 44 -31 15 -31 16 -64 8 -65 8 -14 15 -15 15 7 18 6 19 87 67 c161 124 307 238 387 302 44 36 175 139 290 231 116 91 241 192 279 223 38 31 83 65 100 74 l31 18 30 -5 c16 -3 44 -15 62 -28z m911 -370 l3 -159 -10 4 c-6 1 -53 36 -106 76 l-95 73 0 78 c0 43 3 81 7 85 l7 7 96 -3 95 -3 3 -158z',
+    filledD:
+      'M2345 2901 c-22 -10 -81 -51 -132 -92 -50 -41 -277 -224 -505 -408 -227 -184 -452 -366 -500 -404 l-86 -69 -17 -39 -18 -38 6 -36 c3 -19 16 -49 28 -66 l22 -32 51 -23 c28 -12 72 -26 98 -29 l47 -7 3 -492 3 -493 27 -35 28 -36 42 -17 43 -16 307 3 307 3 18 18 18 18 5 362 5 363 25 49 26 49 54 29 55 28 136 -3 136 -3 42 -28 43 -28 24 -52 24 -52 0 -347 c0 -190 3 -354 6 -363 4 -8 19 -22 35 -30 l28 -15 303 0 304 0 44 23 45 22 23 45 22 44 0 478 0 478 22 0 c12 0 48 8 81 17 l60 16 37 36 38 36 8 40 7 39 -14 40 -14 40 -107 86 -107 85 -1 263 0 264 -29 29 -29 29 -140 0 -140 0 -31 -26 -31 -26 0 -37 c0 -58 -12 -161 -19 -161 -3 0 -49 37 -101 81 -52 45 -129 107 -170 140 -41 32 -122 97 -180 145 -58 48 -123 95 -145 105 l-40 19 -45 0 -45 0 -40 -19z',
+  },
+  profile: {
+    viewBox: '80.3 26.8 283.4 283.4',
+    outlineD:
+      'M2130 2754 c-19 -3 -71 -16 -115 -29 l-80 -24 -63 -38 c-35 -21 -90 -62 -123 -91 l-58 -53 -50 -74 c-58 -88 -88 -161 -108 -270 l-15 -80 6 -85 c7 -111 27 -186 77 -289 l41 -83 69 -73 c38 -40 87 -85 109 -100 l41 -28 -8 -7 c-4 -4 -39 -15 -78 -24 -104 -26 -205 -68 -292 -122 l-78 -48 -80 -81 -80 -81 -42 -74 -42 -75 -31 -94 -32 -93 -5 -108 -6 -108 23 -46 22 -46 42 -25 43 -25 999 0 999 0 41 19 41 19 20 28 c12 16 26 49 33 74 l12 44 -7 66 c-3 36 -15 103 -26 150 l-19 85 -46 91 -45 92 -64 75 -64 75 -64 46 c-35 25 -97 63 -139 84 -72 37 -111 51 -242 87 l-59 16 9 8 c5 4 42 33 82 65 l72 58 45 61 c25 33 61 93 81 133 l35 73 14 68 15 68 0 101 0 101 -19 75 c-24 92 -63 172 -125 255 l-47 62 -68 50 c-78 58 -170 103 -256 126 l-60 16 -100 3 c-55 3 -116 2 -135 0z m265 -169 c32 -9 86 -30 119 -48 l60 -32 58 -56 58 -57 40 -83 39 -84 11 -65 c13 -88 12 -142 -5 -223 l-14 -68 -33 -67 -33 -67 -75 -76 -75 -76 -62 -32 c-35 -17 -89 -38 -120 -46 l-57 -15 -76 0 -76 0 -59 15 c-32 9 -87 29 -121 45 l-62 30 -71 71 -71 71 -36 76 -36 77 -15 80 -14 80 6 60 c8 82 31 159 67 228 l31 57 72 69 73 69 65 31 c87 41 123 49 247 50 l106 1 59 -15z m156 -1305 c130 -25 202 -49 288 -96 130 -71 229 -178 297 -318 l33 -69 16 -71 16 -72 -3 -59 -3 -60 -964 -3 -964 -2 -15 12 -15 13 6 70 6 71 22 69 c29 95 79 188 140 260 l51 60 62 43 c116 82 236 129 408 157 134 22 165 23 348 20 l165 -4 106 -21z',
+    filledD:
+      'M2123 2901 c-28 -5 -83 -18 -122 -30 l-70 -21 -89 -60 -89 -59 -47 -55 c-65 -77 -110 -154 -141 -244 l-27 -77 -5 -91 -6 -90 17 -84 c41 -199 138 -341 309 -454 l68 -44 -28 -6 c-15 -3 -57 -10 -91 -16 -132 -23 -310 -96 -402 -165 -68 -50 -144 -131 -190 -201 l-47 -72 -27 -73 c-15 -40 -34 -104 -42 -142 l-14 -68 0 -75 0 -75 15 -28 c20 -39 69 -78 113 -91 l37 -10 970 0 970 0 37 10 c48 14 97 55 114 97 l14 32 0 71 0 71 -16 76 c-20 100 -48 173 -97 258 l-41 70 -70 68 c-85 82 -154 129 -258 174 -80 35 -230 76 -321 88 l-49 7 63 36 64 37 75 75 75 75 37 70 c20 39 46 104 58 145 l23 75 5 86 5 85 -17 85 -17 84 -39 80 -39 80 -50 60 c-27 33 -71 77 -98 97 -63 48 -177 104 -250 124 -71 18 -201 26 -270 15z',
+  },
+};
 
 export function NavIcon({ name, filled, size = 24, color = '#ffffff' }: Props) {
+  const icon = ICONS[name];
+  const d = filled ? icon.filledD : icon.outlineD;
+
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      {filled ? renderFilled(name, color) : renderOutline(name, color)}
+    <Svg width={size} height={size} viewBox={icon.viewBox} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <G transform={TRACE_TRANSFORM} fill={color} stroke="none">
+        <Path d={d} />
+      </G>
     </Svg>
   );
-}
-
-function renderOutline(name: NavIconName, color: string) {
-  const common = { stroke: color, strokeWidth: STROKE, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
-
-  switch (name) {
-    case 'leaderboard':
-      // A trophy cup: bowl, two side handles, stem and base — hollow throughout.
-      return (
-        <>
-          <Path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" {...common} />
-          <Path d="M8 6H5a2 2 0 0 0 2 4h1" {...common} />
-          <Path d="M16 6h3a2 2 0 0 1-2 4h-1" {...common} />
-          <Path d="M12 13v4" {...common} />
-          <Path d="M8.5 20h7" {...common} />
-          <Rect x={10} y={16.6} width={4} height={3.2} rx={0.7} {...common} />
-        </>
-      );
-    case 'spin':
-      return (
-        <>
-          <Circle cx={12} cy={12} r={9} {...common} strokeWidth={1.7} />
-          {SLOT_ANGLES.map((angle) => (
-            <Rect
-              key={angle}
-              x={12 - SLOT.halfWidth}
-              y={12 - SLOT.outerRadius}
-              width={SLOT.halfWidth * 2}
-              height={SLOT.outerRadius - SLOT.innerRadius}
-              rx={SLOT.halfWidth * 0.8}
-              {...common}
-              strokeWidth={1.5}
-              transform={`rotate(${angle} 12 12)`}
-            />
-          ))}
-        </>
-      );
-    case 'home':
-      return (
-        <>
-          <Path d="M4 11l8-7 8 7" {...common} />
-          <Path d="M6 10v10h12V10" {...common} />
-        </>
-      );
-    case 'profile':
-      return (
-        <>
-          <Circle cx={12} cy={8} r={4} {...common} />
-          <Path d="M4 20c0-4 3.5-7 8-7s8 3 8 7" {...common} />
-        </>
-      );
-  }
-}
-
-/** The solid, single-colour silhouette for the selected state — no accent, no category tint. */
-function renderFilled(name: NavIconName, color: string) {
-  switch (name) {
-    case 'leaderboard':
-      // Same cup, now solid: the two handles stay thin strokes (the only way to keep them
-      // readable as "handles" rather than two blobs), everything else is a filled shape.
-      return (
-        <>
-          <Path d="M7.2 5.2H4.6a1 1 0 0 0-1 1.1 4.6 4.6 0 0 0 4.3 4.1" fill="none" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
-          <Path d="M16.8 5.2h2.6a1 1 0 0 1 1 1.1 4.6 4.6 0 0 1-4.3 4.1" fill="none" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
-          <Path d="M6.5 2.8h11v5.4a5.5 5.5 0 0 1-11 0Z" fill={color} />
-          <Rect x={10.8} y={13.1} width={2.4} height={3.4} fill={color} />
-          <Rect x={7} y={16.5} width={10} height={4.2} rx={1.2} fill={color} />
-        </>
-      );
-    case 'spin':
-      // One solid disc with the three slots cut out as true negative space (evenodd holes),
-      // so the ring reads exactly like the outline's slots, just filled.
-      return <Path d={`M21,12 A9,9 0 1 0 3,12 A9,9 0 1 0 21,12 Z ${SPIN_HOLES}`} fill={color} fillRule="evenodd" />;
-    case 'home':
-      return <Path d="M12 2.8 2.7 10.5a1 1 0 0 0 .64 1.77H5V20a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 20v-7.73h1.66a1 1 0 0 0 .64-1.77Z" fill={color} />;
-    case 'profile':
-      return (
-        <>
-          <Circle cx={12} cy={7.8} r={4.3} fill={color} />
-          <Path d="M3.5 20.1c0-4.4 3.8-7.3 8.5-7.3s8.5 2.9 8.5 7.3a.9.9 0 0 1-.9.9H4.4a.9.9 0 0 1-.9-.9Z" fill={color} />
-        </>
-      );
-  }
 }

@@ -2,10 +2,11 @@ import type { BottomTabBarProps } from 'expo-router/tabs';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { useSoundOptional } from '../../sound/SoundContext';
 import { DURATION, EASE, SPRING, useReducedMotion } from '../../theme/motion';
-import { makeStyles, useTheme } from '../../theme/ThemeContext';
+import { makeStyles } from '../../theme/ThemeContext';
 import { MAX_CONTENT_WIDTH, RADIUS, SIZE, SPACE } from '../../theme/tokens';
 import { PressableScale } from '../interaction/PressableScale';
 import { NavIcon, type NavIconName } from './NavIcons';
@@ -20,13 +21,24 @@ const ITEMS: Record<string, { label: string; icon: NavIconName }> = {
   profile: { label: 'Profile', icon: 'profile' },
 };
 
-/** The pill that sits behind the selected icon — fixed size, not proportional to the item. */
+/** The dark-grey pill behind the selected icon — fixed size, not proportional to the item. */
 const PILL_WIDTH = 52;
 const PILL_HEIGHT = 32;
-/** Smooth, spring-based, never bouncy: within the requested 250–350ms window. */
+const PILL_TOP = (SIZE.navBar - PILL_HEIGHT) / 2 - 7;
+/** The purple indicator line above the selected icon — a share of the item's own width. */
+const LINE_WIDTH_SHARE = 0.38;
+const LINE_HEIGHT = 3;
+const LINE_TOP = 7;
+/** The soft downward light: wider than the line (a little horizontal spread), fading out
+ *  by the time it reaches the icon rather than washing over the whole pill. */
+const LIGHT_WIDTH_SHARE = 0.68;
+const LIGHT_TOP = LINE_TOP;
+const LIGHT_HEIGHT = 20;
+const PURPLE = '#A855F7';
+/** Smooth, spring-based, never bouncy. */
 const ICON_MORPH_MS = 300;
 const POP_OUT_MS = 130;
-const POP_PEAK_SCALE = 1.15;
+const POP_PEAK_SCALE = 1.12;
 
 /** Space a scrolling screen must leave at its bottom so nothing hides behind the bar. */
 export function useBottomNavSpace(): number {
@@ -35,13 +47,12 @@ export function useBottomNavSpace(): number {
 }
 
 /**
- * The bottom navigation bar: Leaderboard · Spin · Home · Profile — a WhatsApp-style flat,
- * full-width bar. Unselected icons are hollow white outlines on transparent backgrounds;
- * the selected icon morphs into a solid white silhouette inside a subtle dark-grey pill
- * that slides to follow it. No gradients, glow or glass — a single flat fill, per the nav
- * redesign spec. Re-tapping the current tab never pushes a duplicate screen (the screen
- * scrolls to top) and nothing here moves on 60fps-cheap properties other than opacity,
- * scale and one horizontal translate (all native-driven).
+ * The bottom navigation bar: Leaderboard · Spin · Home · Profile — a flat, full-width bar on
+ * the app's dark canvas. Unselected icons are hollow white outlines; the selected icon morphs
+ * into a solid white silhouette inside a subtle dark-grey pill, marked above by a thin purple
+ * indicator line with a soft purple light falling down toward it. Both the pill and the
+ * indicator travel together to the newly selected item on one spring. Re-tapping the current
+ * tab never pushes a duplicate screen (the screen scrolls to top).
  */
 export function BottomNav({ state, descriptors, emitter, navigateToTab }: BottomTabBarProps) {
   const styles = useStyles();
@@ -65,7 +76,7 @@ export function BottomNav({ state, descriptors, emitter, navigateToTab }: Bottom
     >
       <View style={[styles.bar, { paddingBottom: insets.bottom }]} accessibilityRole="tablist">
         <View style={styles.row}>
-          <SelectionPill index={selected} count={routes.length} reduced={reduced} />
+          <SelectionIndicator index={selected} count={routes.length} reduced={reduced} />
           {routes.map((route, index) => {
             const item = ITEMS[route.name];
             const focused = index === selected;
@@ -98,11 +109,13 @@ export function BottomNav({ state, descriptors, emitter, navigateToTab }: Bottom
 }
 
 /**
- * The travelling pill behind the selected item. Its position animates with a spring (native
- * driver, translateX only) so it settles without overshoot — no glow, no haze, just a flat
- * dark-grey rounded rect.
+ * The travelling selection mark behind/above the selected item: the dark-grey pill, the
+ * purple line above the icon, and the soft purple light falling from that line toward the
+ * icon. All three share one spring-animated horizontal position (native driver), so they
+ * arrive together — no glow around the icon itself, no circle, just light falling from the
+ * line down toward it.
  */
-function SelectionPill({ index, count, reduced }: { index: number; count: number; reduced: boolean }) {
+function SelectionIndicator({ index, count, reduced }: { index: number; count: number; reduced: boolean }) {
   const styles = useStyles();
   const [barWidth, setBarWidth] = useState(0);
   const position = useRef(new Animated.Value(index)).current;
@@ -122,21 +135,45 @@ function SelectionPill({ index, count, reduced }: { index: number; count: number
     }
 
     Animated.spring(position, { ...SPRING, toValue: index }).start();
-    // A small pop while the pill settles into place — never a visible bounce past 1.
+    // A small pop while everything settles into place — never a visible bounce past 1.
     scale.setValue(0.9);
     Animated.spring(scale, { ...SPRING, toValue: 1 }).start();
   }, [index, reduced, position, scale]);
 
   const onLayout = (event: LayoutChangeEvent) => setBarWidth(event.nativeEvent.layout.width);
   const itemWidth = barWidth > 0 ? barWidth / Math.max(count, 1) : 0;
-  const translateX = position.interpolate({
-    inputRange: [0, Math.max(count - 1, 1)],
-    outputRange: [(itemWidth - PILL_WIDTH) / 2, itemWidth * Math.max(count - 1, 1) + (itemWidth - PILL_WIDTH) / 2],
-  });
+  const lineWidth = itemWidth * LINE_WIDTH_SHARE;
+  const lightWidth = itemWidth * LIGHT_WIDTH_SHARE;
+
+  // Each shape has its own width, so each gets its own centred travel path over the same item slots.
+  const centerX = (width: number) =>
+    position.interpolate({
+      inputRange: [0, Math.max(count - 1, 1)],
+      outputRange: [(itemWidth - width) / 2, itemWidth * Math.max(count - 1, 1) + (itemWidth - width) / 2],
+    });
+
+  if (itemWidth <= 0) {
+    return <View style={styles.indicatorLayer} onLayout={onLayout} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />;
+  }
 
   return (
-    <View style={styles.pillLayer} onLayout={onLayout} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      {itemWidth > 0 ? <Animated.View style={[styles.pill, { transform: [{ translateX }, { scale }] }]} /> : null}
+    <View style={styles.indicatorLayer} onLayout={onLayout} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Animated.View style={[styles.pill, { width: PILL_WIDTH, transform: [{ translateX: centerX(PILL_WIDTH) }, { scale }] }]} />
+      <Animated.View style={[styles.light, { width: lightWidth, transform: [{ translateX: centerX(lightWidth) }] }]}>
+        <Svg width="100%" height="100%" preserveAspectRatio="none">
+          <Defs>
+            {/* Anchored at the top edge only (cy 0%), so the glow radiates down and slightly
+                out — never a ring or circle around the icon. */}
+            <RadialGradient id="mm-nav-light" cx="50%" cy="0%" r="75%" fx="50%" fy="0%">
+              <Stop offset="0" stopColor={PURPLE} stopOpacity={0.3} />
+              <Stop offset="0.5" stopColor={PURPLE} stopOpacity={0.12} />
+              <Stop offset="1" stopColor={PURPLE} stopOpacity={0} />
+            </RadialGradient>
+          </Defs>
+          <Rect x="0" y="0" width="100%" height="100%" fill="url(#mm-nav-light)" />
+        </Svg>
+      </Animated.View>
+      <Animated.View style={[styles.line, { width: lineWidth, borderRadius: LINE_HEIGHT / 2, transform: [{ translateX: centerX(lineWidth) }] }]} />
     </View>
   );
 }
@@ -165,7 +202,7 @@ function NavItem({
 
   useEffect(() => {
     Animated.timing(active, { toValue: focused ? 1 : 0, duration: ICON_MORPH_MS, easing: EASE.inOut, useNativeDriver: true }).start();
-    // Scale from 1.0 to 1.15 and settle back to 1.0 — only when this tab just became selected.
+    // Scale from 1.0 to 1.12 and settle back to 1.0 — only when this tab just became selected.
     if (focused && !wasFocused.current && !reduced) {
       pop.setValue(1);
       Animated.sequence([
@@ -190,7 +227,8 @@ function NavItem({
     >
       <Animated.View style={[styles.iconSlot, { transform: [{ scale: pop }] }]}>
         {/* Outline underneath, filled on top — opacity crossfades between them so the glyph
-            morphs instead of popping, and the previous tab's icon reverses the same way. */}
+            morphs instead of popping, and the previous tab's icon reverses the same way.
+            Both layers sit above the purple light, which never reduces their visibility. */}
         <View style={styles.iconLayer}>
           <NavIcon name={icon} filled={false} size={24} />
         </View>
@@ -208,21 +246,24 @@ function NavItem({
   );
 }
 
-const useStyles = makeStyles(({ colors: c }) => ({
+const useStyles = makeStyles(() => ({
   wrap: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center' },
   bar: {
     width: '100%',
     maxWidth: MAX_CONTENT_WIDTH,
-    backgroundColor: c.sidebar,
+    // The app's fixed dark canvas colour — this bar keeps it regardless of the selected
+    // colour theme, per the nav redesign spec's exact reference.
+    backgroundColor: '#17111F',
     borderTopLeftRadius: RADIUS.lg,
     borderTopRightRadius: RADIUS.lg,
-    // Clips the travelling pill to the bar's shape; there is nothing else here that needs
-    // to spill past it (no glow, no gradient).
+    // Clips the travelling pill/light/line to the bar's shape.
     overflow: 'hidden',
   },
   row: { height: SIZE.navBar, flexDirection: 'row', alignItems: 'stretch' },
-  pillLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  pill: { position: 'absolute', top: (SIZE.navBar - PILL_HEIGHT) / 2 - 7, left: 0, width: PILL_WIDTH, height: PILL_HEIGHT, borderRadius: RADIUS.pill, backgroundColor: 'rgba(255,255,255,0.14)' },
+  indicatorLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  pill: { position: 'absolute', top: PILL_TOP, left: 0, height: PILL_HEIGHT, borderRadius: RADIUS.pill, backgroundColor: 'rgba(255,255,255,0.14)' },
+  light: { position: 'absolute', top: LIGHT_TOP, left: 0, height: LIGHT_HEIGHT },
+  line: { position: 'absolute', top: LINE_TOP, left: 0, height: LINE_HEIGHT, backgroundColor: PURPLE },
   itemLayout: { flex: 1 },
   item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, minHeight: SIZE.touch },
   iconSlot: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
