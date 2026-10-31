@@ -30,6 +30,7 @@ const LOOK = {
   provider_errors: ['/admin/smm', 'SMM API'], provider_balance: ['/admin/smm', 'SMM API'], stuck_orders: ['/admin/recovery', 'Order recovery'], provider_cost: ['/admin/services', 'Services'],
   missing_costs: ['/admin/finance?tab=reconciliation', 'Reconciliation'], sales_drop: ['/admin/dashboard', 'Dashboard'], conversion: ['/admin/ads', 'Ads Intelligence'],
   cron_jobs: ['/admin/system', 'System'], app_errors: ['/admin/system', 'System'], finance: ['/admin/finance?tab=reconciliation', 'Reconciliation'],
+  sales_target: ['/admin/advertising', 'Advertising'], ad_budget: ['/admin/advertising', 'Advertising'],
 };
 
 const state = { tab: 'alerts', status: 'active', sev: '', type: '', page: 1 };

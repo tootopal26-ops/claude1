@@ -43,8 +43,10 @@ Run by the `watchdog` job (`php bin/cron.php watchdog`, every 15 minutes). Each 
 | **Application errors** | rule | `error` lines in the application log (last 60 min) + job runs that failed on the database | ≥ 5 | warning; critical at 4× |
 | **Financial discrepancies** | rule | the reconciliation: paid orders without a verified payment, verified payments whose order is not paid, a paid amount that differs from the order, refund status vs refunded amount | any | critical (money records disagree); warning for a refund mismatch only |
 | **Provider balance** | provider | OFF by default. The default SMM provider's `balance`, asked at most once an hour, never in a dry run | below the minimum you set (0 = only record it) | warning; critical at ≤ 0 or under half the minimum |
+| **Sales target pacing** | rule | the current sales target's own projected-finish pacing (`App\Services\SalesTarget::progress()` — never a separate computation); "not enough data" with no target set, or one that has not started yet | the target's `pace_label` is `behind` (projected finish under 95% of target — the same cutoff Admin → Advertising shows) | warning; critical once the projected finish falls below 75% of target |
+| **Advertising budget** | rule | today's and this calendar month's actual ad spend (`App\Services\AdBudget::spendSoFar()` — never a separate computation) against the configured cap; "not enough data" with no cap set | today's spend is over the daily budget, or this month's spend is over the monthly budget | warning; critical once spend reaches 150% of the cap. Informational — a budget here never blocks or changes actual spend |
 
-Every threshold above can be changed in **Admin → Business alerts → Thresholds** (30 numeric settings, each with its unit and bounds, plus a switch per
+Every threshold above can be changed in **Admin → Business alerts → Thresholds** (32 numeric settings, each with its unit and bounds, plus a switch per
 check). A value outside its bounds is refused in place and nothing is saved; every change is written to the audit log with the old and the new value.
 
 ### What is deliberately not checked
@@ -180,7 +182,7 @@ Writes accept an `Idempotency-Key` header: a double click is a replay (`X-Idempo
 
 All in `admin_settings` (JSON values), nothing new in the schema:
 
-* `watchdog.<name>` — the 30 thresholds; `watchdog.enabled.<check>` — the switches (`provider_balance` defaults to off);
+* `watchdog.<name>` — the 32 thresholds; `watchdog.enabled.<check>` — the switches (`provider_balance` defaults to off);
   `watchdog.state` — what each check saw last (verdict, one-line summary, figures, quiet-run counters).
 * `alerts.email_enabled`, `alerts.email_to`, `alerts.email_from`, `alerts.email_min_severity`, `alerts.email_cooldown_min`.
 
@@ -189,4 +191,5 @@ All in `admin_settings` (JSON values), nothing new in the schema:
 `app/Services/Watchdog.php`, `app/Services/DailyReport.php`, `app/Services/Alerts.php` (+ e-mail settings and the test message),
 `app/Services/Jobs.php` / `JobHandlers.php` (the `watchdog` and `report` jobs, the daily schedule), `app/Services/SmmProviders.php` (`checkBalance`),
 `app/Controllers/Admin/AlertsController.php`, `ReportsController.php`, `app/Views/admin/alerts.php`, `reports.php`,
-`resources/js/admin/alerts.js`, `reports.js`, `system.js` (job table), `dashboard.js` (alerts card).
+`resources/js/admin/alerts.js`, `reports.js`, `system.js` (job table), `dashboard.js` (alerts card + the command-center cards,
+[DASHBOARD-COMMAND-CENTER.md](DASHBOARD-COMMAND-CENTER.md)).

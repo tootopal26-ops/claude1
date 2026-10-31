@@ -89,6 +89,30 @@ final class Dashboard
             'smm' => self::smmSpend($from, $to, $platformId, $mode),
             'payments' => self::paymentStats($from, $to, $platformId, $mode, $totals),
             'recent' => self::recent($platformId, $mode, $payment),
+            'command_center' => self::commandCenter(),
+        ];
+    }
+
+    /**
+     * The command-center summary: a sales target's pacing, today's advertising spend against its budget, and adaptive pricing's own
+     * risk status — each read from its own service (never a separate computation), so the dashboard is the one screen that shows the
+     * whole business's state. Stripped by role in withoutAds() / withoutPricing(), same as withoutFinance() strips profit and cost figures.
+     *
+     * @return array{sales_target:array<string,mixed>,ad_budget:array<string,mixed>,pricing:array<string,mixed>}
+     */
+    private static function commandCenter(): array
+    {
+        $pg = Pricing::profitGuard();
+        $live = $pg['live_experiments'];
+        return [
+            'sales_target' => SalesTarget::progress(),
+            'ad_budget' => AdBudget::spendSoFar(),
+            'pricing' => [
+                'global_pause' => $pg['global_pause'], 'live_count' => count($live),
+                'at_risk_count' => count(array_filter($live, static fn(array $e): bool => $e['at_risk'])),
+                'breached_count' => count(array_filter($live, static fn(array $e): bool => $e['breached'])),
+                'recent_rollback_count' => count($pg['recent_rollbacks']),
+            ],
         ];
     }
 
@@ -137,6 +161,20 @@ final class Dashboard
         }
         unset($p['auto_vs_manual']['auto']['profit'], $p['auto_vs_manual']['manual']['profit']);
         unset($p);
+        return $d;
+    }
+
+    /** For a role without ads.view: the sales target and ad budget command-center cards are removed, not merely hidden. */
+    public static function withoutAds(array $d): array
+    {
+        unset($d['command_center']['sales_target'], $d['command_center']['ad_budget']);
+        return $d;
+    }
+
+    /** For a role without pricing.view: the adaptive-pricing command-center card is removed, not merely hidden. */
+    public static function withoutPricing(array $d): array
+    {
+        unset($d['command_center']['pricing']);
         return $d;
     }
 

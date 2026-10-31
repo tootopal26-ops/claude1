@@ -31,6 +31,24 @@ final class AdBudget
     public const MAX_OVERRIDE_DAYS = 366;
     public const RECENT_WINDOW_DAYS = 30;
 
+    /**
+     * Today's and this calendar month's actual ad spend so far (`ads_spend_paise`, the same actual-beats-estimate figure the dashboard and
+     * Finance use — never a separate computation), against today's effective budget. Read by the dashboard and the `ad_budget` watchdog
+     * check; never written here.
+     *
+     * @return array{daily_budget_paise:?int,monthly_budget_paise:?int,source:string,today_paise:int,month_paise:int,month_start:string}
+     */
+    public static function spendSoFar(): array
+    {
+        $today = Tz::today();
+        $monthStart = substr($today, 0, 8) . '01';
+        $budget = self::current();
+        $days = Analytics::rollup($monthStart, $today);
+        $monthPaise = Analytics::sum($days)['ads_spend_paise'];
+        $todayPaise = $days[$today]['ads_spend_paise'] ?? 0;
+        return $budget + ['today_paise' => $todayPaise, 'month_paise' => $monthPaise, 'month_start' => $monthStart];
+    }
+
     /** @return array<string,mixed> {daily_budget_paise,monthly_budget_paise,source,note,period_start,period_end} — the budget in force today */
     public static function current(): array
     {

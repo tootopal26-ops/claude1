@@ -54,7 +54,7 @@ await t.step('custom range: pick dates, Apply, heading shows the dates; invalid/
   const [resp] = await Promise.all([page.waitForResponse((r) => r.url().includes('range=custom')), page.click('#apply-custom')]);
   t.eq(resp.status(), 200);
   await page.waitForFunction(() => document.querySelector('#dash-root').getAttribute('aria-busy') === 'false');
-  t.has(await t.text(page.locator('.sec-title').nth(2)), from.toLocaleString('en-IN', { month: 'short', timeZone: 'UTC' }).toUpperCase().slice(0, 3));
+  t.has(await t.text(page.locator('.sec-title').nth(3)), from.toLocaleString('en-IN', { month: 'short', timeZone: 'UTC' }).toUpperCase().slice(0, 3));
   // from > to is swapped by the server, not an error
   await page.fill('#f-from', today); await page.fill('#f-to', from.toISOString().slice(0, 10));
   const [r2] = await Promise.all([page.waitForResponse((r) => r.url().includes('range=custom')), page.click('#apply-custom')]);

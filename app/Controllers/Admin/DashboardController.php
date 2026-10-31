@@ -24,9 +24,16 @@ final class DashboardController extends BaseController
             $filters['range'] = '7d';
         }
         $d = Dashboard::build($filters);
+        $role = (string) $this->admin($req)['role'];
         // profit, costs and advertising figures are for roles with finance.view; for the others they are removed from the data, not just hidden
-        if (!Permissions::can((string) $this->admin($req)['role'], 'finance.view')) {
+        if (!Permissions::can($role, 'finance.view')) {
             $d = Dashboard::withoutFinance($d);
+        }
+        if (!Permissions::can($role, 'ads.view')) {
+            $d = Dashboard::withoutAds($d);
+        }
+        if (!Permissions::can($role, 'pricing.view')) {
+            $d = Dashboard::withoutPricing($d);
         }
         return $this->ok(['dashboard' => $d]);
     }

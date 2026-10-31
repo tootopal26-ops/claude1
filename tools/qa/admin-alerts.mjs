@@ -205,9 +205,9 @@ await t.step('Run checks now updates the open alerts (one more occurrence each, 
 });
 
 // ───────────────────────────── checks ─────────────────────────────
-await t.step('Checks tab: twelve checks, each with its type and its last result straight from the stored state — "not enough data" is never shown as OK', async () => {
+await t.step('Checks tab: fourteen checks, each with its type and its last result straight from the stored state — "not enough data" is never shown as OK', async () => {
   await tab('checks');
-  t.eq(await page.locator('#al-root tbody tr').count(), 12);
+  t.eq(await page.locator('#al-root tbody tr').count(), 14);
   const st = state();
   const LABEL = { ok: 'OK', alert: 'Alert', insufficient: 'Not enough data', unavailable: 'Unavailable', disabled: 'Switched off' };
   for (const [key, s] of Object.entries(st)) {
@@ -227,8 +227,8 @@ await t.step('Checks tab: twelve checks, each with its type and its last result 
 // ───────────────────────────── thresholds ─────────────────────────────
 await t.step('Thresholds: every setting loads with its unit and bounds; an out-of-range value is refused in place and nothing is saved', async () => {
   await tab('settings');
-  t.eq(await page.locator('#al-settings input[type="number"]').count(), 30, 'one number field per threshold');
-  t.eq(await page.locator('#al-settings input[type="checkbox"]').count(), 12, 'one switch per check');
+  t.eq(await page.locator('#al-settings input[type="number"]').count(), 32, 'one number field per threshold');
+  t.eq(await page.locator('#al-settings input[type="checkbox"]').count(), 14, 'one switch per check');
   t.eq(await page.locator('#al-settings input[name="pay_fail_pct"]').inputValue(), '40');
   t.has(await t.text(page.locator('#al-settings .field', { has: page.locator('[name="pay_fail_pct"]') })), '% of finished payments');
   t.eq(await page.locator('#al-settings input[name="enabled.provider_balance"]').isChecked(), false, 'the provider-balance check starts off');
@@ -357,7 +357,7 @@ for (const role of ['analyst', 'support']) {
       t.ok(await p.locator('#al-root tbody tr').count() >= 4, 'the alerts are readable');
       t.eq([await p.locator('[data-ack]').count(), await p.locator('[data-resolve]').count(), await p.locator('#al-run').isVisible(), await p.locator('#al-dry').isVisible()], [0, 0, false, false]);
       await tab('checks', p);
-      t.eq(await p.locator('#al-root tbody tr').count(), 12);
+      t.eq(await p.locator('#al-root tbody tr').count(), 14);
       await tab('settings', p);
       t.eq([await p.locator('#al-settings input:not([disabled])').count(), await p.locator('#al-save').count()], [0, 0], 'a read-only form without a Save button');
       t.has(await t.text(p.locator('#al-settings')), 'Only an owner or manager can change them');

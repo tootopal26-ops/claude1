@@ -52,6 +52,8 @@ final class Watchdog
         'app_errors'       => ['Application errors', 'rule', 'Errors the application wrote to its own log, and scheduled-job runs that failed on the database. Details stay in the server log; nothing technical is shown here.'],
         'finance'          => ['Financial discrepancies', 'rule', 'Money records that disagree: revenue without a verified payment, a verified payment whose order is not paid, a paid amount that differs from the order, refunds that do not add up.'],
         'provider_balance' => ['Provider balance', 'provider', 'OFF by default. Asks the default SMM provider for its balance with the documented “balance” call (at most once an hour; never in a dry run) and alerts below a minimum you set.'],
+        'sales_target'     => ['Sales target pacing', 'rule', 'The current sales target\'s projected finish (App\\Services\\SalesTarget), while it is running or just ended. Nothing to check with no target set.'],
+        'ad_budget'        => ['Advertising budget', 'rule', 'Today\'s and this month\'s actual ad spend against the configured daily/monthly budget (App\\Services\\AdBudget). Nothing to check with no cap set.'],
     ];
 
     /** Checks that start switched off. */
@@ -92,6 +94,8 @@ final class Watchdog
         'app_error_window_min' => ['app_errors', 'Look back', 'minutes', 60, 15, 1440],
         'app_errors'           => ['app_errors', 'Alert at this many errors', 'errors', 5, 1, 10000],
         'balance_min'          => ['provider_balance', 'Alert when the balance is below', 'in the provider’s own currency (0 = just record it)', 0, 0, 10000000],
+        'target_critical_pct'  => ['sales_target', 'Escalate to critical when the projected finish falls below', '% of the target', 75, 10, 94],
+        'budget_critical_pct'  => ['ad_budget', 'Escalate to critical once spend reaches this much of the cap', '% of the budget', 150, 105, 1000],
         'clean_runs'           => ['*', 'Resolve an alert automatically after', 'clean runs in a row', 2, 1, 10],
     ];
 
@@ -380,6 +384,8 @@ final class Watchdog
                 'app_errors'       => self::appErrors($now, $t),
                 'finance'          => self::finance($now, $t),
                 'provider_balance' => self::providerBalance($now, $t, $live),
+                'sales_target'     => self::salesTargetPacing($now, $t),
+                'ad_budget'        => self::adBudget($now, $t),
             };
         } catch (\Throwable $e) {
             Log::exception($e, 'Watchdog check failed', ['check' => $check]);
@@ -952,6 +958,76 @@ final class Watchdog
             'suffix' => '', 'entity_type' => 'provider', 'entity_id' => (string) $p['id'], 'severity' => ($micros <= 0 || $micros * 2 < $min) ? 'critical' : 'warning', 'title' => 'SMM provider balance is low',
             'text' => "The provider reports a balance of {$text}, below your minimum of {$t['balance_min']} {$currency}. Orders can be rejected when the balance runs out. Top up at the provider; this is the balance it reported "
                 . 'at ' . Clock::iso($p['last_tested_at']) . '.',
+            'details' => $values,
+        ]], $values);
+    }
+
+    // ── 13. sales target pacing ──
+
+    /** The current sales target's own projected-finish pacing (App\Services\SalesTarget — never a separate computation), while it is running or just ended. */
+    private static function salesTargetPacing(int $now, array $t): array
+    {
+        $p = SalesTarget::progress();
+        if (!$p['has_target']) {
+            return self::noVerdict('insufficient', 'No sales target is set.');
+        }
+        $period = $p['target']['period_start'] . ' to ' . $p['target']['period_end'];
+        $amount = Money::inr($p['target']['target_paise'], true);
+        if ($p['status'] === 'not_started') {
+            return self::noVerdict('insufficient', "The sales target of {$amount} for {$period} has not started yet.", ['status' => $p['status']]);
+        }
+        $pct = $p['status'] === 'ended' ? $p['pct_of_target_tenths'] : $p['projected_pct_tenths'];
+        $label = $p['status'] === 'ended' ? 'result' : 'projected finish';
+        $values = ['status' => $p['status'], 'target_paise' => $p['target']['target_paise'], 'actual_paise' => $p['actual_paise'], 'pct_of_target_tenths' => $pct, 'pace_label' => $p['pace_label']];
+        if ($p['pace_label'] !== 'behind') {
+            return self::healthy("The sales target of {$amount} for {$period} is {$p['pace_label']} ({$label} " . Money::tenthsToString($pct) . '% of target).', $values);
+        }
+        $summary = ($p['status'] === 'ended' ? 'The sales target' : 'The current sales target') . " of {$amount} for {$period} is behind pace ({$label} " . Money::tenthsToString($pct) . '% of target, actual so far ' . Money::inr($p['actual_paise'], true) . ').';
+        return self::alerting($summary, [[
+            'suffix' => '', 'severity' => $pct < $t['target_critical_pct'] * 10 ? 'critical' : 'warning', 'title' => 'Sales target is behind pace',
+            'text' => $summary . ($p['status'] === 'in_progress' ? ' ' . Money::inr($p['required_daily_pace_paise'] ?? 0, true) . ' a day is needed for the rest of the period to reach it — see Admin → Advertising.' : ' The period has ended — see Admin → Advertising.'),
+            'details' => $values,
+        ]], $values);
+    }
+
+    // ── 14. advertising budget ──
+
+    /** Today's and this month's actual ad spend (App\Services\AdBudget — never a separate computation) against the configured budget cap. */
+    private static function adBudget(int $now, array $t): array
+    {
+        $s = AdBudget::spendSoFar();
+        if ($s['daily_budget_paise'] === null && $s['monthly_budget_paise'] === null) {
+            return self::noVerdict('insufficient', 'No advertising budget cap is set.');
+        }
+        $values = ['daily_budget_paise' => $s['daily_budget_paise'], 'monthly_budget_paise' => $s['monthly_budget_paise'], 'today_paise' => $s['today_paise'], 'month_paise' => $s['month_paise']];
+        $parts = [];
+        $ok = [];
+        $critical = false;
+        if ($s['daily_budget_paise'] !== null) {
+            if ($s['today_paise'] > $s['daily_budget_paise']) {
+                $pct = Money::pctTenths($s['today_paise'], $s['daily_budget_paise']);
+                $parts[] = "today's spend is " . Money::inr($s['today_paise'], true) . ', over the ' . Money::inr($s['daily_budget_paise'], true) . ' daily budget (' . Money::tenthsToString($pct) . '% of it)';
+                $critical = $critical || $pct >= $t['budget_critical_pct'] * 10;
+            } else {
+                $ok[] = "today's spend is " . Money::inr($s['today_paise'], true) . ', within the ' . Money::inr($s['daily_budget_paise'], true) . ' daily budget';
+            }
+        }
+        if ($s['monthly_budget_paise'] !== null) {
+            if ($s['month_paise'] > $s['monthly_budget_paise']) {
+                $pct = Money::pctTenths($s['month_paise'], $s['monthly_budget_paise']);
+                $parts[] = "this month's spend is " . Money::inr($s['month_paise'], true) . ', over the ' . Money::inr($s['monthly_budget_paise'], true) . ' monthly budget (' . Money::tenthsToString($pct) . '% of it)';
+                $critical = $critical || $pct >= $t['budget_critical_pct'] * 10;
+            } else {
+                $ok[] = "this month's spend is " . Money::inr($s['month_paise'], true) . ', within the ' . Money::inr($s['monthly_budget_paise'], true) . ' monthly budget';
+            }
+        }
+        if (!$parts) {
+            return self::healthy(ucfirst(implode('; ', $ok)) . '.', $values);
+        }
+        $summary = ucfirst(implode('; ', array_merge($parts, $ok))) . '.';
+        return self::alerting($summary, [[
+            'suffix' => '', 'severity' => $critical ? 'critical' : 'warning', 'title' => 'Advertising spend is over budget',
+            'text' => $summary . ' The budget is informational only — nothing was blocked. See Admin → Advertising.',
             'details' => $values,
         ]], $values);
     }

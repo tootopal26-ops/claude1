@@ -259,6 +259,53 @@ function recentCard(d) {
   </div>`;
 }
 
+// ── command center: sales target pacing, ad budget vs spend, adaptive pricing risk — each from its own service, never recomputed here ──
+const PACE_CHIP = { ahead: ['Ahead', 'chip-ok'], on_track: ['On track', 'chip-info'], behind: ['Behind', 'chip-warn'] };
+
+function targetCard(t) {
+  if (!t.has_target) {
+    return html`<section class="card" aria-labelledby="h-cc-target"><div class="card-head"><h2 class="card-title" id="h-cc-target">${icon('target')}Sales target</h2></div>
+      <p class="text-sm text-ink-soft">No target is set. <a href="${url('/admin/advertising')}">Set one</a> to track pacing here.</p></section>`;
+  }
+  const barPct = Math.max(0, Math.min(100, Math.round((t.pct_of_target_tenths || 0) / 10)));
+  const [label, cls] = t.status === 'not_started' ? ['Not started', 'chip-gray'] : (PACE_CHIP[t.pace_label] || ['', 'chip-gray']);
+  return html`<section class="card" aria-labelledby="h-cc-target"><div class="card-head"><h2 class="card-title" id="h-cc-target">${icon('target')}Sales target</h2><span class="chip ${cls}">${label}</span></div>
+    <div class="kv"><span>Target</span><b>${inr(t.target.target_paise, true)}</b></div>
+    <div class="kv"><span>Actual so far</span><b>${inr(t.actual_paise, true)}</b><span class="text-xs text-muted">&nbsp;(${pct(t.pct_of_target_tenths)})</span></div>
+    <div class="hbar-track mt-2" role="img" aria-label="${pct(t.pct_of_target_tenths)} of target reached"><div class="hbar-fill" data-w="${barPct}"></div></div>
+    <a class="btn btn-sm btn-ghost mt-3" href="${url('/admin/advertising')}">Details</a></section>`;
+}
+
+function budgetCard(b) {
+  const hasCap = b.daily_budget_paise !== null || b.monthly_budget_paise !== null;
+  const dayOver = b.daily_budget_paise !== null && b.today_paise > b.daily_budget_paise;
+  const monthOver = b.monthly_budget_paise !== null && b.month_paise > b.monthly_budget_paise;
+  const cls = (dayOver || monthOver) ? 'chip-warn' : (hasCap ? 'chip-ok' : 'chip-gray');
+  const label = (dayOver || monthOver) ? 'Over budget' : (hasCap ? 'Within budget' : 'No cap set');
+  return html`<section class="card" aria-labelledby="h-cc-budget"><div class="card-head"><h2 class="card-title" id="h-cc-budget">${icon('wallet')}Advertising budget</h2><span class="chip ${cls}">${label}</span></div>
+    <div class="kv"><span>Today</span><b class="${dayOver ? 'text-bad-700' : ''}">${inr(b.today_paise, true)}</b>${b.daily_budget_paise !== null ? html`<span class="text-xs text-muted">&nbsp;of ${inr(b.daily_budget_paise, true)}</span>` : ''}</div>
+    <div class="kv"><span>This month</span><b class="${monthOver ? 'text-bad-700' : ''}">${inr(b.month_paise, true)}</b>${b.monthly_budget_paise !== null ? html`<span class="text-xs text-muted">&nbsp;of ${inr(b.monthly_budget_paise, true)}</span>` : ''}</div>
+    <a class="btn btn-sm btn-ghost mt-3" href="${url('/admin/advertising')}">Details</a></section>`;
+}
+
+function pricingCard(p) {
+  const risky = p.at_risk_count + p.breached_count;
+  const cls = p.breached_count > 0 ? 'chip-bad' : (risky > 0 ? 'chip-warn' : (p.global_pause ? 'chip-gray' : 'chip-ok'));
+  const label = p.breached_count > 0 ? 'Profit floor breached' : (risky > 0 ? 'At risk' : (p.global_pause ? 'Paused' : (p.live_count > 0 ? 'Running' : 'Idle')));
+  return html`<section class="card" aria-labelledby="h-cc-pricing"><div class="card-head"><h2 class="card-title" id="h-cc-pricing">${icon('flask-conical')}Adaptive pricing</h2><span class="chip ${cls}">${label}</span></div>
+    <div class="kv"><span>Live experiments</span><b>${num(p.live_count)}</b></div>
+    <div class="kv"><span>At risk / breached</span><b>${num(p.at_risk_count)} / ${num(p.breached_count)}</b></div>
+    <div class="kv"><span>Recent rollbacks</span><b>${num(p.recent_rollback_count)}</b></div>
+    <a class="btn btn-sm btn-ghost mt-3" href="${url('/admin/pricing')}">Details</a></section>`;
+}
+
+function commandCenter(d) {
+  const cc = d.command_center || {};
+  const cards = [cc.sales_target ? targetCard(cc.sales_target) : '', cc.ad_budget ? budgetCard(cc.ad_budget) : '', cc.pricing ? pricingCard(cc.pricing) : ''].filter(Boolean);
+  if (!cards.length) return '';
+  return html`<h2 class="sec-title">Business health</h2><div class="grid-3 mb-5">${cards}</div>`;
+}
+
 // ── painting ──
 function render(d) {
   data = d;
@@ -266,6 +313,7 @@ function render(d) {
   const root = $('#dash-root');
   const parts = [
     kpiSection(d),
+    commandCenter(d),
     html`<h2 class="sec-title">${hasFinance(d) ? 'Profit & trends' : 'Trends'} · ${rangeText(d.meta)}</h2>`,
     hasFinance(d) ? profitCard(d) : '',
     html`<div class="stack mt-4"><section class="card" aria-labelledby="h-rev"><div class="card-head"><h2 class="card-title" id="h-rev">${icon('trending-up')}${hasFinance(d) ? 'Revenue & profit' : 'Revenue'}</h2>${raw(toggles(hasFinance(d)))}</div><div data-chart="rev" aria-label="Revenue and profit over time"></div></section>

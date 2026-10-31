@@ -61,7 +61,7 @@ T::test('alerts access: every role reads, only owners and managers change anythi
     T::false(isset($mail['to']) || isset($mail['from']), 'an analyst sees that e-mail is on, not whom it goes to');
     $mail = la_json($reads['settings']('manager'))['mail'];
     T::same(['owner@example.test', 'alerts@example.test'], [$mail['to'], $mail['from']]);
-    T::same(12, count(la_json($reads['checks']('analyst'))['watchdog']['checks']));
+    T::same(14, count(la_json($reads['checks']('analyst'))['watchdog']['checks']));
 
     $writes = [
         'acknowledge' => static fn(string $r): Response => $ctl->acknowledge(la_req('POST', "/admin/api/alerts/{$GLOBALS['la_a']}/acknowledge", $r), ['id' => (string) $GLOBALS['la_a']]),

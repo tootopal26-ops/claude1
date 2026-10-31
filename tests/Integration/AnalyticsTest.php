@@ -3,9 +3,11 @@ declare(strict_types=1);
 
 use App\Core\Db;
 use App\Core\Request;
+use App\Services\AdBudget;
 use App\Services\Ads;
 use App\Services\Analytics;
 use App\Services\Dashboard;
+use App\Services\SalesTarget;
 use App\Services\Tracking;
 use App\Support\Clock;
 use App\Support\Profit;
@@ -161,6 +163,35 @@ T::test('dashboard: custom ranges validate; series buckets (hour / day / week / 
     $life = Dashboard::build(['range' => 'lifetime']);
     T::same(3000, $life['totals']['revenue_paise']);
     T::same(Tz::addDays($today, -40), $life['meta']['range']['from']);
+});
+
+T::test('dashboard: the command center reads the sales target, ad budget and adaptive pricing straight from their own services, and strips per role like finance does', function () {
+    an_reset();
+    $admin = ['id' => 1, 'username' => 'tester'];
+    $req = Request::fake('PUT', '/x');
+    $today = Tz::today();
+
+    $bare = Dashboard::build(['range' => 'today']);
+    T::false($bare['command_center']['sales_target']['has_target']);
+    T::same('none', $bare['command_center']['ad_budget']['source']);
+    T::same(0, $bare['command_center']['pricing']['live_count']);
+
+    SalesTarget::set(['period_start' => $today, 'period_end' => Tz::addDays($today, 9), 'target' => '5000'], $req, $admin);
+    AdBudget::save(['scope' => 'default', 'daily_budget' => '200'], $req, $admin);
+    an_order('MANUAL', 10000, 0, $today);
+    $d = Dashboard::build(['range' => 'today']);
+    T::same(500000, $d['command_center']['sales_target']['target']['target_paise']);
+    T::same(10000, $d['command_center']['sales_target']['actual_paise'], 'the dashboard\'s own order feeds the same Analytics rollup the target reads');
+    T::same(20000, $d['command_center']['ad_budget']['daily_budget_paise']);
+
+    $noAds = Dashboard::withoutAds($d);
+    T::false(isset($noAds['command_center']['sales_target']));
+    T::false(isset($noAds['command_center']['ad_budget']));
+    T::true(isset($noAds['command_center']['pricing']), 'pricing is a separate strip');
+
+    $noPricing = Dashboard::withoutPricing($d);
+    T::false(isset($noPricing['command_center']['pricing']));
+    T::true(isset($noPricing['command_center']['sales_target']));
 });
 
 // ═════════════════════════ rollup correctness ═════════════════════════

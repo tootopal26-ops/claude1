@@ -3,14 +3,26 @@ declare(strict_types=1);
 
 use App\Core\Db;
 use App\Core\HttpException;
+use App\Core\Request;
+use App\Services\AdBudget;
 use App\Services\Alerts;
 use App\Services\JobContext;
 use App\Services\Jobs;
+use App\Services\SalesTarget;
 use App\Services\Settings;
 use App\Services\Watchdog;
 use App\Smm\SmmResponse;
 use App\Support\Clock;
 use App\Support\Tz;
+
+const WD_ADMIN = ['id' => 1, 'username' => 'tester', 'email' => 't@example.test'];
+function wd_req(): Request { return Request::fake('PUT', '/x'); }
+
+/** A day's ad_daily_spend entry (actual spend, no campaign split). */
+function wd_spend(int $amountPaise, string $day): void
+{
+    Db::insert('ad_daily_spend', ['spend_day' => $day, 'campaign' => '', 'platform' => '', 'amount_paise' => $amountPaise, 'gst_paise' => 0, 'currency' => 'INR', 'source' => 'manual', 'imported_at' => Clock::sql()]);
+}
 
 /**
  * The Business Watchdog: every check reads records the shop already keeps, compares them with a threshold, and says one of
@@ -794,6 +806,94 @@ T::test('alert e-mail settings: validated, saved, audited without the addresses 
     Alerts::saveMailSettings(['enabled' => false, 'to' => ''], $admin);
     $e = T::throws(HttpException::class, fn() => Alerts::sendTest($admin), 422);
     T::contains('recipient', $e->getMessage());
+});
+
+// ═════════════════════════════ sales target pacing ════════════════════════════
+
+T::test('watchdog: sales target pacing — no target is "insufficient"; a target not yet started is "insufficient"', function () {
+    wd_reset();
+    T::same('insufficient', Watchdog::evaluate('sales_target')['status']);
+
+    $today = Tz::today();
+    SalesTarget::set(['period_start' => Tz::addDays($today, 5), 'period_end' => Tz::addDays($today, 34), 'target' => '10000'], wd_req(), WD_ADMIN);
+    T::same('insufficient', Watchdog::evaluate('sales_target')['status'], 'not started yet');
+});
+
+T::test('watchdog: sales target pacing — comfortably ahead of pace is healthy, no alert raised', function () {
+    wd_reset();
+    $today = Tz::today();
+    SalesTarget::set(['period_start' => Tz::addDays($today, -1), 'period_end' => Tz::addDays($today, 8), 'target' => '1000'], wd_req(), WD_ADMIN);
+    an_order('MANUAL', 200_000, 0, $today);                // ₹2,000 already, before even a ₹1,000 / 10-day target reaches its 2nd elapsed day
+    $r = Watchdog::evaluate('sales_target');
+    T::same('ok', $r['status']);
+    T::same(0, (int) Db::val("SELECT COUNT(*) FROM business_alerts WHERE alert_type = 'sales_target'"));
+});
+
+T::test('watchdog: sales target pacing — badly behind pace alerts, critical past the configured threshold', function () {
+    wd_reset();
+    $today = Tz::today();
+    SalesTarget::set(['period_start' => Tz::addDays($today, -5), 'period_end' => Tz::addDays($today, 4), 'target' => '10000'], wd_req(), WD_ADMIN);
+    an_order('MANUAL', 100, 0, $today);                     // ₹1 against a ₹10,000 / 10-day target — badly behind
+    $r = Watchdog::evaluate('sales_target');
+    T::same('alert', $r['status']);
+    T::same('Sales target is behind pace', $r['findings'][0]['title']);
+    T::same('critical', $r['findings'][0]['severity'], 'far below the target_critical_pct threshold');
+});
+
+T::test('watchdog: a sales-target alert resolves once pace recovers, and the job raises it for real', function () {
+    wd_reset();
+    $today = Tz::today();
+    SalesTarget::set(['period_start' => Tz::addDays($today, -9), 'period_end' => $today, 'target' => '100000'], wd_req(), WD_ADMIN);
+    wd_run();
+    $rows = wd_alerts('sales_target');
+    T::same(1, count($rows));
+    T::same('open', $rows[0]['status']);
+
+    an_order('MANUAL', 100_000_00, 0, $today);             // a big order brings it back on pace
+    for ($i = 0; $i < 3; $i++) {
+        wd_run();
+    }
+    $rows2 = wd_alerts('sales_target');
+    T::same('resolved', $rows2[0]['status'], 'resolves after enough clean runs, same as every other check');
+});
+
+// ═════════════════════════════ advertising budget ════════════════════════════
+
+T::test('watchdog: advertising budget — no cap is "insufficient", under budget is healthy, over the daily or monthly cap alerts (critical well past it)', function () {
+    wd_reset();
+    T::same('insufficient', Watchdog::evaluate('ad_budget')['status']);
+
+    $today = Tz::today();
+    AdBudget::save(['scope' => 'default', 'daily_budget' => '1000', 'monthly_budget' => '20000'], wd_req(), WD_ADMIN);
+    wd_spend(50_000, $today); // ₹500 today, within ₹1,000
+    $r = Watchdog::evaluate('ad_budget');
+    T::same('ok', $r['status']);
+
+    Db::exec('DELETE FROM ad_daily_spend WHERE spend_day = ?', [$today]);
+    wd_spend(150_000, $today); // ₹1,500 today — 150% of the ₹1,000 cap, at the default 150% critical threshold
+    $r2 = Watchdog::evaluate('ad_budget');
+    T::same('alert', $r2['status']);
+    T::same('Advertising spend is over budget', $r2['findings'][0]['title']);
+    T::same('critical', $r2['findings'][0]['severity']);
+    T::contains('daily budget', $r2['summary']);
+});
+
+T::test('watchdog: an over-budget alert resolves once spend is back within the cap, and the job raises it for real', function () {
+    wd_reset();
+    $today = Tz::today();
+    AdBudget::save(['scope' => 'default', 'daily_budget' => '100'], wd_req(), WD_ADMIN);
+    wd_spend(50_000, $today); // ₹500 — over the ₹100 cap
+    wd_run();
+    $rows = wd_alerts('ad_budget');
+    T::same(1, count($rows));
+    T::same('open', $rows[0]['status']);
+
+    Db::exec('DELETE FROM ad_daily_spend WHERE spend_day = ?', [$today]);
+    wd_spend(5_000, $today); // ₹50 — back within the cap
+    for ($i = 0; $i < 3; $i++) {
+        wd_run();
+    }
+    T::same('resolved', wd_alerts('ad_budget')[0]['status']);
 });
 
 // ═════════════════════════════ alert text length ════════════════════════════
