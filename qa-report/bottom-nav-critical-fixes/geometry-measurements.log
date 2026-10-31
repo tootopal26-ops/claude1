@@ -1,0 +1,58 @@
+Home tab (unselected) geometry (relative to bar top): {
+  "bar": {
+    "top": 756,
+    "bottom": 844,
+    "height": 88
+  },
+  "iconRects": [
+    {
+      "top": 23.5,
+      "bottom": 47.5,
+      "left": 231.75,
+      "width": 24
+    },
+    {
+      "top": 23.5,
+      "bottom": 47.5,
+      "left": 231.75,
+      "width": 24
+    }
+  ],
+  "line": {
+    "top": 4,
+    "bottom": 7,
+    "left": 224.25,
+    "width": 39
+  },
+  "pill": {
+    "top": 19.5,
+    "bottom": 51.5,
+    "left": 217.75,
+    "width": 52
+  }
+}
+Home tab (SELECTED) geometry: {
+  "bar": {
+    "height": 88
+  },
+  "iconRects": [
+    {
+      "top": 23.5,
+      "bottom": 47.5,
+      "opacity": "0"
+    },
+    {
+      "top": 23.5,
+      "bottom": 47.5,
+      "opacity": "1"
+    }
+  ],
+  "line": {
+    "top": 4,
+    "bottom": 7
+  },
+  "pill": {
+    "top": 19.5,
+    "bottom": 51.5
+  }
+}

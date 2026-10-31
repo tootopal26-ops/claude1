@@ -21,19 +21,50 @@ const ITEMS: Record<string, { label: string; icon: NavIconName }> = {
   profile: { label: 'Profile', icon: 'profile' },
 };
 
-/** The dark-grey pill behind the selected icon — fixed size, not proportional to the item. */
+// The icon/label block's own layout — kept as named constants (not literals re-typed in the
+// styles below) so the geometry math below and the actual rendered sizes can never drift apart.
+const ICON_SIZE = 24;
+const ITEM_GAP = 3;
+const LABEL_LINE_HEIGHT = 14;
+const CONTENT_BLOCK_HEIGHT = ICON_SIZE + ITEM_GAP + LABEL_LINE_HEIGHT;
+
+/**
+ * Extra breathing room at the top of the bar, reserved for the indicator line and its light —
+ * added to the row's own height (not just padding), so the icon/label block — which `.item`
+ * centers in whatever height the row has — sits lower, with real space above it. Because
+ * centering splits the added height between top and bottom, the icon only moves down by half
+ * of this; the formulas below account for that rather than assuming the full amount.
+ */
+const INDICATOR_ZONE = 24;
+const BAR_ROW_HEIGHT = SIZE.navBar + INDICATOR_ZONE;
+/** Where the icon itself actually lands once centered in the (taller) row — the one number
+ *  everything else here (the pill, the line, the light) is positioned relative to. */
+const ICON_TOP = (BAR_ROW_HEIGHT - CONTENT_BLOCK_HEIGHT) / 2;
+
+/** The dark-grey pill behind the selected icon — fixed size, not proportional to the item,
+ *  centred on the icon's own vertical centre so it fully surrounds it. */
 const PILL_WIDTH = 52;
 const PILL_HEIGHT = 32;
-const PILL_TOP = (SIZE.navBar - PILL_HEIGHT) / 2 - 7;
+const PILL_TOP = ICON_TOP - (PILL_HEIGHT - ICON_SIZE) / 2;
 /** The purple indicator line above the selected icon — a share of the item's own width. */
-const LINE_WIDTH_SHARE = 0.38;
+const LINE_WIDTH_SHARE = 0.4;
 const LINE_HEIGHT = 3;
-const LINE_TOP = 7;
-/** The soft downward light: wider than the line (a little horizontal spread), fading out
- *  by the time it reaches the icon rather than washing over the whole pill. */
-const LIGHT_WIDTH_SHARE = 0.68;
+const LINE_TOP = 4;
+/** Kept clear of both the line above and the pill below, so the gap is never accidentally
+ *  closed by a future tweak to either one. */
+const LIGHT_GAP_BEFORE_PILL = 3;
+/**
+ * The soft downward light. Its own box is deliberately much bigger than the glow it draws —
+ * the same trick AmbientGlow uses — so the radial gradient's `rx`/`ry` (never a single `r`,
+ * which distorts into a hard-edged ellipse on a box this shape) can fade all the way to
+ * fully transparent well inside the box, with margin to spare. That margin is what keeps the
+ * glow looking like soft falling light instead of a visible rounded-rectangle tile. It stops
+ * well short of the pill (and so of the icon inside it), leaving a clear, visible gap — the
+ * light illuminates the space above the icon, it doesn't wash over it.
+ */
+const LIGHT_WIDTH_SHARE = 1.6;
 const LIGHT_TOP = LINE_TOP;
-const LIGHT_HEIGHT = 20;
+const LIGHT_HEIGHT = PILL_TOP - LINE_TOP - LIGHT_GAP_BEFORE_PILL;
 const PURPLE = '#A855F7';
 /** Smooth, spring-based, never bouncy. */
 const ICON_MORPH_MS = 300;
@@ -43,7 +74,7 @@ const POP_PEAK_SCALE = 1.12;
 /** Space a scrolling screen must leave at its bottom so nothing hides behind the bar. */
 export function useBottomNavSpace(): number {
   const insets = useSafeAreaInsets();
-  return SIZE.navBar + insets.bottom + SPACE.sm;
+  return BAR_ROW_HEIGHT + insets.bottom + SPACE.sm;
 }
 
 /**
@@ -160,11 +191,14 @@ function SelectionIndicator({ index, count, reduced }: { index: number; count: n
     <View style={styles.indicatorLayer} onLayout={onLayout} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Animated.View style={[styles.pill, { width: PILL_WIDTH, transform: [{ translateX: centerX(PILL_WIDTH) }, { scale }] }]} />
       <Animated.View style={[styles.light, { width: lightWidth, transform: [{ translateX: centerX(lightWidth) }] }]}>
-        <Svg width="100%" height="100%" preserveAspectRatio="none">
+        <Svg width="100%" height="100%">
           <Defs>
-            {/* Anchored at the top edge only (cy 0%), so the glow radiates down and slightly
-                out — never a ring or circle around the icon. */}
-            <RadialGradient id="mm-nav-light" cx="50%" cy="0%" r="75%" fx="50%" fy="0%">
+            {/* Anchored at the top edge only (cy 0%), with separate x/y radii well short of
+                the box's own edges (never a single `r`, which stretches into a hard-edged
+                ellipse here) — same recipe as AmbientGlow. The box is generously bigger than
+                the visible glow, so the fade to fully transparent happens with room to spare
+                and never reads as a rectangle. */}
+            <RadialGradient id="mm-nav-light" cx="50%" cy="0%" rx="32%" ry="92%" fx="50%" fy="0%">
               <Stop offset="0" stopColor={PURPLE} stopOpacity={0.3} />
               <Stop offset="0.5" stopColor={PURPLE} stopOpacity={0.12} />
               <Stop offset="1" stopColor={PURPLE} stopOpacity={0} />
@@ -226,12 +260,14 @@ function NavItem({
       style={styles.item}
     >
       <Animated.View style={[styles.iconSlot, { transform: [{ scale: pop }] }]}>
-        {/* Outline underneath, filled on top — opacity crossfades between them so the glyph
-            morphs instead of popping, and the previous tab's icon reverses the same way.
-            Both layers sit above the purple light, which never reduces their visibility. */}
-        <View style={styles.iconLayer}>
+        {/* A true crossfade: the outline's opacity is 1-active, the filled icon's is active,
+            so exactly one is ever visible once settled (at active 0 or 1) and only mid-tap do
+            both partially show, which is the crossfade itself, not a bug. Earlier the outline
+            layer had no opacity animation at all, so both icons stayed fully visible, stacked,
+            once a tab was selected — that's the "duplicate icon" this fixes. */}
+        <Animated.View style={[styles.iconLayer, { opacity: active.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}>
           <NavIcon name={icon} filled={false} size={24} />
-        </View>
+        </Animated.View>
         <Animated.View style={[styles.iconLayer, { opacity: active }]}>
           <NavIcon name={icon} filled size={24} />
         </Animated.View>
@@ -259,14 +295,14 @@ const useStyles = makeStyles(() => ({
     // Clips the travelling pill/light/line to the bar's shape.
     overflow: 'hidden',
   },
-  row: { height: SIZE.navBar, flexDirection: 'row', alignItems: 'stretch' },
+  row: { height: BAR_ROW_HEIGHT, flexDirection: 'row', alignItems: 'stretch' },
   indicatorLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   pill: { position: 'absolute', top: PILL_TOP, left: 0, height: PILL_HEIGHT, borderRadius: RADIUS.pill, backgroundColor: 'rgba(255,255,255,0.14)' },
   light: { position: 'absolute', top: LIGHT_TOP, left: 0, height: LIGHT_HEIGHT },
   line: { position: 'absolute', top: LINE_TOP, left: 0, height: LINE_HEIGHT, backgroundColor: PURPLE },
   itemLayout: { flex: 1 },
-  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3, minHeight: SIZE.touch },
-  iconSlot: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
+  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: ITEM_GAP, minHeight: SIZE.touch },
+  iconSlot: { width: ICON_SIZE, height: ICON_SIZE, alignItems: 'center', justifyContent: 'center' },
   iconLayer: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 11, lineHeight: 14, color: 'rgba(255,255,255,0.78)' },
+  label: { fontSize: 11, lineHeight: LABEL_LINE_HEIGHT, color: 'rgba(255,255,255,0.78)' },
 }));
