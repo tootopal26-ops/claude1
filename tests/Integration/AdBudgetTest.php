@@ -221,3 +221,31 @@ T::test('forecast() refuses a negative budget', function () {
     ab_reset();
     T::throws(HttpException::class, fn() => AdBudget::forecast(-1), 422);
 });
+
+// ═════════════════════════ concurrency (DB integrity review, Priority 5) ═════════════════════════
+
+T::test('save(): four admins saving the default budget at the same instant never leave two live rows', function () {
+    ab_reset();
+    $go = sys_get_temp_dir() . '/smb-go-budget-' . getmypid();
+    @unlink($go);
+    $procs = [];
+    $pipes = [];
+    $tried = [];
+    for ($i = 0; $i < 4; $i++) {
+        $amount = (string) (100 + $i);
+        $tried[] = ((int) $amount) * 100;
+        $procs[] = proc_open(['php', SMB_ROOT . '/tests/fixtures/ad_budget_worker.php', $go, $amount], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes[$i]);
+    }
+    usleep(800_000);
+    touch($go);
+    $out = [];
+    foreach ($procs as $i => $proc) {
+        $out[] = trim((string) stream_get_contents($pipes[$i][1]));
+        proc_close($proc);
+    }
+    @unlink($go);
+
+    T::same(4, (int) Db::val("SELECT COUNT(*) FROM ad_campaign_settings WHERE kind = 'default'"), 'every save created its own row — ' . json_encode($out));
+    T::same(1, (int) Db::val("SELECT COUNT(*) FROM ad_campaign_settings WHERE kind = 'default' AND revoked_at IS NULL"), 'exactly one survives as live — never two, never zero');
+    T::true(in_array(AdBudget::current()['daily_budget_paise'], $tried, true), 'the live budget is one of the four values actually saved, not a mix');
+});

@@ -110,10 +110,12 @@ final class AdBudget
 
         $now = Clock::sql();
         $json = json_encode(['daily_budget_paise' => $daily, 'monthly_budget_paise' => $monthly], JSON_UNESCAPED_SLASHES);
-        $superseded = $scope === 'default'
-            ? Db::col("SELECT id FROM ad_campaign_settings WHERE kind = 'default' AND revoked_at IS NULL")
-            : Db::col("SELECT id FROM ad_campaign_settings WHERE kind = 'override' AND revoked_at IS NULL AND period_start <= ? AND period_end >= ?", [$end, $start]);
-        Db::tx(function () use ($scope, $start, $end, $json, $note, $admin, $now, $superseded): void {
+        $superseded = [];
+        Db::tx(function () use ($scope, $start, $end, $json, $note, $admin, $now, &$superseded): void {
+            // locked for the rest of the transaction, so two concurrent saves can never both see the same not-yet-revoked rows as current
+            $superseded = $scope === 'default'
+                ? Db::col("SELECT id FROM ad_campaign_settings WHERE kind = 'default' AND revoked_at IS NULL FOR UPDATE")
+                : Db::col("SELECT id FROM ad_campaign_settings WHERE kind = 'override' AND revoked_at IS NULL AND period_start <= ? AND period_end >= ? FOR UPDATE", [$end, $start]);
             if ($superseded) {
                 Db::exec('UPDATE ad_campaign_settings SET revoked_at = ? WHERE id IN (' . Db::in($superseded) . ')', array_merge([$now], $superseded));
             }

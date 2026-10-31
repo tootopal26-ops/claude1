@@ -77,9 +77,11 @@ final class SalesTarget
             throw new HttpException(422, 'Please fix the highlighted fields.', 'invalid', ['fields' => $errors]);
         }
 
-        $superseded = Db::col('SELECT id FROM sales_targets WHERE revoked_at IS NULL AND period_start <= ? AND period_end >= ?', [$end, $start]);
         $now = Clock::sql();
-        $id = Db::tx(function () use ($start, $end, $target, $note, $admin, $superseded, $now): int {
+        $superseded = [];
+        $id = Db::tx(function () use ($start, $end, $target, $note, $admin, $now, &$superseded): int {
+            // locked for the rest of the transaction, so two concurrent saves can never both see the same not-yet-revoked rows as current
+            $superseded = Db::col('SELECT id FROM sales_targets WHERE revoked_at IS NULL AND period_start <= ? AND period_end >= ? FOR UPDATE', [$end, $start]);
             if ($superseded) {
                 Db::exec('UPDATE sales_targets SET revoked_at = ? WHERE id IN (' . Db::in($superseded) . ')', array_merge([$now], $superseded));
             }

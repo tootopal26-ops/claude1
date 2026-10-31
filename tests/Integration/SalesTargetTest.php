@@ -199,3 +199,35 @@ T::test('progress() never disagrees with the dashboard\'s own revenue figure for
     T::same($direct, $p['actual_paise']);
     T::same(350_000, $p['actual_paise'], '₹2,500 + (₹1,500 − ₹500 refund)');
 });
+
+// ═════════════════════════ concurrency (DB integrity review, Priority 5) ═════════════════════════
+
+T::test('set(): four admins saving overlapping targets at the same instant never leave two live rows covering the same day', function () {
+    st_reset();
+    $today = Tz::today();
+    $go = sys_get_temp_dir() . '/smb-go-target-' . getmypid();
+    @unlink($go);
+    $procs = [];
+    $pipes = [];
+    for ($i = 0; $i < 4; $i++) {
+        $procs[] = proc_open(
+            ['php', SMB_ROOT . '/tests/fixtures/sales_target_worker.php', $go, $today, Tz::addDays($today, 9), (string) (10000 + $i)],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes[$i]
+        );
+    }
+    usleep(800_000);
+    touch($go);
+    $out = [];
+    foreach ($procs as $i => $proc) {
+        $out[] = trim((string) stream_get_contents($pipes[$i][1]));
+        proc_close($proc);
+    }
+    @unlink($go);
+
+    T::same(4, (int) Db::val('SELECT COUNT(*) FROM sales_targets'), 'every save created its own row — ' . json_encode($out));
+    T::same(1, (int) Db::val('SELECT COUNT(*) FROM sales_targets WHERE revoked_at IS NULL'), 'exactly one survives as live — never two overlapping, never zero');
+    $live = (int) Db::val('SELECT id FROM sales_targets WHERE revoked_at IS NULL');
+    T::true(in_array((string) $live, $out, true), 'the live row is one of the four the workers actually created — ' . json_encode($out));
+    T::same($live, SalesTarget::current()['id'] ?? null, 'current() agrees with the one live row');
+});
