@@ -53,6 +53,25 @@ T::test('css() emits every semantic colour token, the chosen accent, and falls b
     T::same($css, $fallback);
 });
 
+T::test('css() never trusts the accent colours either: anything that is not exactly #RRGGBB falls back to the theme\'s own default, the same as an invalid name/density (security pass, Priority 6)', function () {
+    [$roseFrom, $roseTo] = Themes::defaultAccent('rose');
+    foreach (['not-a-colour', '#12345', '#1234567', 'green', ''] as $bad) {
+        $css = Themes::css('rose', 'standard', $bad, $bad);
+        T::contains('--accent-from:' . $roseFrom, $css, "bad accent_from '{$bad}' must fall back, never reach the output");
+        T::contains('--accent-to:' . $roseTo, $css, "bad accent_to '{$bad}' must fall back, never reach the output");
+    }
+    // the properties an attacker would actually want — closing the declaration early, injecting markup, a newline before a new custom property — must never reach the output verbatim
+    foreach (['}</style><script>alert(1)</script>', 'url(evil)', "#111111\n--x:1", 'red;}body{display:none'] as $payload) {
+        $css = Themes::css('rose', 'standard', $payload, '#ff3b3b');
+        T::false(str_contains($css, $payload), "the injection payload '{$payload}' must never appear in the generated stylesheet");
+        T::contains('--accent-from:' . $roseFrom, $css, 'it fell back to the safe default instead');
+    }
+    // a valid hex in a different case still passes through — only the shape is checked, nothing is silently rewritten
+    $css = Themes::css('rose', 'standard', '#ABCDEF', '#abcdef');
+    T::contains('--accent-from:#ABCDEF', $css);
+    T::contains('--accent-to:#abcdef', $css);
+});
+
 T::test('Obsidian Neon is the only theme that overrides the glass surface tokens (dark translucent glass, not white)', function () {
     $obsidian = Themes::css('obsidian', 'standard', '#a855f7', '#7e22ce');
     T::contains('--glass-bg:', $obsidian);

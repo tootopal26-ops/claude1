@@ -135,7 +135,8 @@ final class Themes
      */
     public static function css(string $name, string $density, string $accentFrom, string $accentTo): string
     {
-        $t = self::THEMES[self::isValidName($name) ? $name : self::DEFAULT];
+        $validName = self::isValidName($name) ? $name : self::DEFAULT;
+        $t = self::THEMES[$validName];
         $d = self::DENSITY[self::isValidDensity($density) ? $density : self::DEFAULT_DENSITY];
         $vars = [];
         foreach ($t['tokens'] as $k => $v) {
@@ -143,6 +144,13 @@ final class Themes
             // everything else is a semantic colour (--color-canvas, --color-ink, …).
             $vars[] = (str_starts_with($k, 'glass-') ? "--{$k}" : "--color-{$k}") . ":{$v}";
         }
+        // This is the ONE place a visitor-facing stylesheet is built from an admin-supplied value — every caller is expected to
+        // have already validated #RRGGBB (App\Support\Color::isHex), but this never trusts that blindly: a value that is not
+        // exactly #RRGGBB can never reach the output, falling back to the theme's own default instead, same as an invalid
+        // name/density above. Nothing here can break out of a `--custom-property:` declaration.
+        [$defaultFrom, $defaultTo] = self::defaultAccent($validName);
+        $accentFrom = \App\Support\Color::isHex($accentFrom) ? $accentFrom : $defaultFrom;
+        $accentTo = \App\Support\Color::isHex($accentTo) ? $accentTo : $defaultTo;
         $vars[] = '--accent-from:' . $accentFrom;
         $vars[] = '--accent-to:' . $accentTo;
         foreach ($t['ambient'] as $i => $v) {
