@@ -7,9 +7,9 @@ import { DURATION, EASE, useReducedMotion } from '../../src/theme/motion';
 export const unstable_settings = { anchor: 'index' };
 
 /**
- * The three primary destinations — Leaderboard · Home · Profile — behind one floating
+ * The four primary destinations — Leaderboard · Spin · Home · Profile — behind one flat
  * bottom bar. Home is where the app opens and where Android Back returns to from the other
- * two before leaving the app. Switching tabs cross-fades the content with a 4-dp lift
+ * three before leaving the app. Switching tabs cross-fades the content with a 4-dp lift
  * (a plain fade under reduced motion); the bar itself never moves.
  */
 export default function TabsLayout() {
@@ -33,6 +33,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="leaderboard" options={{ title: 'Leaderboard' }} />
+      <Tabs.Screen name="spin" options={{ title: 'Spin' }} />
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>
