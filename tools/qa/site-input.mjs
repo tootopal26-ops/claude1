@@ -19,7 +19,7 @@ const VIEWPORTS = [
   { name: 'tablet-768x1024', width: 768, height: 1024, dpr: 2, mobile: true },
   { name: 'desktop-1440x900', width: 1440, height: 900, dpr: 1, mobile: false },
 ];
-const PINK = 'rgb(255, 45, 135)', PINK_DARK = 'rgb(238, 17, 112)', RED = 'rgb(220, 38, 38)', GREEN = 'rgb(22, 163, 74)';
+const PINK = 'rgb(255, 45, 135)', PINK_DARK = 'rgb(212, 42, 125)', RED = 'rgb(220, 38, 38)', GREEN = 'rgb(22, 163, 74)';
 const shadowsOf = (s) => (s === 'none' ? [] : s.split(/,(?![^(]*\))/).map((x) => x.trim()));
 const physical = (cssPx, dpr) => Math.max(1, Math.floor(cssPx * dpr + 1e-6));   // browsers snap a border to whole physical pixels (rounding down, at least 1)
 
@@ -144,7 +144,7 @@ for (const vp of VIEWPORTS) {
       // ───── DISABLED ─────
       await input.evaluate((el) => { el.disabled = true; }); await page.waitForTimeout(400);
       const d = await probe(input);
-      t.eq([d.bg, d.border.color, d.shadow], ['rgb(246, 246, 250)', 'rgb(212, 214, 226)', 'none'], 'a quiet grey disabled field with no glow');
+      t.eq([d.bg, d.border.color, d.shadow], ['rgb(246, 246, 250)', 'rgb(217, 211, 224)', 'none'], 'a quiet grey disabled field with no glow');
       await page.screenshot({ path: `${OUT}/${vp.name}-${premium ? 'premium-' : ''}5-disabled.png`, clip: await card.boundingBox() });
       await input.evaluate((el) => { el.disabled = false; });
       results[`${vp.name}/${cardName}`] = { normal: n.border, focused: f.shadow };

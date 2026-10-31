@@ -305,7 +305,7 @@ await t.step('accent colours: bad hex and too-light colours are refused; a valid
   t.has(css, '#c4005f');
   await page.click('[data-default-colors]');
   await save();
-  t.has(await (await page.request.get(BASE + '/theme.css')).text(), '#e83e91');
+  t.has(await (await page.request.get(BASE + '/theme.css')).text(), '#ff2d87');
 });
 
 await t.step('hostile CSS-injection attempts in the accent colour are refused (theme.css stays safe)', async () => {
