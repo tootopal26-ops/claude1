@@ -8,6 +8,7 @@ import { Button } from '../components/Button';
 import { Sheet } from '../components/sheet/Sheet';
 import { makeStyles } from '../theme/ThemeContext';
 import { SPACE, TYPE } from '../theme/tokens';
+import { useTokens } from '../tokens/TokenContext';
 import { useWallet } from '../wallet/WalletContext';
 import { cancelRewardedClaim, fetchAdsConfig, fetchRewardedClaim, openRewardedClaim, sendAdEvents, simulateRewardedClaim } from './api';
 import { adSdkAvailable, initAdSdk, showInterstitialAd, showRewardedAd } from './sdk';
@@ -19,7 +20,9 @@ export type RewardedRequest =
   | { purpose: 'ads_earning' }
   | { purpose: 'campaign'; campaignId: number }
   /** The redeem endpoint opens this claim itself (it reserves the code first). */
-  | { purpose: 'redeem_code'; claim: { token: string; dynamic_user_id: string } };
+  | { purpose: 'redeem_code'; claim: { token: string; dynamic_user_id: string } }
+  | { purpose: 'spin' }
+  | { purpose: 'token_exchange'; exchangeTier: number };
 
 export type RewardedOutcome =
   /** The server verified the ad. `claim.reward_coins` / `claim.outcome` say what it granted. */
@@ -70,6 +73,8 @@ const OUTCOME_MESSAGES: Record<string, string> = {
   daily_limit: "You've reached today's limit for this reward.",
   already_redeemed: "You've already redeemed this code. Your coins are in your wallet.",
   limit_reached: 'This code reached its redemption limit before the ad finished.',
+  insufficient_tokens: "You don't have enough tokens for this exchange any more, so nothing was deducted.",
+  invalid_tier: "That exchange option isn't available any more.",
 };
 
 /** Plain-language text for why a verified claim granted nothing (the server sends a slug). */
@@ -116,6 +121,7 @@ function wait(ms: number) {
 export function AdsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { refresh: refreshWallet } = useWallet();
+  const { refresh: refreshTokens } = useTokens();
   const styles = useStyles();
   const [config, setConfig] = useState<AdsClientConfig | null>(null);
   const [consent, setConsentState] = useState<AdConsent | null>(null);
@@ -276,7 +282,9 @@ export function AdsProvider({ children }: { children: ReactNode }) {
                 ? { purpose: request.purpose, tournament_id: request.tournamentId }
                 : request.purpose === 'campaign'
                   ? { purpose: request.purpose, campaign_id: request.campaignId }
-                  : { purpose: request.purpose };
+                  : request.purpose === 'token_exchange'
+                    ? { purpose: request.purpose, exchange_tier: request.exchangeTier }
+                    : { purpose: request.purpose };
             const claim = (await openRewardedClaim(body)).data;
             token = claim.token;
             dynamicUserId = claim.dynamic_user_id;
@@ -308,6 +316,7 @@ export function AdsProvider({ children }: { children: ReactNode }) {
           const claim = await pollClaim(token);
           if (claim?.status === 'verified') {
             if (claim.reward_coins !== null) void refreshWallet({ force: true });
+            if (claim.purpose === 'spin' || claim.purpose === 'token_exchange') void refreshTokens({ force: true });
             return { status: 'verified', claim, message: claimOutcomeMessage(claim.outcome) ?? 'Reward confirmed.' };
           }
           if (claim === null || claim.status === 'pending') {
@@ -332,7 +341,7 @@ export function AdsProvider({ children }: { children: ReactNode }) {
         setWatching(false);
       }
     },
-    [askTestAd, config?.simulation_allowed, placement, pollClaim, refreshWallet, sdkPresent, sdkReady, track]
+    [askTestAd, config?.simulation_allowed, placement, pollClaim, refreshTokens, refreshWallet, sdkPresent, sdkReady, track]
   );
 
   const showInterstitial = useCallback(

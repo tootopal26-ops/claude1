@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * One rewarded-ad opportunity the server opened for a player and purpose. Only a verified provider callback for its token completes it.
  */
-#[Fillable(['token', 'user_id', 'purpose', 'placement_key', 'tournament_id', 'daily_reward_claim_id', 'redeem_reservation_id', 'ad_reward_campaign_id', 'status', 'expires_at', 'provider', 'provider_event_id', 'verification_method', 'counts_for_earning', 'reward_coins', 'wallet_ledger_entry_id', 'failure_reason', 'verified_at', 'ip_address'])]
+#[Fillable(['token', 'user_id', 'purpose', 'placement_key', 'tournament_id', 'daily_reward_claim_id', 'redeem_reservation_id', 'ad_reward_campaign_id', 'exchange_tier_index', 'status', 'expires_at', 'provider', 'provider_event_id', 'verification_method', 'counts_for_earning', 'reward_coins', 'reward_tokens', 'wallet_ledger_entry_id', 'failure_reason', 'verified_at', 'ip_address'])]
 class RewardedClaim extends Model
 {
     protected function casts(): array
@@ -19,6 +19,8 @@ class RewardedClaim extends Model
             'verified_at' => 'datetime',
             'counts_for_earning' => 'boolean',
             'reward_coins' => 'decimal:2',
+            'reward_tokens' => 'integer',
+            'exchange_tier_index' => 'integer',
         ];
     }
 

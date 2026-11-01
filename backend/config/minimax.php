@@ -358,4 +358,23 @@ return [
     'tickets_default_free' => 1,
     'tickets_max_per_tournament' => 5,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Spin & Token Rewards
+    |--------------------------------------------------------------------------
+    |
+    | The spin wheel pays out 1-5 tokens per verified rewarded ad, drawn with
+    | these weights (must always sum to exactly 100 — enforced by
+    | PlatformSettingsService's cross-field validation). Tokens are exchanged
+    | for coins in TokenExchangeService::TIERS, which are fixed by the
+    | product spec, not configurable here.
+    |
+    */
+    'spin_enabled' => false,
+    'spin_prob_1' => '80.00',
+    'spin_prob_2' => '10.00',
+    'spin_prob_3' => '5.00',
+    'spin_prob_4' => '3.00',
+    'spin_prob_5' => '2.00',
+
 ];

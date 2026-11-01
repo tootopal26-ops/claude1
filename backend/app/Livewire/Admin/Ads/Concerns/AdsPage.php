@@ -46,6 +46,7 @@ trait AdsPage
             ['label' => 'Revenue reports', 'route' => 'ads.revenue', 'permission' => 'ads.view'],
             ['label' => 'Weekly settlements', 'route' => 'ads.settlements', 'permission' => 'ads.view'],
             ['label' => 'Daily login rewards', 'route' => 'ads.daily-rewards', 'permission' => 'ads.manage'],
+            ['label' => 'Spin & token rewards', 'route' => 'ads.spin', 'permission' => 'ads.manage'],
             ['label' => 'Reward campaigns', 'route' => 'ads.campaigns', 'permission' => 'ads.manage'],
             ['label' => 'Tournament tickets', 'route' => 'ads.tickets', 'permission' => 'ads.manage'],
             ['label' => 'User ad activity', 'route' => 'ads.users', 'permission' => 'ads.view'],

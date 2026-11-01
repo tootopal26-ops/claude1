@@ -12,7 +12,8 @@ export type AdPlacementKey =
   | 'withdrawal_success'
   | 'leaderboard_feed'
   | 'tournament_feed'
-  | 'wallet_profile';
+  | 'wallet_profile'
+  | 'spin_feed';
 
 export type AdFormat = 'rewarded' | 'interstitial' | 'banner' | 'native' | 'app_open';
 
@@ -33,7 +34,7 @@ export type AdsClientConfig = {
   }[];
 };
 
-export type RewardedPurpose = 'tournament_ticket' | 'daily_reward' | 'ads_earning' | 'campaign' | 'redeem_code';
+export type RewardedPurpose = 'tournament_ticket' | 'daily_reward' | 'ads_earning' | 'campaign' | 'redeem_code' | 'spin' | 'token_exchange';
 
 export type RewardedClaim = {
   token: string;
@@ -44,6 +45,8 @@ export type RewardedClaim = {
   status: 'pending' | 'verified' | 'rejected' | 'expired' | 'cancelled';
   expires_at: string;
   reward_coins: string | null;
+  /** A verified 'spin' claim's winning number (1-5) — also how many tokens it awarded. */
+  reward_tokens: number | null;
   counts_for_earning: boolean | null;
   /** Why a verified claim granted nothing (e.g. the tournament closed meanwhile). */
   outcome: string | null;

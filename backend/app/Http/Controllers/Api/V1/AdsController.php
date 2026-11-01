@@ -55,9 +55,10 @@ class AdsController extends Controller
     public function openClaim(Request $request, RewardedClaimService $claims): JsonResponse
     {
         $validated = $request->validate([
-            'purpose' => ['required', Rule::in(['tournament_ticket', 'daily_reward', 'ads_earning', 'campaign'])],
+            'purpose' => ['required', Rule::in(['tournament_ticket', 'daily_reward', 'ads_earning', 'campaign', 'spin', 'token_exchange'])],
             'tournament_id' => ['required_if:purpose,tournament_ticket', 'nullable', 'integer'],
             'campaign_id' => ['required_if:purpose,campaign', 'nullable', 'integer'],
+            'exchange_tier' => ['required_if:purpose,token_exchange', 'nullable', 'integer', 'min:0', 'max:9'],
         ]);
 
         $context = [];
@@ -66,6 +67,9 @@ class AdsController extends Controller
         }
         if ($validated['purpose'] === 'campaign') {
             $context['campaign'] = AdRewardCampaign::findOrFail($validated['campaign_id']);
+        }
+        if ($validated['purpose'] === 'token_exchange') {
+            $context['exchange_tier'] = $validated['exchange_tier'];
         }
 
         $claim = $claims->open($request->user(), $validated['purpose'], $context, $request->ip());
@@ -150,6 +154,7 @@ class AdsController extends Controller
             'status' => $claim->status,
             'expires_at' => $claim->expires_at->toIso8601String(),
             'reward_coins' => $claim->reward_coins !== null ? (string) $claim->reward_coins : null,
+            'reward_tokens' => $claim->reward_tokens,
             'counts_for_earning' => $claim->purpose === 'ads_earning' ? $claim->counts_for_earning : null,
             'outcome' => $claim->failure_reason,
             'progress' => $progress,

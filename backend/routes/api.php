@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RedeemController;
 use App\Http\Controllers\Api\V1\SectionController;
 use App\Http\Controllers\Api\V1\SessionController;
+use App\Http\Controllers\Api\V1\SpinController;
+use App\Http\Controllers\Api\V1\TokensController;
 use App\Http\Controllers\Api\V1\TournamentController;
 use App\Http\Controllers\Api\V1\WalletController;
 use App\Http\Controllers\Api\V1\WithdrawalController;
@@ -54,6 +56,12 @@ Route::prefix('v1')->group(function () {
         Route::get('/ads-earning', [AdsEarningController::class, 'show']);
         Route::post('/ads-earning/preference', [AdsEarningController::class, 'preference'])->middleware('throttle:20,1');
         Route::get('/ads-earning/history', [AdsEarningController::class, 'history']);
+
+        Route::get('/spin', [SpinController::class, 'show']);
+        Route::get('/tokens', [TokensController::class, 'show']);
+        Route::get('/exchange/tiers', [TokensController::class, 'tiers']);
+        Route::get('/exchange/history', [TokensController::class, 'history']);
+
         Route::post('/auth/logout', [AuthController::class, 'logout']);
 
         Route::get('/legal/acceptance-status', [LegalController::class, 'acceptanceStatus']);

@@ -3,6 +3,8 @@
 namespace App\Domain\Ads;
 
 use App\Domain\Redeem\RedeemCodeService;
+use App\Domain\Spin\SpinService;
+use App\Domain\Tokens\TokenExchangeService;
 use App\Domain\Wallet\WalletService;
 use App\Models\AdCallbackLog;
 use App\Models\AdRewardCampaign;
@@ -21,9 +23,10 @@ use Illuminate\Validation\ValidationException;
  * Every reward for watching an ad goes through here, in two steps:
  *
  *  1. open() — the app asks to start one rewarded ad for a purpose (a tournament ticket,
- *     today's daily reward, an Ads Earning view, a redeem code, a reward campaign). The
- *     server checks every rule for that purpose first and returns a claim token. The app
- *     gives LevelPlay that token as its dynamic user ID before showing the ad.
+ *     today's daily reward, an Ads Earning view, a redeem code, a reward campaign, a spin
+ *     of the token wheel, a token-for-coins exchange). The server checks every rule for
+ *     that purpose first and returns a claim token. The app gives LevelPlay that token as
+ *     its dynamic user ID before showing the ad.
  *  2. complete() — only from LevelPlay's signed server-to-server callback (verifyCallback)
  *     carrying that token. Nothing the app sends can complete a claim: an ad that was
  *     loaded, shown, closed early or failed earns nothing.
@@ -49,10 +52,12 @@ class RewardedClaimService
         private readonly DailyRewardService $daily,
         private readonly AdsEarningService $earning,
         private readonly WalletService $wallet,
+        private readonly SpinService $spin,
+        private readonly TokenExchangeService $exchange,
     ) {}
 
     /**
-     * @param  array{tournament?: Tournament, campaign?: AdRewardCampaign, reservation?: RedeemReservation}  $context
+     * @param  array{tournament?: Tournament, campaign?: AdRewardCampaign, reservation?: RedeemReservation, exchange_tier?: int}  $context
      *
      * @throws ValidationException
      */
@@ -70,9 +75,19 @@ class RewardedClaimService
             throw ValidationException::withMessages(['ads' => 'This account can\'t earn rewards.']);
         }
 
-        $links = ['tournament_id' => null, 'daily_reward_claim_id' => null, 'redeem_reservation_id' => null, 'ad_reward_campaign_id' => null];
+        $links = ['tournament_id' => null, 'daily_reward_claim_id' => null, 'redeem_reservation_id' => null, 'ad_reward_campaign_id' => null, 'exchange_tier_index' => null];
 
         switch ($purpose) {
+            case 'spin':
+                $this->spin->assertCanSpin($user);
+                break;
+
+            case 'token_exchange':
+                $tierIndex = $context['exchange_tier'] ?? throw ValidationException::withMessages(['tier' => 'Choose an exchange option.']);
+                $this->exchange->assertCanOpen($user, (int) $tierIndex);
+                $links['exchange_tier_index'] = (int) $tierIndex;
+                break;
+
             case 'tournament_ticket':
                 $tournament = $context['tournament'] ?? throw ValidationException::withMessages(['tournament' => 'Choose a tournament.']);
                 $this->tickets->assertCanEarn($tournament, $user);
@@ -277,6 +292,20 @@ class RewardedClaimService
         $user = $claim->user;
 
         switch ($claim->purpose) {
+            case 'spin':
+                $attempt = $this->spin->creditSpin($claim);
+                $claim->update(['reward_tokens' => $attempt->tokens_awarded]);
+                break;
+
+            case 'token_exchange':
+                $transaction = $this->exchange->exchange($claim, (int) $claim->exchange_tier_index);
+                $claim->update([
+                    'reward_coins' => $transaction->status === 'credited' ? $transaction->coins_received : null,
+                    'wallet_ledger_entry_id' => $transaction->wallet_ledger_entry_id,
+                    'failure_reason' => $transaction->status === 'credited' ? null : $transaction->failure_reason,
+                ]);
+                break;
+
             case 'tournament_ticket':
                 /** @var Tournament $tournament */
                 $tournament = Tournament::query()->lockForUpdate()->findOrFail($claim->tournament_id);

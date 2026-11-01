@@ -11,6 +11,7 @@ use App\Livewire\Admin\Ads\Placements;
 use App\Livewire\Admin\Ads\RevenueReports;
 use App\Livewire\Admin\Ads\RewardCampaigns;
 use App\Livewire\Admin\Ads\Settlements;
+use App\Livewire\Admin\Ads\SpinRewards;
 use App\Livewire\Admin\Ads\TicketSettings;
 use App\Livewire\Admin\Ads\UserAdActivity;
 use App\Livewire\Admin\Ads\VerificationLogs;
@@ -312,6 +313,7 @@ foreach ($portals as $portal => $config) {
                 Route::get('/revenue', RevenueReports::class)->name('revenue')->middleware('permission:ads.view');
                 Route::get('/settlements', Settlements::class)->name('settlements')->middleware('permission:ads.view');
                 Route::get('/daily-rewards', DailyRewards::class)->name('daily-rewards')->middleware('permission:ads.manage');
+                Route::get('/spin', SpinRewards::class)->name('spin')->middleware('permission:ads.manage');
                 Route::get('/campaigns', RewardCampaigns::class)->name('campaigns')->middleware('permission:ads.manage');
                 Route::get('/tickets', TicketSettings::class)->name('tickets')->middleware('permission:ads.manage');
                 Route::get('/users', UserAdActivity::class)->name('users')->middleware('permission:ads.view');

@@ -58,7 +58,8 @@ export type IconName =
   | 'settings'
   | 'refresh'
   | 'wifi-off'
-  | 'info';
+  | 'info'
+  | 'tv';
 
 type IconProps = {
   name: IconName;
@@ -615,6 +616,14 @@ function renderIcon(name: IconName, common: Record<string, unknown>, accent: str
           <Path d="M12 3l10 18H2L12 3Z" {...common} />
           <Line x1={12} y1={10} x2={12} y2={14} {...common} />
           <Line x1={12} y1={17.5} x2={12} y2={17.6} {...common} />
+        </>
+      );
+    case 'tv':
+      return (
+        <>
+          <Path d="M8.5 2.8 12 6l3.5-3.2" {...common} />
+          <Rect x={3} y={6} width={18} height={12.5} rx={2} {...common} />
+          <Line x1={8} y1={21.2} x2={16} y2={21.2} {...common} />
         </>
       );
   }

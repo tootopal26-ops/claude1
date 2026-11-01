@@ -75,6 +75,13 @@ class PlatformSettingsService
 
         'tickets_default_free' => ['label' => 'Default rewarded-ad tickets for a new free tournament', 'type' => 'int', 'group' => 'tickets', 'min' => 0, 'max' => 10],
         'tickets_max_per_tournament' => ['label' => 'Most tickets a tournament may require', 'type' => 'int', 'group' => 'tickets', 'min' => 1, 'max' => 10],
+
+        'spin_enabled' => ['label' => 'Spin wheel', 'type' => 'bool', 'group' => 'spin'],
+        'spin_prob_1' => ['label' => 'Odds of landing on 1 (%)', 'type' => 'percent', 'group' => 'spin'],
+        'spin_prob_2' => ['label' => 'Odds of landing on 2 (%)', 'type' => 'percent', 'group' => 'spin'],
+        'spin_prob_3' => ['label' => 'Odds of landing on 3 (%)', 'type' => 'percent', 'group' => 'spin'],
+        'spin_prob_4' => ['label' => 'Odds of landing on 4 (%)', 'type' => 'percent', 'group' => 'spin'],
+        'spin_prob_5' => ['label' => 'Odds of landing on 5 (%)', 'type' => 'percent', 'group' => 'spin'],
     ];
 
     public function get(string $key): mixed
@@ -326,6 +333,17 @@ class PlatformSettingsService
         if ($merged['daily_reward_starts_on'] && $merged['daily_reward_ends_on'] && $merged['daily_reward_starts_on'] > $merged['daily_reward_ends_on']) {
             throw ValidationException::withMessages([
                 'daily_reward_ends_on' => 'The campaign must end on or after the day it starts.',
+            ]);
+        }
+
+        $spinTotal = array_reduce(
+            ['spin_prob_1', 'spin_prob_2', 'spin_prob_3', 'spin_prob_4', 'spin_prob_5'],
+            fn (string $sum, string $key) => bcadd($sum, (string) $merged[$key], 2),
+            '0.00',
+        );
+        if (bccomp($spinTotal, '100.00', 2) !== 0) {
+            throw ValidationException::withMessages([
+                'spin_prob_5' => "The five spin odds must add up to exactly 100% (currently {$spinTotal}%).",
             ]);
         }
 

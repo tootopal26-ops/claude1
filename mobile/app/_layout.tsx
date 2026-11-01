@@ -13,6 +13,7 @@ import { BootScreen } from '../src/components/layout/BootScreen';
 import { SectionsProvider } from '../src/sections/SectionsContext';
 import { DURATION, useReducedMotion } from '../src/theme/motion';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
+import { TokenProvider } from '../src/tokens/TokenContext';
 import { WalletProvider } from '../src/wallet/WalletContext';
 
 // The tabs sit under every pushed screen, so a cold start straight into a tournament (from a
@@ -111,6 +112,7 @@ function ThemedStack({ signedIn }: { signedIn: boolean }) {
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
         <Stack.Screen name="matches" options={{ title: 'My matches' }} />
         <Stack.Screen name="ads-earning" options={{ title: 'Ads Earning' }} />
+        <Stack.Screen name="token-exchange" options={{ title: 'Exchange tokens' }} />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn} redirectTo="/">
         <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
@@ -130,11 +132,13 @@ export default function RootLayout() {
           <ThemedRoot>
             <AuthProvider>
               <WalletProvider>
-                <SectionsProvider>
-                  <AdsProvider>
-                    <AppGate />
-                  </AdsProvider>
-                </SectionsProvider>
+                <TokenProvider>
+                  <SectionsProvider>
+                    <AdsProvider>
+                      <AppGate />
+                    </AdsProvider>
+                  </SectionsProvider>
+                </TokenProvider>
               </WalletProvider>
             </AuthProvider>
           </ThemedRoot>

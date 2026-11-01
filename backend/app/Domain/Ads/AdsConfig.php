@@ -22,6 +22,8 @@ class AdsConfig
         'ads_earning' => 'ads_earning',
         'redeem_code' => 'redeem_verification',
         'campaign' => 'rewarded_general',
+        'spin' => 'spin',
+        'token_exchange' => 'token_exchange',
     ];
 
     /** @var Collection<string, AdPlacement>|null */

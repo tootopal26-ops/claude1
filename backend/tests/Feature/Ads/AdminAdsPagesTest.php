@@ -37,7 +37,7 @@ class AdminAdsPagesTest extends TestCase
 
     private const array READ_ONLY_PAGES = ['', '/revenue', '/settlements', '/users', '/verification', '/audit'];
 
-    private const array MANAGE_PAGES = ['/earning', '/units', '/placements', '/daily-rewards', '/campaigns', '/tickets'];
+    private const array MANAGE_PAGES = ['/earning', '/units', '/placements', '/daily-rewards', '/spin', '/campaigns', '/tickets'];
 
     private function staffWith(array $permissions): StaffUser
     {

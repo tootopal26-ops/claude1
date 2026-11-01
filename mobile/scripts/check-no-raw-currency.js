@@ -29,6 +29,9 @@ const ALLOWED_SVG_FILES = [
   // The bottom nav's own icon set (trophy, spin wheel, home, user silhouette) — shapes only,
   // no coin or currency imagery.
   path.join(ROOT, 'src', 'components', 'navigation', 'NavIcons.tsx'),
+  // The Spin screen's SPIN button fill/sheen (gradients only) — no coin or currency imagery;
+  // the token amount beside it is always rendered via <TokenAmount>/<TokenAsset>.
+  path.join(ROOT, 'src', 'tokens', 'SpinButton.tsx'),
   // The bottom nav's purple active-indicator light (a gradient only) — no coin or currency imagery.
   path.join(ROOT, 'src', 'components', 'navigation', 'BottomNav.tsx'),
 ];

@@ -9,7 +9,12 @@ export function sendAdEvents(events: AdEvent[]) {
   return apiRequest<{ data: { recorded: number } }>('/ads/events', { method: 'POST', body: { events } });
 }
 
-export function openRewardedClaim(body: { purpose: 'tournament_ticket' | 'daily_reward' | 'ads_earning' | 'campaign'; tournament_id?: number; campaign_id?: number }) {
+export function openRewardedClaim(body: {
+  purpose: 'tournament_ticket' | 'daily_reward' | 'ads_earning' | 'campaign' | 'spin' | 'token_exchange';
+  tournament_id?: number;
+  campaign_id?: number;
+  exchange_tier?: number;
+}) {
   return apiRequest<{ data: RewardedClaim }>('/ads/claims', { method: 'POST', body });
 }
 
