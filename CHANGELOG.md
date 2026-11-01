@@ -4,6 +4,14 @@
 
 The plan and what already exists is in [docs/AUDIT-AND-CHECKLIST.md](docs/AUDIT-AND-CHECKLIST.md). Each phase below is committed separately; a feature is listed only when its tests ran.
 
+### Priority 7 (QA) — full regression battery, browser QA, final report
+**Upgrading:** no code change beyond two test files; nothing to upload differently from Priority 6.
+* Ran the complete regression battery for the whole seven-priority release: `php tests/run.php` (**444 passed, 0 failed, 5,678 assertions**) and all 27 `tools/qa/*.mjs` browser/JS suites (`bash tools/qa/run-all.sh --long`, including the real-time 5-minute payment-countdown test) — **every suite green** on **MariaDB 10.11**.
+* Because Priority 3 added a new table (migration `014_sales_target_ad_budget`), also reran the full PHP suite and the eleven database-sensitive browser suites against a real **MySQL 8.0.46** server (the same engine that caught a real `CASE`-typing bug in an earlier release) — all clean there too.
+* **Found and fixed two stale test assertions**, both test-harness bugs predating this release's redesign, not application bugs: `admin-catalog.mjs` still expected an interim accent-colour hex from mid-way through Priority 2's fix (superseded by the final reverted default); `site-input.mjs` still expected the *pre*-Priority-2 static `--color-brand-600`/`--color-line-strong` values, which the new per-theme palette intentionally replaced with its own curated shades. No application code changed — only the two test files, to match the design that was already shipped and reviewed in Priorities 2, 5 and 6.
+* Full write-up: [docs/QA-REPORT.md](docs/QA-REPORT.md) (new top section).
+* Tests: no new tests added (this priority is the verification pass itself); the two fixed suites now pass in full (`admin-catalog` 25/25, `site-input` 12/12); the whole battery — 444 PHP tests plus 703 browser-suite checks across 27 suites — passes clean on both MariaDB and MySQL 8.
+
 ### Priority 6 (security) — a security pass on every surface Priorities 1–4 added
 **Upgrading:** upload the files; no migration, no new permission.
 * Reviewed every new surface from Priorities 1–4 — authorization on each new/changed endpoint, SQL parameterisation and mass-assignment, CSRF, CSP/inline-style, rate-limiting convention, and the one genuinely new unauthenticated customer-facing input (`OrderCalculator`'s quantity parsing, Priority 1).
