@@ -53,7 +53,7 @@ export function SpinButton({ onPress, loading = false, disabled = false, label =
     >
       <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
         <Defs>
-          <LinearGradient id="mm-spin-fill" x1="0" y1="0" x2="0" y2="1">
+          <LinearGradient id="mm-spin-fill" x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0" stopColor={GREEN_LIGHT} stopOpacity={1} />
             <Stop offset="0.55" stopColor={GREEN_MID} stopOpacity={1} />
             <Stop offset="1" stopColor={GREEN_DARK} stopOpacity={1} />
@@ -86,7 +86,13 @@ export function SpinButton({ onPress, loading = false, disabled = false, label =
 
 const styles = StyleSheet.create({
   layout: {
-    // A controlled green shadow — grounded, not a neon bloom.
+    // A controlled green shadow — grounded, not a neon bloom. borderRadius is required here,
+    // matching `base` exactly: on Android, `elevation` paints THIS view's own rectangular
+    // surface as its shadow-casting layer, so without a matching radius its square corners
+    // show as solid black patches peeking out from behind the rounded, green-filled child
+    // below (`base`) — this is the one view in the whole app using `elevation`, which is
+    // exactly why nothing else in the codebase already carries this fix.
+    borderRadius: RADIUS.xl,
     shadowColor: GREEN_DARK,
     shadowOpacity: 0.4,
     shadowRadius: 12,

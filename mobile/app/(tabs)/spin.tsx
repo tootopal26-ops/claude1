@@ -38,7 +38,7 @@ export default function SpinScreen() {
   const { width } = useWindowDimensions();
   const bottomSpace = useBottomNavSpace();
   const contentWidth = Math.min(width, MAX_CONTENT_WIDTH) - SPACE.md * 2;
-  const wheelSize = Math.min(contentWidth, 320);
+  const wheelSize = Math.min(contentWidth, 340);
   const { watchRewarded } = useAds();
   const { balance: tokenBalance } = useTokens();
   const sound = useSound();

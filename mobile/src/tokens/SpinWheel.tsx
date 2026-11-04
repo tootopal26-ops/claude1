@@ -7,23 +7,41 @@ import type { SpinSegment } from './types';
 const FRAME_IMAGE = require('../../assets/spin/spin-frame.png');
 const WHEEL_IMAGE = require('../../assets/spin/spin-wheel.png');
 
-// The frame's own cropped size (mobile/assets/spin/spin-frame.png), measured directly from
-// the artwork's alpha channel (a flood fill of the fully-enclosed transparent hole, not a
-// guess, and not the same as the image's own geometric centre — the opening sits measurably
-// off-centre inside the frame: centre (409, 437) of 833x900, i.e. 7.5px left / 13px up of
-// the image's own midpoint). OPENING_* below are that hole's centre and size, each as a
-// fraction of the frame's own width/height, so they scale to any display size unchanged.
+// Every measurement below comes from inspecting the actual PNGs' alpha channels (a flood
+// fill of each image's enclosed content/hole), not the bare canvas dimensions — see the
+// derivation in qa-report/spin-token-rewards/ui-fix.
+//
+// Frame (mobile/assets/spin/spin-frame.png), 833x900: its circular opening is a fully
+// enclosed transparent hole measurably off-centre from the image's own midpoint — centre
+// (409, 437), i.e. 7.5px left / 13px up of (416.5, 450) — sized 572 wide x 550 tall (not a
+// perfect circle; the ornate artwork's hole is very slightly wider than it is tall).
 export const FRAME_ASPECT = 833 / 900;
-const WHEEL_ASPECT = 770 / 766;
-const OPENING_CENTER_X = 409 / 833;
+const FRAME_WIDTH_PX = 833;
+const OPENING_CENTER_X = 409 / FRAME_WIDTH_PX;
 const OPENING_CENTER_Y = 437 / 900;
-/** The opening's width as a fraction of the frame's width. Sizing the wheel to this (rather
- *  than its height fraction, 550/900 = 0.611) guarantees full coverage in both directions:
- *  the wheel's own aspect ratio is close to square, so matching the opening's wider axis
- *  means the other axis comes out larger than the opening's 550/900 too — any resulting
- *  overflow is harmless, since the frame renders on top and simply masks it. Matching the
- *  narrower axis instead is what left the visible gap this constant replaces. */
-const OPENING_WIDTH_FRACTION = 572 / 833;
+const OPENING_WIDTH_PX = 572;
+const OPENING_HEIGHT_PX = 550;
+
+// Wheel (mobile/assets/spin/spin-wheel.png), 770x766 canvas: the visible coloured disc only
+// occupies a 743x741 content box inside it (a ~12-14px transparent margin on every side,
+// symmetric to within a pixel) — sizing by the raw canvas, as the previous pass did, was
+// quietly rendering the disc itself about 3.5% smaller than intended.
+const WHEEL_ASPECT = 770 / 766;
+const WHEEL_CANVAS_WIDTH_PX = 770;
+const WHEEL_CONTENT_WIDTH_PX = 743;
+
+/**
+ * The wheel's own disc is painted with its own purple decorative rim right at its edge
+ * (confirmed by sampling the PNG: alpha ramps 0 -> 173 -> opaque purple over its outermost
+ * ~25px) — it is drawn to meet the frame's inner gold ring directly, not to float inside it
+ * with a background gap. So the disc is sized to the opening's WIDTH (its wider axis): that
+ * makes it land very slightly larger than the opening's own height (OPENING_HEIGHT_PX) too,
+ * but that harmless few-px overflow is masked by the frame's own opaque ring (frame renders
+ * on top), while sizing to the narrower axis instead leaves the dark screen background
+ * visible as a ring between the disc's rim and the frame — confirmed by rendering both and
+ * comparing side by side.
+ */
+const OPENING_FIT_DIAMETER_PX = Math.max(OPENING_WIDTH_PX, OPENING_HEIGHT_PX);
 
 const SPIN_DURATION_MS = 3400;
 const MIN_EXTRA_SPINS = 4;
@@ -83,7 +101,12 @@ export function SpinWheel({ segments, targetNumber, requestId, onSpinComplete, s
   }, [requestId, targetNumber, segments, onSpinComplete, rotation]);
 
   const frameHeight = size / FRAME_ASPECT;
-  const wheelWidth = size * OPENING_WIDTH_FRACTION;
+  // All of this is done in the frame's own 833-wide pixel space first (where every measured
+  // constant above already lives), then scaled once by `k` — exact for both axes, since the
+  // frame is never letterboxed against its own aspect ratio.
+  const k = size / FRAME_WIDTH_PX;
+  const wheelCanvasWidthPx = OPENING_FIT_DIAMETER_PX * (WHEEL_CANVAS_WIDTH_PX / WHEEL_CONTENT_WIDTH_PX);
+  const wheelWidth = wheelCanvasWidthPx * k;
   const wheelHeight = wheelWidth / WHEEL_ASPECT;
   const openingCenterX = size * OPENING_CENTER_X;
   const openingCenterY = frameHeight * OPENING_CENTER_Y;
