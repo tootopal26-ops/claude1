@@ -7,14 +7,23 @@ import type { SpinSegment } from './types';
 const FRAME_IMAGE = require('../../assets/spin/spin-frame.png');
 const WHEEL_IMAGE = require('../../assets/spin/spin-wheel.png');
 
-// The frame's own cropped size (mobile/assets/spin/spin-frame.png) and the wheel's inner
-// opening as a share of the frame's width — both measured directly from the supplied
-// artwork (see the extraction notes in qa-report), not guessed. Every display size below
-// scales from these two numbers so the wheel always sits exactly inside the frame's ring,
-// at any screen width, with neither image stretched off its own aspect ratio.
+// The frame's own cropped size (mobile/assets/spin/spin-frame.png), measured directly from
+// the artwork's alpha channel (a flood fill of the fully-enclosed transparent hole, not a
+// guess, and not the same as the image's own geometric centre — the opening sits measurably
+// off-centre inside the frame: centre (409, 437) of 833x900, i.e. 7.5px left / 13px up of
+// the image's own midpoint). OPENING_* below are that hole's centre and size, each as a
+// fraction of the frame's own width/height, so they scale to any display size unchanged.
 export const FRAME_ASPECT = 833 / 900;
 const WHEEL_ASPECT = 770 / 766;
-const INNER_RATIO = 0.6843;
+const OPENING_CENTER_X = 409 / 833;
+const OPENING_CENTER_Y = 437 / 900;
+/** The opening's width as a fraction of the frame's width. Sizing the wheel to this (rather
+ *  than its height fraction, 550/900 = 0.611) guarantees full coverage in both directions:
+ *  the wheel's own aspect ratio is close to square, so matching the opening's wider axis
+ *  means the other axis comes out larger than the opening's 550/900 too — any resulting
+ *  overflow is harmless, since the frame renders on top and simply masks it. Matching the
+ *  narrower axis instead is what left the visible gap this constant replaces. */
+const OPENING_WIDTH_FRACTION = 572 / 833;
 
 const SPIN_DURATION_MS = 3400;
 const MIN_EXTRA_SPINS = 4;
@@ -74,16 +83,18 @@ export function SpinWheel({ segments, targetNumber, requestId, onSpinComplete, s
   }, [requestId, targetNumber, segments, onSpinComplete, rotation]);
 
   const frameHeight = size / FRAME_ASPECT;
-  const wheelWidth = size * INNER_RATIO;
+  const wheelWidth = size * OPENING_WIDTH_FRACTION;
   const wheelHeight = wheelWidth / WHEEL_ASPECT;
+  const openingCenterX = size * OPENING_CENTER_X;
+  const openingCenterY = frameHeight * OPENING_CENTER_Y;
 
   return (
     <View style={{ width: size, height: frameHeight }}>
       <Animated.View
         style={{
           position: 'absolute',
-          left: (size - wheelWidth) / 2,
-          top: (frameHeight - wheelHeight) / 2,
+          left: openingCenterX - wheelWidth / 2,
+          top: openingCenterY - wheelHeight / 2,
           width: wheelWidth,
           height: wheelHeight,
           transform: [{ rotate: rotation.interpolate({ inputRange: [0, 360], outputRange: ['0deg', '360deg'] }) }],

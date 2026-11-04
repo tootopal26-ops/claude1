@@ -155,7 +155,7 @@ const useStyles = makeStyles(({ colors: c }) => ({
   column: { gap: SPACE.md },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: SPACE.sm, minHeight: 44 },
   screenTitle: { ...TYPE.screenTitle, color: c.fg },
-  wheelArea: { alignItems: 'center', paddingVertical: SPACE.sm },
+  wheelArea: { alignItems: 'center', paddingTop: SPACE.sm, paddingBottom: SPACE.xxs },
   adSlot: { marginTop: SPACE.xs },
   winBody: { alignItems: 'center', gap: SPACE.xxs, paddingTop: SPACE.sm },
   winTitle: { ...TYPE.hero, fontSize: 26, letterSpacing: 1, color: ICON_COLORS.gold.main, textAlign: 'center' },
