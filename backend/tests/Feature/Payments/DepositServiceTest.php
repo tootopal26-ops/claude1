@@ -6,6 +6,7 @@ use App\Domain\Payments\DepositService;
 use App\Domain\Payments\PaymentGatewayException;
 use App\Models\DepositOrder;
 use App\Models\Notification;
+use App\Models\PaymentProviderConfig;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -63,6 +64,19 @@ class DepositServiceTest extends TestCase
 
         $this->expectException(ValidationException::class);
         app(DepositService::class)->initiate($user, '0.00');
+    }
+
+    public function test_initiating_a_deposit_is_blocked_when_the_provider_is_marked_inactive(): void
+    {
+        PaymentProviderConfig::create(['provider' => 'alpha_upi', 'is_active' => false]);
+        $user = User::factory()->create();
+
+        $this->expectException(ValidationException::class);
+        try {
+            app(DepositService::class)->initiate($user, '50.00');
+        } finally {
+            $this->assertSame(0, DepositOrder::where('user_id', $user->id)->count());
+        }
     }
 
     public function test_a_gateway_failure_marks_the_order_failed_and_raises_a_validation_error(): void
@@ -151,7 +165,11 @@ class DepositServiceTest extends TestCase
         $payload = json_encode(['event' => 'payment.success', 'order_id' => $order->our_order_id, 'amount' => 50.00]);
 
         $this->expectException(PaymentGatewayException::class);
-        app(DepositService::class)->handleWebhook($payload, 'wrong-signature');
+        try {
+            app(DepositService::class)->handleWebhook($payload, 'wrong-signature');
+        } finally {
+            $this->assertDatabaseHas('risk_alerts', ['type' => 'payment_webhook_bad_signature', 'risk_level' => 'medium']);
+        }
     }
 
     public function test_a_webhook_for_an_unrecognized_order_is_silently_ignored(): void

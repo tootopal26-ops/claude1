@@ -33,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('wallet:reconcile')->daily();
         $schedule->command('backup:run')->dailyAt('02:00');
         $schedule->command('ads:maintain')->everyFiveMinutes()->withoutOverlapping();
+        $schedule->command('payments:reconcile-pending-deposits')->everyFiveMinutes()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([

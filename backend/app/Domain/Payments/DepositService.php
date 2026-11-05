@@ -6,6 +6,7 @@ use App\Domain\Notifications\NotificationService;
 use App\Domain\Wallet\WalletService;
 use App\Models\AuditLog;
 use App\Models\DepositOrder;
+use App\Models\PaymentProviderConfig;
 use App\Models\PaymentWebhookEvent;
 use App\Models\RiskAlert;
 use App\Models\User;
@@ -39,6 +40,16 @@ class DepositService
         if (! is_numeric($amount) || bccomp($amount, '0.00', 2) <= 0) {
             throw ValidationException::withMessages([
                 'amount' => 'Deposit amount must be greater than zero.',
+            ]);
+        }
+
+        // Admin's "Payments active" switch (Admin > Payment Settings) must actually stop new
+        // deposits, not just sit there — no row yet (fresh install, nobody's visited the page)
+        // fails open, matching this provider's other admin-overridable default elsewhere in
+        // this class (see AppServiceProvider's webhook_signature_header fallback).
+        if (PaymentProviderConfig::where('provider', $this->gateway->providerName())->value('is_active') === false) {
+            throw ValidationException::withMessages([
+                'amount' => 'Deposits are temporarily unavailable. Please try again later.',
             ]);
         }
 
@@ -80,6 +91,26 @@ class DepositService
     public function handleWebhook(string $rawPayload, string $signature): void
     {
         if (! $this->gateway->verifyWebhookSignature($rawPayload, $signature)) {
+            $attemptedOrderId = $this->extractOrderId($rawPayload);
+
+            Log::warning('Payment webhook signature verification failed.', [
+                'provider' => $this->gateway->providerName(),
+                'order_id' => $attemptedOrderId,
+            ]);
+
+            // An invalid signature could be a misconfigured header name (see
+            // PaymentProviderConfig) or someone probing the endpoint — either way it's worth
+            // surfacing to staff, the same way a duplicate webhook is tracked below, rather
+            // than only ever living in the application log.
+            RiskAlert::create([
+                'type' => 'payment_webhook_bad_signature',
+                'risk_level' => 'medium',
+                'target_user_id' => $attemptedOrderId !== null
+                    ? DepositOrder::where('our_order_id', $attemptedOrderId)->value('user_id')
+                    : null,
+                'details' => ['provider' => $this->gateway->providerName(), 'order_id' => $attemptedOrderId],
+            ]);
+
             throw new PaymentGatewayException('Webhook signature verification failed.');
         }
 
@@ -170,6 +201,13 @@ class DepositService
         }
 
         return $order->fresh();
+    }
+
+    private function extractOrderId(string $rawPayload): ?string
+    {
+        $payload = json_decode($rawPayload, true);
+
+        return is_array($payload) && isset($payload['order_id']) ? (string) $payload['order_id'] : null;
     }
 
     private function markPaid(DepositOrder $order, ?string $utr, ?string $gatewayTxnId, ?string $reportedAmount): void
