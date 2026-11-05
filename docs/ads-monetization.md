@@ -86,7 +86,28 @@ Server (`backend/.env` on the server — never in git):
 | `MINIMAX_ADS_TEST_MODE` | `true` | While on, every ad event is recorded as test-only and excluded from revenue and analytics. |
 | `LEVELPLAY_APP_KEY` | — | Public LevelPlay app key (Admin can also set it). |
 | `LEVELPLAY_S2S_PRIVATE_KEY` | — | **Secret.** The private key set on LevelPlay's S2S callback. Without it every callback is refused. |
+| `LEVELPLAY_REWARDED_AD_UNIT_ID` | — | Optional. Bootstraps one rewarded ad unit from this ID — see 2.1. |
+| `LEVELPLAY_NATIVE_AD_UNIT_ID` | — | Optional. Bootstraps one native ad unit from this ID — see 2.1. |
+| `LEVELPLAY_INTERSTITIAL_AD_UNIT_ID` | — | Optional. Bootstraps one interstitial ad unit from this ID — see 2.1. |
 | `MINIMAX_ADS_ALLOW_SIMULATED_REWARDS` | `false` | Local QA only (section 7). Ignored when `APP_ENV=production`. |
+
+### 2.1 Bootstrapping ad units from the environment (optional)
+
+Ad unit IDs are normally entered once, by Admin, in **Ads & Monetization > Ad units** —
+that stays the source of truth, and nothing here changes that. For a scripted first
+deploy (before anyone has logged into Admin), setting `LEVELPLAY_REWARDED_AD_UNIT_ID`,
+`LEVELPLAY_NATIVE_AD_UNIT_ID` and/or `LEVELPLAY_INTERSTITIAL_AD_UNIT_ID` and running
+
+```
+php artisan ads:sync-env-units
+```
+
+creates one `production`-environment ad unit of that format from the env value, **only
+if no ad unit of that format exists yet**. It never overwrites or replaces a unit Admin
+already created or edited, and it never enables a placement or switches ads on — picking
+the unit for each placement and turning it on in Admin is still a deliberate, separate
+step (section 5). Safe to run on every deploy: a second run with the same (or no) env
+values changes nothing. There is no banner-format env var — add a banner unit in Admin.
 
 Mobile build (EAS secrets or the build shell — never in git):
 
@@ -255,3 +276,10 @@ php artisan schedule:list            # ads:maintain must be listed
 A queue worker must be running (docs/deployment.md §4) for settlements to credit.
 Then build a new Android app with EAS (the LevelPlay native module and the build plugin
 are new) — an older build simply never shows ads.
+
+Optional, if `LEVELPLAY_REWARDED_AD_UNIT_ID` / `LEVELPLAY_NATIVE_AD_UNIT_ID` /
+`LEVELPLAY_INTERSTITIAL_AD_UNIT_ID` are set in `.env` (see §2.1):
+
+```
+php artisan ads:sync-env-units
+```
