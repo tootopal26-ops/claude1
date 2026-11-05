@@ -1,3 +1,4 @@
+import type { EventSubscription } from 'expo';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -47,6 +48,36 @@ export async function registerForPushNotificationsAsync(): Promise<void> {
     // Network or backend hiccup registering the token — the app still
     // works via in-app notifications, so this is non-fatal.
   }
+}
+
+/**
+ * FCM can reissue a device's push token at any time (app reinstall, Google Play Services
+ * data reset, token rotation) — without this, a stale token would sit in the backend
+ * forever and that device would silently stop receiving pushes. Mirrors
+ * registerForPushNotificationsAsync's own permission check and error-swallowing so a
+ * logged-out or permission-denied device still fails silently.
+ */
+export function addPushTokenRefreshListener(): EventSubscription {
+  return Notifications.addPushTokenListener((event) => {
+    if (!Device.isDevice || event.data === lastRegisteredToken) {
+      return;
+    }
+
+    void (async () => {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') {
+        return;
+      }
+
+      try {
+        await registerPushToken(event.data, Platform.OS === 'ios' ? 'ios' : 'android', Device.modelName ?? undefined);
+        lastRegisteredToken = event.data;
+      } catch {
+        // Network or backend hiccup — the next successful registration (login, app
+        // start) will retry with whatever token is current at that time.
+      }
+    })();
+  });
 }
 
 export async function unregisterPushNotificationsAsync(): Promise<void> {

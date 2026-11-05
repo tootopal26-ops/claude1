@@ -88,6 +88,7 @@ class AdminNavigation
             [
                 'label' => 'System',
                 'items' => [
+                    ['label' => 'App Releases', 'route' => 'admin.app-releases.index', 'icon' => 'download', 'permission' => 'app_releases.manage', 'active' => ['admin.app-releases.*'], 'description' => 'Upload Android builds and choose which one players download.'],
                     ['label' => 'Storage', 'route' => 'admin.storage.index', 'icon' => 'storage', 'permission' => 'storage.view', 'active' => ['admin.storage.*'], 'description' => 'File storage usage and retention.'],
                     ['label' => 'Audit Log', 'route' => 'admin.audit-logs.index', 'icon' => 'audit', 'permission' => 'audit_logs.view', 'active' => ['admin.audit-logs.*'], 'description' => 'A record of every administrative action.'],
                     ['label' => 'Risk Alerts', 'route' => 'admin.risk-alerts.index', 'icon' => 'alert', 'permission' => 'audit_logs.view', 'active' => ['admin.risk-alerts.*'], 'description' => 'Flagged activity awaiting review.'],

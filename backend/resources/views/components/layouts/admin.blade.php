@@ -195,6 +195,11 @@
                             <div class="flex items-center justify-between gap-3"><dt class="text-fg-3">Access</dt><dd class="truncate font-medium text-fg-2">{{ \App\View\AdminNavigation::roleLabel($staff) }}</dd></div>
                         </dl>
                     </div>
+                    <div class="border-t border-line py-1.5">
+                        <a href="{{ portal_route('profile.security') }}" class="flex h-9 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-fg-2 transition-colors hover:bg-surface-2 hover:text-fg">
+                            <x-icon name="lock" :size="16" /> Password &amp; security
+                        </a>
+                    </div>
                     <div class="border-t border-line pt-1.5">
                         <form method="POST" action="{{ portal_route('logout') }}">
                             @csrf

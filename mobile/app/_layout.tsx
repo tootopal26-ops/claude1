@@ -10,6 +10,7 @@ import { SoundProvider } from '../src/sound/SoundContext';
 import { AuthProvider, useAuth } from '../src/auth/AuthContext';
 import { LegalAcceptanceGate } from '../src/components/LegalAcceptanceGate';
 import { BootScreen } from '../src/components/layout/BootScreen';
+import { addPushTokenRefreshListener } from '../src/notifications/pushRegistration';
 import { SectionsProvider } from '../src/sections/SectionsContext';
 import { DURATION, useReducedMotion } from '../src/theme/motion';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
@@ -31,6 +32,13 @@ function useNotificationTapNavigation() {
       }
     });
 
+    return () => subscription.remove();
+  }, []);
+}
+
+function usePushTokenRefresh() {
+  useEffect(() => {
+    const subscription = addPushTokenRefreshListener();
     return () => subscription.remove();
   }, []);
 }
@@ -124,6 +132,7 @@ function ThemedStack({ signedIn }: { signedIn: boolean }) {
 
 export default function RootLayout() {
   useNotificationTapNavigation();
+  usePushTokenRefresh();
 
   return (
     <SafeAreaProvider>

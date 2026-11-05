@@ -144,6 +144,13 @@ return [
     |
     */
     'storage_buckets' => [
+        'app_releases' => [
+            'label' => 'Android build releases',
+            'max_size_kb' => 262144,
+            'allowed_mime_types' => ['application/vnd.android.package-archive', 'application/octet-stream'],
+            'retention_days' => null,
+            'view_permission' => 'app_releases.manage',
+        ],
         'tournament_evidence' => [
             'label' => 'Tournament result evidence',
             'max_size_kb' => 8192,
@@ -321,6 +328,13 @@ return [
     'ads_test_mode' => (bool) env('MINIMAX_ADS_TEST_MODE', true),
     // The LevelPlay app key is public (it ships inside the app) and is set from Admin.
     'levelplay_app_key' => env('LEVELPLAY_APP_KEY') ?: null,
+    // Optional bootstrap-only ad unit IDs: `ads:sync-env-units` seeds a `production` AdUnit
+    // row from each of these on deploy, but only if no AdUnit of that format exists yet —
+    // Admin > Ads & Monetization stays the one source of truth afterward. Leave unset to
+    // configure ad units entirely from Admin instead.
+    'levelplay_rewarded_ad_unit_id' => env('LEVELPLAY_REWARDED_AD_UNIT_ID') ?: null,
+    'levelplay_native_ad_unit_id' => env('LEVELPLAY_NATIVE_AD_UNIT_ID') ?: null,
+    'levelplay_interstitial_ad_unit_id' => env('LEVELPLAY_INTERSTITIAL_AD_UNIT_ID') ?: null,
     // Lets local QA complete a rewarded claim without a real ad network. Refused in
     // production regardless of this flag (see RewardedClaimService::simulateCompletion).
     'ads_allow_simulated_rewards' => (bool) env('MINIMAX_ADS_ALLOW_SIMULATED_REWARDS', false),

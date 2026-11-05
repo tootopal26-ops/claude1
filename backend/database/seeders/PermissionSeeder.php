@@ -40,6 +40,7 @@ class PermissionSeeder extends Seeder
         ['key' => 'notifications.send', 'label' => 'Send notifications/announcements', 'group' => 'Notifications'],
         ['key' => 'storage.view', 'label' => 'View storage usage', 'group' => 'Operations'],
         ['key' => 'storage.manage', 'label' => 'Manage storage assets (retention, manual deletion, staff documents)', 'group' => 'Operations'],
+        ['key' => 'app_releases.manage', 'label' => 'Upload Android builds and choose the current release', 'group' => 'Operations'],
         ['key' => 'settings.manage', 'label' => 'Configure platform settings (age floor, jurisdiction, risk threshold)', 'group' => 'Operations'],
         ['key' => 'legal.manage', 'label' => 'Publish Terms & Conditions / Privacy Policy versions', 'group' => 'Legal'],
         ['key' => 'salary.view', 'label' => 'View staff salary ledgers', 'group' => 'Staff Salary'],

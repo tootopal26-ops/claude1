@@ -15,6 +15,8 @@ use App\Livewire\Admin\Ads\SpinRewards;
 use App\Livewire\Admin\Ads\TicketSettings;
 use App\Livewire\Admin\Ads\UserAdActivity;
 use App\Livewire\Admin\Ads\VerificationLogs;
+use App\Livewire\Admin\AppReleaseForm;
+use App\Livewire\Admin\AppReleaseList;
 use App\Livewire\Admin\AuditLogViewer;
 use App\Livewire\Admin\CustomerSupportSettings;
 use App\Livewire\Admin\DepositList;
@@ -35,6 +37,7 @@ use App\Livewire\Admin\PaymentSettings;
 use App\Livewire\Admin\PlatformSettingsEditor;
 use App\Livewire\Admin\PresetForm;
 use App\Livewire\Admin\PresetList;
+use App\Livewire\Admin\ProfileSecurity;
 use App\Livewire\Admin\RedeemCodes;
 use App\Livewire\Admin\RedeemHistory;
 use App\Livewire\Admin\RiskAlertList;
@@ -135,6 +138,18 @@ foreach ($portals as $portal => $config) {
 
             Route::get('/storage-assets/{storageAsset}/download', StorageAssetDownloadController::class)
                 ->name('storage-assets.download');
+
+            // A personal account action, like /appearance/mode above — no permission needed
+            // beyond being signed in; the portal middleware keeps it to the account's own portal.
+            Route::get('/profile/security', ProfileSecurity::class)->name('profile.security');
+
+            Route::get('/app-releases', AppReleaseList::class)
+                ->name('app-releases.index')
+                ->middleware('permission:app_releases.manage');
+
+            Route::get('/app-releases/create', AppReleaseForm::class)
+                ->name('app-releases.create')
+                ->middleware('permission:app_releases.manage');
 
             Route::get('/notifications', NotificationHistory::class)
                 ->name('notifications.index')

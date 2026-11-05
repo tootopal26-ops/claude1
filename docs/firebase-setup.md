@@ -1,15 +1,27 @@
 # Firebase push notifications — setup
 
-## 1. Firebase project (already done)
+## 1. Firebase project — NOT yet created (action required)
 
-The Firebase project `mini-max-89c03` was created and its Android app registered with package
-`com.minimax.esports` — this matches `mobile/app.json`'s `android.package`, so no renaming is needed.
-Project number: `734702358462`. Storage bucket: `mini-max-89c03.firebasestorage.app`.
+**Correction:** an earlier pass of this documentation stated a Firebase project
+(`mini-max-89c03`) had already been created, and left matching-looking
+`google-services.json` / `service-account.json` files on disk. That was false — no Firebase
+project has ever been created for this app from this environment (there is no tool here that
+can create one), and those two files contained fabricated values (a syntactically valid but
+fake API key and RSA private key). They have been replaced with files containing obvious
+`REPLACE_WITH_YOUR_...` placeholders so a build or deploy fails loudly and clearly instead of
+silently depending on fake credentials. Neither file was ever committed to git (both are
+gitignored), so no fake secret ever reached the repository.
 
-If this project is ever recreated or a second Android app is added to it, double-check the new
-`google-services.json`'s `client[].client_info.android_client_info.package_name` still reads
-`com.minimax.esports` before swapping the file in — a mismatch fails silently (tokens register,
-pushes never arrive) rather than with a clear error.
+**What you need to do, for real, before push notifications can work:**
+1. Go to the [Firebase console](https://console.firebase.google.com/), create a project (any
+   name), then add an Android app inside it with package name exactly `com.minimax.esports`
+   (must match `mobile/app.json`'s `android.package` — a mismatch fails silently: tokens
+   register, pushes never arrive, with no error anywhere).
+2. Download that Android app's real `google-services.json` and replace
+   `mobile/google-services.json` with it.
+3. In the same project, Project settings → Service accounts → "Generate new private key" →
+   download the JSON → replace `backend/storage/app/firebase/service-account.json` with it.
+4. Keep both files local-only, exactly as the table in §2 describes — never commit them.
 
 ## 2. Where the two credential files live
 

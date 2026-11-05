@@ -37,6 +37,12 @@ class StorageService
         'image/png' => 'png',
         'image/webp' => 'webp',
         'application/pdf' => 'pdf',
+        // Android build artifacts (App Releases bucket only). Neither APK nor AAB has one
+        // universally-detected MIME type across fileinfo/libmagic versions, so both of the
+        // commonly reported types are mapped here; the file's real .apk/.aab name is kept
+        // separately as its original_filename and is what any download response uses.
+        'application/vnd.android.package-archive' => 'apk',
+        'application/octet-stream' => 'bin',
     ];
 
     /**
