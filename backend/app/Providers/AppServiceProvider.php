@@ -6,10 +6,13 @@ use App\Domain\Payments\AlphaUpiAdapter;
 use App\Domain\Payments\PaymentGatewayInterface;
 use App\Http\Middleware\EnsurePortalAccess;
 use App\Http\Middleware\EnsureStaffSecurityVersionIsCurrent;
+use App\Listeners\CheckDatabaseConnection;
 use App\Models\PaymentProviderConfig;
 use App\Models\PlatformSetting;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -75,6 +78,10 @@ class AppServiceProvider extends ServiceProvider
         // left open can't be driven across the boundary, or keep acting after
         // its account was deactivated or its permissions changed.
         Livewire::addPersistentMiddleware([EnsurePortalAccess::class, EnsureStaffSecurityVersionIsCurrent::class]);
+
+        // Makes the built-in /up health check (bootstrap/app.php) fail when the database
+        // is unreachable, not just when the app itself fails to boot.
+        Event::listen(DiagnosingHealth::class, CheckDatabaseConnection::class);
 
         $this->overrideConfigFromPlatformSettings();
     }

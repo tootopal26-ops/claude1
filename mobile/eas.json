@@ -20,8 +20,22 @@
       "distribution": "internal",
       "credentialsSource": "local",
       "autoIncrement": true,
+      "env": {
+        "API_BASE_URL": "https://REPLACE_WITH_PRODUCTION_DOMAIN/api/v1"
+      },
       "android": {
         "buildType": "apk"
+      }
+    },
+    "production-aab": {
+      "distribution": "internal",
+      "credentialsSource": "local",
+      "autoIncrement": true,
+      "env": {
+        "API_BASE_URL": "https://REPLACE_WITH_PRODUCTION_DOMAIN/api/v1"
+      },
+      "android": {
+        "buildType": "app-bundle"
       }
     }
   },

@@ -95,6 +95,9 @@ Jobs UI, running as the website's user:
 Run `php artisan schedule:list` on the server after deploying to confirm
 every job registered (see `backend/bootstrap/app.php` for the current
 list — new scheduled commands are added there, not as new cron lines).
+If a payment-reconciliation scheduled command is added later (see the
+payment-gateway workstream), it will show up in that same list — no
+separate cron entry is ever needed for it either.
 
 The queue worker below is also what credits an Ads Earning settlement
 (`CreditAdSettlementJob`) after an Admin presses *Credit settlement*; without
@@ -189,7 +192,55 @@ Starting from `backend/.env.production.example` (not the plain
 - `LOG_STACK=daily` rather than `single`, so logs rotate instead of
   growing forever (`.env.production.example` already sets this).
 
-## 7. Staging smoke test
+## 7. Health check
+
+`GET /up` (unauthenticated, no sensitive data in the response) confirms
+the app booted **and** that the database is reachable — a
+`DiagnosingHealth` listener (`app/Listeners/CheckDatabaseConnection.php`)
+extends Laravel's built-in `/up` route to fail if `DB::connection()` can't
+get a PDO connection, not just if the PHP process itself fails to start.
+Point CyberPanel's or any external uptime monitor at
+`https://<your-domain>/up`; a non-200 means either the app is down or the
+database connection is broken — check `storage/logs/laravel.log` first.
+
+This does not check the queue worker, the scheduler, or any external
+provider (payment gateway, LevelPlay, Firebase) — only that the web
+process itself can serve a request and reach its own database.
+
+## 8. Error monitoring (not yet wired up — a known gap)
+
+No application-performance-monitoring or error-tracking service (e.g.
+Sentry, Bugsnag) is integrated anywhere in this codebase. In production,
+errors are only visible in `storage/logs/laravel.log` (daily-rotated,
+per the `.env.production.example` default) — there is no alerting if
+that log fills with errors overnight and nobody is watching it. This is
+a genuine open item for a money-handling platform and was not resolved
+here because it requires picking and paying for a third-party service,
+which is a decision for whoever operates Mini Max, not something to
+silently add. Before relying on this deployment for real users, decide
+on and wire up an error-tracking service, or at minimum set up log-based
+alerting (e.g. a cron that greps `laravel.log` for `ERROR`/`CRITICAL`
+and emails/pings you) as a stopgap.
+
+## 9. Rollback
+
+Keep the previous release's code checked out (or tagged) before deploying
+a new one — `git log` to a prior commit and re-run the "subsequent
+deploys" steps above (composer/npm install, `config:cache` etc.) is the
+safe code-level rollback.
+
+**Do not blind-rollback database migrations** (`php artisan
+migrate:rollback`) on this app once it holds real wallet/tournament/
+payment data. A `down()` method written months ago dropping a column or
+table can silently discard financial history that a newer migration
+already built logic on top of, and `migrate:rollback` has no concept of
+"only if nothing depends on this data yet." If a deploy's migration needs
+to be undone, restore from the most recent backup (`backup-restore.md`)
+onto a copy of the database first, verify the restored state, and only
+then decide whether a rollback or a forward-fixing migration is safer —
+treat it as a manual, reviewed decision, never an automatic command.
+
+## 10. Staging smoke test
 
 Before pointing real users (or real money) at a deploy, run the
 checklist in [`smoke-test-checklist.md`](smoke-test-checklist.md):
