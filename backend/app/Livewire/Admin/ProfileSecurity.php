@@ -34,6 +34,12 @@ class ProfileSecurity extends Component
 
         $staff->update(['password' => $this->password]);
 
+        // Force every OTHER active session for this account to re-authenticate (the same
+        // mechanism StaffForm uses when an admin changes someone else's password), while
+        // keeping this session itself signed in — it just proved the current password.
+        $staff->invalidateActiveSessions();
+        session(['staff_security_version' => $staff->security_version]);
+
         AuditLog::record('staff.password_changed', $staff, $staff);
 
         $this->reset(['currentPassword', 'password', 'password_confirmation']);

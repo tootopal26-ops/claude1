@@ -72,4 +72,30 @@ class ProfileSecurityTest extends TestCase
 
         $this->actingAs($staff, 'staff')->get(route('staff.profile.security'))->assertOk();
     }
+
+    public function test_changing_the_password_bumps_the_security_version_and_refreshes_this_sessions_own_stamp(): void
+    {
+        // Same mechanism StaffForm uses when an admin changes someone else's password
+        // (AdminStaffManagementTest::test_setting_a_new_password_hashes_it_and_invalidates_sessions)
+        // — a self-service change must invalidate every OTHER active session for this
+        // account too, per StaffUser::invalidateActiveSessions()'s own documented contract.
+        $staff = StaffUser::factory()->create(['password' => 'old-password-123', 'security_version' => 1]);
+
+        $this->withSession(['staff_security_version' => 1]);
+
+        Livewire::actingAs($staff, 'staff')
+            ->test(ProfileSecurity::class)
+            ->set('currentPassword', 'old-password-123')
+            ->set('password', 'new-password-456')
+            ->set('password_confirmation', 'new-password-456')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(2, $staff->fresh()->security_version);
+
+        // Any session still stamped with the old version (any other device) is now stale and
+        // will be forced to log in again on its next request — see StaffSecurityVersionTest.
+        // This session's own stamp was refreshed in the same request, so it stays signed in.
+        $this->assertSame(2, session('staff_security_version'));
+    }
 }
