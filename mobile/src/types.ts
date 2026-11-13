@@ -74,6 +74,8 @@ export type DepositOrder = {
   status: 'pending' | 'success' | 'failed' | 'expired';
   payment_url: string | null;
   utr: string | null;
+  /** Decimal string if a first-deposit bonus was credited alongside this deposit, else null. */
+  deposit_bonus_awarded: string | null;
   created_at: string;
 };
 

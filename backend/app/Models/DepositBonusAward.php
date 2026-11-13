@@ -14,6 +14,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['user_id', 'deposit_order_id', 'amount', 'wallet_ledger_entry_id'])]
 class DepositBonusAward extends Model
 {
+    protected function casts(): array
+    {
+        return [
+            'amount' => 'decimal:2',
+        ];
+    }
+
     /**
      * @return BelongsTo<User, $this>
      */

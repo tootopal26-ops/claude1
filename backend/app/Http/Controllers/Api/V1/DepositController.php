@@ -14,7 +14,7 @@ class DepositController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $deposits = $request->user()->depositOrders()->orderByDesc('created_at')->paginate(20);
+        $deposits = $request->user()->depositOrders()->with('depositBonusAward')->orderByDesc('created_at')->paginate(20);
 
         return response()->json([
             'data' => DepositOrderResource::collection($deposits),

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'user_id', 'amount', 'our_order_id', 'provider', 'provider_token', 'payment_url',
@@ -28,5 +29,13 @@ class DepositOrder extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return HasOne<DepositBonusAward, $this>
+     */
+    public function depositBonusAward(): HasOne
+    {
+        return $this->hasOne(DepositBonusAward::class);
     }
 }

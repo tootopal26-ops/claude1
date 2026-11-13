@@ -20,6 +20,7 @@ class DepositOrderResource extends JsonResource
             'status' => $this->status,
             'payment_url' => $this->status === 'pending' ? $this->payment_url : null,
             'utr' => $this->utr,
+            'deposit_bonus_awarded' => $this->depositBonusAward?->amount !== null ? (string) $this->depositBonusAward->amount : null,
             'created_at' => $this->created_at->toIso8601String(),
         ];
     }

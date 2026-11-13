@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, FlatList, RefreshControl, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { fetchAppConfig, type DepositBonusConfig } from '../src/api/appConfig';
 import { ApiError } from '../src/api/client';
 import { fetchDeposit, fetchDeposits, requestDeposit } from '../src/api/deposits';
 import { AmbientGlow } from '../src/components/AmbientGlow';
@@ -15,7 +16,7 @@ import { StatusChip, type ChipTone } from '../src/components/StatusChip';
 import { TextField } from '../src/components/TextField';
 import { glassPanel } from '../src/theme/glass';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
-import { MAX_CONTENT_WIDTH, RADIUS, SPACE, TYPE } from '../src/theme/tokens';
+import { ICON_COLORS, MAX_CONTENT_WIDTH, RADIUS, SPACE, TYPE } from '../src/theme/tokens';
 import type { DepositOrder } from '../src/types';
 import { formatDateTime } from '../src/utils/time';
 import { useWallet } from '../src/wallet/WalletContext';
@@ -52,6 +53,8 @@ export default function DepositScreen() {
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [depositBonus, setDepositBonus] = useState<DepositBonusConfig | null>(null);
+  const [bonusAwarded, setBonusAwarded] = useState<string | null>(null);
   const sound = useSound();
   const pendingDepositId = useRef<number | null>(null);
 
@@ -65,15 +68,27 @@ export default function DepositScreen() {
     }
   }, []);
 
+  const loadDepositBonus = useCallback(async () => {
+    // A failure here just hides the promo section — it never blocks depositing.
+    const config = await fetchAppConfig().catch(() => null);
+    setDepositBonus(config?.data.deposit_bonus ?? null);
+  }, []);
+
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadDepositBonus();
+  }, [load, loadDepositBonus]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', async (state) => {
       if (state === 'active' && pendingDepositId.current !== null) {
-        await fetchDeposit(pendingDepositId.current).catch(() => null);
+        const confirmed = await fetchDeposit(pendingDepositId.current).catch(() => null);
+        if (confirmed?.data.status === 'success' && confirmed.data.deposit_bonus_awarded) {
+          setBonusAwarded(confirmed.data.deposit_bonus_awarded);
+        }
+        pendingDepositId.current = null;
         void refreshWallet({ force: true });
+        void loadDepositBonus();
         await load();
       }
     });
@@ -97,6 +112,11 @@ export default function DepositScreen() {
           // Only once the gateway actually confirms the payment do we celebrate it.
           sound.playReward();
           sound.playCoin();
+          if (confirmed.data.deposit_bonus_awarded) {
+            setBonusAwarded(confirmed.data.deposit_bonus_awarded);
+          }
+          pendingDepositId.current = null;
+          void loadDepositBonus();
         }
         void refreshWallet({ force: true }); // a confirmed payment credits the wallet
       }
@@ -134,6 +154,9 @@ export default function DepositScreen() {
         }
         ListHeaderComponent={
           <View style={[styles.header, { width: contentWidth }]}>
+            {bonusAwarded ? (
+              <Notice tone="success">{`Deposit Successful! You received ${bonusAwarded} bonus coins.`}</Notice>
+            ) : null}
             <View style={styles.card}>
               <TextField
                 label="Amount (coins)"
@@ -149,6 +172,14 @@ export default function DepositScreen() {
               {error ? <Notice tone="danger">{error}</Notice> : null}
               <Button label="Deposit via UPI" artwork="deposit" variant="success" onPress={handleDeposit} loading={submitting} disabled={!canSubmit} />
             </View>
+            {depositBonus?.enabled && depositBonus.eligible ? (
+              <View style={styles.bonusCard}>
+                <Text style={styles.bonusLabel}>NEW PLAYER DEPOSIT BONUS</Text>
+                <Text style={styles.bonusText}>
+                  {`Deposit for the first time and receive ${depositBonus.amount} bonus coins!`}
+                </Text>
+              </View>
+            ) : null}
             <Text style={styles.sectionTitle} accessibilityRole="header">
               Deposit history
             </Text>
@@ -185,6 +216,16 @@ const useStyles = makeStyles(({ colors: c }) => ({
   content: { alignItems: 'center', paddingTop: SPACE.xs },
   header: { gap: SPACE.lg, marginBottom: SPACE.sm },
   card: { ...glassPanel(c, 'surface2'), borderRadius: RADIUS.xl, padding: SPACE.md, gap: SPACE.md },
+  bonusCard: {
+    ...glassPanel(c, 'surface2'),
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: ICON_COLORS.gold.main,
+    padding: SPACE.sm,
+    gap: 2,
+  },
+  bonusLabel: { ...TYPE.label, fontSize: 12, letterSpacing: 1.5, color: ICON_COLORS.gold.main },
+  bonusText: { ...TYPE.bodyStrong, fontSize: 14, color: c.fg },
   sectionTitle: { ...TYPE.section, color: c.fg },
   // The text column shrinks; the status chip keeps its full width.
   row: { ...glassPanel(c), flexDirection: 'row', alignItems: 'flex-start', gap: SPACE.sm, borderRadius: RADIUS.md, padding: SPACE.sm },

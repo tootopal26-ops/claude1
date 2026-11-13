@@ -30,6 +30,7 @@ class DepositService
         private readonly PaymentGatewayInterface $gateway,
         private readonly WalletService $wallet,
         private readonly NotificationService $notifications,
+        private readonly DepositBonusService $depositBonus,
     ) {}
 
     /**
@@ -212,7 +213,9 @@ class DepositService
 
     private function markPaid(DepositOrder $order, ?string $utr, ?string $gatewayTxnId, ?string $reportedAmount): void
     {
-        $credited = DB::transaction(function () use ($order, $utr, $gatewayTxnId, $reportedAmount) {
+        $bonusAmount = null;
+
+        $credited = DB::transaction(function () use ($order, $utr, $gatewayTxnId, $reportedAmount, &$bonusAmount) {
             $locked = DepositOrder::query()->lockForUpdate()->find($order->id);
 
             if ($locked === null || $locked->status === 'success') {
@@ -253,18 +256,32 @@ class DepositService
 
             AuditLog::record('deposit.paid', null, $locked, ['utr' => $utr]);
 
+            // A bonus ineligibility (disabled, below minimum, already claimed) is a normal
+            // null return, never an exception — the player's actual deposit must always
+            // land regardless of bonus eligibility, so nothing here is wrapped in a
+            // try/catch that would hide a real bug instead.
+            $award = $this->depositBonus->maybeAward($locked);
+            if ($award !== null) {
+                $bonusAmount = $award->amount;
+            }
+
             return true;
         });
 
         if ($credited) {
             $order->refresh();
 
+            $body = "Your deposit of {$order->amount} coins is now in your wallet.";
+            if ($bonusAmount !== null) {
+                $body .= " You also received a {$bonusAmount} coin first-deposit bonus!";
+            }
+
             $this->notifications->notify(
                 recipients: [$order->user],
                 type: 'deposit.success',
                 title: 'Deposit successful',
-                body: "Your deposit of {$order->amount} coins is now in your wallet.",
-                data: ['deposit_order_id' => (string) $order->id],
+                body: $body,
+                data: ['deposit_order_id' => (string) $order->id, 'deposit_bonus_amount' => $bonusAmount],
                 idempotencyKey: "deposit.notify:{$order->id}",
             );
         }
