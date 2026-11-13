@@ -39,7 +39,11 @@ export default function SpinScreen() {
   const bottomSpace = useBottomNavSpace();
   const contentWidth = Math.min(width, MAX_CONTENT_WIDTH) - SPACE.md * 2;
   const wheelSize = Math.min(contentWidth, 340);
-  const { watchRewarded } = useAds();
+  const { watchRewarded, config: adsConfig } = useAds();
+  // Rewarded ads switched off entirely (Admin > Ads & Monetization) is a deliberate,
+  // indefinite shutdown — distinct from `status.ads_available` being false just because
+  // this moment has no fill. Only the former removes every ad-specific label from the UI.
+  const adRequired = Boolean(adsConfig?.rewarded_enabled);
   const { balance: tokenBalance } = useTokens();
   const sound = useSound();
   useRefreshTokensOnFocus();
@@ -124,10 +128,12 @@ export default function SpinScreen() {
             )}
           </View>
 
-          <SpinButton onPress={onSpinPress} loading={adBusy} disabled={!canSpin} />
+          <SpinButton onPress={onSpinPress} loading={adBusy} disabled={!canSpin} adRequired={adRequired} />
 
           {status && !status.enabled ? <Notice tone="info">Spin isn't running right now. Check back later.</Notice> : null}
-          {status && status.enabled && !status.ads_available ? <Notice tone="info">No ad is available for a spin right now. Try again shortly.</Notice> : null}
+          {status && status.enabled && !status.ads_available ? (
+            <Notice tone="info">{adRequired ? 'No ad is available for a spin right now. Try again shortly.' : "Spin isn't available right now. Check back later."}</Notice>
+          ) : null}
 
           <AdSlot placement="spin_feed" style={styles.adSlot} />
         </View>

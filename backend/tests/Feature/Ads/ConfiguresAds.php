@@ -23,6 +23,14 @@ trait ConfiguresAds
         config([
             'minimax.ads_master_enabled' => true,
             'minimax.ads_rewarded_enabled' => true,
+            // Every other format's own global switch defaults to on here too, so this
+            // shared "ads are configured and working" helper keeps its existing meaning
+            // for every test that isn't specifically exercising the per-format switches
+            // (those tests set the one format they care about directly instead).
+            'minimax.ads_interstitial_enabled' => true,
+            'minimax.ads_native_enabled' => true,
+            'minimax.ads_banner_enabled' => true,
+            'minimax.ads_app_open_enabled' => true,
             'minimax.levelplay_app_key' => 'appkey123',
             'minimax.levelplay_s2s_private_key' => $this->levelPlayKey,
         ]);

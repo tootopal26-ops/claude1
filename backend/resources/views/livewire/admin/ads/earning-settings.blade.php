@@ -56,6 +56,13 @@
             @include('livewire.admin.ads._setting', ['key' => 'levelplay_app_key', 'hint' => 'Public LevelPlay app key (it ships inside the app anyway). The server-to-server private key is set only in the server environment, never here.', 'wide' => true])
         </x-ui.form-section>
 
+        <x-ui.form-section title="Format controls" description="A complete per-format shutdown, not just a hidden button: a format only ever runs when All ads AND this switch AND the individual placement (Placements page) are all on, with a valid ad unit. Rewarded ads has its own switch above because it is also the gate for every ad-based reward claim.">
+            @include('livewire.admin.ads._setting', ['key' => 'ads_native_enabled', 'hint' => 'Leaderboard feed, tournament list feed.'])
+            @include('livewire.admin.ads._setting', ['key' => 'ads_banner_enabled', 'hint' => 'Home hero, Wallet.'])
+            @include('livewire.admin.ads._setting', ['key' => 'ads_interstitial_enabled', 'hint' => 'Home game-card tap, after a paid withdrawal.'])
+            @include('livewire.admin.ads._setting', ['key' => 'ads_app_open_enabled', 'hint' => 'Not currently offered — the mediation SDK has no app-open format — kept here so it switches on safely the day one is added, with nothing else to change.'])
+        </x-ui.form-section>
+
         <x-ui.form-section title="Ads Earning" description="The weekly revenue share. One unit = one rewarded ad on the Ads Earning placement, verified by the network, by an eligible player who switched it on, within the daily limit.">
             @include('livewire.admin.ads._setting', ['key' => 'ads_earning_enabled'])
             @include('livewire.admin.ads._setting', ['key' => 'ads_earning_paused', 'hint' => 'Maintenance: no new earning ads; settlements and history unaffected.'])

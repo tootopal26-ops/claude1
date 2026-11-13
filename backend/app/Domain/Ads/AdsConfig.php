@@ -8,7 +8,9 @@ use Illuminate\Support\Collection;
 /**
  * Whether an ad may run, decided in one place, top down:
  *  1. "All ads" (ads_master_enabled) — off means nothing ad-related runs anywhere;
- *  2. "Rewarded ads" (ads_rewarded_enabled) — off means no new rewarded opportunity opens;
+ *  2. the placement's own FORMAT switch (ads_rewarded_enabled, ads_interstitial_enabled,
+ *     ads_banner_enabled, ads_native_enabled, ads_app_open_enabled) — off means no new
+ *     opportunity of that format opens anywhere, regardless of any individual placement;
  *  3. the placement itself — enabled by Admin, supported by the SDK, and pointing at an
  *     active ad unit.
  * Turning anything off only stops new opportunities; it never touches past rewards.
@@ -26,6 +28,15 @@ class AdsConfig
         'token_exchange' => 'token_exchange',
     ];
 
+    /** Each ad format's own global kill switch — see class docblock, step 2. */
+    private const array FORMAT_SETTING_KEYS = [
+        'rewarded' => 'ads_rewarded_enabled',
+        'interstitial' => 'ads_interstitial_enabled',
+        'banner' => 'ads_banner_enabled',
+        'native' => 'ads_native_enabled',
+        'app_open' => 'ads_app_open_enabled',
+    ];
+
     /** @var Collection<string, AdPlacement>|null */
     private ?Collection $placements = null;
 
@@ -36,7 +47,21 @@ class AdsConfig
 
     public function rewardedEnabled(): bool
     {
-        return $this->masterEnabled() && (bool) config('minimax.ads_rewarded_enabled');
+        return $this->formatEnabled('rewarded');
+    }
+
+    /**
+     * Master switch AND this specific format's own switch. A format with no entry in
+     * FORMAT_SETTING_KEYS (should never happen — every placement format is listed) is
+     * treated as disabled rather than silently allowed through.
+     */
+    public function formatEnabled(string $format): bool
+    {
+        if (! $this->masterEnabled() || ! isset(self::FORMAT_SETTING_KEYS[$format])) {
+            return false;
+        }
+
+        return (bool) config('minimax.'.self::FORMAT_SETTING_KEYS[$format]);
     }
 
     public function placement(string $key): ?AdPlacement
@@ -52,7 +77,7 @@ class AdsConfig
             return false;
         }
 
-        if ($placement->format === 'rewarded' && ! $this->rewardedEnabled()) {
+        if (! $this->formatEnabled($placement->format)) {
             return false;
         }
 

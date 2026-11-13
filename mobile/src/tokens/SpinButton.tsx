@@ -11,6 +11,11 @@ type Props = {
   loading?: boolean;
   disabled?: boolean;
   label?: string;
+  /** False when rewarded ads are globally switched off (Admin > Ads & Monetization) — a
+   *  deliberate, indefinite shutdown, not just this moment's no-fill. Hides the "Watch Ad
+   *  to Spin" subtitle and TV glyph entirely rather than offering an action that can never
+   *  complete; the spin itself stays gated by the server exactly as before either way. */
+  adRequired?: boolean;
 };
 
 // The button's own fixed palette (not a theme token): this is the one green "go" action in
@@ -33,13 +38,13 @@ const GREEN_DARK = '#15803D';
  * shows as a colourless button for that frame instead of simply the flat green beneath the
  * gradient.
  */
-export function SpinButton({ onPress, loading = false, disabled = false, label = 'SPIN' }: Props) {
+export function SpinButton({ onPress, loading = false, disabled = false, label = 'SPIN', adRequired = true }: Props) {
   const isDisabled = disabled || loading;
 
   return (
     <PressableScale
       accessibilityRole="button"
-      accessibilityLabel={`${label} — watch a rewarded ad to spin the wheel`}
+      accessibilityLabel={adRequired ? `${label} — watch a rewarded ad to spin the wheel` : label}
       aria-disabled={isDisabled}
       aria-busy={loading}
       disabled={isDisabled}
@@ -73,10 +78,12 @@ export function SpinButton({ onPress, loading = false, disabled = false, label =
         ) : (
           <>
             <Text style={styles.title}>{label}</Text>
-            <View style={styles.subtitleRow}>
-              <Icon name="tv" size={16} color="#ffffff" />
-              <Text style={styles.subtitle}>Watch Ad to Spin</Text>
-            </View>
+            {adRequired ? (
+              <View style={styles.subtitleRow}>
+                <Icon name="tv" size={16} color="#ffffff" />
+                <Text style={styles.subtitle}>Watch Ad to Spin</Text>
+              </View>
+            ) : null}
           </>
         )}
       </View>

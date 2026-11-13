@@ -31,6 +31,7 @@ class EarningSettings extends Component
     {
         return [
             'ads_master_enabled', 'ads_test_mode', 'levelplay_app_key',
+            'ads_native_enabled', 'ads_banner_enabled', 'ads_interstitial_enabled', 'ads_app_open_enabled',
             'ads_earning_enabled', 'ads_earning_paused', 'ads_earning_user_toggle_allowed',
             'ads_earning_min_deposit', 'ads_earning_business_share', 'ads_earning_user_share',
             'ads_earning_coins_per_inr', 'ads_earning_daily_view_limit', 'ads_earning_min_payout_coins',
