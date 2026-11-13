@@ -62,7 +62,7 @@ class WalletService
      * (spendable on entry fees, not withdrawable) — never in winnings — and each source has
      * its own type so wallet history and reports can tell a reward from a real deposit.
      */
-    public const array REWARD_TYPES = ['ad_reward', 'daily_login_reward', 'ads_earning_reward', 'ad_campaign_reward'];
+    public const array REWARD_TYPES = ['ad_reward', 'daily_login_reward', 'ads_earning_reward', 'ad_campaign_reward', 'referral_received', 'referral_given', 'deposit_bonus'];
 
     /**
      * Credits a reward (ads, daily login, Ads Earning settlement) to the Deposit balance with

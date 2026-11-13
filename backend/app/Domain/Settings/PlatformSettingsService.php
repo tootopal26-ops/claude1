@@ -46,6 +46,15 @@ class PlatformSettingsService
         'levelplay_app_key' => ['label' => 'LevelPlay app key', 'type' => 'string', 'group' => 'ads', 'max' => 64, 'nullable' => true],
         'ads_app_open_cooldown_minutes' => ['label' => 'App-open ad cooldown (minutes)', 'type' => 'int', 'group' => 'ads', 'min' => 1, 'max' => 1440],
         'ads_app_open_session_cap' => ['label' => 'App-open ads per session', 'type' => 'int', 'group' => 'ads', 'min' => 0, 'max' => 5],
+        // Per-format global kill switches, alongside ads_master_enabled/ads_rewarded_enabled
+        // above. A format is only ever active when ALL THREE hold: ads_master_enabled,
+        // this format's own switch, AND the individual placement being enabled with a
+        // valid ad unit (see AdsConfig::isPlacementActive()) — any one of them off is a
+        // complete shutdown of that format, not merely a hidden button.
+        'ads_native_enabled' => ['label' => 'Native ads', 'type' => 'bool', 'group' => 'ads'],
+        'ads_banner_enabled' => ['label' => 'Banner ads', 'type' => 'bool', 'group' => 'ads'],
+        'ads_interstitial_enabled' => ['label' => 'Interstitial ads', 'type' => 'bool', 'group' => 'ads'],
+        'ads_app_open_enabled' => ['label' => 'App-open ads', 'type' => 'bool', 'group' => 'ads'],
 
         'ads_earning_enabled' => ['label' => 'Ads Earning', 'type' => 'bool', 'group' => 'ads_earning'],
         'ads_earning_paused' => ['label' => 'Pause (maintenance)', 'type' => 'bool', 'group' => 'ads_earning'],
@@ -82,6 +91,20 @@ class PlatformSettingsService
         'spin_prob_3' => ['label' => 'Odds of landing on 3 (%)', 'type' => 'percent', 'group' => 'spin'],
         'spin_prob_4' => ['label' => 'Odds of landing on 4 (%)', 'type' => 'percent', 'group' => 'spin'],
         'spin_prob_5' => ['label' => 'Odds of landing on 5 (%)', 'type' => 'percent', 'group' => 'spin'],
+
+        // Referral codes are generated for every player regardless of this switch (a
+        // harmless, always-useful account attribute) — this gates only the user-facing
+        // referral entry field/screen and whether any reward is ever credited.
+        'referral_enabled' => ['label' => 'Referral system', 'type' => 'bool', 'group' => 'referral'],
+        'referral_new_player_reward' => ['label' => 'New player reward (coins)', 'type' => 'decimal', 'group' => 'referral', 'min' => 0, 'max' => 100000],
+        'referral_referrer_reward' => ['label' => 'Referrer reward (coins)', 'type' => 'decimal', 'group' => 'referral', 'min' => 0, 'max' => 100000],
+        'referral_max_per_referrer' => ['label' => 'Maximum successful referrals per player (blank = unlimited)', 'type' => 'int', 'group' => 'referral', 'min' => 1, 'max' => 100000, 'nullable' => true],
+
+        'deposit_bonus_enabled' => ['label' => 'First deposit bonus', 'type' => 'bool', 'group' => 'deposit_bonus'],
+        'deposit_bonus_amount' => ['label' => 'Bonus amount (coins)', 'type' => 'decimal', 'group' => 'deposit_bonus', 'min' => 0, 'max' => 100000],
+        'deposit_bonus_min_deposit' => ['label' => 'Minimum eligible deposit (coins)', 'type' => 'decimal', 'group' => 'deposit_bonus', 'min' => 0, 'max' => 100000],
+        'deposit_bonus_max_per_player' => ['label' => 'Maximum bonus coins per player, lifetime (blank = unlimited)', 'type' => 'decimal', 'group' => 'deposit_bonus', 'min' => 0, 'max' => 1000000, 'nullable' => true],
+        'deposit_bonus_first_deposit_only' => ['label' => 'Only the first eligible deposit qualifies', 'type' => 'bool', 'group' => 'deposit_bonus'],
     ];
 
     public function get(string $key): mixed

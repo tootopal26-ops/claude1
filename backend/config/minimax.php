@@ -340,6 +340,12 @@ return [
     'ads_allow_simulated_rewards' => (bool) env('MINIMAX_ADS_ALLOW_SIMULATED_REWARDS', false),
     'ads_app_open_cooldown_minutes' => 30,
     'ads_app_open_session_cap' => 1,
+    // Per-format global kill switches — see AdsConfig::isPlacementActive(). All OFF by
+    // default: Admin turns on only the formats it has actually configured ad units for.
+    'ads_native_enabled' => false,
+    'ads_banner_enabled' => false,
+    'ads_interstitial_enabled' => false,
+    'ads_app_open_enabled' => false,
     'levelplay_s2s_private_key' => env('LEVELPLAY_S2S_PRIVATE_KEY'),
     'rewarded_claim_ttl_minutes' => 15,
 
@@ -390,5 +396,37 @@ return [
     'spin_prob_3' => '5.00',
     'spin_prob_4' => '3.00',
     'spin_prob_5' => '2.00',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Referral system (Admin-editable, Admin > Referral Management)
+    |--------------------------------------------------------------------------
+    |
+    | Off by default. Every player gets a unique referral code regardless (a harmless
+    | account attribute generated at registration) — this only gates the signup entry
+    | field, the Referral screen, and whether any reward is ever credited. Both reward
+    | amounts are independent: see App\Domain\Referrals\ReferralService.
+    |
+    */
+    'referral_enabled' => false,
+    'referral_new_player_reward' => '0.00',
+    'referral_referrer_reward' => '0.00',
+    'referral_max_per_referrer' => null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | First deposit bonus (Admin-editable, Admin > Deposit Bonus Management)
+    |--------------------------------------------------------------------------
+    |
+    | Off by default. Credited only after DepositService's webhook-verified payment
+    | confirmation (never from a frontend success screen) — see
+    | App\Domain\Payments\DepositBonusService.
+    |
+    */
+    'deposit_bonus_enabled' => false,
+    'deposit_bonus_amount' => '0.00',
+    'deposit_bonus_min_deposit' => '0.00',
+    'deposit_bonus_max_per_player' => null,
+    'deposit_bonus_first_deposit_only' => true,
 
 ];
