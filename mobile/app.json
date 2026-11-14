@@ -46,7 +46,11 @@
       "./plugins/withLevelPlay"
     ],
     "extra": {
-      "apiBaseUrl": "http://localhost:8000/api/v1"
-    }
+      "apiBaseUrl": "http://localhost:8000/api/v1",
+      "eas": {
+        "projectId": "b779dc10-d7ca-466b-a77f-c1211708d17c"
+      }
+    },
+    "owner": "fragzs-team"
   }
 }
