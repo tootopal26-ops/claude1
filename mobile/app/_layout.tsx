@@ -121,6 +121,7 @@ function ThemedStack({ signedIn }: { signedIn: boolean }) {
         <Stack.Screen name="matches" options={{ title: 'My matches' }} />
         <Stack.Screen name="ads-earning" options={{ title: 'Ads Earning' }} />
         <Stack.Screen name="token-exchange" options={{ title: 'Exchange tokens' }} />
+        <Stack.Screen name="referral" options={{ title: 'Refer & Earn' }} />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn} redirectTo="/">
         <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />

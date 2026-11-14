@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Domain\Legal\AcceptCurrentLegalDocumentsAction;
+use App\Domain\Referrals\ReferralService;
 use App\Domain\Security\RecordLoginAttemptAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
 use App\Http\Resources\UserResource;
+use App\Models\Referral;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,16 +19,26 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function register(RegisterRequest $request, AcceptCurrentLegalDocumentsAction $acceptLegalDocuments): JsonResponse
-    {
-        $attributes = collect($request->validated())->except('accept_terms')->all();
+    public function register(
+        RegisterRequest $request,
+        AcceptCurrentLegalDocumentsAction $acceptLegalDocuments,
+        ReferralService $referrals,
+    ): JsonResponse {
+        $attributes = collect($request->validated())->except(['accept_terms', 'referral_code'])->all();
+        $referralCode = $request->validated()['referral_code'] ?? null;
 
-        $user = DB::transaction(function () use ($attributes, $request, $acceptLegalDocuments) {
+        [$user, $referral] = DB::transaction(function () use ($attributes, $request, $acceptLegalDocuments, $referrals, $referralCode) {
             $user = User::create($attributes);
 
             $acceptLegalDocuments->execute($user, $request->ip());
 
-            return $user;
+            // Lets a genuinely invalid/ineligible code roll back the whole registration
+            // with a specific error, rather than silently dropping it — a null/empty code,
+            // or the referral system being off, is always a safe no-op (see
+            // ReferralService::applyReferral).
+            $referral = $referrals->applyReferral($user, $referralCode);
+
+            return [$user, $referral];
         });
 
         $token = $user->createToken($request->userAgent() ?? 'mobile')->plainTextToken;
@@ -35,6 +47,9 @@ class AuthController extends Controller
             'data' => [
                 'token' => $token,
                 'user' => new UserResource($user),
+                'referral' => $referral instanceof Referral ? [
+                    'new_player_reward' => (string) $referral->new_player_reward,
+                ] : null,
             ],
         ], 201);
     }

@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\LegalController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RedeemController;
+use App\Http\Controllers\Api\V1\ReferralController;
 use App\Http\Controllers\Api\V1\SectionController;
 use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\Api\V1\SpinController;
@@ -85,6 +86,9 @@ Route::prefix('v1')->group(function () {
         Route::delete('/sessions/{tokenId}', [SessionController::class, 'destroy']);
 
         Route::get('/profile/stats', [ProfileController::class, 'stats']);
+
+        Route::get('/referrals/me', [ReferralController::class, 'me']);
+        Route::get('/referrals/history', [ReferralController::class, 'history']);
 
         Route::get('/wallet', [WalletController::class, 'show']);
         Route::get('/wallet/ledger', [WalletController::class, 'ledger']);

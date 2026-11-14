@@ -14,6 +14,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['referrer_user_id', 'referred_user_id', 'referral_code_used', 'new_player_reward', 'referrer_reward', 'status', 'new_player_wallet_ledger_entry_id', 'referrer_wallet_ledger_entry_id'])]
 class Referral extends Model
 {
+    protected function casts(): array
+    {
+        return [
+            'new_player_reward' => 'decimal:2',
+            'referrer_reward' => 'decimal:2',
+        ];
+    }
+
     /**
      * @return BelongsTo<User, $this>
      */

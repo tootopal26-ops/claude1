@@ -28,6 +28,10 @@ class RegisterRequest extends FormRequest
             'state' => ['required', 'string', 'max:100', new EligibleJurisdiction],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'accept_terms' => ['required', 'accepted'],
+            // The real validation (does the code exist, is it still eligible) happens in
+            // ReferralService::applyReferral — kept loose here so that service can return a
+            // specific, correct message instead of a generic format error.
+            'referral_code' => ['nullable', 'string', 'max:20'],
         ];
     }
 }

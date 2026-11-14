@@ -16,7 +16,10 @@ type RegisterPayload = {
   password: string;
   password_confirmation: string;
   accept_terms: boolean;
+  /** Optional — a blank/omitted code is always a safe no-op server-side. */
+  referral_code?: string;
 };
+export type RegisterResult = { referral: { new_player_reward: string } | null };
 
 type AuthContextValue = {
   isLoading: boolean;
@@ -29,8 +32,16 @@ type AuthContextValue = {
   outstandingLegalDocuments: LegalDocument[];
   refreshLegalStatus: () => Promise<void>;
   login: (payload: LoginPayload) => Promise<void>;
-  register: (payload: RegisterPayload) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<RegisterResult>;
   logout: () => Promise<void>;
+  /**
+   * The new-player reward from the most recent registration, if a valid referral code was
+   * used — set once, consumed once. The login screen unmounts the instant `user` is set (see
+   * AppGate in _layout.tsx), so a success message can't be shown there; the Home tab reads
+   * this on its first render after signup instead, then clears it.
+   */
+  pendingReferralReward: string | null;
+  clearPendingReferralReward: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -42,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [bootAttempt, setBootAttempt] = useState(0);
   const [needsLegalAcceptance, setNeedsLegalAcceptance] = useState(false);
   const [outstandingLegalDocuments, setOutstandingLegalDocuments] = useState<LegalDocument[]>([]);
+  const [pendingReferralReward, setPendingReferralReward] = useState<string | null>(null);
 
   async function refreshLegalStatus() {
     try {
@@ -123,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void refreshLegalStatus();
       },
       async register(payload) {
-        const response = await apiRequest<{ data: { token: string; user: User } }>('/auth/register', {
+        const response = await apiRequest<{ data: { token: string; user: User; referral: { new_player_reward: string } | null } }>('/auth/register', {
           method: 'POST',
           body: payload,
           authenticated: false,
@@ -132,6 +144,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(response.data.user);
         void registerForPushNotificationsAsync();
         void refreshLegalStatus();
+        setPendingReferralReward(response.data.referral?.new_player_reward ?? null);
+
+        return { referral: response.data.referral };
+      },
+      pendingReferralReward,
+      clearPendingReferralReward() {
+        setPendingReferralReward(null);
       },
       async logout() {
         await unregisterPushNotificationsAsync();
@@ -146,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setOutstandingLegalDocuments([]);
       },
     }),
-    [isLoading, bootError, retryBoot, user, needsLegalAcceptance, outstandingLegalDocuments]
+    [isLoading, bootError, retryBoot, user, needsLegalAcceptance, outstandingLegalDocuments, pendingReferralReward]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

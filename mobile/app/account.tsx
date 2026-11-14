@@ -1,5 +1,6 @@
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ApiError } from '../src/api/client';
@@ -26,6 +27,7 @@ import { useRetained } from '../src/utils/useRetained';
  */
 export default function AccountScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const styles = useStyles();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -105,6 +107,22 @@ export default function AccountScreen() {
                 </View>
               ))}
           </View>
+
+          <Pressable
+            style={styles.referralRow}
+            onPress={() => router.push('/referral')}
+            accessibilityRole="button"
+            accessibilityLabel="Refer & Earn"
+          >
+            <View style={styles.referralIcon}>
+              <Icon name="users" size={20} />
+            </View>
+            <View style={styles.referralText}>
+              <Text style={styles.referralTitle}>Refer & Earn</Text>
+              <Text style={styles.meta}>Share your code, earn coins together.</Text>
+            </View>
+            <Icon name="chevron-right" size={18} color={colors.fg3} />
+          </Pressable>
 
           <Text style={styles.sectionTitle} accessibilityRole="header">
             Signed-in devices
@@ -192,6 +210,10 @@ const useStyles = makeStyles(({ colors: c }) => ({
   divider: { borderBottomWidth: 1, borderBottomColor: c.border },
   detailLabel: { ...TYPE.body, color: c.fg3 },
   detailValue: { ...TYPE.bodyStrong, color: c.fg, flexShrink: 1, textAlign: 'right' },
+  referralRow: { ...glassPanel(c), flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, borderRadius: RADIUS.lg, minHeight: 64, paddingHorizontal: SPACE.md },
+  referralIcon: { width: 36, height: 36, borderRadius: RADIUS.sm, backgroundColor: c.surface2, alignItems: 'center', justifyContent: 'center' },
+  referralText: { flex: 1, minWidth: 0, gap: 2 },
+  referralTitle: { ...TYPE.bodyStrong, color: c.fg },
   sectionTitle: { ...TYPE.section, color: c.fg, marginTop: SPACE.xs },
   session: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, minHeight: 64, paddingHorizontal: SPACE.md, paddingVertical: SPACE.xs },
   sessionIcon: { width: 36, height: 36, borderRadius: RADIUS.sm, backgroundColor: c.surface2, alignItems: 'center', justifyContent: 'center' },

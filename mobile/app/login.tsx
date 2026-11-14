@@ -43,6 +43,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [state, setState] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -96,6 +97,7 @@ export default function LoginScreen() {
           password,
           password_confirmation: password,
           accept_terms: acceptTerms,
+          ...(referralCode.trim() ? { referral_code: referralCode.trim() } : {}),
         });
       }
     } catch (error) {
@@ -195,6 +197,18 @@ export default function LoginScreen() {
                     }}
                     autoCapitalize="words"
                     errorText={errors.state}
+                  />
+                  <TextField
+                    label="Referral code (optional)"
+                    placeholder="Got a code from a friend?"
+                    value={referralCode}
+                    onChangeText={(value) => {
+                      setReferralCode(value.toUpperCase());
+                      clear('referral_code');
+                    }}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    errorText={errors.referral_code}
                   />
                 </>
               )}

@@ -16,6 +16,7 @@ import { HeroCarousel, type HeroBanner } from '../../src/components/carousel/Her
 import { HomeHeader } from '../../src/components/home/HomeHeader';
 import { ShortcutCards } from '../../src/components/home/ShortcutCards';
 import { useBottomNavSpace } from '../../src/components/navigation/BottomNav';
+import { ReferralWelcomePopup } from '../../src/components/ReferralWelcomePopup';
 import { EmptyState, ErrorState } from '../../src/components/states/States';
 import { useRefreshSectionsOnFocus, useSections } from '../../src/sections/SectionsContext';
 import { makeStyles, useTheme } from '../../src/theme/ThemeContext';
@@ -171,6 +172,7 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
       <DailyRewardPopup />
+      <ReferralWelcomePopup />
     </View>
   );
 }
