@@ -6,11 +6,11 @@ import { Image, type ImageStyle, type StyleProp } from 'react-native';
  * its natural 1.2:1 aspect ratio: pass `width` and the height follows.
  *
  * The height is set explicitly on purpose. A require()d image starts from its
- * intrinsic size (1200×1000), and an explicit height beats `aspectRatio`, so
- * a width alone left a 1000-pixel-tall box that pushed the whole login form
- * off the first screen.
+ * intrinsic size (1065×861), and an explicit height beats `aspectRatio`, so
+ * a width alone left a box tall enough to push the whole login form off the
+ * first screen.
  */
-const LOGO_ASPECT = 1200 / 1000;
+const LOGO_ASPECT = 1065 / 861;
 const LOGO_IMAGE = require('../../assets/logo.png');
 
 type BrandLogoProps = {
