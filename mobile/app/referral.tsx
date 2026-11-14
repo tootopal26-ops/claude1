@@ -102,6 +102,28 @@ export default function ReferralScreen() {
       >
         <View style={[styles.column, { width: contentWidth }]}>
           {!me ? (
+            <Skeleton height={96} radius={RADIUS.xl} />
+          ) : (
+            <View style={styles.inviteCard}>
+              <Text style={styles.inviteTitle}>INVITE FRIENDS &amp; EARN COINS</Text>
+              <View style={styles.inviteRow}>
+                <Text style={styles.inviteRowLabel}>You earn</Text>
+                <View style={styles.inviteRowValue}>
+                  <CoinAmount value={me.referrer_reward} size={16} />
+                  <Text style={styles.inviteRowSuffix}>per successful referral</Text>
+                </View>
+              </View>
+              <View style={styles.inviteRow}>
+                <Text style={styles.inviteRowLabel}>Your friend gets</Text>
+                <View style={styles.inviteRowValue}>
+                  <CoinAmount value={me.new_player_reward} size={16} />
+                </View>
+              </View>
+              <Text style={styles.inviteNote}>Both rewards are credited to your Deposit Wallet.</Text>
+            </View>
+          )}
+
+          {!me ? (
             <Skeleton height={160} radius={RADIUS.xl} />
           ) : (
             <View style={styles.codeCard}>
@@ -169,6 +191,13 @@ const useStyles = makeStyles(({ colors: c }) => ({
   screen: { flex: 1 },
   content: { alignItems: 'center', paddingTop: SPACE.md },
   column: { gap: SPACE.md },
+  inviteCard: { ...glassPanel(c), borderRadius: RADIUS.xl, padding: SPACE.md, gap: SPACE.xs },
+  inviteTitle: { ...TYPE.label, fontSize: 12, letterSpacing: 1.5, color: c.brandText },
+  inviteRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: SPACE.sm },
+  inviteRowLabel: { ...TYPE.bodyStrong, color: c.fg },
+  inviteRowValue: { flexDirection: 'row', alignItems: 'center', gap: SPACE.xs },
+  inviteRowSuffix: { ...TYPE.meta, color: c.fg3 },
+  inviteNote: { ...TYPE.meta, color: c.fg3, marginTop: 2 },
   codeCard: { ...glassPanel(c), borderRadius: RADIUS.xl, padding: SPACE.lg, alignItems: 'center', gap: SPACE.xs },
   codeLabel: { ...TYPE.meta, color: c.fg3 },
   code: { ...TYPE.hero, fontSize: 28, letterSpacing: 2, color: c.fg },

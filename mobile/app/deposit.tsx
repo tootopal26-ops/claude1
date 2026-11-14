@@ -18,6 +18,7 @@ import { glassPanel } from '../src/theme/glass';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import { ICON_COLORS, MAX_CONTENT_WIDTH, RADIUS, SPACE, TYPE } from '../src/theme/tokens';
 import type { DepositOrder } from '../src/types';
+import { formatCoins } from '../src/utils/coins';
 import { formatDateTime } from '../src/utils/time';
 import { useWallet } from '../src/wallet/WalletContext';
 
@@ -174,10 +175,24 @@ export default function DepositScreen() {
             </View>
             {depositBonus?.enabled && depositBonus.eligible ? (
               <View style={styles.bonusCard}>
-                <Text style={styles.bonusLabel}>NEW PLAYER DEPOSIT BONUS</Text>
+                <Text style={styles.bonusLabel}>FIRST DEPOSIT BONUS</Text>
                 <Text style={styles.bonusText}>
-                  {`Deposit for the first time and receive ${depositBonus.amount} bonus coins!`}
+                  {`Deposit ${formatCoins(depositBonus.min_deposit)} or more and receive ${formatCoins(depositBonus.amount)} bonus coins!`}
                 </Text>
+                <View style={styles.bonusBreakdown}>
+                  <View style={styles.bonusBreakdownRow}>
+                    <Text style={styles.bonusBreakdownLabel}>Minimum deposit</Text>
+                    <CoinAmount value={depositBonus.min_deposit} size={14} />
+                  </View>
+                  <View style={styles.bonusBreakdownRow}>
+                    <Text style={styles.bonusBreakdownLabel}>You will receive</Text>
+                    <CoinAmount value={depositBonus.amount} size={14} />
+                  </View>
+                  <View style={styles.bonusBreakdownRow}>
+                    <Text style={styles.bonusBreakdownLabel}>Bonus destination</Text>
+                    <Text style={styles.bonusBreakdownValue}>Deposit Wallet</Text>
+                  </View>
+                </View>
               </View>
             ) : null}
             <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -226,6 +241,10 @@ const useStyles = makeStyles(({ colors: c }) => ({
   },
   bonusLabel: { ...TYPE.label, fontSize: 12, letterSpacing: 1.5, color: ICON_COLORS.gold.main },
   bonusText: { ...TYPE.bodyStrong, fontSize: 14, color: c.fg },
+  bonusBreakdown: { marginTop: SPACE.xxs, gap: 4 },
+  bonusBreakdownRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  bonusBreakdownLabel: { ...TYPE.meta, color: c.fg3 },
+  bonusBreakdownValue: { ...TYPE.bodyStrong, fontSize: 13, color: c.fg },
   sectionTitle: { ...TYPE.section, color: c.fg },
   // The text column shrinks; the status chip keeps its full width.
   row: { ...glassPanel(c), flexDirection: 'row', alignItems: 'flex-start', gap: SPACE.sm, borderRadius: RADIUS.md, padding: SPACE.sm },

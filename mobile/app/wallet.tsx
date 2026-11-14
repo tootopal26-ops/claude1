@@ -32,6 +32,9 @@ const LEDGER_TYPE_LABELS: Record<string, string> = {
   daily_login_reward: 'Daily login reward',
   ads_earning_reward: 'Ads Earning reward',
   ad_campaign_reward: 'Ad reward',
+  referral_received: 'Referral Reward — New Player',
+  referral_given: 'Referral Reward — Referrer',
+  deposit_bonus: 'First Deposit Bonus',
 };
 
 /**

@@ -5,6 +5,11 @@ export type ReferralMe = {
   referral_code: string;
   successful_referrals: number;
   total_coins_earned: string;
+  /** The live admin-configured amount the REFERRER earns per successful referral —
+   *  decimal string, never computed on-device. */
+  referrer_reward: string;
+  /** The live admin-configured amount the NEW PLAYER receives for using a code. */
+  new_player_reward: string;
 };
 
 export type ReferralHistoryItem = {

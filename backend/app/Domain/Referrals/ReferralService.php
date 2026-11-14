@@ -2,6 +2,7 @@
 
 namespace App\Domain\Referrals;
 
+use App\Domain\Notifications\NotificationService;
 use App\Domain\Settings\PlatformSettingsService;
 use App\Domain\Wallet\WalletService;
 use App\Models\Referral;
@@ -26,11 +27,28 @@ class ReferralService
     public function __construct(
         private readonly PlatformSettingsService $settings,
         private readonly WalletService $wallet,
+        private readonly NotificationService $notifications,
     ) {}
 
     public function enabled(): bool
     {
         return (bool) $this->settings->get('referral_enabled');
+    }
+
+    /**
+     * The two reward amounts currently in effect — what the app shows a player BEFORE they
+     * ever share or use a code, so "you earn X, your friend gets Y" is never stale or
+     * guessed on the device. Always the live setting, never what a past Referral row
+     * snapshotted.
+     *
+     * @return array{referrer_reward: string, new_player_reward: string}
+     */
+    public function currentRewardAmounts(): array
+    {
+        return [
+            'referrer_reward' => (string) $this->settings->get('referral_referrer_reward'),
+            'new_player_reward' => (string) $this->settings->get('referral_new_player_reward'),
+        ];
     }
 
     /**
@@ -98,7 +116,7 @@ class ReferralService
             return null;
         }
 
-        return DB::transaction(function () use ($newUser, $code) {
+        $referral = DB::transaction(function () use ($newUser, $code) {
             $referrer = $this->assertValidCode($code);
 
             if ($referrer->id === $newUser->id) {
@@ -155,10 +173,29 @@ class ReferralService
                 'referrer_wallet_ledger_entry_id' => $referrerEntry?->id,
             ]);
         });
+
+        // Sent only once the whole registration transaction has actually committed — the
+        // same ordering DepositService uses for its own post-credit notification — and only
+        // when a reward was really credited (referrer_reward could be configured as 0.00).
+        // The referrer finds out immediately, not only by later checking their own Referral
+        // screen; the new player's equivalent moment is the one-shot welcome popup shown
+        // right after their own signup succeeds (see ReferralWelcomePopup.tsx).
+        if ($referral->referrer_wallet_ledger_entry_id !== null) {
+            $this->notifications->notify(
+                recipients: [$referral->referrer],
+                type: 'referral.earned',
+                title: 'Your referral earned you coins!',
+                body: "Your friend joined using your referral code! You received {$referral->referrer_reward} Coins.",
+                data: ['referral_id' => (string) $referral->id],
+                idempotencyKey: "referral.notify:{$referral->id}",
+            );
+        }
+
+        return $referral;
     }
 
     /**
-     * @return array{referral_code: string, successful_referrals: int, total_coins_earned: string}
+     * @return array{referral_code: string, successful_referrals: int, total_coins_earned: string, referrer_reward: string, new_player_reward: string}
      */
     public function stats(User $user): array
     {
@@ -166,6 +203,7 @@ class ReferralService
             'referral_code' => $user->referral_code,
             'successful_referrals' => $user->referralsMade()->count(),
             'total_coins_earned' => (string) $user->referralsMade()->sum('referrer_reward'),
+            ...$this->currentRewardAmounts(),
         ];
     }
 

@@ -4,6 +4,7 @@ namespace Tests\Feature\Referrals;
 
 use App\Domain\Referrals\ReferralService;
 use App\Domain\Settings\PlatformSettingsService;
+use App\Models\Notification;
 use App\Models\Referral;
 use App\Models\StaffUser;
 use App\Models\User;
@@ -73,6 +74,52 @@ class ReferralTest extends TestCase
         $this->assertNotNull($referral);
         $this->assertSame('completed', $referral->status);
         $this->assertSame($referrer->id, $referral->referrer_user_id);
+    }
+
+    public function test_referrals_me_shows_the_current_configured_reward_amounts_and_updates_live(): void
+    {
+        $this->enableReferrals('20.00', '30.00');
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->getJson('/api/v1/referrals/me');
+        $response->assertOk();
+        $response->assertJsonPath('data.referrer_reward', '30.00');
+        $response->assertJsonPath('data.new_player_reward', '20.00');
+
+        // The admin changes both amounts — the very next call must reflect them, never a
+        // stale value cached anywhere on the device or the server.
+        $this->enableReferrals('25.00', '40.00');
+
+        $response = $this->actingAs($user)->getJson('/api/v1/referrals/me');
+        $response->assertJsonPath('data.referrer_reward', '40.00');
+        $response->assertJsonPath('data.new_player_reward', '25.00');
+    }
+
+    public function test_a_successful_referral_notifies_the_referrer_with_the_real_credited_amount(): void
+    {
+        $this->enableReferrals('20.00', '30.00');
+        $referrer = User::factory()->create();
+
+        $response = $this->postJson('/api/v1/auth/register', $this->registerPayload([
+            'referral_code' => $referrer->referral_code,
+        ]));
+        $response->assertCreated();
+
+        $notification = Notification::where('user_id', $referrer->id)->sole();
+        $this->assertSame('Your referral earned you coins!', $notification->title);
+        $this->assertStringContainsString('Your friend joined using your referral code! You received 30.00 Coins.', $notification->body);
+    }
+
+    public function test_no_referrer_notification_when_the_referrer_reward_is_configured_at_zero(): void
+    {
+        $this->enableReferrals('20.00', '0.00');
+        $referrer = User::factory()->create();
+
+        $this->postJson('/api/v1/auth/register', $this->registerPayload([
+            'referral_code' => $referrer->referral_code,
+        ]))->assertCreated();
+
+        $this->assertSame(0, Notification::where('user_id', $referrer->id)->count());
     }
 
     public function test_an_invalid_referral_code_rejects_registration_and_credits_nothing(): void

@@ -96,13 +96,13 @@ class PlatformSettingsService
         // harmless, always-useful account attribute) — this gates only the user-facing
         // referral entry field/screen and whether any reward is ever credited.
         'referral_enabled' => ['label' => 'Referral system', 'type' => 'bool', 'group' => 'referral'],
-        'referral_new_player_reward' => ['label' => 'New player reward (coins)', 'type' => 'decimal', 'group' => 'referral', 'min' => 0, 'max' => 100000],
-        'referral_referrer_reward' => ['label' => 'Referrer reward (coins)', 'type' => 'decimal', 'group' => 'referral', 'min' => 0, 'max' => 100000],
+        'referral_referrer_reward' => ['label' => 'Referrer reward — how many coins does the existing player earn per successful referral? (coins)', 'type' => 'decimal', 'group' => 'referral', 'min' => 0, 'max' => 100000],
+        'referral_new_player_reward' => ['label' => 'New player reward — how many coins does the new player receive for using a referral code? (coins)', 'type' => 'decimal', 'group' => 'referral', 'min' => 0, 'max' => 100000],
         'referral_max_per_referrer' => ['label' => 'Maximum successful referrals per player (blank = unlimited)', 'type' => 'int', 'group' => 'referral', 'min' => 1, 'max' => 100000, 'nullable' => true],
 
         'deposit_bonus_enabled' => ['label' => 'First deposit bonus', 'type' => 'bool', 'group' => 'deposit_bonus'],
-        'deposit_bonus_amount' => ['label' => 'Bonus amount (coins)', 'type' => 'decimal', 'group' => 'deposit_bonus', 'min' => 0, 'max' => 100000],
-        'deposit_bonus_min_deposit' => ['label' => 'Minimum eligible deposit (coins)', 'type' => 'decimal', 'group' => 'deposit_bonus', 'min' => 0, 'max' => 100000],
+        'deposit_bonus_amount' => ['label' => 'Deposit bonus reward — how many bonus coins will the player receive? (coins)', 'type' => 'decimal', 'group' => 'deposit_bonus', 'min' => 0, 'max' => 100000],
+        'deposit_bonus_min_deposit' => ['label' => 'Minimum required deposit — how much must the player deposit to unlock the bonus? (coins)', 'type' => 'decimal', 'group' => 'deposit_bonus', 'min' => 0, 'max' => 100000],
         'deposit_bonus_max_per_player' => ['label' => 'Maximum bonus coins per player, lifetime (blank = unlimited)', 'type' => 'decimal', 'group' => 'deposit_bonus', 'min' => 0, 'max' => 1000000, 'nullable' => true],
         'deposit_bonus_first_deposit_only' => ['label' => 'Only the first eligible deposit qualifies', 'type' => 'bool', 'group' => 'deposit_bonus'],
     ];
