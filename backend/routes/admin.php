@@ -19,6 +19,7 @@ use App\Livewire\Admin\AppReleaseForm;
 use App\Livewire\Admin\AppReleaseList;
 use App\Livewire\Admin\AuditLogViewer;
 use App\Livewire\Admin\CustomerSupportSettings;
+use App\Livewire\Admin\DepositBonusSettings;
 use App\Livewire\Admin\DepositList;
 use App\Livewire\Admin\GameForm;
 use App\Livewire\Admin\GameList;
@@ -40,6 +41,8 @@ use App\Livewire\Admin\PresetList;
 use App\Livewire\Admin\ProfileSecurity;
 use App\Livewire\Admin\RedeemCodes;
 use App\Livewire\Admin\RedeemHistory;
+use App\Livewire\Admin\Referrals\History as ReferralHistory;
+use App\Livewire\Admin\Referrals\Settings as ReferralSettings;
 use App\Livewire\Admin\RiskAlertList;
 use App\Livewire\Admin\SectionUnlockPricing;
 use App\Livewire\Admin\StaffForm;
@@ -231,6 +234,14 @@ foreach ($portals as $portal => $config) {
                 ->name('redeem-codes.history')
                 ->middleware('permission:redeem_codes.manage');
 
+            Route::get('/referrals', ReferralSettings::class)
+                ->name('referrals.index')
+                ->middleware('permission:referrals.manage');
+
+            Route::get('/referrals/history', ReferralHistory::class)
+                ->name('referrals.history')
+                ->middleware('permission:referrals.manage');
+
             Route::get('/section-unlock-pricing', SectionUnlockPricing::class)
                 ->name('section-unlock-pricing.index')
                 ->middleware('permission:section_unlocks.manage');
@@ -238,6 +249,10 @@ foreach ($portals as $portal => $config) {
             Route::get('/payment-settings', PaymentSettings::class)
                 ->name('payment-settings')
                 ->middleware('permission:payments.manage');
+
+            Route::get('/deposit-bonus', DepositBonusSettings::class)
+                ->name('deposit-bonus.index')
+                ->middleware('permission:deposit_bonus.manage');
 
             Route::get('/leaderboards', LeaderboardViewer::class)
                 ->name('leaderboards.index')

@@ -45,10 +45,12 @@ class AdminNavigation
                     ['label' => 'Players', 'route' => 'admin.users.index', 'icon' => 'users', 'permission' => 'users.view', 'active' => ['admin.users.*'], 'description' => 'Look up players, wallets and account status.'],
                     ['label' => 'Deposits', 'route' => 'admin.deposits.index', 'icon' => 'deposit', 'permission' => 'payments.view', 'active' => ['admin.deposits.*'], 'description' => 'Review incoming payment orders.'],
                     ['label' => 'Redeem Codes', 'route' => 'admin.redeem-codes.index', 'icon' => 'ticket', 'permission' => 'redeem_codes.manage', 'active' => ['admin.redeem-codes.*'], 'description' => 'Reward codes players can redeem for coins.'],
+                    ['label' => 'Referral Management', 'route' => 'admin.referrals.index', 'icon' => 'users', 'permission' => 'referrals.manage', 'active' => ['admin.referrals.*'], 'description' => 'Referral rewards, eligibility rules and history.'],
                     ['label' => 'Section Unlock Pricing', 'route' => 'admin.section-unlock-pricing.index', 'icon' => 'unlock', 'permission' => 'section_unlocks.manage', 'active' => ['admin.section-unlock-pricing.*'], 'description' => 'Coin prices for locked app sections.'],
                     ['label' => 'Withdrawals', 'route' => 'admin.withdrawals.index', 'icon' => 'withdrawal', 'permission' => 'withdrawals.manage', 'active' => ['admin.withdrawals.*'], 'description' => 'Approve, process and settle payout requests.'],
                     ['label' => 'Leaderboard Management', 'route' => 'admin.leaderboards.index', 'icon' => 'leaderboard', 'permission' => 'leaderboards.manage', 'active' => ['admin.leaderboards.*'], 'description' => 'Rankings, prize rules, payout settlement and banners.'],
                     ['label' => 'Payment Settings', 'route' => 'admin.payment-settings', 'icon' => 'wallet', 'permission' => 'payments.manage', 'active' => ['admin.payment-settings'], 'description' => 'Payment gateway configuration.'],
+                    ['label' => 'Deposit Bonus Management', 'route' => 'admin.deposit-bonus.index', 'icon' => 'deposit', 'permission' => 'deposit_bonus.manage', 'active' => ['admin.deposit-bonus.*'], 'description' => 'First-deposit bonus coins, eligibility rules and award history.'],
                 ],
             ],
             [
