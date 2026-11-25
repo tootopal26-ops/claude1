@@ -30,7 +30,7 @@ Register a test player — through the mobile app, or directly:
 ```bash
 curl -X POST https://<your-domain>/api/v1/auth/register \
   -H "Content-Type: application/json" -H "Accept: application/json" \
-  -d '{"username":"smoketester","mobile":"9876543210","email":"smoketester@example.com","date_of_birth":"2000-01-01","state":"Delhi","password":"password123","password_confirmation":"password123","accept_terms":true}'
+  -d '{"username":"smoketester","mobile":"9876543210","email":"smoketester@example.com","password":"password123","password_confirmation":"password123","accept_terms":true}'
 ```
 **Pass:** `201`-equivalent response with a `data.token` and `data.user`.
 

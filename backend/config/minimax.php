@@ -4,32 +4,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Minimum registration age
+    | A note on "Admin-editable" values below
     |--------------------------------------------------------------------------
     |
-    | A player's date of birth must indicate they are at least this many
-    | years old at the time of registration. See blocked_states below for
-    | the jurisdiction side of eligibility.
-    |
-    | This and every other value below marked "Admin-editable" can be
-    | overridden at runtime from the platform_settings table — see
+    | Any value below marked "Admin-editable" can be overridden at
+    | runtime from the platform_settings table — see
     | PlatformSettingsService — without a deploy. The env()-backed value
     | here is only the fallback used until an Admin ever changes it.
     |
     */
-    'min_age' => (int) env('MINIMAX_MIN_AGE', 18),
-
-    /*
-    |--------------------------------------------------------------------------
-    | DOB exclusion window (days)
-    |--------------------------------------------------------------------------
-    |
-    | A submitted date of birth may not fall, by day/month only (any
-    | birth year), within this many calendar days forward of today,
-    | inclusive of both the current day and the final day of the window.
-    |
-    */
-    'dob_exclusion_window_days' => (int) env('MINIMAX_DOB_EXCLUSION_WINDOW_DAYS', 6),
 
     /*
     |--------------------------------------------------------------------------
@@ -72,20 +55,6 @@ return [
     */
     'suspicious_withdrawal_count_threshold' => (int) env('MINIMAX_SUSPICIOUS_WITHDRAWAL_COUNT_THRESHOLD', 3),
     'suspicious_withdrawal_window_hours' => (int) env('MINIMAX_SUSPICIOUS_WITHDRAWAL_WINDOW_HOURS', 24),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Blocked states/regions (Admin-editable)
-    |--------------------------------------------------------------------------
-    |
-    | A registration whose submitted state/region is in this list is
-    | rejected. Empty by default — deliberately not pre-populated here,
-    | since which jurisdictions to block for real-money gaming is a
-    | compliance call for the operator to make with their own current
-    | legal guidance, not one this codebase makes for them.
-    |
-    */
-    'blocked_states' => [],
 
     /*
     |--------------------------------------------------------------------------

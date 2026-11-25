@@ -1,8 +1,6 @@
 @php
     // Presentation grouping only. Every catalog setting still renders: anything not listed here falls into "Other settings".
     $groups = [
-        ['title' => 'Eligibility', 'description' => 'Rules applied when a new player registers. Existing players are not affected.', 'keys' => ['min_age', 'dob_exclusion_window_days']],
-        ['title' => 'Region restrictions', 'description' => 'Regions where registration is blocked. This is a compliance decision for the operator.', 'keys' => ['blocked_states']],
         ['title' => 'Risk monitoring', 'description' => 'When the platform raises an alert for staff to review.', 'keys' => ['wallet_risk_alert_threshold']],
     ];
 
@@ -14,8 +12,6 @@
     }
 
     $hints = [
-        'min_age' => 'Registration is refused below this age.',
-        'dob_exclusion_window_days' => 'Refuses a date of birth whose day and month fall within this many days from today (inclusive), whatever the year.',
         'wallet_risk_alert_threshold' => 'A manual wallet adjustment at or above this many coins raises a high-priority risk alert for review.',
     ];
 @endphp
@@ -30,7 +26,7 @@
     @endif
 
     <x-ui.alert variant="warning" title="Changes apply immediately" class="mb-6">
-        Saving updates sign-up eligibility and risk monitoring for the whole platform right away. Each change is recorded in the audit log with its previous and new value.
+        Saving updates these settings for the whole platform right away. Each change is recorded in the audit log with its previous and new value.
     </x-ui.alert>
 
     <form wire:submit="save" novalidate>
@@ -59,7 +55,7 @@
                 class="ml-auto"
                 loading="save"
                 icon="check"
-                confirm="Apply these settings now? They take effect immediately for new sign-ups and risk monitoring."
+                confirm="Apply these settings now? They take effect immediately."
                 confirm-title="Save platform settings"
                 confirm-label="Save settings"
             >Save settings</x-ui.button>

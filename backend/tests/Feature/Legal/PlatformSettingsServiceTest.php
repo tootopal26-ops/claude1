@@ -16,17 +16,17 @@ class PlatformSettingsServiceTest extends TestCase
 
     public function test_get_returns_the_env_backed_default_when_no_row_exists(): void
     {
-        $this->assertSame((int) config('minimax.min_age'), app(PlatformSettingsService::class)->get('min_age'));
+        $this->assertSame((int) config('minimax.tickets_max_per_tournament'), app(PlatformSettingsService::class)->get('tickets_max_per_tournament'));
     }
 
     public function test_set_creates_a_row_updates_config_immediately_and_audit_logs(): void
     {
         $staff = StaffUser::factory()->create();
 
-        app(PlatformSettingsService::class)->set('min_age', 21, $staff);
+        app(PlatformSettingsService::class)->set('tickets_max_per_tournament', 7, $staff);
 
-        $this->assertSame(21, config('minimax.min_age'));
-        $this->assertDatabaseHas('platform_settings', ['key' => 'min_age', 'updated_by_staff_id' => $staff->id]);
+        $this->assertSame(7, config('minimax.tickets_max_per_tournament'));
+        $this->assertDatabaseHas('platform_settings', ['key' => 'tickets_max_per_tournament', 'updated_by_staff_id' => $staff->id]);
         $this->assertDatabaseHas('audit_logs', ['action' => 'platform_settings.updated', 'actor_id' => $staff->id]);
     }
 

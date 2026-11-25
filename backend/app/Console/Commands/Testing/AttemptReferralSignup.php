@@ -21,8 +21,6 @@ class AttemptReferralSignup extends Command
             'username' => "racer{$index}",
             'mobile' => '9'.str_pad((string) $index, 9, '0', STR_PAD_LEFT),
             'email' => "racer{$index}@concurrency.test",
-            'date_of_birth' => now()->subYears(20)->toDateString(),
-            'state' => 'Delhi',
             'password' => 'password123',
         ]);
 

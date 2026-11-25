@@ -87,12 +87,10 @@ class AdminLegalAndSettingsUiTest extends TestCase
 
         Livewire::actingAs($staff, 'staff')
             ->test(PlatformSettingsEditor::class)
-            ->set('values.min_age', '21')
-            ->set('values.blocked_states', "Telangana\nAssam")
+            ->set('values.wallet_risk_alert_threshold', '350')
             ->call('save');
 
-        $this->assertSame(21, config('minimax.min_age'));
-        $this->assertSame(['Telangana', 'Assam'], config('minimax.blocked_states'));
+        $this->assertSame('350.00', config('minimax.wallet_risk_alert_threshold'));
     }
 
     public function test_saving_a_negative_number_is_rejected(): void
@@ -102,10 +100,10 @@ class AdminLegalAndSettingsUiTest extends TestCase
 
         Livewire::actingAs($staff, 'staff')
             ->test(PlatformSettingsEditor::class)
-            ->set('values.min_age', '-5')
+            ->set('values.wallet_risk_alert_threshold', '-5')
             ->call('save')
             ->assertSet('formError', fn ($message) => $message !== null);
 
-        $this->assertDatabaseMissing('platform_settings', ['key' => 'min_age']);
+        $this->assertDatabaseMissing('platform_settings', ['key' => 'wallet_risk_alert_threshold']);
     }
 }

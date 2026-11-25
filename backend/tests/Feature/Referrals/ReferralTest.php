@@ -34,10 +34,6 @@ class ReferralTest extends TestCase
             'username' => 'newplayer'.fake()->unique()->numberBetween(1, 999999),
             'mobile' => fake()->unique()->numerify('9##########'),
             'email' => fake()->unique()->safeEmail(),
-            // Same fixed DOB the existing RegistrationTest uses — clears
-            // DobNotInExclusionWindow and MeetsMinimumAge without being date-sensitive.
-            'date_of_birth' => '1995-05-01',
-            'state' => 'Delhi',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'accept_terms' => true,

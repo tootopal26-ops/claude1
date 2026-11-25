@@ -15,8 +15,8 @@ use Illuminate\Validation\ValidationException;
  * general-purpose key/value store, only this fixed catalog.
  *
  * Every key here corresponds to a config('minimax.*') value that every
- * existing call site (MeetsMinimumAge, WalletService's risk-alert check,
- * ...) already reads. AppServiceProvider::boot() overrides those config
+ * existing call site (WalletService's risk-alert check, ...) already
+ * reads. AppServiceProvider::boot() overrides those config
  * values from the platform_settings table on every request, so get()
  * just reads config() — by the time anything calls it, the override has
  * already run — and nothing else in the app needs to know these
@@ -33,10 +33,7 @@ class PlatformSettingsService
      * @var array<string, array{label: string, type: 'int'|'decimal'|'percent'|'bool'|'url'|'string'|'text'|'time'|'date'|'timezone'|'string_list', group?: string, min?: int|float, max?: int|float, nullable?: bool}>
      */
     public const array CATALOG = [
-        'min_age' => ['label' => 'Minimum registration age (years)', 'type' => 'int'],
-        'dob_exclusion_window_days' => ['label' => 'DOB exclusion window (days)', 'type' => 'int'],
         'wallet_risk_alert_threshold' => ['label' => 'Wallet risk-alert threshold (coins)', 'type' => 'decimal'],
-        'blocked_states' => ['label' => 'Blocked states/regions — one per line. Empty means none are blocked; this is a compliance call for the operator to make, not a default this platform ships with.', 'type' => 'string_list'],
 
         'support_url' => ['label' => 'Customer support link', 'type' => 'url', 'group' => 'support', 'nullable' => true],
 

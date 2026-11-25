@@ -25,8 +25,6 @@ class UserFactory extends Factory
             'username' => fake()->unique()->regexify('[a-z][a-z0-9_]{7,14}'),
             'mobile' => fake()->unique()->numerify('9#########'),
             'email' => fake()->unique()->safeEmail(),
-            'date_of_birth' => fake()->dateTimeBetween('-40 years', '-18 years')->format('Y-m-d'),
-            'state' => fake()->state(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => null,

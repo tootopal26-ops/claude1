@@ -16,8 +16,6 @@ class RegistrationTest extends TestCase
             'username' => 'player_one',
             'mobile' => '9123456789',
             'email' => 'player@example.com',
-            'date_of_birth' => '1995-05-01',
-            'state' => 'Maharashtra',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'accept_terms' => true,
@@ -38,8 +36,6 @@ class RegistrationTest extends TestCase
             'username' => 'someone_else',
             'mobile' => '9123456789',
             'email' => 'someone_else@example.com',
-            'date_of_birth' => '1995-05-01',
-            'state' => 'Maharashtra',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'accept_terms' => true,
@@ -54,8 +50,6 @@ class RegistrationTest extends TestCase
             'username' => 'player_two',
             'mobile' => '9123456780',
             'email' => 'player2@example.com',
-            'date_of_birth' => '1995-05-01',
-            'state' => 'Maharashtra',
             'password' => 'password123',
             'password_confirmation' => 'password123',
             'accept_terms' => true,
@@ -88,5 +82,57 @@ class RegistrationTest extends TestCase
         $response = $this->actingAs($user, 'sanctum')->getJson('/api/v1/auth/me');
 
         $response->assertOk()->assertJsonPath('data.id', $user->id);
+    }
+
+    public function test_registration_without_date_of_birth_or_state_succeeds_and_stores_neither(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'username' => 'no_dob_player',
+            'mobile' => '9123456782',
+            'email' => 'no_dob_player@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'accept_terms' => true,
+        ]);
+
+        $response->assertCreated();
+
+        $user = User::where('username', 'no_dob_player')->firstOrFail();
+        $this->assertNull($user->date_of_birth);
+        $this->assertNull($user->state);
+    }
+
+    public function test_an_old_app_build_that_still_sends_date_of_birth_and_state_still_succeeds_without_storing_them(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'username' => 'old_build_player',
+            'mobile' => '9123456783',
+            'email' => 'old_build_player@example.com',
+            'date_of_birth' => '1995-05-01',
+            'state' => 'Maharashtra',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'accept_terms' => true,
+        ]);
+
+        $response->assertCreated();
+
+        $user = User::where('username', 'old_build_player')->firstOrFail();
+        $this->assertNull($user->date_of_birth);
+        $this->assertNull($user->state);
+    }
+
+    public function test_a_username_containing_a_space_is_rejected(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'username' => 'has space',
+            'mobile' => '9123456784',
+            'email' => 'has_space@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'accept_terms' => true,
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('username');
     }
 }
