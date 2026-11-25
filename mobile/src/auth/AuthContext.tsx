@@ -11,8 +11,6 @@ type RegisterPayload = {
   username: string;
   mobile: string;
   email: string;
-  date_of_birth: string;
-  state: string;
   password: string;
   password_confirmation: string;
   accept_terms: boolean;
