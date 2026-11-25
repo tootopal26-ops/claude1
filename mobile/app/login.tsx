@@ -41,8 +41,6 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [dateOfBirth, setDateOfBirth] = useState('');
-  const [state, setState] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
@@ -66,8 +64,6 @@ export default function LoginScreen() {
     if (mode === 'register') {
       if (!username.trim()) found.username = 'Choose a username.';
       if (!email.trim()) found.email = 'Enter your email address.';
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth.trim())) found.date_of_birth = 'Use the format YYYY-MM-DD.';
-      if (!state.trim()) found.state = 'Enter the state you live in.';
       if (!acceptTerms) found.accept_terms = 'Accept the terms to create an account.';
     }
     if (!mobile.trim()) found.mobile = 'Enter your mobile number.';
@@ -92,8 +88,6 @@ export default function LoginScreen() {
           username: username.trim(),
           mobile: mobile.trim(),
           email: email.trim(),
-          date_of_birth: dateOfBirth.trim(),
-          state: state.trim(),
           password,
           password_confirmation: password,
           accept_terms: acceptTerms,
@@ -149,15 +143,17 @@ export default function LoginScreen() {
                 <>
                   <TextField
                     label="Username"
-                    placeholder="Your player name"
+                    placeholder="Your username"
                     value={username}
                     onChangeText={(value) => {
-                      setUsername(value);
+                      // No spaces anywhere in a username — typed or pasted.
+                      setUsername(value.replace(/\s/g, ''));
                       clear('username');
                     }}
                     autoCapitalize="none"
                     autoCorrect={false}
                     autoComplete="username-new"
+                    hint="No spaces."
                     errorText={errors.username}
                   />
                   <TextField
@@ -173,30 +169,6 @@ export default function LoginScreen() {
                     keyboardType="email-address"
                     autoComplete="email"
                     errorText={errors.email}
-                  />
-                  <TextField
-                    label="Date of birth"
-                    placeholder="YYYY-MM-DD"
-                    value={dateOfBirth}
-                    onChangeText={(value) => {
-                      setDateOfBirth(value.replace(/[^\d-]/g, '').slice(0, 10));
-                      clear('date_of_birth');
-                    }}
-                    keyboardType="numbers-and-punctuation"
-                    maxLength={10}
-                    hint="You must be 18 or older."
-                    errorText={errors.date_of_birth}
-                  />
-                  <TextField
-                    label="State"
-                    placeholder="The state you live in"
-                    value={state}
-                    onChangeText={(value) => {
-                      setState(value);
-                      clear('state');
-                    }}
-                    autoCapitalize="words"
-                    errorText={errors.state}
                   />
                   <TextField
                     label="Referral code (optional)"
@@ -283,7 +255,7 @@ export default function LoginScreen() {
 
 const FIELDS: Record<Mode, string[]> = {
   login: ['mobile', 'password'],
-  register: ['username', 'email', 'date_of_birth', 'state', 'mobile', 'password', 'accept_terms'],
+  register: ['username', 'email', 'mobile', 'password', 'accept_terms'],
 };
 
 const useStyles = makeStyles(({ colors: c, semantic: s }) => ({
