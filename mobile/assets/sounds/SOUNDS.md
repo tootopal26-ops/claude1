@@ -11,8 +11,10 @@ was removed on 2026-11-26. Haptic feedback is separate and unchanged.
 ## Source and licence — ⚠ to be confirmed by the project owner
 
 `click.mp3` is **not** original work and is **not** CC0. It is a third-party sound that was
-supplied by the project owner as `futuristic-ui-digital-click-davies-aguirre-1-00-00.zip`
-(the file inside is byte-for-byte what is committed here).
+supplied by the project owner, first as `futuristic-ui-digital-click-davies-aguirre-1-00-00.zip`
+and then as a trimmed copy of it, `click_trimmed.mp3` (the leading silence removed). The
+trimmed copy is what is committed here, byte for byte. It is a modified version of the
+original, so any licence terms for the original apply to it as well.
 
 - Title (ID3 tag): *Futuristic UI - digital click*
 - Artist (ID3 tag): *Davies Aguirre*
@@ -23,9 +25,12 @@ supplied by the project owner as `futuristic-ui-digital-click-davies-aguirre-1-0
 
 ## File details
 
-0.29 s, MP3, 44.1 kHz stereo, peak about −12 dB (a little louder than the 60 ms click it
-replaced). It has roughly 30 ms of silence at the start, so the click lands a hair after the
-tap; trim that if it ever feels laggy. The 24 KB includes an embedded cover-art image.
+0.26 s, MP3 (192 kbps), 44.1 kHz stereo, 14 KB, peak −12.6 dB. There is no silence before the
+click: with the file's gapless header applied (it records 576 samples of encoder delay and 971
+of end padding, which Android's player and ffmpeg both honour) the first audible sample is at
+about 5 ms and the peak at about 8 ms, so the click lands essentially with the tap. The
+audible part is about 115 ms; the rest is a quiet tail. The 14 KB includes an embedded
+cover-art image.
 
 ## How it is played
 
