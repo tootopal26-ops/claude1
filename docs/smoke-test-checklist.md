@@ -34,6 +34,24 @@ curl -X POST https://<your-domain>/api/v1/auth/register \
 ```
 **Pass:** `201`-equivalent response with a `data.token` and `data.user`.
 
+Sign in with the same account — `identifier` accepts a username, a
+mobile number (any of "+91 9876543210", "09876543210" or
+"9876543210" all resolve to the same account) or an email, in that
+order of lookup. One example of each:
+```bash
+curl -X POST https://<your-domain>/api/v1/auth/login \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -d '{"identifier":"smoketester@example.com","password":"password123"}'
+curl -X POST https://<your-domain>/api/v1/auth/login \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -d '{"identifier":"9876543210","password":"password123"}'
+curl -X POST https://<your-domain>/api/v1/auth/login \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -d '{"identifier":"smoketester","password":"password123"}'
+```
+**Pass:** all three return `200` with a `data.token` and `data.user` for the
+same account.
+
 ## 2. Create (or use) a joinable tournament, and join it
 
 From the Admin panel (Tournaments → Create), create a free-entry Solo

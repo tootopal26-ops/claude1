@@ -9,6 +9,7 @@ use App\Http\Middleware\EnsureStaffSecurityVersionIsCurrent;
 use App\Listeners\CheckDatabaseConnection;
 use App\Models\PaymentProviderConfig;
 use App\Models\PlatformSetting;
+use App\Support\LoginIdentifier;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
@@ -16,7 +17,6 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
@@ -44,12 +44,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Keyed by mobile+IP rather than just IP, so an attacker spraying
-        // login attempts across many numbers from one IP is still limited
-        // per number, and a legitimate user retyping their password from a
+        // Keyed by identifier+IP rather than just IP, so an attacker spraying
+        // login attempts across many accounts from one IP is still limited
+        // per target, and a legitimate user retyping their password from a
         // shared/NAT'd IP isn't penalized by other accounts' attempts.
+        // Canonicalised so the same mobile number typed two different ways
+        // (or an email/username in a different letter case) shares one bucket.
         RateLimiter::for('login', function (Request $request) {
-            $key = Str::lower((string) $request->input('mobile')).'|'.$request->ip();
+            $identifier = (string) ($request->input('identifier') ?? $request->input('mobile') ?? '');
+            $key = LoginIdentifier::canonicalize($identifier).'|'.$request->ip();
 
             return Limit::perMinute(5)->by($key)->response(
                 fn (Request $request, array $headers) => response()->json([

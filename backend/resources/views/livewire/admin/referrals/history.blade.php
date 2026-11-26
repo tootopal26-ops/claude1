@@ -5,7 +5,7 @@
 
     @include('livewire.admin.referrals._nav')
 
-    <x-ui.input type="search" wire:model.live.debounce.400ms="search" placeholder="Search by username, mobile or referral code" class="mb-4 max-w-sm" aria-label="Search referrals" />
+    <x-ui.input type="search" wire:model.live.debounce.400ms="search" placeholder="Search by username, mobile, email or referral code" class="mb-4 max-w-sm" aria-label="Search referrals" />
 
     <x-ui.table label="Referral history">
         <x-slot:head><tr><th>Referrer</th><th>Referred player</th><th>Code</th><th class="text-right">New player reward</th><th class="text-right">Referrer reward</th><th>Status</th><th>When</th></tr></x-slot:head>

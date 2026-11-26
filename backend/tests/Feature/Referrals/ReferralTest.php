@@ -32,7 +32,7 @@ class ReferralTest extends TestCase
     {
         return array_merge([
             'username' => 'newplayer'.fake()->unique()->numberBetween(1, 999999),
-            'mobile' => fake()->unique()->numerify('9##########'),
+            'mobile' => fake()->unique()->numerify('9#########'),
             'email' => fake()->unique()->safeEmail(),
             'password' => 'password123',
             'password_confirmation' => 'password123',

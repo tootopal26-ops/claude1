@@ -135,4 +135,91 @@ class RegistrationTest extends TestCase
 
         $response->assertStatus(422)->assertJsonValidationErrors('username');
     }
+
+    public function test_a_digits_only_username_is_rejected(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'username' => '12345678',
+            'mobile' => '9123456785',
+            'email' => 'digits_only@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'accept_terms' => true,
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('username');
+    }
+
+    public function test_a_nine_digit_mobile_number_is_rejected(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'username' => 'nine_digit_player',
+            'mobile' => '912345678',
+            'email' => 'nine_digit@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'accept_terms' => true,
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('mobile');
+    }
+
+    public function test_an_eleven_digit_mobile_number_is_rejected(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'username' => 'eleven_digit_player',
+            'mobile' => '91234567890',
+            'email' => 'eleven_digit@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'accept_terms' => true,
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('mobile');
+    }
+
+    public function test_a_mobile_number_containing_letters_is_rejected(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'username' => 'letters_player',
+            'mobile' => '91234abc90',
+            'email' => 'letters_player@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'accept_terms' => true,
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('mobile');
+    }
+
+    public function test_registration_normalises_a_mobile_number_with_country_code_and_spaces(): void
+    {
+        $response = $this->postJson('/api/v1/auth/register', [
+            'username' => 'normalised_player',
+            'mobile' => '+91 8273093895',
+            'email' => 'normalised_player@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'accept_terms' => true,
+        ]);
+
+        $response->assertCreated()->assertJsonPath('data.user.mobile', '8273093895');
+        $this->assertDatabaseHas('users', ['username' => 'normalised_player', 'mobile' => '8273093895']);
+    }
+
+    public function test_a_duplicate_mobile_number_is_rejected_after_normalisation(): void
+    {
+        User::factory()->create(['mobile' => '8273093895']);
+
+        $response = $this->postJson('/api/v1/auth/register', [
+            'username' => 'duplicate_after_normalise',
+            'mobile' => '08273093895',
+            'email' => 'duplicate_after_normalise@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'accept_terms' => true,
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('mobile');
+    }
 }

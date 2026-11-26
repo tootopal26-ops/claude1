@@ -5,16 +5,18 @@ namespace App\Http\Controllers\Api\V1;
 use App\Domain\Legal\AcceptCurrentLegalDocumentsAction;
 use App\Domain\Referrals\ReferralService;
 use App\Domain\Security\RecordLoginAttemptAction;
+use App\Domain\Security\ResolveUserByIdentifierAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\LoginRequest;
 use App\Http\Requests\Api\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Referral;
 use App\Models\User;
+use App\Support\LoginIdentifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -54,31 +56,33 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function login(LoginRequest $request, RecordLoginAttemptAction $recordLoginAttempt): JsonResponse
-    {
-        $mobile = (string) $request->string('mobile');
-        $user = User::where('mobile', $mobile)->first();
+    public function login(
+        LoginRequest $request,
+        ResolveUserByIdentifierAction $resolveUser,
+        RecordLoginAttemptAction $recordLoginAttempt,
+    ): JsonResponse {
+        $errorKey = $request->errorKey();
+        $identifier = LoginIdentifier::canonicalize($request->identifierValue());
 
-        if (! $user || ! Auth::guard('web')->validate([
-            'mobile' => $request->string('mobile'),
-            'password' => $request->string('password'),
-        ])) {
-            $recordLoginAttempt->execute($mobile, $request->ip(), false);
+        $user = $resolveUser->execute($identifier);
+
+        if (! $user || ! Hash::check((string) $request->string('password'), $user->password)) {
+            $recordLoginAttempt->execute($identifier, $request->ip(), false);
 
             throw ValidationException::withMessages([
-                'mobile' => 'These credentials do not match our records.',
+                $errorKey => 'These credentials do not match our records.',
             ]);
         }
 
         if ($user->is_banned) {
-            $recordLoginAttempt->execute($mobile, $request->ip(), false);
+            $recordLoginAttempt->execute($identifier, $request->ip(), false);
 
             throw ValidationException::withMessages([
-                'mobile' => 'This account has been suspended.',
+                $errorKey => 'This account has been suspended.',
             ]);
         }
 
-        $recordLoginAttempt->execute($mobile, $request->ip(), true);
+        $recordLoginAttempt->execute($identifier, $request->ip(), true);
 
         $token = $user->createToken($request->userAgent() ?? 'mobile')->plainTextToken;
 

@@ -59,8 +59,23 @@ class RiskAlertTriggersTest extends TestCase
 
         $this->postJson('/api/v1/auth/login', ['mobile' => '9123450001', 'password' => 'correct-password'])->assertOk();
 
-        $this->assertDatabaseHas('login_attempts', ['mobile' => '9123450001', 'successful' => true]);
+        $this->assertDatabaseHas('login_attempts', ['identifier' => '9123450001', 'successful' => true]);
         $this->assertDatabaseMissing('risk_alerts', ['type' => 'repeated_failed_login']);
+    }
+
+    public function test_repeated_failed_login_via_identifier_raises_the_same_alert_and_includes_mobile_in_details(): void
+    {
+        $user = User::factory()->create(['mobile' => '9123450002', 'email' => 'threshold@example.com']);
+
+        for ($i = 1; $i <= 4; $i++) {
+            $this->postJson('/api/v1/auth/login', ['identifier' => 'threshold@example.com', 'password' => 'wrong'])->assertStatus(422);
+        }
+
+        $this->postJson('/api/v1/auth/login', ['identifier' => 'threshold@example.com', 'password' => 'wrong'])->assertStatus(422);
+
+        $alert = RiskAlert::where('type', 'repeated_failed_login')->where('target_user_id', $user->id)->sole();
+        $this->assertSame('threshold@example.com', $alert->details['identifier']);
+        $this->assertSame('9123450002', $alert->details['mobile']);
     }
 
     public function test_concurrent_wallet_op_threshold_raises_a_risk_alert_for_rapid_activity(): void

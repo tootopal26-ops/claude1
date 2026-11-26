@@ -70,6 +70,57 @@ class AdminUserManagementTest extends TestCase
             ->assertDontSee('beta_player');
     }
 
+    public function test_searching_the_list_filters_by_email(): void
+    {
+        $preset = $this->grantPreset(['users.view']);
+        $staff = StaffUser::factory()->create(['permission_preset_id' => $preset->id, 'is_super_admin' => false]);
+        User::factory()->create(['username' => 'findable_by_email', 'email' => 'unique_search@example.com']);
+        User::factory()->create(['username' => 'other_player', 'email' => 'other@example.com']);
+
+        Livewire::actingAs($staff, 'staff')
+            ->test(UserList::class)
+            ->set('search', 'unique_search@example.com')
+            ->assertSee('findable_by_email')
+            ->assertDontSee('other_player');
+    }
+
+    public function test_searching_the_list_by_a_formatted_mobile_number_finds_the_plain_digit_match(): void
+    {
+        $preset = $this->grantPreset(['users.view']);
+        $staff = StaffUser::factory()->create(['permission_preset_id' => $preset->id, 'is_super_admin' => false]);
+        User::factory()->create(['username' => 'findable_by_mobile', 'mobile' => '8273093895']);
+        User::factory()->create(['username' => 'other_mobile_player', 'mobile' => '9999999999']);
+
+        Livewire::actingAs($staff, 'staff')
+            ->test(UserList::class)
+            ->set('search', '+91 8273093895')
+            ->assertSee('findable_by_mobile')
+            ->assertDontSee('other_mobile_player');
+    }
+
+    public function test_searching_the_list_by_plain_digits_finds_the_player(): void
+    {
+        $preset = $this->grantPreset(['users.view']);
+        $staff = StaffUser::factory()->create(['permission_preset_id' => $preset->id, 'is_super_admin' => false]);
+        User::factory()->create(['username' => 'findable_by_digits', 'mobile' => '8273093895']);
+
+        Livewire::actingAs($staff, 'staff')
+            ->test(UserList::class)
+            ->set('search', '8273093895')
+            ->assertSee('findable_by_digits');
+    }
+
+    public function test_the_player_list_shows_the_mobile_number_formatted_with_country_code(): void
+    {
+        $preset = $this->grantPreset(['users.view']);
+        $staff = StaffUser::factory()->create(['permission_preset_id' => $preset->id, 'is_super_admin' => false]);
+        User::factory()->create(['username' => 'formatted_mobile_player', 'mobile' => '8273093895']);
+
+        $this->actingAs($staff, 'staff')->get(route('staff.users.index'))
+            ->assertOk()
+            ->assertSee('+91 8273093895');
+    }
+
     public function test_a_staff_user_with_users_view_sees_the_player_detail_page(): void
     {
         $preset = $this->grantPreset(['users.view']);

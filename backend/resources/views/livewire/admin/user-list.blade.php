@@ -3,13 +3,13 @@
 
     <div class="mb-4 flex flex-wrap items-center gap-3">
         <div class="relative w-full sm:max-w-sm">
-            <label for="player-search" class="sr-only">Search players by username or mobile number</label>
+            <label for="player-search" class="sr-only">Search players by username, mobile number or email</label>
             <x-icon name="search" :size="16" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-fg-3" />
             <input
                 id="player-search"
                 type="search"
                 wire:model.live.debounce.300ms="search"
-                placeholder="Search by username or mobile number…"
+                placeholder="Search by username, mobile number or email…"
                 autocomplete="off"
                 class="mm-control pl-9"
             >
@@ -32,7 +32,7 @@
         @forelse ($users as $user)
             <tr wire:key="user-{{ $user->id }}">
                 <td class="mm-cell-primary"><span class="block max-w-[16rem] truncate" title="{{ $user->username }}">{{ $user->username }}</span></td>
-                <td class="whitespace-nowrap tabular-nums">{{ $user->mobile }}</td>
+                <td class="whitespace-nowrap tabular-nums">{{ \App\Support\MobileNumber::format($user->mobile) }}</td>
                 <td class="whitespace-nowrap">
                     <span class="inline-flex items-center gap-1.5 tabular-nums text-fg"><x-coin-asset :size="16" />{{ $user->wallet?->totalBalance() ?? '0.00' }}</span>
                 </td>
@@ -50,7 +50,7 @@
             </tr>
         @empty
             @if ($search !== '')
-                <x-ui.table-empty :colspan="6" icon="search" title="No players match your search" :description="'Nothing matched “'.$search.'”. Check the spelling or try part of the username or mobile number.'">
+                <x-ui.table-empty :colspan="6" icon="search" title="No players match your search" :description="'Nothing matched “'.$search.'”. Check the spelling or try part of the username, mobile number or email.'">
                     <x-ui.button variant="outline" size="sm" wire:click="$set('search', '')">Clear search</x-ui.button>
                 </x-ui.table-empty>
             @else

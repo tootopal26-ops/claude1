@@ -13,7 +13,7 @@
 
     <x-ui.page-header
         :title="$user->username"
-        :description="$user->mobile.' · '.$user->email.' · Joined '.$user->created_at->format('d M Y')"
+        :description="\App\Support\MobileNumber::format($user->mobile).' · '.$user->email.' · Joined '.$user->created_at->format('d M Y')"
         :breadcrumbs="[
             ['label' => 'Players', 'url' => portal_route('users.index')],
             ['label' => $user->username],

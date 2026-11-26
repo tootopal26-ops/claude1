@@ -35,6 +35,23 @@ class SessionManagementTest extends TestCase
         $this->assertCount(2, $response->json('data'));
     }
 
+    public function test_a_player_sees_every_device_they_are_logged_in_on_using_identifier(): void
+    {
+        $user = User::factory()->create(['password' => bcrypt('password123')]);
+
+        $this->postJson('/api/v1/auth/login', ['identifier' => $user->email, 'password' => 'password123'], [
+            'User-Agent' => 'Mini Max / Pixel 9',
+        ])->assertOk();
+        $this->postJson('/api/v1/auth/login', ['identifier' => $user->username, 'password' => 'password123'], [
+            'User-Agent' => 'Mini Max / Galaxy S24',
+        ])->assertOk();
+
+        $response = $this->actingAs($user, 'sanctum')->getJson('/api/v1/sessions');
+
+        $response->assertOk();
+        $this->assertCount(2, $response->json('data'));
+    }
+
     public function test_a_player_can_revoke_another_devices_session(): void
     {
         $user = User::factory()->create();
