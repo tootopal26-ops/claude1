@@ -10,9 +10,9 @@ import { SOUND_DEBOUNCE_MS, SOUND_TRIM, type SoundName } from './sounds';
  *
  * - UI sound effects and haptics are each remembered separately (SecureStore) and can each be
  *   turned off; when sound is off, nothing plays anywhere, and the change takes effect at once.
- * - The semantic helpers (playClick, playSuccess, ...) each fire a sound AND, where it fits, a
- *   matching haptic — but each half is gated by its own setting, so haptics can stay on with
- *   sound off and vice versa.
+ * - The only sound in the app is the tap click (playClick / playSelection / playToggle). The
+ *   other semantic helpers (playSuccess, playReward, ...) are haptic-only now. Each half is
+ *   gated by its own setting, so haptics can stay on with sound off and vice versa.
  * - A per-sound debounce drops a repeat of the same sound inside a short window, so a burst of
  *   rapid taps never stacks into an overlap.
  * - The engine seam (engine.native.ts / engine.ts) means this file never knows or cares whether
@@ -122,8 +122,9 @@ export function SoundProvider({ children }: { children: ReactNode }) {
       engine.haptic(kind);
     };
 
-    const both = (name: SoundName, kind: HapticKind | null) => () => {
-      playSound(name);
+    // `name` is null for the helpers that no longer make any sound: they keep their haptic only.
+    const both = (name: SoundName | null, kind: HapticKind | null) => () => {
+      if (name) playSound(name);
       if (kind) doHaptic(kind);
     };
 
@@ -137,7 +138,7 @@ export function SoundProvider({ children }: { children: ReactNode }) {
       setSoundEnabled(on) {
         setSoundEnabledState(on);
         void SecureStore.setItemAsync(ENABLED_KEY, on ? '1' : '0').catch(() => {});
-        if (on) playSound('selection'); // a tiny confirmation that sound is back on
+        if (on) playSound('click'); // a tiny confirmation that sound is back on
       },
       setVolume(next) {
         const v = clampVolume(next);
@@ -150,26 +151,29 @@ export function SoundProvider({ children }: { children: ReactNode }) {
         if (on) doHaptic('selection');
       },
 
+      // Clicks — the user tapping something. These are the only helpers that make a sound.
       playClick: both('click', 'light'),
-      playSelection: both('selection', 'selection'),
-      playTransition: both('transition', null),
-      playClose: both('close', null),
-      playToggle: both('toggle', 'light'),
-      playSuccess: both('success', 'success'),
-      playError: both('error', 'error'),
-      playWarning: both('warning', 'warning'),
-      playReward: both('reward', 'success'),
-      playCoin: both('coin', null),
-      playUnlock: both('unlock', 'medium'),
-      playNotification: both('notification', null),
+      playSelection: both('click', 'selection'),
+      playToggle: both('click', 'light'),
+      // Everything below used to have its own sound effect. Those sounds are gone, but the
+      // calls stay (and keep their haptic) so a reward, an error or a sheet opening still
+      // feels like something — it just no longer plays a sound.
+      playTransition: both(null, null),
+      playClose: both(null, null),
+      playSuccess: both(null, 'success'),
+      playError: both(null, 'error'),
+      playWarning: both(null, 'warning'),
+      playReward: both(null, 'success'),
+      playCoin: both(null, null),
+      playUnlock: both(null, 'medium'),
+      playNotification: both(null, null),
 
       play: playSound,
       haptic: doHaptic,
       preview() {
-        // A short taste of the style: a glassy tick, then the warm confirmation chime.
-        playSound('selection');
+        // The click is the only sound there is, so that is what the preview plays.
+        playSound('click');
         doHaptic('selection');
-        setTimeout(() => playSound('success'), 160);
       },
     };
   }, [engine, soundEnabled, volume, hapticsEnabled]);

@@ -1,5 +1,9 @@
 # Mini Max — System-wide Sound Design & Haptic Feedback Engine
 
+> **Superseded (2026-11-26):** all sound effects described below were removed except the tap
+> click, which is now the supplied `click.mp3`. Haptics are unchanged. This report is kept as the
+> record of the original design; see `mobile/assets/sounds/SOUNDS.md` for what ships today.
+
 **Scope:** the Mini Max **mobile app** (`mobile/`, Expo / React Native).
 **Branch:** `claude/lucid-volta-ispwb4`
 

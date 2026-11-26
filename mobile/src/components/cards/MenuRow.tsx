@@ -35,7 +35,7 @@ export function MenuRow({ artwork, label, onPress, detail, badge, tone = 'defaul
 
   return (
     <PressableScale
-      sound="selection"
+      sound="click"
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={[label, badge ? 'unread notifications' : null, detail].filter(Boolean).join(', ')}

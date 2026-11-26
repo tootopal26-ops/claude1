@@ -1,46 +1,42 @@
-# Mini Max sound library — manifest & licence
+# Mini Max sound library
 
-Every sound in this folder is **original work created for Mini Max**, synthesised from scratch
-with numpy and encoded to AAC by `mobile/scripts/generate-sounds.py`. Nothing here is sampled,
-recorded from an instrument, or downloaded from a library — each file is pure additive synthesis
-(sine / triangle partials shaped by short envelopes). There are therefore **no third-party
-assets and no external licences to honour**.
+The app has **one** sound: the tap click. Every other sound effect (rewards, coins, success /
+error / warning chimes, notifications, unlocks, sheet open/close, selection and toggle ticks)
+was removed on 2026-11-26. Haptic feedback is separate and unchanged.
 
-**Licence:** these sounds are released by the project under **CC0 1.0 (public-domain-equivalent)**.
-They may be bundled in the app and shipped without attribution.
+| File | Used for |
+|---|---|
+| `click.mp3` | Every tap: buttons, cards and rows, bottom tabs, segmented controls, switches, option rows in Settings, and the "Preview sound" button |
 
-The design language is a premium phone UI: soft, precise, glassy clicks for everyday taps and
-warm, restrained chimes for rewards — deliberately not arcade-loud. Everyday UI sounds are kept
-to 30–180 ms and mixed quietly; reward / unlock sounds stay under 500 ms. Each file is 48 kHz
-mono AAC at 96 kbps with a 2 ms fade on both edges (no clicks/pops) and is peak-limited below
-0 dBFS (no clipping).
+## Source and licence — ⚠ to be confirmed by the project owner
 
-| File | Semantic use | Length | Peak | Character |
-|---|---|---:|---:|---|
-| `click.m4a` | Button press (`playClick`) | 60 ms | −16 dB | Softest in the set: a tiny filtered-noise tick + 2.2 kHz blip |
-| `selection.m4a` | Bottom-nav / tab / list selection (`playSelection`) | 90 ms | — | Delicate glassy two-partial bell blip |
-| `transition.m4a` | Modal / sheet / screen open (`playTransition`) | 140 ms | — | Soft upward pitch-glide "pop" |
-| `close.m4a` | Modal / sheet close (`playClose`) | 120 ms | — | Quieter downward reverse pop |
-| `toggle.m4a` | Switch / checkbox (`playToggle`) | 70 ms | — | Precise two-stage tactile tick |
-| `success.m4a` | Confirmed success (`playSuccess`) | 340 ms | −5 dB | Warm rising two-note chime (G5→C6) |
-| `error.m4a` | Failed / rejected (`playError`) | 200 ms | — | Soft descending two-note (A4→F4), never harsh |
-| `warning.m4a` | Informational / unavailable (`playWarning`) | 170 ms | — | Neutral mid tone with a gentle wobble |
-| `reward.m4a` | Reward claimed (`playReward`) | 460 ms | −7 dB | Bright rising triad arpeggio (C6-E6-G6) with shimmer |
-| `coin.m4a` | Coins credited (`playCoin`) | 220 ms | −9 dB | Two quick high metallic pings (coin sparkle) |
-| `unlock.m4a` | Lock release / ticket unlocked (`playUnlock`) | 300 ms | — | Soft low "thunk" then a rising confirm ping |
-| `notification.m4a` | In-app notification (`playNotification`) | 250 ms | — | Gentle unobtrusive two-note soft bell (A5→D6) |
+`click.mp3` is **not** original work and is **not** CC0. It is a third-party sound that was
+supplied by the project owner as `futuristic-ui-digital-click-davies-aguirre-1-00-00.zip`
+(the file inside is byte-for-byte what is committed here).
 
-Total bundled size: ~41 KB across all 12 files (negligible APK impact).
+- Title (ID3 tag): *Futuristic UI - digital click*
+- Artist (ID3 tag): *Davies Aguirre*
+- Licence: **not recorded.** Nothing in the file or the zip states one. Before this app is
+  distributed, whoever supplied the sound must confirm that its licence allows shipping it
+  inside an app (and whether credit to the artist is required), then record the licence and the
+  place it was obtained here, and add any required credit to the app.
 
-## Regenerating
+## File details
 
-```
-python3 -I mobile/scripts/generate-sounds.py mobile/assets/sounds
-```
+0.29 s, MP3, 44.1 kHz stereo, peak about −12 dB (a little louder than the 60 ms click it
+replaced). It has roughly 30 ms of silence at the start, so the click lands a hair after the
+tap; trim that if it ever feels laggy. The 24 KB includes an embedded cover-art image.
 
-Requires `numpy` and `ffmpeg`. The script is deterministic (fixed RNG seed for the noise
-transients), so regenerating produces byte-stable output.
+## How it is played
 
-The engine that plays these (`src/sound/`) loads each file once, replays it from the start,
-debounces rapid repeats, mixes with other audio rather than interrupting it, and respects the
-user's sound/volume/haptics settings (Settings → Sound & Haptics).
+`src/sound/SoundContext.tsx` is the only place sound is played. `playClick`, `playSelection`
+and `playToggle` play `click.mp3` (plus their haptic). The other helpers (`playSuccess`,
+`playReward`, `playCoin`, ...) are haptic-only so existing call sites keep their feel without a
+sound. Playback preloads the file once, replays it from the start, drops a repeat within 55 ms,
+mixes with other audio instead of interrupting it, and respects Settings → Sound & Haptics
+(on/off and volume).
+
+## Previously
+
+The app used 12 short sounds synthesised by `scripts/generate-sounds.py` (CC0). Those files and
+the script were removed; they remain in git history.

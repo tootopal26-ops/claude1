@@ -63,7 +63,7 @@ export default function SettingsScreen() {
                     value={levelFromVolume(sound.volume)}
                     onChange={(level) => {
                       sound.setVolume(VOLUME_VALUE[level]);
-                      sound.play('selection');
+                      sound.play('click');
                     }}
                     options={[
                       { value: 'low', label: 'Low' },

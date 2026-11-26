@@ -35,7 +35,7 @@ export function GameCard({ game, width, onPress }: GameCardProps) {
 
   return (
     <PressableScale
-      sound="selection"
+      sound="click"
       onPress={onPress}
       accessibilityRole="button"
       accessibilityHint={`Opens ${game.title} tournaments`}

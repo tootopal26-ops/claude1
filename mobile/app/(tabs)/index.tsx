@@ -99,7 +99,7 @@ export default function HomeScreen() {
     setRefreshing(true);
     await Promise.all([loadBanners(), loadCounts(), loadGames(), refreshWallet({ force: true }), refreshSections()]);
     setRefreshing(false);
-    sound.playSelection(); // a subtle tick when a pull-to-refresh finishes (not during the gesture)
+    sound.haptic('selection'); // a subtle tick when a pull-to-refresh finishes (not during the gesture) — haptic only: it is not a click, so no sound
   };
 
   // The optional game-card interstitial (only if Admin enabled it and its caps allow). Without
