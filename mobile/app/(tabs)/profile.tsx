@@ -126,7 +126,7 @@ export default function ProfileScreen() {
 
       <RedeemCodeDialog visible={redeemOpen} onClose={() => setRedeemOpen(false)} onRedeemed={() => refreshWallet({ force: true })} />
 
-      <Sheet visible={confirmLogout} onClose={() => setConfirmLogout(false)} title="Log out?" subtitle="You will need your mobile number and password to sign in again." dismissible={!loggingOut}>
+      <Sheet visible={confirmLogout} onClose={() => setConfirmLogout(false)} title="Log out?" subtitle="You will need your username, mobile number or email, and your password to sign in again." dismissible={!loggingOut}>
         <Button
           label="Log out"
           variant="danger"

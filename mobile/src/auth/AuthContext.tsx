@@ -6,7 +6,8 @@ import { registerForPushNotificationsAsync, unregisterPushNotificationsAsync } f
 import type { LegalDocument, User } from '../types';
 import { clearToken, getToken, setToken } from './tokenStorage';
 
-type LoginPayload = { mobile: string; password: string };
+/** `identifier` is whatever the player typed: a username, a mobile number or an email. */
+type LoginPayload = { identifier: string; password: string };
 type RegisterPayload = {
   username: string;
   mobile: string;

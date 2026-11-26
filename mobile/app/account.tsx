@@ -18,6 +18,7 @@ import { Icon } from '../src/theme/icons';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import { MAX_CONTENT_WIDTH, RADIUS, SIZE, SPACE, TYPE } from '../src/theme/tokens';
 import type { Session } from '../src/types';
+import { formatMobile } from '../src/utils/mobileNumber';
 import { formatDate, formatDateTime } from '../src/utils/time';
 import { useRetained } from '../src/utils/useRetained';
 
@@ -59,7 +60,7 @@ export default function AccountScreen() {
 
   const details: { label: string; value: string | null | undefined }[] = [
     { label: 'Username', value: user.username },
-    { label: 'Mobile number', value: user.mobile },
+    { label: 'Mobile number', value: formatMobile(user.mobile) },
     { label: 'Email', value: user.email },
     { label: 'State', value: user.state },
     { label: 'Member since', value: user.member_since ? formatDate(user.member_since) : null },

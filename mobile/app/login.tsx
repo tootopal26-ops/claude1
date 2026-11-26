@@ -9,12 +9,14 @@ import { AmbientGlow } from '../src/components/AmbientGlow';
 import { BrandLogo } from '../src/components/BrandLogo';
 import { Button } from '../src/components/Button';
 import { SegmentedControl } from '../src/components/controls/SegmentedControl';
+import { MobileNumberField } from '../src/components/MobileNumberField';
 import { Notice } from '../src/components/Notice';
 import { TextField } from '../src/components/TextField';
 import { glassPanel } from '../src/theme/glass';
 import { Icon } from '../src/theme/icons';
 import { makeStyles, useTheme } from '../src/theme/ThemeContext';
 import { RADIUS, SPACE, TYPE } from '../src/theme/tokens';
+import { isValidMobile } from '../src/utils/mobileNumber';
 
 type Mode = 'login' | 'register';
 type Errors = Record<string, string>;
@@ -37,6 +39,10 @@ export default function LoginScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<Mode>('login');
+  // Sign in takes a username, a mobile number or an email in one box; sign up collects the
+  // mobile number (10 digits after a fixed +91) as its own field. Kept apart so text typed
+  // for one can never leak into the other when switching tabs.
+  const [identifier, setIdentifier] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -64,9 +70,12 @@ export default function LoginScreen() {
     if (mode === 'register') {
       if (!username.trim()) found.username = 'Choose a username.';
       if (!email.trim()) found.email = 'Enter your email address.';
+      if (!mobile) found.mobile = 'Enter your mobile number.';
+      else if (!isValidMobile(mobile)) found.mobile = 'Enter a 10-digit mobile number.';
       if (!acceptTerms) found.accept_terms = 'Accept the terms to create an account.';
+    } else if (!identifier.trim()) {
+      found.identifier = 'Enter your username, mobile number or email.';
     }
-    if (!mobile.trim()) found.mobile = 'Enter your mobile number.';
     if (!password) found.password = 'Enter your password.';
 
     return found;
@@ -82,11 +91,13 @@ export default function LoginScreen() {
     setSubmitting(true);
     try {
       if (mode === 'login') {
-        await login({ mobile: mobile.trim(), password });
+        // Sent as typed: the server works out whether it is an email, a mobile number or a
+        // username (and tidies a +91 / spaces), so a username made only of digits is never mangled here.
+        await login({ identifier: identifier.trim(), password });
       } else {
         await register({
           username: username.trim(),
-          mobile: mobile.trim(),
+          mobile,
           email: email.trim(),
           password,
           password_confirmation: password,
@@ -125,7 +136,7 @@ export default function LoginScreen() {
             <Text style={styles.heading} accessibilityRole="header">
               {mode === 'login' ? 'Welcome back' : 'Join Mini Max'}
             </Text>
-            <Text style={styles.subtitle}>{mode === 'login' ? 'Sign in with your mobile number.' : 'Create your player account in a minute.'}</Text>
+            <Text style={styles.subtitle}>{mode === 'login' ? 'Sign in with your username, mobile number or email.' : 'Create your player account in a minute.'}</Text>
 
             <View style={styles.card}>
               <SegmentedControl
@@ -185,22 +196,37 @@ export default function LoginScreen() {
                 </>
               )}
 
-              <TextField
-                label="Mobile number"
-                placeholder="Your mobile number"
-                value={mobile}
-                onChangeText={(value) => {
-                  setMobile(value.replace(/[^\d+]/g, '').slice(0, 20));
-                  clear('mobile');
-                }}
-                keyboardType="phone-pad"
-                autoComplete="tel"
-                textContentType="telephoneNumber"
-                maxLength={20}
-                returnKeyType="next"
-                onSubmitEditing={() => passwordRef.current?.focus()}
-                errorText={errors.mobile}
-              />
+              {mode === 'login' ? (
+                <TextField
+                  label="Username, mobile or email"
+                  placeholder="Username, mobile number or email"
+                  value={identifier}
+                  onChangeText={(value) => {
+                    setIdentifier(value);
+                    clear('identifier');
+                    clear('mobile');
+                  }}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="username"
+                  textContentType="username"
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  // `mobile` is the key older servers used for a failed sign-in.
+                  errorText={errors.identifier ?? errors.mobile}
+                />
+              ) : (
+                <MobileNumberField
+                  value={mobile}
+                  onChange={(digits) => {
+                    setMobile(digits);
+                    clear('mobile');
+                  }}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  errorText={errors.mobile}
+                />
+              )}
               <TextField
                 ref={passwordRef}
                 label="Password"
@@ -254,7 +280,7 @@ export default function LoginScreen() {
 }
 
 const FIELDS: Record<Mode, string[]> = {
-  login: ['mobile', 'password'],
+  login: ['identifier', 'mobile', 'password'],
   register: ['username', 'email', 'mobile', 'password', 'accept_terms'],
 };
 
